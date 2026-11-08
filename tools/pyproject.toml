@@ -35,11 +35,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/YOUR_GITHUB_ORG/authdiff"
-Documentation = "https://github.com/YOUR_GITHUB_ORG/authdiff/blob/main/docs/DOCUMENTATION-INDEX.md"
-Repository = "https://github.com/YOUR_GITHUB_ORG/authdiff"
-Issues = "https://github.com/YOUR_GITHUB_ORG/authdiff/issues"
-Changelog = "https://github.com/YOUR_GITHUB_ORG/authdiff/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/roham-amd/authdiff"
+Documentation = "https://github.com/roham-amd/authdiff/blob/main/docs/DOCUMENTATION-INDEX.md"
+Repository = "https://github.com/roham-amd/authdiff"
+Issues = "https://github.com/roham-amd/authdiff/issues"
+Changelog = "https://github.com/roham-amd/authdiff/blob/main/CHANGELOG.md"
 
 [project.scripts]
 authdiff = "authdiff.cli:main"

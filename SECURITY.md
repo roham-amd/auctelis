@@ -4,16 +4,12 @@
 
 | Project version | Supported |
 | --- | --- |
-| 3.x | Yes |
-| 2.x | Best-effort (security fixes only when practical) |
-| 1.x | Best-effort (security fixes only when practical) |
+| 1.0.x | Yes |
 | < 1.0.0 | No |
-
-The bundled audit procedure version (`archive/methodology/prompts/` kit = **1.0**) is cited separately in audit reports and is not the same number as the authdiff project release.
 
 Tooling package version (`authdiff`, currently **1.0.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
-`tools/pyproject.toml` and `tools/authdiff/__init__.py`. Product release **1.0.0**.
+`tools/pyproject.toml` and `tools/authdiff/__init__.py`.
 
 ## What this project is
 

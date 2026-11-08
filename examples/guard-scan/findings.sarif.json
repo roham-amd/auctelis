@@ -7,7 +7,7 @@
         "driver": {
           "name": "authdiff",
           "version": "1.0.0",
-          "informationUri": "https://github.com/YOUR_GITHUB_ORG/authdiff",
+          "informationUri": "https://github.com/roham-amd/authdiff",
           "rules": [
             {
               "id": "AUTHDIFF-RULE-001",

@@ -1,0 +1,45 @@
+name: Bug report
+description: Report incorrect scan/lock/CI behavior or a tooling crash
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please include enough evidence for a deterministic repro.
+  - type: input
+    id: version
+    attributes:
+      label: authdiff version
+      description: Output of `authdiff --version` (or package version)
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command / workflow
+      description: Exact CLI or GitHub Action invocation
+      placeholder: authdiff scan . --fail-on high
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include decision/exit code, and redact secrets
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Fixture paths, anonymized configs, or a small public repo
+    validations:
+      required: false

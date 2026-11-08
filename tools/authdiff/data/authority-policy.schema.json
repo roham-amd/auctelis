@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YOUR_GITHUB_ORG/authdiff/schemas/authority-policy.schema.json",
+  "$id": "https://github.com/roham-amd/authdiff/schemas/authority-policy.schema.json",
   "title": "AUTHORITY.yml policy-as-code",
   "type": "object",
   "additionalProperties": false,

@@ -18,7 +18,7 @@ from packaging.version import InvalidVersion, Version
 from authdiff.paths import repo_root
 
 _PYPI = "https://pypi.org/pypi/{name}/json"
-_USER_AGENT = "authdiff-deps/0.3 (+https://github.com/YOUR_GITHUB_ORG/authdiff)"
+_USER_AGENT = "authdiff-deps/0.3 (+https://github.com/roham-amd/authdiff)"
 
 
 @dataclass(frozen=True, slots=True)

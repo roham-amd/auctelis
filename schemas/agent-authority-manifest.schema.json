@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/YOUR_GITHUB_ORG/authdiff/schemas/agent-authority-manifest.schema.json",
+  "$id": "https://github.com/roham-amd/authdiff/schemas/agent-authority-manifest.schema.json",
   "title": "Agent Authority Manifest",
   "description": "Vendor-neutral declaration of authority an AI-agent integration requires or exposes. Independently observed fields must never be trusted solely because a publisher signed them.",
   "type": "object",

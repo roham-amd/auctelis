@@ -36,7 +36,7 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools
+  git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
 authdiff demo
 authdiff doctor

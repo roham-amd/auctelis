@@ -1,12 +1,9 @@
-# Sign release artifacts with Sigstore (keyless OIDC) and attach an SBOM.
-# Runs on version tags alongside publish-pypi.yml.
+# Legacy standalone signing workflow.
+# Prefer `.github/workflows/release.yml` (signs, publishes GitHub Packages, attaches Release assets).
 
 name: Sigstore sign release
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:

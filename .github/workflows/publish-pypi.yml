@@ -5,14 +5,12 @@
 #   Workflow: publish-pypi.yml
 #   Environment: pypi
 #
-# Trigger: push a version tag matching v* after VERSION/package metadata agree.
+# Trigger: workflow_dispatch after Trusted Publishing is configured on PyPI.
+# GitHub Release + GitHub Packages publish on tag via release.yml.
 
 name: Publish authdiff to PyPI
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:

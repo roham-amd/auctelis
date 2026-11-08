@@ -91,7 +91,7 @@ def findings_doc_to_sarif(
                     "driver": {
                         "name": "authdiff",
                         "version": version,
-                        "informationUri": ("https://github.com/YOUR_GITHUB_ORG/authdiff"),
+                        "informationUri": ("https://github.com/roham-amd/authdiff"),
                         "rules": list(rules.values()),
                     }
                 },

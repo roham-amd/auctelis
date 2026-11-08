@@ -36,11 +36,11 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools"
 
 authdiff doctor                          # host authority map
 authdiff open github.com/org/some-skill  # pre-install verdict
@@ -57,7 +57,7 @@ Single CI recipe: [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.
 Prefer an immutable commit SHA for the Action in high-assurance repos:
 
 ```yaml
-- uses: YOUR_GITHUB_ORG/authdiff/.github/actions/authdiff-gate@<commit-sha>
+- uses: roham-amd/authdiff/.github/actions/authdiff-gate@<commit-sha>
   with:
     trusted-policy: "true"
     authority-diff: "true"

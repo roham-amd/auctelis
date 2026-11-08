@@ -1,0 +1,39 @@
+name: Feature request
+description: Propose coverage, UX, or gate improvements for authdiff
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / job to be done
+      description: What authority-change question is hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Keep it concrete (command, adapter, report field, CI behavior)
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Primary surface
+      options:
+        - CLI (demo/doctor/open/scan/lock/ci)
+        - AUTHORITY.lock / Authority Diff
+        - GitHub Action gate
+        - Adapter coverage (MCP/skills/hooks/…)
+        - Agent skill / operator UX
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What this should NOT become (runtime sandbox, marketplace cert, etc.)
+    validations:
+      required: false

@@ -1,0 +1,100 @@
+# Build, sign, attach assets to the GitHub Release, and publish to GitHub Packages.
+# Trigger: push a version tag matching v* (e.g. v1.0.0).
+# PyPI remains a separate trusted-publishing workflow (publish-pypi.yml).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Verify version metadata
+        run: uv run --directory tools --locked authdiff-dev build all
+
+      - name: Build wheel + sdist
+        working-directory: tools
+        run: |
+          mkdir -p ../authdiff-out-sbom ../signatures
+          uv build
+
+      - name: Generate SBOM
+        working-directory: tools
+        run: |
+          uv sync --locked
+          uv run --locked pip-audit -f cyclonedx-json -o ../authdiff-out-sbom/sbom.cdx.json \
+            || uv run --locked pip-audit -f json -o ../authdiff-out-sbom/sbom.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.10.0
+
+      - name: Sign artifacts (keyless)
+        working-directory: tools
+        run: |
+          set -euo pipefail
+          for f in dist/*; do
+            cosign sign-blob --yes --bundle "../signatures/$(basename "$f").cosign.bundle" "$f"
+          done
+          if [[ -f ../authdiff-out-sbom/sbom.cdx.json ]]; then
+            cosign sign-blob --yes --bundle ../signatures/sbom.cdx.json.cosign.bundle \
+              ../authdiff-out-sbom/sbom.cdx.json
+          fi
+
+      - name: Publish to GitHub Packages
+        working-directory: tools
+        env:
+          UV_PUBLISH_URL: https://upload.pypi.pkg.github.com/roham-amd
+          UV_PUBLISH_USERNAME: __token__
+          UV_PUBLISH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: uv publish
+
+      - name: Create / update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          NOTES=$(python - <<'PY'
+          from pathlib import Path
+          import os, re
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pat = rf"## \[{re.escape(tag)}\][^\n]*\n(.*?)(?=\n## |\Z)"
+          m = re.search(pat, text, re.S)
+          body = m.group(1).strip() if m else f"Release {os.environ['GITHUB_REF_NAME']}"
+          print(body)
+          PY
+          )
+          assets=(tools/dist/* signatures/*)
+          if [[ -f authdiff-out-sbom/sbom.cdx.json ]]; then
+            assets+=(authdiff-out-sbom/sbom.cdx.json)
+          elif [[ -f authdiff-out-sbom/sbom.json ]]; then
+            assets+=(authdiff-out-sbom/sbom.json)
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$TAG" "${assets[@]}" \
+              --title "authdiff ${TAG#v}" \
+              --notes "$NOTES"
+          fi

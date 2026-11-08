@@ -63,7 +63,7 @@ AUTHORITY.lock  @org/security-owners
 
 ```bash
 # Git install only today — PyPI not published yet
-uvx --from "git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools" authdiff doctor
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools" authdiff doctor
 authdiff open <url-or-path>
 authdiff ci init && authdiff lock
 authdiff demo   # canned bad fixture + PR comment

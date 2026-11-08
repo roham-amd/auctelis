@@ -57,7 +57,7 @@ def test_vet_local_path_verdict(tmp_path: Path):
 
 
 def test_vet_github_shorthand_normalizes():
-    kind, url = resolve_vet_source("YOUR_GITHUB_ORG/authdiff")
+    kind, url = resolve_vet_source("roham-amd/authdiff")
     assert kind == "git"
     assert url.endswith("authdiff.git")
 

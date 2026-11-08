@@ -28,14 +28,14 @@ repository `examples/` tree.
 **One-shot demo** (`uvx` is ephemeral — it does not leave a persistent `authdiff` on PATH):
 
 ```bash
-uvx --from "git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
 ```
 
 **Persistent tool install:**
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools"
 
 authdiff demo
 authdiff doctor
