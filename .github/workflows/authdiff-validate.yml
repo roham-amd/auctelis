@@ -66,7 +66,7 @@ jobs:
         run: |
           uv build
           uv venv /tmp/authdiff-wheel-smoke --python 3.12.16
-          /tmp/authdiff-wheel-smoke/bin/pip install dist/*.whl
+          uv pip install --python /tmp/authdiff-wheel-smoke dist/*.whl
           # Demo must work from the installed wheel without the repo examples/ tree.
           /tmp/authdiff-wheel-smoke/bin/authdiff demo -o /tmp/authdiff-wheel-demo
           /tmp/authdiff-wheel-smoke/bin/authdiff scan ../examples/demo-vulnerable -o /tmp/authdiff-wheel-out

@@ -17,9 +17,9 @@ def test_versions_are_1_0_0() -> None:
     assert product_version() == "1.0.0"
     assert package_version() == "1.0.0"
     assert LOCK_VERSION == 1
-    assert (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip() == (
-        "1.0.0"
-    )
+    assert (Path(__file__).resolve().parents[1] / "VERSION").read_text(
+        encoding="utf-8"
+    ).strip() == ("1.0.0")
 
 
 def test_public_identity_is_authdiff() -> None:
