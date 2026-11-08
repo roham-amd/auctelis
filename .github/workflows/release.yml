@@ -60,14 +60,6 @@ jobs:
               ../authdiff-out-sbom/sbom.cdx.json
           fi
 
-      - name: Publish to GitHub Packages
-        working-directory: tools
-        env:
-          UV_PUBLISH_URL: https://upload.pypi.pkg.github.com/roham-amd
-          UV_PUBLISH_USERNAME: __token__
-          UV_PUBLISH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: uv publish
-
       - name: Create / update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -98,3 +90,14 @@ jobs:
               --title "authdiff ${TAG#v}" \
               --notes "$NOTES"
           fi
+
+      # GitHub Packages (PyPI-compatible) is optional; public distribution is the
+      # GitHub Release assets + PyPI trusted publishing (publish-pypi.yml).
+      - name: Publish to GitHub Packages
+        continue-on-error: true
+        working-directory: tools
+        env:
+          UV_PUBLISH_URL: https://upload.pypi.pkg.github.com/roham-amd
+          UV_PUBLISH_USERNAME: __token__
+          UV_PUBLISH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: uv publish --check-url https://pypi.pkg.github.com/roham-amd/authdiff/simple/
