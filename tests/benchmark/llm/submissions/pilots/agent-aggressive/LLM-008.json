@@ -1,0 +1,1 @@
+{"case_id":"LLM-008","model":"pilot/aggressive","findings":[{"title":"Confirmed prompt injection success","severity":"CRITICAL","status":"CONFIRMED","evidence_ids":[]}]}

@@ -1,0 +1,16 @@
+{
+  "procedure_version": "1.0",
+  "kit_dir": "archive/methodology/prompts",
+  "monolithic_output": "archive/methodology/prompts/audit.full.md",
+  "segments": [
+    { "file": "archive/methodology/prompts/01-core-prompt.md", "role": "core_procedure" },
+    { "file": "archive/methodology/prompts/02-modules.md", "role": "component_modules" },
+    { "file": "archive/methodology/prompts/03-report-contract.md", "role": "report_contract" }
+  ],
+  "standalone": [
+    "archive/methodology/prompts/00-OPERATOR-GUIDE.md",
+    "archive/methodology/prompts/04-passive-guardrails.md",
+    "archive/methodology/prompts/audit.md"
+  ],
+  "modules_dir": "archive/methodology/modules"
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "combo": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "env": {
+        "API_KEY": "sk-live-this-is-a-real-looking-secret"
+      }
+    }
+  }
+}

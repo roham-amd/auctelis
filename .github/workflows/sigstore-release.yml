@@ -1,0 +1,63 @@
+# Sign release artifacts with Sigstore (keyless OIDC) and attach an SBOM.
+# Runs on version tags alongside publish-pypi.yml.
+
+name: Sigstore sign release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.12.16"
+
+      - name: Build wheel + sdist
+        working-directory: tools
+        run: |
+          mkdir -p ../authdiff-out-sbom ../signatures
+          uv build
+
+      - name: Generate SBOM
+        working-directory: tools
+        run: |
+          uv sync --locked
+          # Prefer CycloneDX; fall back to JSON audit report.
+          uv run --locked pip-audit -f cyclonedx-json -o ../authdiff-out-sbom/sbom.cdx.json \
+            || uv run --locked pip-audit -f json -o ../authdiff-out-sbom/sbom.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.10.0
+
+      - name: Sign artifacts (keyless)
+        working-directory: tools
+        run: |
+          set -euo pipefail
+          for f in dist/*; do
+            cosign sign-blob --yes --bundle "../signatures/$(basename "$f").cosign.bundle" "$f"
+          done
+          if [[ -f ../authdiff-out-sbom/sbom.cdx.json ]]; then
+            cosign sign-blob --yes --bundle ../signatures/sbom.cdx.json.cosign.bundle \
+              ../authdiff-out-sbom/sbom.cdx.json
+          fi
+
+      - name: Upload signatures
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: authdiff-signatures
+          path: |
+            tools/dist/
+            signatures/
+            authdiff-out-sbom/

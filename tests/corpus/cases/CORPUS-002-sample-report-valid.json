@@ -1,0 +1,7 @@
+{
+  "case_id": "CORPUS-002-sample-report-valid",
+  "title": "Example audit summary passes schema and semantic validation",
+  "label": "benign",
+  "report_fixture": "../validation/positive/sample-audit-summary.json",
+  "expect_validation": "pass"
+}

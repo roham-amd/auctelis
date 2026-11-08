@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "authdiff",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/YOUR_GITHUB_ORG/authdiff",
+          "rules": [
+            {
+              "id": "AUTHDIFF-RULE-001",
+              "name": "Skill references executable scripts",
+              "shortDescription": {
+                "text": "Skill references executable scripts"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-005",
+              "name": "Skill references external URLs",
+              "shortDescription": {
+                "text": "Skill references external URLs"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-010",
+              "name": "Instruction text directs hide, bypass, or fetch-execute behavior",
+              "shortDescription": {
+                "text": "Instruction text directs hide, bypass, or fetch-execute behavior"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-015",
+              "name": "Download-and-execute pattern in agent surface",
+              "shortDescription": {
+                "text": "Download-and-execute pattern in agent surface"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-017",
+              "name": "Permission-bypass or auto-approve flag in agent surface",
+              "shortDescription": {
+                "text": "Permission-bypass or auto-approve flag in agent surface"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-002",
+              "name": "MCP local command sets non-secret environment",
+              "shortDescription": {
+                "text": "MCP local command sets non-secret environment"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-011",
+              "name": "MCP server launched via unpinned package installer",
+              "shortDescription": {
+                "text": "MCP server launched via unpinned package installer"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-012",
+              "name": "Literal secret-like value in MCP env",
+              "shortDescription": {
+                "text": "Literal secret-like value in MCP env"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-021",
+              "name": "Unpinned MCP launcher with secret-bearing env",
+              "shortDescription": {
+                "text": "Unpinned MCP launcher with secret-bearing env"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-003",
+              "name": "MCP server uses remote endpoint",
+              "shortDescription": {
+                "text": "MCP server uses remote endpoint"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-013",
+              "name": "Remote MCP endpoint uses cleartext HTTP",
+              "shortDescription": {
+                "text": "Remote MCP endpoint uses cleartext HTTP"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-007",
+              "name": "Unattended automation or CI workflow present",
+              "shortDescription": {
+                "text": "Unattended automation or CI workflow present"
+              }
+            },
+            {
+              "id": "AUTHDIFF-RULE-016",
+              "name": "pull_request_target workflow invokes agent-related steps",
+              "shortDescription": {
+                "text": "pull_request_target workflow invokes agent-related steps"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "AUTHDIFF-RULE-001",
+          "level": "note",
+          "message": {
+            "text": "Skill `bootstrap` references scripts or a bundled scripts directory. This establishes an execution *capability*; host inheritance and approval enforcement remain unverified."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "skills/bootstrap/SKILL.md"
+                },
+                "region": {
+                  "startLine": 10,
+                  "endLine": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-005",
+          "level": "note",
+          "message": {
+            "text": "Skill `bootstrap` references external URLs. A URL is an exposure indicator, not proof of malicious content."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "skills/bootstrap/SKILL.md"
+                },
+                "region": {
+                  "startLine": 17,
+                  "endLine": 17
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-010",
+          "level": "warning",
+          "message": {
+            "text": "`bootstrap` contains instruction patterns that hide actions, bypass confirmation, or fetch-and-execute remote content. Review before trusting."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "skills/bootstrap/SKILL.md"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-015",
+          "level": "error",
+          "message": {
+            "text": "`bootstrap` references piping a remote download into a shell. That is remote code execution under the agent/host identity if followed."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "skills/bootstrap/SKILL.md"
+                },
+                "region": {
+                  "startLine": 17,
+                  "endLine": 17
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-017",
+          "level": "error",
+          "message": {
+            "text": "`bootstrap` references a flag that disables human approval (e.g. `--dangerously-skip-permissions`, `--yolo`, auto-approve). That expands effective authority without a corresponding control."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "skills/bootstrap/SKILL.md"
+                },
+                "region": {
+                  "startLine": 11,
+                  "endLine": 11
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-002",
+          "level": "note",
+          "message": {
+            "text": "MCP server `unpinned-demo` is registered with a local command transport. Presence of a local process is a capability observation, not proof of abuse."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".cursor/mcp.json"
+                },
+                "region": {
+                  "startLine": 4,
+                  "endLine": 4
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-011",
+          "level": "error",
+          "message": {
+            "text": "MCP server `unpinned-demo` uses an unpinned launcher (`npx` -y demo-evil-mcp). A later package publish can change behavior without a config edit (rug-pull risk)."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".cursor/mcp.json"
+                },
+                "region": {
+                  "startLine": 4,
+                  "endLine": 4
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-012",
+          "level": "error",
+          "message": {
+            "text": "MCP server `unpinned-demo` appears to embed a literal credential in `env` rather than a placeholder reference. Committed secrets are an immediate exposure."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".cursor/mcp.json"
+                },
+                "region": {
+                  "startLine": 6,
+                  "endLine": 6
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-021",
+          "level": "error",
+          "message": {
+            "text": "MCP server `unpinned-demo` combines an unpinned package launcher with secret-like environment values. A registry rug-pull can inherit those secrets without a config change."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".cursor/mcp.json"
+                },
+                "region": {
+                  "startLine": 4,
+                  "endLine": 4
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-003",
+          "level": "warning",
+          "message": {
+            "text": "MCP server `cleartext-remote` is configured with a remote URL. This is an external exposure surface; TLS identity and credential forwarding are not verified by this rule."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".cursor/mcp.json"
+                },
+                "region": {
+                  "startLine": 11,
+                  "endLine": 11
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-013",
+          "level": "error",
+          "message": {
+            "text": "MCP server `cleartext-remote` points at `http://mcp.example.invalid/sse` over HTTP. Tool traffic and any forwarded credentials lack transport confidentiality/integrity."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".cursor/mcp.json"
+                },
+                "region": {
+                  "startLine": 11,
+                  "endLine": 11
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-007",
+          "level": "warning",
+          "message": {
+            "text": "`agent` is unattended CI that also references agent/MCP-related steps. Review triggers, tokens, and whether agent authority can run unattended."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/agent.yml"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-007",
+          "level": "warning",
+          "message": {
+            "text": "`agent` is unattended CI that also references agent/MCP-related steps. Review triggers, tokens, and whether agent authority can run unattended."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/agent.yml"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "AUTHDIFF-RULE-016",
+          "level": "error",
+          "message": {
+            "text": "CI workflow `agent` uses `pull_request_target` together with agent/MCP-related steps. Fork PRs can often influence checkout/content while retaining privileged secrets \u2014 a classic CI + agent abuse path."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".github/workflows/agent.yml"
+                },
+                "region": {
+                  "startLine": 3,
+                  "endLine": 3
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

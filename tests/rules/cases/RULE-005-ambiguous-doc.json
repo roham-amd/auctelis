@@ -1,0 +1,18 @@
+{
+  "id": "RULE-005-ambiguous-doc",
+  "rule_id": "AUTHDIFF-RULE-005",
+  "variant": "ambiguous",
+  "fixture": "fixtures/rule-005-ambiguous-doc",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "EXPOSURE",
+    "severity": "LOW",
+    "confidence": "OBSERVED",
+    "forbid_finding_class": [
+      "SECURITY_FINDING"
+    ]
+  },
+  "notes": [
+    "Benign documentation URL is still an exposure marker"
+  ]
+}

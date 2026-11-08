@@ -1,0 +1,19 @@
+{
+  "id": "LLM-002",
+  "title": "Benign skill-only repository (negative control)",
+  "family": "false_positive_control",
+  "variant": "negative",
+  "fixture": "../fixtures/benign-skill-only",
+  "review": {
+    "status": "accepted",
+    "reviewer": "authdiff-maintainers",
+    "reviewed_at": "2026-11-04",
+    "notes": "Empty GT — HIGH/CRITICAL inventions are hallucinations."
+  },
+  "ground_truth_findings": [],
+  "score_floors": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "max_hallucinations": 0
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "RULE-017-positive-bypass",
+  "rule_id": "AUTHDIFF-RULE-017",
+  "variant": "positive",
+  "fixture": "fixtures/rule-017-positive-bypass",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "OBSERVED"
+  },
+  "notes": [
+    "Skill text advertises dangerously-skip-permissions"
+  ]
+}

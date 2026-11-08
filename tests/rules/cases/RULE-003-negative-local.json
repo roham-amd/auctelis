@@ -1,0 +1,12 @@
+{
+  "id": "RULE-003-negative-local",
+  "rule_id": "AUTHDIFF-RULE-003",
+  "variant": "negative",
+  "fixture": "fixtures/rule-003-negative-local",
+  "expect": {
+    "rule_fired": false
+  },
+  "notes": [
+    "Local transport must not fire remote rule"
+  ]
+}

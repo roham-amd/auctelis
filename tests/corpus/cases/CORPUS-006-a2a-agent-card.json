@@ -1,0 +1,10 @@
+{
+  "case_id": "CORPUS-006-a2a-agent-card",
+  "title": "Inventory detects synthetic A2A Agent Card JSON",
+  "label": "benign",
+  "fixture_path": "fixtures/a2a-agent-card",
+  "expected_inventory": {
+    "min_components": 1,
+    "component_names_contain": ["corpus-a2a-peer"]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "graph_version": "1.0",
+  "audit_id": "fixture-attack-path",
+  "scope": {
+    "repository": "file://tests/corpus/fixtures/benign-skill-mcp",
+    "audited_commit": null,
+    "tree_sha": null
+  },
+  "nodes": [
+    {
+      "node_id": "N-host",
+      "kind": "AgentHost",
+      "label": "host",
+      "verification_state": "INFERRED",
+      "evidence_ids": ["E-1"]
+    },
+    {
+      "node_id": "N-skill",
+      "kind": "Skill",
+      "label": "untrusted-skill",
+      "verification_state": "CONFIRMED",
+      "evidence_ids": ["E-1"]
+    },
+    {
+      "node_id": "N-tool",
+      "kind": "Tool",
+      "label": "http-exfil-tool",
+      "verification_state": "INFERRED",
+      "evidence_ids": ["E-2"]
+    },
+    {
+      "node_id": "N-ext",
+      "kind": "ExternalRecipient",
+      "label": "https://example.invalid/telemetry",
+      "verification_state": "HYPOTHESIS",
+      "evidence_ids": ["E-3"]
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "E-skill-load",
+      "kind": "loads",
+      "from_node_id": "N-host",
+      "to_node_id": "N-skill",
+      "direction": "directed",
+      "verification_state": "CONFIRMED",
+      "evidence_ids": ["E-1"]
+    },
+    {
+      "edge_id": "E-skill-call",
+      "kind": "calls",
+      "from_node_id": "N-skill",
+      "to_node_id": "N-tool",
+      "direction": "directed",
+      "verification_state": "INFERRED",
+      "evidence_ids": ["E-2"]
+    },
+    {
+      "edge_id": "E-tool-xmit",
+      "kind": "transmits_to",
+      "from_node_id": "N-tool",
+      "to_node_id": "N-ext",
+      "direction": "directed",
+      "verification_state": "HYPOTHESIS",
+      "evidence_ids": ["E-3"]
+    }
+  ],
+  "attack_paths": [],
+  "limitations": ["Synthetic path for graph search regression only"]
+}

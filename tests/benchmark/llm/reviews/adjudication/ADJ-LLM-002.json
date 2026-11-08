@@ -1,0 +1,12 @@
+{
+  "adjudication_id": "ADJ-LLM-002",
+  "case_id": "LLM-002",
+  "adjudicator": "authdiff-maintainers",
+  "adjudicated_at": "2026-11-04",
+  "independent_reviews": ["R1-LLM-002", "R2-LLM-002"],
+  "agreement": true,
+  "disagreements": [],
+  "final_variant": "negative",
+  "final_ground_truth_findings": [],
+  "rationale": "Both reviewers independently required empty GT for the benign skill-only fixture."
+}

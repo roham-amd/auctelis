@@ -1,0 +1,133 @@
+{
+  "snapshot_version": "1.0",
+  "product": "authdiff",
+  "product_version": "1.0.0",
+  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "audited_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+  "collected_at_utc": "2026-11-08T21:40:39Z",
+  "components": [
+    {
+      "id": "C-006",
+      "kind": "Agent Host",
+      "host": "cursor",
+      "path": ".cursor/mcp.json",
+      "fingerprint": "9157bf9a162ab31d",
+      "name": "Cursor",
+      "capabilities": [],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "unknown",
+      "pin_state": "n/a",
+      "evidence": [
+        ".cursor/mcp.json"
+      ]
+    },
+    {
+      "id": "C-004",
+      "kind": "Automation / Workflow",
+      "host": "automations",
+      "path": ".github/workflows/agent.yml",
+      "fingerprint": "647b903b8a200984",
+      "name": "agent",
+      "capabilities": [
+        "access_secrets",
+        "invoke_agent_tooling",
+        "unattended_operation"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "unknown",
+      "pin_state": "n/a",
+      "evidence": [
+        ".github/workflows/agent.yml"
+      ]
+    },
+    {
+      "id": "C-005",
+      "kind": "CI Workflow",
+      "host": "github_workflows",
+      "path": ".github/workflows/agent.yml",
+      "fingerprint": "b2dc43cd8d40936b",
+      "name": "agent",
+      "capabilities": [
+        "access_secrets",
+        "execute_commands",
+        "invoke_agent_tooling",
+        "unattended_operation"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "unknown",
+      "pin_state": "n/a",
+      "evidence": [
+        ".github/workflows/agent.yml"
+      ]
+    },
+    {
+      "id": "C-003",
+      "kind": "MCP Server Registration",
+      "host": "cursor",
+      "path": ".cursor/mcp.json",
+      "fingerprint": "7492f58b12938821",
+      "name": "cleartext-remote",
+      "capabilities": [
+        "access_network",
+        "access_secrets",
+        "invoke_tools"
+      ],
+      "destinations": [
+        "http://mcp.example.invalid/sse"
+      ],
+      "identity": [],
+      "approval_posture": "prompt",
+      "pin_state": "n/a",
+      "evidence": [
+        ".cursor/mcp.json"
+      ]
+    },
+    {
+      "id": "C-002",
+      "kind": "MCP Server Registration",
+      "host": "cursor",
+      "path": ".cursor/mcp.json",
+      "fingerprint": "62ec644c4e8de82d",
+      "name": "unpinned-demo",
+      "capabilities": [
+        "access_secrets",
+        "execute_commands",
+        "invoke_tools"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "prompt",
+      "pin_state": "floating",
+      "evidence": [
+        ".cursor/mcp.json"
+      ]
+    },
+    {
+      "id": "C-001",
+      "kind": "Skill",
+      "host": "skill_md",
+      "path": "skills/bootstrap/SKILL.md",
+      "fingerprint": "ff5f1d2055d3a64f",
+      "name": "bootstrap",
+      "capabilities": [
+        "access_network",
+        "execute",
+        "execute_commands",
+        "modify_agent_instructions",
+        "modify_approvals",
+        "unattended_operation"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "bypass",
+      "pin_state": "n/a",
+      "evidence": [
+        "skills/bootstrap/SKILL.md"
+      ]
+    }
+  ],
+  "snapshot_hash": "63721d57e0478174de22bab26fd9023c"
+}

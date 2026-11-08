@@ -1,0 +1,13 @@
+{
+  "id": "RULE-009-positive-example",
+  "rule_id": "AUTHDIFF-RULE-009",
+  "variant": "positive",
+  "fixture": "fixtures/rule-009-positive-example",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "EXPOSURE",
+    "severity": "LOW",
+    "confidence": "OBSERVED"
+  },
+  "notes": []
+}

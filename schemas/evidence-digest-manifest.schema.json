@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/authdiff-project/authdiff/schemas/evidence-digest-manifest.schema.json",
+  "title": "authdiff Evidence Digest Manifest",
+  "description": "Passive SHA-256 manifest for scoped files (R-008 pilot). Does not verify signatures or publisher trust.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "root_path", "generated_at_utc", "tool", "entries", "limitations"],
+  "properties": {
+    "manifest_version": { "type": "string", "const": "1.0" },
+    "root_path": { "type": "string" },
+    "generated_at_utc": { "type": "string" },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative_path", "sha256", "size_bytes"],
+        "properties": {
+          "relative_path": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

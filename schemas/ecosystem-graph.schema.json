@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/authdiff-project/authdiff/schemas/ecosystem-graph.schema.json",
+  "title": "authdiff Ecosystem Graph",
+  "description": "Typed interaction graph for cross-component path analysis (R-004). Edges must cite evidence; inferred edges require explicit verification_state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "graph_version",
+    "audit_id",
+    "scope",
+    "nodes",
+    "edges",
+    "limitations"
+  ],
+  "properties": {
+    "graph_version": { "type": "string", "const": "1.0" },
+    "audit_id": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "audited_commit"],
+      "properties": {
+        "repository": { "type": "string" },
+        "audited_commit": { "type": ["string", "null"] },
+        "tree_sha": { "type": ["string", "null"] }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "attack_paths": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/attackPath" }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "nodeKind": {
+      "type": "string",
+      "enum": [
+        "Agent",
+        "AgentHost",
+        "Skill",
+        "Tool",
+        "McpClient",
+        "McpServer",
+        "A2APeer",
+        "Plugin",
+        "Hook",
+        "Automation",
+        "Workflow",
+        "ModelProvider",
+        "ModelArtifact",
+        "DataAsset",
+        "SecretReference",
+        "MemoryStore",
+        "VectorStore",
+        "Principal",
+        "Policy",
+        "TrustZone",
+        "ExternalRecipient",
+        "Package",
+        "Artifact"
+      ]
+    },
+    "edgeKind": {
+      "type": "string",
+      "enum": [
+        "loads",
+        "executes",
+        "calls",
+        "delegates_to",
+        "authenticates_as",
+        "reads",
+        "writes",
+        "stores",
+        "retrieves",
+        "transmits_to",
+        "trusts",
+        "approves",
+        "triggers",
+        "forwards_credentials",
+        "shares_memory_with",
+        "logs_to"
+      ]
+    },
+    "verificationState": {
+      "type": "string",
+      "enum": ["CONFIRMED", "INFERRED", "HYPOTHESIS", "NOT_VERIFIED", "NOT_ASSESSED"]
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "kind", "label", "verification_state"],
+      "properties": {
+        "node_id": { "type": "string", "pattern": "^N-[A-Za-z0-9_-]+$" },
+        "kind": { "$ref": "#/$defs/nodeKind" },
+        "label": { "type": "string" },
+        "component_id": { "type": ["string", "null"] },
+        "asset_ref": { "type": ["string", "null"] },
+        "trust_zone": { "type": ["string", "null"] },
+        "verification_state": { "$ref": "#/$defs/verificationState" },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "edge_id",
+        "kind",
+        "from_node_id",
+        "to_node_id",
+        "direction",
+        "verification_state",
+        "evidence_ids"
+      ],
+      "properties": {
+        "edge_id": { "type": "string", "pattern": "^E-[A-Za-z0-9_-]+$" },
+        "kind": { "$ref": "#/$defs/edgeKind" },
+        "from_node_id": { "type": "string" },
+        "to_node_id": { "type": "string" },
+        "direction": { "type": "string", "enum": ["directed", "bidirectional"] },
+        "verification_state": { "$ref": "#/$defs/verificationState" },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "data_classes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "attackPath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path_id", "edge_ids", "verification_state", "summary"],
+      "properties": {
+        "path_id": { "type": "string", "pattern": "^P-[A-Za-z0-9_-]+$" },
+        "edge_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "verification_state": { "$ref": "#/$defs/verificationState" },
+        "summary": { "type": "string" },
+        "finding_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

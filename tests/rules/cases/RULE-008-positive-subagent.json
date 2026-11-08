@@ -1,0 +1,17 @@
+{
+  "id": "RULE-008-positive-subagent",
+  "rule_id": "AUTHDIFF-RULE-008",
+  "variant": "positive",
+  "fixture": "fixtures/rule-008-positive-subagent",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "CAPABILITY",
+    "severity": "INFORMATIONAL",
+    "forbid_finding_class": [
+      "SECURITY_FINDING"
+    ]
+  },
+  "notes": [
+    "Delegation alone is not a defect"
+  ]
+}

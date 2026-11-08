@@ -1,0 +1,214 @@
+{
+  "version": "1.1.0",
+  "description": "Host Authority Registry — config paths, declared permission keys, approval semantics. Declared ≠ effective.",
+  "hosts": {
+    "cursor": {
+      "display_name": "Cursor",
+      "support": "PARTIAL",
+      "approval_models": ["per-call", "persistent-by-name", "persistent-by-hash"],
+      "fixed_in_notes": "MCPoison-class persistent-by-name fixed in Cursor 1.3+ when re-prompting on any MCP entry change.",
+      "config_surfaces": [
+        {
+          "path_glob": ".cursor/mcp.json",
+          "description": "MCP server registrations for the Cursor host",
+          "permission_kind": "declared",
+          "authority_keys": ["mcpServers.*.command", "mcpServers.*.url", "mcpServers.*.env", "mcpServers.*.args"]
+        },
+        {
+          "path_glob": ".cursor/rules/**",
+          "description": "Project rules / instruction packs",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": ".cursorrules",
+          "description": "Legacy root instruction file",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": "AGENTS.md",
+          "description": "Agent instruction surface often loaded by Cursor workflows",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": "skills/**/SKILL.md",
+          "description": "Skill packs discoverable by the host",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": [
+        "mcpServers.*.command",
+        "mcpServers.*.url",
+        "mcpServers.*.env",
+        "mcpServers.*.args"
+      ],
+      "effective_permission_requires": [
+        "Host tool allowlist / approval mode (NOT VERIFIED from repo files alone)",
+        "Whether MCP registrations are enabled for the active workspace",
+        "OS identity and environment inheritance of the Cursor process"
+      ],
+      "limitations": [
+        "Repository files declare intent; Cursor runtime enforcement is MANUAL_ONLY.",
+        "Absence of .cursor/ does not prove the host is unused."
+      ]
+    },
+    "claude-code": {
+      "display_name": "Claude Code",
+      "support": "PARTIAL",
+      "approval_models": ["per-call", "per-session", "bypass"],
+      "config_surfaces": [
+        {
+          "path_glob": ".claude/**",
+          "description": "Claude Code project configuration / local settings",
+          "permission_kind": "declared",
+          "authority_keys": [
+            "hooks",
+            "enableAllProjectMcpServers",
+            "permissions",
+            "env.ANTHROPIC_BASE_URL"
+          ]
+        },
+        {
+          "path_glob": "CLAUDE.md",
+          "description": "Project memory / instruction file commonly loaded by Claude Code",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": ".mcp.json",
+          "description": "MCP registrations (Claude Code / shared layouts)",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": "skills/**/SKILL.md",
+          "description": "Skill packs",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": "hooks/**",
+          "description": "Lifecycle hooks if present",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": [
+        "mcp server command/url/env",
+        "permission mode declarations in settings when present",
+        "hook command registrations"
+      ],
+      "effective_permission_requires": [
+        "Claude Code permission mode actually enforced at runtime",
+        "Whether hooks run with inherited credentials",
+        "Whether CLAUDE.md / skills are auto-loaded for the session"
+      ],
+      "limitations": [
+        "Declared settings are SOURCE_STATIC evidence only.",
+        "Effective sandbox/approval behavior requires authorized host or runtime validation."
+      ]
+    },
+    "github-copilot": {
+      "display_name": "GitHub Copilot",
+      "support": "MANUAL_ONLY",
+      "approval_models": ["unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": ".github/copilot-instructions.md",
+          "description": "Repository Copilot custom instructions (when used)",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": ".github/instructions/**",
+          "description": "Path-scoped instruction files (emerging layouts)",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": ["instruction markdown only"],
+      "effective_permission_requires": [
+        "Copilot agent / coding-agent tool permissions (org and IDE settings)",
+        "Whether custom instructions are enabled for the repository"
+      ],
+      "limitations": [
+        "Reliable effective-permission evidence is rarely present in-repo; profile is MANUAL_ONLY.",
+        "Do not treat instruction files as proof of tool execution rights."
+      ]
+    },
+    "codex": {
+      "display_name": "OpenAI Codex",
+      "support": "PARTIAL",
+      "approval_models": ["per-call", "unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": ".codex/**",
+          "description": "Codex host configuration",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": "config.toml",
+          "description": "Codex / TOML MCP registrations",
+          "permission_kind": "declared",
+          "authority_keys": ["mcp_servers.*.command", "mcp.servers.*"]
+        },
+        {
+          "path_glob": "CODEX.md",
+          "description": "Codex instruction file",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": ["mcp_servers.*.command", "mcp.servers.*"],
+      "effective_permission_requires": [
+        "Codex runtime approval mode (NOT VERIFIED from files alone)"
+      ],
+      "limitations": ["TOML parsing is a bounded subset; complex TOML fails closed."]
+    },
+    "gemini": {
+      "display_name": "Google Gemini CLI",
+      "support": "MANUAL_ONLY",
+      "approval_models": ["unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": "GEMINI.md",
+          "description": "Gemini instruction file",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": ".gemini/**",
+          "description": "Gemini project config",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": ["instruction markdown only"],
+      "effective_permission_requires": ["Gemini CLI tool permissions (host settings)"],
+      "limitations": ["Presence markers only; effective permissions NOT VERIFIED."]
+    },
+    "windsurf": {
+      "display_name": "Windsurf",
+      "support": "MANUAL_ONLY",
+      "approval_models": ["unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": ".windsurfrules",
+          "description": "Windsurf rules file",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": ["instruction markdown only"],
+      "effective_permission_requires": ["Windsurf runtime permissions"],
+      "limitations": ["Presence markers only; effective permissions NOT VERIFIED."]
+    },
+    "vscode": {
+      "display_name": "VS Code / Copilot Chat",
+      "support": "PARTIAL",
+      "approval_models": ["per-call", "unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": ".vscode/mcp.json",
+          "description": "VS Code MCP registrations (servers key)",
+          "permission_kind": "declared",
+          "authority_keys": ["servers.*.command", "servers.*.url", "servers.*.env"]
+        }
+      ],
+      "declared_permission_fields": ["servers.*.command", "servers.*.url", "servers.*.env"],
+      "effective_permission_requires": [
+        "VS Code MCP trust / tool approval mode (NOT VERIFIED from files alone)"
+      ],
+      "limitations": ["JSONC tolerated; effective host binding remains PARTIAL."]
+    }
+  }
+}

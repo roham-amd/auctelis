@@ -1,0 +1,46 @@
+# Publish authdiff to PyPI via Trusted Publishing (OIDC).
+# Prerequisites on https://pypi.org/manage/project/authdiff/settings/publishing/:
+#   Owner: roham-amd
+#   Repository: authdiff
+#   Workflow: publish-pypi.yml
+#   Environment: pypi
+#
+# Trigger: push a version tag matching v* after VERSION/package metadata agree.
+
+name: Publish authdiff to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.12.16"
+
+      - name: Verify version metadata
+        run: uv run --directory tools --locked authdiff-dev build all
+
+      - name: Build package
+        working-directory: tools
+        run: uv build
+
+      - name: Publish to PyPI
+        working-directory: tools
+        run: uv publish

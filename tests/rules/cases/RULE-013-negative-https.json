@@ -1,0 +1,9 @@
+{
+  "id": "RULE-013-negative-https",
+  "rule_id": "AUTHDIFF-RULE-013",
+  "variant": "negative",
+  "fixture": "fixtures/rule-013-negative-https",
+  "expect": {
+    "rule_fired": false
+  }
+}

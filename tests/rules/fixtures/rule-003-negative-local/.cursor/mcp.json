@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "local-only": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YOUR_GITHUB_ORG/authdiff/schemas/authority-policy.schema.json",
+  "title": "AUTHORITY.yml policy-as-code",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "policy"],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "policy": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["advisory", "enforce"] },
+        "fail_on": { "enum": ["never", "high", "any"] },
+        "allow_project_mcp_auto_approve": { "type": "boolean", "default": false },
+        "allow_base_url_overrides": { "type": "boolean", "default": false },
+        "allow_unpinned_launchers": { "type": "boolean", "default": false },
+        "max_unparsed_agent_configs": { "type": "integer", "minimum": 0, "default": 0 }
+      }
+    },
+    "owners": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

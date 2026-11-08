@@ -1,0 +1,9 @@
+authdiff 3.9.1 — 0 MCP, 0 hooks, 1 skills
+DECISION: BLOCK
+BLOCK: 1 high/critical authority issue(s) require a fix or explicit risk acceptance before merge/install.
+Coverage: 13% SUPPORTED (2/15); PARTIAL=13 MANUAL_ONLY=0 — clean result ≠ safe.
+  [HIGH] AUTHDIFF-RULE-016: pull_request_target workflow invokes agent-related steps (.github/workflows/revision.yml:13)
+  [MEDIUM] AUTHDIFF-RULE-007: Unattended automation or CI workflow present (.github/workflows/publish.yml)
+  [MEDIUM] AUTHDIFF-RULE-007: Unattended automation or CI workflow present (.github/workflows/release.yml)
+  … +8 more gated (authdiff scan --full)
+Next: authdiff lock | authdiff explain F-00N | authdiff scan --full

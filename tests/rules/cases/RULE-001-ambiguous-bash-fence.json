@@ -1,0 +1,17 @@
+{
+  "id": "RULE-001-ambiguous-bash-fence",
+  "rule_id": "AUTHDIFF-RULE-001",
+  "variant": "ambiguous",
+  "fixture": "fixtures/rule-001-ambiguous-bash-fence",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "CAPABILITY",
+    "severity": "INFORMATIONAL",
+    "forbid_finding_class": [
+      "SECURITY_FINDING"
+    ]
+  },
+  "notes": [
+    "Bash fence alone is capability observation"
+  ]
+}

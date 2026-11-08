@@ -1,0 +1,1 @@
+{"case_id":"LLM-002","model":"pilot/aggressive","findings":[{"title":"Confirmed remote MCP credential exfiltration","severity":"CRITICAL","status":"CONFIRMED","evidence_ids":[]}]}

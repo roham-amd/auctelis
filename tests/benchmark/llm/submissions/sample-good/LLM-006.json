@@ -1,0 +1,1 @@
+{"case_id":"LLM-006","model":"sample-auditor/good","findings":[{"title":"CI workflow runs unattended with repository secret references","severity":"MEDIUM","status":"OBSERVED","evidence_ids":["E-1"]}]}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "node-app": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "LOG_LEVEL": "info",
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}

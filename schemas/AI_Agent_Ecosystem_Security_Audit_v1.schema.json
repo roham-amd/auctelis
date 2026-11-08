@@ -1,0 +1,560 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/authdiff-project/authdiff/schemas/audit-report.schema.json",
+  "title": "authdiff Audit Report Summary",
+  "description": "Machine-readable summary contract for authdiff v1.0. Structural validation only; not proof that findings are true.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "audit_version",
+    "repository",
+    "repository_role",
+    "audit_mode",
+    "audit_scope_mode",
+    "audit_date_utc",
+    "environment_mode",
+    "repository_decision",
+    "overall_risk_rating",
+    "evidence_confidence",
+    "component_inventory",
+    "risk_dimensions",
+    "components",
+    "coverage",
+    "trust_chain",
+    "observations",
+    "findings_count",
+    "findings",
+    "json_validation_status",
+    "score_type",
+    "recommend_production_use"
+  ],
+  "properties": {
+    "audit_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "repository": { "type": "string" },
+    "repository_role": {
+      "type": "string",
+      "enum": [
+        "Catalog",
+        "Awesome-list",
+        "Monorepo",
+        "Source implementation",
+        "Marketplace",
+        "Mixed",
+        "Unknown"
+      ]
+    },
+    "repository_visibility": {
+      "type": ["string", "null"],
+      "enum": ["Public", "Private", "Unknown", null]
+    },
+    "audited_commit": { "type": ["string", "null"] },
+    "tree_sha": { "type": ["string", "null"] },
+    "previous_audited_commit": { "type": ["string", "null"] },
+    "audit_mode": {
+      "type": "string",
+      "enum": ["full", "delta"]
+    },
+    "workflow_mode": {
+      "type": ["string", "null"]
+    },
+    "audit_scope_mode": {
+      "type": "string",
+      "enum": [
+        "catalog_inventory",
+        "selected_component_deep_audit",
+        "batch_component_deep_audit",
+        "full_ecosystem_deep_audit"
+      ]
+    },
+    "audit_date_utc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "environment_mode": {
+      "type": "string",
+      "enum": [
+        "ISOLATED_TOOLING",
+        "DEGRADED_READ_ONLY",
+        "USER_PROVIDED_SNAPSHOT"
+      ]
+    },
+    "repository_decision": {
+      "$ref": "#/$defs/ecosystemDecision"
+    },
+    "overall_risk_rating": {
+      "$ref": "#/$defs/riskDimension"
+    },
+    "evidence_confidence": {
+      "$ref": "#/$defs/evidenceConfidence"
+    },
+    "capability_matrix": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "component_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_discovered",
+        "deeply_reviewed",
+        "partially_reviewed",
+        "inventory_only",
+        "not_reviewed",
+        "out_of_scope",
+        "external_references",
+        "external_sources_deeply_reviewed",
+        "pending_batches"
+      ],
+      "properties": {
+        "total_discovered": { "type": "integer", "minimum": 0 },
+        "deeply_reviewed": { "type": "integer", "minimum": 0 },
+        "partially_reviewed": { "type": "integer", "minimum": 0 },
+        "inventory_only": { "type": "integer", "minimum": 0 },
+        "not_reviewed": { "type": "integer", "minimum": 0 },
+        "out_of_scope": { "type": "integer", "minimum": 0 },
+        "external_references": { "type": "integer", "minimum": 0 },
+        "external_sources_deeply_reviewed": { "type": "integer", "minimum": 0 },
+        "pending_batches": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "risk_dimensions": {
+      "$ref": "#/$defs/riskDimensionsObject"
+    },
+    "components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/componentRecord" }
+    },
+    "external_sources": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "cross_component_analysis": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "performed": { "type": "boolean" },
+        "interaction_graph_reference": { "type": ["string", "null"] },
+        "tool_chaining_reviewed": { "type": "boolean" },
+        "delegation_reviewed": { "type": "boolean" },
+        "hook_interactions_reviewed": { "type": "boolean" },
+        "automation_interactions_reviewed": { "type": "boolean" },
+        "workflow_interactions_reviewed": { "type": "boolean" },
+        "shared_credentials_reviewed": { "type": "boolean" },
+        "shared_memory_reviewed": { "type": "boolean" },
+        "tool_shadowing_reviewed": { "type": "boolean" },
+        "approval_bypass_reviewed": { "type": "boolean" },
+        "tenant_isolation_reviewed": { "type": "boolean" },
+        "cross_component_risks": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverageObject"
+    },
+    "trust_chain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtime_behavior_tested"],
+      "properties": {
+        "source_identity_verified": { "type": ["boolean", "null"] },
+        "artifact_identity_verified": { "type": ["boolean", "null"] },
+        "artifact_digest_verified": { "type": ["boolean", "null"] },
+        "signature_verified": { "type": ["boolean", "null"] },
+        "provenance_verified": { "type": ["boolean", "null"] },
+        "source_artifact_traceability_verified": { "type": ["boolean", "null"] },
+        "host_permissions_verified": { "type": ["boolean", "null"] },
+        "runtime_configuration_verified": { "type": ["boolean", "null"] },
+        "runtime_behavior_tested": { "type": "boolean" }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["boolean", "null"]
+      }
+    },
+    "findings_count": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical", "high", "medium", "low", "informational"],
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "medium": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 },
+        "informational": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/findingRecord" }
+    },
+    "evidence_registry": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceRecord" }
+    },
+    "modules_applied": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "sbom": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "generated": { "type": "boolean" },
+        "format": { "type": ["string", "null"] },
+        "tool": { "type": ["string", "null"] },
+        "tool_version": { "type": ["string", "null"] },
+        "scope": { "type": ["string", "null"] },
+        "digest": { "type": ["string", "null"] },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "component_hard_gates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/gateRecord" }
+    },
+    "cross_component_hard_gates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/gateRecord" }
+    },
+    "conditions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "unverified_critical_areas": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "follow_on_test_plan_required": { "type": ["boolean", "null"] },
+    "json_validation_status": {
+      "type": "string",
+      "enum": ["VALIDATED", "NOT VALIDATED", "INVALID"]
+    },
+    "score_type": {
+      "type": "string",
+      "enum": ["NONE"]
+    },
+    "score": {
+      "type": "null",
+      "description": "authdiff v1.0 forbids default numeric scores; must remain null."
+    },
+    "recommend_production_use": { "type": "boolean" }
+  },
+  "$defs": {
+    "ecosystemDecision": {
+      "type": "string",
+      "enum": [
+        "ECOSYSTEM_INVENTORY_ONLY",
+        "INSUFFICIENT_EVIDENCE",
+        "OUT_OF_SCOPE",
+        "ECOSYSTEM_CONTAINS_REJECTED_COMPONENTS",
+        "NO_COMPONENT_APPROVED",
+        "ALL_SELECTED_COMPONENTS_APPROVED",
+        "ALL_SELECTED_COMPONENTS_APPROVED_WITH_CONDITIONS",
+        "ALL_SELECTED_COMPONENTS_APPROVED_FOR_RESTRICTED_USE"
+      ]
+    },
+    "riskDimension": {
+      "type": "string",
+      "enum": [
+        "CRITICAL RISK",
+        "HIGH RISK",
+        "ELEVATED RISK",
+        "LOW OBSERVED RISK WITHIN SCOPE",
+        "INSUFFICIENT EVIDENCE",
+        "NOT ASSESSED"
+      ]
+    },
+    "evidenceConfidence": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW", "NONE"]
+    },
+    "evidenceLabel": {
+      "type": "string",
+      "enum": [
+        "CONFIRMED",
+        "STRONGLY SUSPECTED",
+        "POTENTIAL",
+        "NOT OBSERVED",
+        "NOT VERIFIED",
+        "N/A",
+        "N/V"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFORMATIONAL"]
+    },
+    "componentSecurityDecision": {
+      "type": "string",
+      "enum": [
+        "ACCEPTABLE_WITHIN_REVIEWED_SCOPE",
+        "ACCEPTABLE_WITH_RESTRICTIONS",
+        "UNACCEPTABLE",
+        "INSUFFICIENT EVIDENCE",
+        "NOT ASSESSED",
+        "OUT OF SCOPE"
+      ]
+    },
+    "productionSuitabilityDecision": {
+      "type": "string",
+      "enum": [
+        "APPROVE_FOR_DECLARED_SCOPE",
+        "APPROVE_WITH_CONDITIONS",
+        "APPROVED_FOR_RESTRICTED_USE",
+        "REJECT",
+        "INSUFFICIENT EVIDENCE",
+        "NOT ASSESSED",
+        "OUT OF SCOPE"
+      ]
+    },
+    "referenceKind": {
+      "type": "string",
+      "enum": [
+        "LOCAL_IMPLEMENTATION",
+        "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
+        "EXTERNAL_SOURCE_REPOSITORY",
+        "PACKAGE_COORDINATE",
+        "MARKETPLACE_LISTING",
+        "DOWNLOADABLE_ARTIFACT",
+        "REMOTE_SERVICE",
+        "DOCUMENTATION_ONLY",
+        "EXAMPLE_OR_TEMPLATE",
+        "DEAD_OR_UNRESOLVED_REFERENCE",
+        "DUPLICATE_REFERENCE",
+        "UNKNOWN"
+      ]
+    },
+    "gateStatus": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "NOT VERIFIED", "N/A"]
+    },
+    "riskDimensionsObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_security_risk",
+        "agent_authority_runtime_risk",
+        "supply_chain_trust_risk",
+        "production_data_protection_risk"
+      ],
+      "properties": {
+        "component_security_risk": { "$ref": "#/$defs/riskDimension" },
+        "agent_authority_runtime_risk": { "$ref": "#/$defs/riskDimension" },
+        "supply_chain_trust_risk": { "$ref": "#/$defs/riskDimension" },
+        "production_data_protection_risk": { "$ref": "#/$defs/riskDimension" }
+      }
+    },
+    "coverageObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["population_defined"],
+      "properties": {
+        "population_defined": { "type": "boolean" },
+        "applicable_surfaces": { "type": ["integer", "null"], "minimum": 0 },
+        "reviewed": { "type": ["integer", "null"], "minimum": 0 },
+        "not_verified": { "type": ["integer", "null"], "minimum": 0 },
+        "not_reviewed": { "type": ["integer", "null"], "minimum": 0 },
+        "not_applicable": { "type": ["integer", "null"], "minimum": 0 },
+        "omissions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "gateRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "status", "requirement", "evidence_ids", "blocker"],
+      "properties": {
+        "gate_id": { "type": "string" },
+        "status": { "$ref": "#/$defs/gateStatus" },
+        "requirement": { "type": "string" },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "blocker": { "type": "boolean" },
+        "remediation": { "type": ["string", "null"] }
+      }
+    },
+    "evidenceRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "evidence_id",
+        "evidence_type",
+        "retrieval_date_utc",
+        "claim_supported",
+        "evidence_label"
+      ],
+      "properties": {
+        "evidence_id": { "type": "string" },
+        "evidence_type": {
+          "type": "string",
+          "enum": [
+            "SOURCE_STATIC",
+            "ARTIFACT",
+            "PROVENANCE",
+            "HOST_CONFIGURATION",
+            "RUNTIME",
+            "EXTERNAL_INTELLIGENCE",
+            "USER_ASSERTION"
+          ]
+        },
+        "repository": { "type": ["string", "null"] },
+        "commit_sha": { "type": ["string", "null"] },
+        "tree_sha": { "type": ["string", "null"] },
+        "component_id": { "type": ["string", "null"] },
+        "path_or_source": { "type": ["string", "null"] },
+        "line_start": { "type": ["integer", "null"] },
+        "line_end": { "type": ["integer", "null"] },
+        "artifact_digest": { "type": ["string", "null"] },
+        "external_reference": { "type": ["string", "null"] },
+        "retrieval_date_utc": { "type": "string" },
+        "claim_supported": { "type": "string" },
+        "evidence_label": { "$ref": "#/$defs/evidenceLabel" },
+        "verification_method": { "type": ["string", "null"] },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "findingRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "finding_id",
+        "title",
+        "severity",
+        "evidence_label",
+        "affected_component_ids"
+      ],
+      "properties": {
+        "finding_id": { "type": "string" },
+        "title": { "type": "string" },
+        "severity": { "$ref": "#/$defs/severity" },
+        "evidence_label": { "$ref": "#/$defs/evidenceLabel" },
+        "affected_component_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "description": { "type": "string" },
+        "remediation": { "type": "string" }
+      }
+    },
+    "componentRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "component_id",
+        "name",
+        "type",
+        "reference_kind",
+        "discovery_status",
+        "component_security_decision",
+        "production_suitability_decision",
+        "risk_dimensions",
+        "evidence_confidence"
+      ],
+      "properties": {
+        "component_id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "reference_kind": { "$ref": "#/$defs/referenceKind" },
+        "repository_path": { "type": ["string", "null"] },
+        "source_type": { "type": ["string", "null"] },
+        "source_reference": { "type": ["string", "null"] },
+        "source_commit": { "type": ["string", "null"] },
+        "version": { "type": ["string", "null"] },
+        "artifact_reference": { "type": ["string", "null"] },
+        "artifact_digest": { "type": ["string", "null"] },
+        "publisher": { "type": ["string", "null"] },
+        "installation_method": { "type": ["string", "null"] },
+        "update_policy": { "type": ["string", "null"] },
+        "host_agent": { "type": ["string", "null"] },
+        "host_version": { "type": ["string", "null"] },
+        "capabilities": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sensitive_permissions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "external_destinations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "execution_model": { "type": ["string", "null"] },
+        "discovery_status": { "type": "string" },
+        "source_review_status": { "type": ["string", "null"] },
+        "artifact_integrity_status": { "type": ["string", "null"] },
+        "source_artifact_traceability_status": { "type": ["string", "null"] },
+        "host_integration_status": { "type": ["string", "null"] },
+        "runtime_review_status": { "type": ["string", "null"] },
+        "cross_component_review_status": { "type": ["string", "null"] },
+        "coverage": { "$ref": "#/$defs/coverageObject" },
+        "risk_dimensions": { "$ref": "#/$defs/riskDimensionsObject" },
+        "evidence_confidence": { "$ref": "#/$defs/evidenceConfidence" },
+        "risk_rating": { "$ref": "#/$defs/riskDimension" },
+        "component_security_decision": {
+          "$ref": "#/$defs/componentSecurityDecision"
+        },
+        "production_suitability_decision": {
+          "$ref": "#/$defs/productionSuitabilityDecision"
+        },
+        "allowed_restricted_use": { "type": ["string", "object", "null"] },
+        "prohibited_use": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "finding_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "hard_gates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/gateRecord" }
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "unverified_areas": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "RULE-004-positive-pretool",
+  "rule_id": "AUTHDIFF-RULE-004",
+  "variant": "positive",
+  "fixture": "fixtures/rule-004-positive-pretool",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "MEDIUM",
+    "confidence": "POTENTIAL"
+  },
+  "notes": []
+}

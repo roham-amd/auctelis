@@ -1,0 +1,9 @@
+{
+  "id": "RULE-020-negative-canonical",
+  "rule_id": "AUTHDIFF-RULE-020",
+  "variant": "negative",
+  "fixture": "fixtures/rule-020-negative-canonical",
+  "expect": {
+    "rule_fired": false
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "case_id": "LLM-002",
+  "agent_id": "example-template",
+  "model": "example-vendor/model-x",
+  "execution": {
+    "produced_at_utc": "2026-11-04T00:00:00Z",
+    "fixture_ref": "tests/benchmark/fixtures/benign-skill-only",
+    "agent_version": "0.0.0-example",
+    "model_version": "unspecified",
+    "configuration_notes": "Template only — replace with real external agent output",
+    "host_environment": "submitter-controlled",
+    "dataset_version_claimed": "0.3.0",
+    "tools_available": ["filesystem-read"],
+    "permissions": ["read-only-audit"]
+  },
+  "findings": []
+}

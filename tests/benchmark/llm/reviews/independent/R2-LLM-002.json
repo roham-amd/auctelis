@@ -1,0 +1,10 @@
+{
+  "review_id": "R2-LLM-002",
+  "case_id": "LLM-002",
+  "reviewer": "reviewer-b",
+  "reviewed_at": "2026-11-04",
+  "blind": true,
+  "proposed_ground_truth_findings": [],
+  "variant_assessment": "negative",
+  "notes": "Agree empty GT. Instruction-only helper without authority surfaces."
+}

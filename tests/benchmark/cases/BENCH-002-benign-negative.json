@@ -1,0 +1,19 @@
+{
+  "id": "BENCH-002",
+  "title": "Benign skill without MCP binding (negative control)",
+  "family": "false_positive_control",
+  "fixture": "fixtures/benign-skill-only",
+  "expect_inventory": {
+    "min_components": 1,
+    "types_any_of": ["Skill"],
+    "names_any_of": ["readonly-note"]
+  },
+  "forbid_rule_ids": ["AUTHDIFF-RULE-002", "AUTHDIFF-RULE-003", "AUTHDIFF-RULE-001"],
+  "ground_truth_findings": [],
+  "llm_scoring": "deferred",
+  "notes": [
+    "Agents must not invent MCP privilege findings for this fixture.",
+    "Absence of findings is the correct outcome for CRITICAL/HIGH privilege claims.",
+    "Guard rules for MCP command transport and skill scripts must not fire."
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "secure": {
+      "url": "https://mcp.example.com/sse"
+    }
+  }
+}

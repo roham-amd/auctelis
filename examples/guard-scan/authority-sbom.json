@@ -1,0 +1,442 @@
+{
+  "schema": "authdiff.authority_sbom.v1",
+  "product": "authdiff",
+  "product_version": "1.0.0",
+  "package_version": "1.0.0",
+  "rule_pack": "1.6",
+  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "audited_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+  "collected_at_utc": "2026-11-08T21:40:39Z",
+  "authority_layers": {
+    "DECLARED": "What the integration says it requires or exposes.",
+    "CONFIGURED": "What host/repo configuration appears to expose.",
+    "EFFECTIVE": "What the execution environment actually permits.",
+    "VERIFIED": "What an authorized test independently established."
+  },
+  "disclaimer": "This export describes DECLARED/CONFIGURED authority observed by a passive scan. It does not certify safety, prove EFFECTIVE permissions, or establish VERIFIED runtime behavior.",
+  "components": [
+    {
+      "component_id": "C-001",
+      "name": "bootstrap",
+      "type": "Skill",
+      "path": "skills/bootstrap/SKILL.md",
+      "adapter": "skill_md",
+      "adapter_maturity": "SUPPORTED",
+      "fingerprint": "ff5f1d2055d3a64f",
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "authority_layer": "CONFIGURED",
+      "capabilities": [
+        {
+          "kind": "access_network",
+          "status": "POTENTIAL",
+          "component_id": "C-001",
+          "evidence_ids": [
+            "E-INV-C-001"
+          ],
+          "notes": "Derived from priority hint `external_url_reference`.",
+          "origin": "POTENTIAL"
+        },
+        {
+          "kind": "execute_commands",
+          "status": "POTENTIAL",
+          "component_id": "C-001",
+          "evidence_ids": [
+            "E-INV-C-001"
+          ],
+          "notes": "Derived from priority hint `script_reference`.",
+          "origin": "POTENTIAL"
+        },
+        {
+          "kind": "modify_agent_instructions",
+          "status": "OBSERVED",
+          "component_id": "C-001",
+          "evidence_ids": [
+            "E-INV-C-001"
+          ],
+          "notes": "Skills inject instructions into the agent.",
+          "origin": "TYPE_DEFAULT"
+        }
+      ],
+      "destinations": [],
+      "priority_hints": [
+        "external_url_reference",
+        "script_reference",
+        "download_and_execute",
+        "permission_bypass_flag",
+        "instruction_abuse_content",
+        "executable_evidence"
+      ]
+    },
+    {
+      "component_id": "C-002",
+      "name": "unpinned-demo",
+      "type": "MCP Server Registration",
+      "path": ".cursor/mcp.json",
+      "adapter": "mcp_config",
+      "adapter_maturity": "PARTIAL",
+      "fingerprint": "62ec644c4e8de82d",
+      "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
+      "authority_layer": "CONFIGURED",
+      "capabilities": [
+        {
+          "kind": "execute_commands",
+          "status": "OBSERVED",
+          "component_id": "C-002",
+          "evidence_ids": [
+            "E-INV-C-002"
+          ],
+          "notes": "Derived from priority hint `local_command_transport`.",
+          "origin": "DECLARED"
+        },
+        {
+          "kind": "invoke_tools",
+          "status": "OBSERVED",
+          "component_id": "C-002",
+          "evidence_ids": [
+            "E-INV-C-002"
+          ],
+          "notes": "MCP registration exposes tool surface to the host agent.",
+          "origin": "TYPE_DEFAULT"
+        }
+      ],
+      "destinations": [],
+      "priority_hints": [
+        "local_command_transport",
+        "unpinned_package_launcher",
+        "sets_environment",
+        "literal_secret_in_env"
+      ]
+    },
+    {
+      "component_id": "C-003",
+      "name": "cleartext-remote",
+      "type": "MCP Server Registration",
+      "path": ".cursor/mcp.json",
+      "adapter": "mcp_config",
+      "adapter_maturity": "PARTIAL",
+      "fingerprint": "7492f58b12938821",
+      "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
+      "authority_layer": "CONFIGURED",
+      "capabilities": [
+        {
+          "kind": "access_network",
+          "status": "OBSERVED",
+          "component_id": "C-003",
+          "evidence_ids": [
+            "E-INV-C-003"
+          ],
+          "notes": "Derived from priority hint `remote_endpoint`.",
+          "origin": "DECLARED"
+        },
+        {
+          "kind": "invoke_tools",
+          "status": "OBSERVED",
+          "component_id": "C-003",
+          "evidence_ids": [
+            "E-INV-C-003"
+          ],
+          "notes": "MCP registration exposes tool surface to the host agent.",
+          "origin": "TYPE_DEFAULT"
+        }
+      ],
+      "destinations": [],
+      "priority_hints": [
+        "remote_endpoint",
+        "insecure_http_remote"
+      ]
+    },
+    {
+      "component_id": "C-004",
+      "name": "agent",
+      "type": "Automation / Workflow",
+      "path": ".github/workflows/agent.yml",
+      "adapter": "automations",
+      "adapter_maturity": "PARTIAL",
+      "fingerprint": "647b903b8a200984",
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "authority_layer": "CONFIGURED",
+      "capabilities": [],
+      "destinations": [],
+      "priority_hints": [
+        "scheduled_or_event_trigger",
+        "credential_reference",
+        "agent_related_step"
+      ]
+    },
+    {
+      "component_id": "C-005",
+      "name": "agent",
+      "type": "CI Workflow",
+      "path": ".github/workflows/agent.yml",
+      "adapter": "github_workflows",
+      "adapter_maturity": "PARTIAL",
+      "fingerprint": "b2dc43cd8d40936b",
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "authority_layer": "CONFIGURED",
+      "capabilities": [
+        {
+          "kind": "unattended_operation",
+          "status": "OBSERVED",
+          "component_id": "C-005",
+          "evidence_ids": [
+            "E-INV-C-005"
+          ],
+          "notes": "CI workflows execute with repository privileges.",
+          "origin": "TYPE_DEFAULT"
+        },
+        {
+          "kind": "access_secrets",
+          "status": "POTENTIAL",
+          "component_id": "C-005",
+          "evidence_ids": [
+            "E-INV-C-005"
+          ],
+          "notes": "Workflows commonly inherit repository secrets.",
+          "origin": "TYPE_DEFAULT"
+        }
+      ],
+      "destinations": [],
+      "priority_hints": [
+        "secret_reference",
+        "pull_request_target",
+        "agent_related_step",
+        "pull_request_target_with_agent"
+      ]
+    },
+    {
+      "component_id": "C-006",
+      "name": "Cursor",
+      "type": "Agent Host",
+      "path": ".cursor/mcp.json",
+      "adapter": "host_profiles",
+      "adapter_maturity": "PARTIAL",
+      "fingerprint": "9157bf9a162ab31d",
+      "content_digest": "sha256:f96daed4e08186f65c69fb357c7d82c6a1dcf253a209a1b95c9a45cd12af60d0",
+      "authority_layer": "CONFIGURED",
+      "capabilities": [],
+      "destinations": [],
+      "priority_hints": [
+        "host_declared_configuration"
+      ]
+    }
+  ],
+  "coverage": {
+    "adapter_matrix": [
+      {
+        "family": "Skill",
+        "adapter": "skill_md",
+        "maturity": "SUPPORTED",
+        "notes": "Discovers SKILL.md manifests; does not verify runtime behavior."
+      },
+      {
+        "family": "MCP",
+        "adapter": "mcp_config",
+        "maturity": "PARTIAL",
+        "notes": "Client registration JSON including mcp_example.json; effective host binding is MANUAL_ONLY."
+      },
+      {
+        "family": "MCP server source",
+        "adapter": "mcp_server_source",
+        "maturity": "PARTIAL",
+        "notes": "Heuristic discovery of MCP server implementations; tool authz not verified."
+      },
+      {
+        "family": "A2A",
+        "adapter": "a2a_agent_card",
+        "maturity": "PARTIAL",
+        "notes": "Agent card JSON identity; message trust and delegation are MANUAL_ONLY."
+      },
+      {
+        "family": "Instruction rules",
+        "adapter": "instruction_rules",
+        "maturity": "SUPPORTED",
+        "notes": "AGENTS.md, CLAUDE.md, and Cursor rules pack paths."
+      },
+      {
+        "family": "Hook",
+        "adapter": "hooks",
+        "maturity": "PARTIAL",
+        "notes": "hooks.json + hooks/ layouts with lifecycle/identity hints; Claude settings hooks via claude_settings. Effective host binding MANUAL_ONLY."
+      },
+      {
+        "family": "Plugin",
+        "adapter": "plugins",
+        "maturity": "PARTIAL",
+        "notes": "Manifest heuristics only; publisher and OAuth scopes are MANUAL_ONLY."
+      },
+      {
+        "family": "Subagent",
+        "adapter": "subagents",
+        "maturity": "PARTIAL",
+        "notes": "agents/ and subagents/ definitions; inherited permissions need deep review."
+      },
+      {
+        "family": "Automation",
+        "adapter": "automations",
+        "maturity": "PARTIAL",
+        "notes": "Workflow and automation manifests; effective credentials are NOT VERIFIED."
+      },
+      {
+        "family": "CI / GitHub Actions",
+        "adapter": "github_workflows",
+        "maturity": "PARTIAL",
+        "notes": "Discovers .github/workflows; does not evaluate runner trust or secret exfil paths."
+      },
+      {
+        "family": "Host effective permissions",
+        "adapter": "host_profiles",
+        "maturity": "PARTIAL",
+        "notes": "Host profile markers only; effective runtime permissions stay MANUAL_ONLY."
+      },
+      {
+        "family": "Browser agents",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; no dedicated discovery adapter."
+      },
+      {
+        "family": "Memory / RAG",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; tenant isolation not auto-discovered."
+      },
+      {
+        "family": "Model providers",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; endpoint/model config discovery not automated."
+      },
+      {
+        "family": "Multimodal artifacts",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; no artifact inspection adapters."
+      },
+      {
+        "family": "Runtime behavior",
+        "adapter": null,
+        "maturity": "UNSUPPORTED",
+        "notes": "No runtime harness in passive mode."
+      },
+      {
+        "family": "Publisher / artifact provenance",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Digest helpers exist; full signature/SBOM verification is not shipped."
+      }
+    ],
+    "authority_layers": {
+      "DECLARED": "What the integration says it requires or exposes.",
+      "CONFIGURED": "What host/repo configuration appears to expose.",
+      "EFFECTIVE": "What the execution environment actually permits.",
+      "VERIFIED": "What an authorized test independently established."
+    },
+    "component_counts_by_type": {
+      "Skill": 1,
+      "MCP Server Registration": 2,
+      "Automation / Workflow": 1,
+      "CI Workflow": 1,
+      "Agent Host": 1
+    },
+    "component_counts_by_maturity": {
+      "SUPPORTED": 1,
+      "PARTIAL": 5,
+      "MANUAL_ONLY": 0,
+      "UNSUPPORTED": 0
+    },
+    "deterministically_discovered": 6,
+    "supported_ratio": 0.1667,
+    "unparsed_agent_config_count": 0,
+    "parser_events": [],
+    "manual_review_families": [
+      "Browser agents",
+      "Memory / RAG",
+      "Model providers",
+      "Multimodal artifacts",
+      "Runtime behavior",
+      "Publisher / artifact provenance"
+    ],
+    "high_priority_review_areas": [
+      {
+        "component_id": "C-001",
+        "name": "bootstrap",
+        "type": "Skill",
+        "repository_path": "skills/bootstrap/SKILL.md",
+        "hints": [
+          "external_url_reference",
+          "script_reference",
+          "download_and_execute",
+          "permission_bypass_flag",
+          "instruction_abuse_content",
+          "executable_evidence"
+        ]
+      },
+      {
+        "component_id": "C-002",
+        "name": "unpinned-demo",
+        "type": "MCP Server Registration",
+        "repository_path": ".cursor/mcp.json",
+        "hints": [
+          "local_command_transport",
+          "unpinned_package_launcher",
+          "sets_environment",
+          "literal_secret_in_env"
+        ]
+      },
+      {
+        "component_id": "C-003",
+        "name": "cleartext-remote",
+        "type": "MCP Server Registration",
+        "repository_path": ".cursor/mcp.json",
+        "hints": [
+          "remote_endpoint",
+          "insecure_http_remote"
+        ]
+      },
+      {
+        "component_id": "C-004",
+        "name": "agent",
+        "type": "Automation / Workflow",
+        "repository_path": ".github/workflows/agent.yml",
+        "hints": [
+          "scheduled_or_event_trigger",
+          "credential_reference",
+          "agent_related_step"
+        ]
+      },
+      {
+        "component_id": "C-005",
+        "name": "agent",
+        "type": "CI Workflow",
+        "repository_path": ".github/workflows/agent.yml",
+        "hints": [
+          "secret_reference",
+          "pull_request_target",
+          "agent_related_step",
+          "pull_request_target_with_agent"
+        ]
+      },
+      {
+        "component_id": "C-006",
+        "name": "Cursor",
+        "type": "Agent Host",
+        "repository_path": ".cursor/mcp.json",
+        "hints": [
+          "host_declared_configuration"
+        ]
+      }
+    ],
+    "not_verified": [
+      "Runtime behavior",
+      "Publisher identity",
+      "Effective host permissions",
+      "Credential isolation"
+    ],
+    "layer_honesty": "Passive scans establish DECLARED/CONFIGURED authority only. EFFECTIVE and VERIFIED require host or authorized runtime evidence."
+  },
+  "limitations": [
+    "Passive mode never executes target code.",
+    "Unsupported and MANUAL_ONLY surfaces may be absent or incomplete.",
+    "Publishers may under-declare capabilities relative to observed behavior."
+  ]
+}

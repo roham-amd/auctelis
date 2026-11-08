@@ -1,0 +1,14 @@
+{
+  "case_id": "LLM-001",
+  "model": "sample-auditor/good",
+  "findings": [
+    {
+      "finding_id": "F-SAMPLE-1",
+      "title": "Untrusted skill instructions adjacent to privileged MCP filesystem binding",
+      "severity": "HIGH",
+      "status": "POTENTIAL",
+      "evidence_ids": ["E-001", "E-002"],
+      "description": "Skill co-located with MCP filesystem args that include root path."
+    }
+  ]
+}

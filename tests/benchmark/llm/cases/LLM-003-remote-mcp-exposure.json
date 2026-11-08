@@ -1,0 +1,34 @@
+{
+  "id": "LLM-003",
+  "title": "Remote MCP endpoint exposure",
+  "family": "mcp_transport",
+  "variant": "positive",
+  "fixture": "../../../rules/fixtures/rule-003-positive-remote",
+  "review": {
+    "status": "accepted",
+    "reviewer": "authdiff-maintainers",
+    "reviewed_at": "2026-11-04",
+    "notes": "Remote URL is exposure, not automatic compromise."
+  },
+  "ground_truth_findings": [
+    {
+      "finding_id": "GT-003",
+      "title": "MCP server configured with remote network endpoint",
+      "severity": "MEDIUM",
+      "status": "OBSERVED",
+      "required_evidence": [
+        "MCP registration URL",
+        "Transport identity / TLS not verified"
+      ],
+      "must_not_claim": [
+        "Confirmed data exfiltration",
+        "Confirmed runtime exploitation without RUNTIME evidence"
+      ]
+    }
+  ],
+  "score_floors": {
+    "precision": 0.5,
+    "recall": 0.5,
+    "max_hallucinations": 0
+  }
+}

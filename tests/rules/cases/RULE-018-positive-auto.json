@@ -1,0 +1,12 @@
+{
+  "id": "RULE-018-positive-auto",
+  "rule_id": "AUTHDIFF-RULE-018",
+  "variant": "positive",
+  "fixture": "fixtures/rule-018-positive-auto",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "OBSERVED"
+  }
+}

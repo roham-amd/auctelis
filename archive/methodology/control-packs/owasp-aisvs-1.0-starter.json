@@ -1,0 +1,47 @@
+{
+  "control_pack_id": "owasp-aisvs",
+  "version": "1.0-starter",
+  "status": "pilot",
+  "description": "Starter crosswalk for OWASP AISVS 1.0. This file is NOT the full 191-requirement catalogue; it seeds machine-readable control evaluation (R-007).",
+  "source": {
+    "standard": "OWASP AISVS",
+    "version": "1.0",
+    "reference": "https://owasp.org/www-project-ai-security-verification-standard/"
+  },
+  "requirements": [
+    {
+      "requirement_id": "AISVS-1.1.1",
+      "title": "AI system scope and threat model documented",
+      "applicability": "agent_ecosystem_with_production_intent",
+      "verification_level": "documentation_review",
+      "evidence_expectations": ["SOURCE_STATIC policy or architecture doc citing scope and threats"],
+      "test_method": "Review documented scope/threat model; mark NOT_VERIFIED if absent",
+      "aesa_module_refs": ["01-core-prompt.md Phase 0"],
+      "limitation": "Starter mapping only; full AISVS chapter coverage not included"
+    },
+    {
+      "requirement_id": "AISVS-4.2.1",
+      "title": "Untrusted input boundaries for agent instructions",
+      "applicability": "skills_rules_prompts_in_scope",
+      "verification_level": "static_review",
+      "evidence_expectations": ["SOURCE_STATIC skill/rule files", "evidence of instruction hierarchy"],
+      "test_method": "Map untrusted sources to agent actions; require explicit unknowns",
+      "aesa_module_refs": ["modules/skills.md", "modules/multimodal.md"],
+      "limitation": "Does not prove runtime containment without authorized staging"
+    },
+    {
+      "requirement_id": "AISVS-7.3.1",
+      "title": "Tool and plugin authorization",
+      "applicability": "mcp_plugins_tools_in_scope",
+      "verification_level": "static_plus_host_config",
+      "evidence_expectations": ["HOST_CONFIGURATION permission scopes", "MCP tool metadata"],
+      "test_method": "Verify least-privilege and server identity binding in static/host evidence",
+      "aesa_module_refs": ["modules/mcp.md", "modules/plugins.md"],
+      "limitation": "Authorization enforcement at runtime is NOT_VERIFIED in passive mode"
+    }
+  ],
+  "crosswalk_notes": [
+    "Threat taxonomies (e.g. OWASP Agentic Top 10) are mapped separately from verification requirements.",
+    "No control in this pack may be marked PASS from narrative assertion alone."
+  ]
+}

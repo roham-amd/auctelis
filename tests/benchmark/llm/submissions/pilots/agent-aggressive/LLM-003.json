@@ -1,0 +1,1 @@
+{"case_id":"LLM-003","model":"pilot/aggressive","findings":[{"title":"MCP server configured with remote network endpoint","severity":"CRITICAL","status":"CONFIRMED","evidence_ids":["E-003"]}]}

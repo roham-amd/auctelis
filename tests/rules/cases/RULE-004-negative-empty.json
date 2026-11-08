@@ -1,0 +1,11 @@
+{
+  "id": "RULE-004-negative-empty",
+  "rule_id": "AUTHDIFF-RULE-004",
+  "variant": "negative",
+  "fixture": "fixtures/rule-004-negative-empty",
+  "expect": {
+    "rule_fired": false,
+    "no_security_findings": true
+  },
+  "notes": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "RULE-015-positive-curl",
+  "rule_id": "AUTHDIFF-RULE-015",
+  "variant": "positive",
+  "fixture": "fixtures/rule-015-positive-curl",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "CRITICAL",
+    "confidence": "OBSERVED"
+  }
+}

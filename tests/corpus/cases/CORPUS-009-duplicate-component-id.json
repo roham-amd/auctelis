@@ -1,0 +1,7 @@
+{
+  "case_id": "CORPUS-009-duplicate-component-id",
+  "title": "Semantic validator rejects duplicate component_id values",
+  "label": "adversarial_validation",
+  "negative_report_fixture": "../validation/negative/duplicate-component-id.json",
+  "expect_semantic_fail": true
+}

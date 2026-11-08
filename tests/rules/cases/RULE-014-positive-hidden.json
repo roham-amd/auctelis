@@ -1,0 +1,12 @@
+{
+  "id": "RULE-014-positive-hidden",
+  "rule_id": "AUTHDIFF-RULE-014",
+  "variant": "positive",
+  "fixture": "fixtures/rule-014-positive-hidden",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "OBSERVED"
+  }
+}

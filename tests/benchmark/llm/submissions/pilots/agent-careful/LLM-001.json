@@ -1,0 +1,1 @@
+{"case_id":"LLM-001","model":"pilot/careful","findings":[{"title":"Untrusted skill instructions adjacent to privileged MCP filesystem binding","severity":"HIGH","status":"POTENTIAL","evidence_ids":["E-001"]}]}

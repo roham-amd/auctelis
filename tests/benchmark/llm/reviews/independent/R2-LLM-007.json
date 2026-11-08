@@ -1,0 +1,17 @@
+{
+  "review_id": "R2-LLM-007",
+  "case_id": "LLM-007",
+  "reviewer": "reviewer-b",
+  "reviewed_at": "2026-11-04",
+  "blind": true,
+  "proposed_ground_truth_findings": [
+    {
+      "finding_id": "GT-007-draft",
+      "title": "MCP local command transport present",
+      "severity": "INFORMATIONAL",
+      "status": "OBSERVED"
+    }
+  ],
+  "variant_assessment": "ambiguous",
+  "notes": "Optional INFORMATIONAL inventory note; must not be HIGH/CRITICAL."
+}

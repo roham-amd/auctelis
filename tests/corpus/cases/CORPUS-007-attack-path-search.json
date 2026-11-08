@@ -1,0 +1,7 @@
+{
+  "case_id": "CORPUS-007-attack-path-search",
+  "title": "Graph path search finds Skill to external/tool chain",
+  "label": "vulnerable",
+  "graph_fixture": "../validation/positive/attack-path-graph.json",
+  "expect_min_attack_paths": 1
+}

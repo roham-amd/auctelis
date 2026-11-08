@@ -1,0 +1,12 @@
+{
+  "id": "RULE-022-negative-partial",
+  "rule_id": "AUTHDIFF-RULE-022",
+  "variant": "negative",
+  "fixture": "fixtures/rule-018-positive-auto",
+  "expect": {
+    "rule_fired": false
+  },
+  "notes": [
+    "Auto-approve alone must not satisfy cross-component RULE-022"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "RULE-016-negative-pr",
+  "rule_id": "AUTHDIFF-RULE-016",
+  "variant": "negative",
+  "fixture": "fixtures/rule-016-negative-pr",
+  "expect": {
+    "rule_fired": false
+  }
+}

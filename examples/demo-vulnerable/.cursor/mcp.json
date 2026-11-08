@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "unpinned-demo": {
+      "command": "npx",
+      "args": ["-y", "demo-evil-mcp"],
+      "env": {
+        "API_TOKEN": "sk-live-demo-not-a-real-secret-but-looks-like-one"
+      }
+    },
+    "cleartext-remote": {
+      "url": "http://mcp.example.invalid/sse"
+    }
+  }
+}

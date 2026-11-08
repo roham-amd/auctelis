@@ -1,0 +1,10 @@
+{
+  "review_id": "R1-LLM-007",
+  "case_id": "LLM-007",
+  "reviewer": "reviewer-a",
+  "reviewed_at": "2026-11-04",
+  "blind": true,
+  "proposed_ground_truth_findings": [],
+  "variant_assessment": "ambiguous",
+  "notes": "Local MCP without broad args/env is capability observation only; empty security GT."
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/YOUR_GITHUB_ORG/authdiff/schemas/agent-authority-manifest.schema.json",
+  "title": "Agent Authority Manifest",
+  "description": "Vendor-neutral declaration of authority an AI-agent integration requires or exposes. Independently observed fields must never be trusted solely because a publisher signed them.",
+  "type": "object",
+  "required": ["schema", "artifact", "components"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "authdiff.authority_manifest.v1"
+    },
+    "product": {
+      "type": "string",
+      "description": "Optional publisher product name"
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "digest": { "type": "string", "description": "sha256:… of the immutable artifact" },
+        "repository": { "type": "string" },
+        "commit": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "path": { "type": "string" },
+          "declared_capabilities": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "declared_destinations": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "filesystem_access": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "command_execution": { "type": "boolean" },
+          "secrets_env": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "identity_assumptions": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "pinning_policy": { "type": "string" },
+          "human_approval_required": { "type": "boolean" },
+          "observed_capabilities": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Filled by independent scanners; never trust publisher-only values here"
+          },
+          "authority_layer": {
+            "type": "string",
+            "enum": ["DECLARED", "CONFIGURED", "EFFECTIVE", "VERIFIED"]
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fail_on_undeclared": { "type": "boolean" },
+        "allow_capability_shrink": { "type": "boolean" }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

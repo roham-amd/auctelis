@@ -1,0 +1,138 @@
+[project]
+name = "authdiff"
+version = "1.0.0"
+description = "authdiff — the authority lockfile and PR security gate for AI agents"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+  { name = "authdiff contributors", email = "security@users.noreply.github.com" },
+]
+keywords = [
+  "authdiff",
+  "agent-security",
+  "mcp",
+  "skills",
+  "authority-lock",
+  "sarif",
+  "devsecops",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+  "jsonschema>=4.26.0",
+  "packaging>=26.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/YOUR_GITHUB_ORG/authdiff"
+Documentation = "https://github.com/YOUR_GITHUB_ORG/authdiff/blob/main/docs/DOCUMENTATION-INDEX.md"
+Repository = "https://github.com/YOUR_GITHUB_ORG/authdiff"
+Issues = "https://github.com/YOUR_GITHUB_ORG/authdiff/issues"
+Changelog = "https://github.com/YOUR_GITHUB_ORG/authdiff/blob/main/CHANGELOG.md"
+
+[project.scripts]
+authdiff = "authdiff.cli:main"
+authdiff-dev = "authdiff.cli:main_dev"
+
+[dependency-groups]
+dev = [
+  "mypy>=1.18.0",
+  "pip-audit>=2.9.0",
+  "pytest>=9.2.0",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["../tests"]
+pythonpath = ["."]
+addopts = [
+  "--cov=authdiff",
+  "--cov-report=term-missing",
+  "--cov-fail-under=0",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["authdiff"]
+
+[tool.coverage.report]
+omit = ["*/__main__.py"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["authdiff"]
+warn_unused_configs = true
+warn_return_any = true
+warn_unreachable = true
+no_implicit_optional = true
+check_untyped_defs = true
+pretty = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+  "jsonschema.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["authdiff", "../tests"]
+extend-exclude = [
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".pytest_cache",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+  "RUF", # ruff-specific
+]
+ignore = [
+  "E501",  # formatter owns wrapping; keep long audit strings readable
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["authdiff"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+[build-system]
+requires = ["setuptools>=84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["authdiff*"]
+
+[tool.setuptools.package-data]
+authdiff = [
+  "templates/*",
+  "data/*",
+  "data/hosts/*",
+  "data/demo-vulnerable/**/*",
+]

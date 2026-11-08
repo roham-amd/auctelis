@@ -1,0 +1,39 @@
+{
+  "authdiff_audit_profile": "scan",
+  "product": "authdiff",
+  "product_version": "1.0.0",
+  "package_version": "1.0.0",
+  "purpose": "Authority Diff + deterministic security observations",
+  "deliverable": "PR comment, findings, inventory, SARIF; --full adds graph/report",
+  "rules_applied": [
+    "AUTHDIFF-RULE-001",
+    "AUTHDIFF-RULE-002",
+    "AUTHDIFF-RULE-003",
+    "AUTHDIFF-RULE-004",
+    "AUTHDIFF-RULE-005",
+    "AUTHDIFF-RULE-006",
+    "AUTHDIFF-RULE-007",
+    "AUTHDIFF-RULE-008",
+    "AUTHDIFF-RULE-009",
+    "AUTHDIFF-RULE-010",
+    "AUTHDIFF-RULE-011",
+    "AUTHDIFF-RULE-012",
+    "AUTHDIFF-RULE-013",
+    "AUTHDIFF-RULE-014",
+    "AUTHDIFF-RULE-015",
+    "AUTHDIFF-RULE-016",
+    "AUTHDIFF-RULE-017",
+    "AUTHDIFF-RULE-018",
+    "AUTHDIFF-RULE-019",
+    "AUTHDIFF-RULE-020",
+    "AUTHDIFF-RULE-021",
+    "AUTHDIFF-RULE-022"
+  ],
+  "limitations": [
+    "Deterministic rules produce OBSERVED/POTENTIAL findings, not confirmed exploits.",
+    "CAPABILITY observations are not vulnerabilities; SECURITY_FINDING requires exposure conditions and missing controls.",
+    "Passive scans establish DECLARED/CONFIGURED authority only.",
+    "Host EFFECTIVE permissions and VERIFIED runtime behavior remain NOT VERIFIED.",
+    "Incomplete adapter coverage means absence of findings is not evidence of safety."
+  ]
+}

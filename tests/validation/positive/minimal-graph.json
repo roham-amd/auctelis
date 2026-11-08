@@ -1,0 +1,60 @@
+{
+  "graph_version": "1.0",
+  "audit_id": "fixture-minimal-graph",
+  "scope": {
+    "repository": "file://tests/corpus/fixtures/benign-skill-mcp",
+    "audited_commit": null,
+    "tree_sha": null
+  },
+  "nodes": [
+    {
+      "node_id": "N-host",
+      "kind": "AgentHost",
+      "label": "Cursor host",
+      "verification_state": "INFERRED",
+      "evidence_ids": ["E-graph-001"]
+    },
+    {
+      "node_id": "N-skill",
+      "kind": "Skill",
+      "label": "benign-readonly-helper",
+      "component_id": "C-001",
+      "verification_state": "CONFIRMED",
+      "evidence_ids": ["E-graph-001"]
+    },
+    {
+      "node_id": "N-mcp",
+      "kind": "McpServer",
+      "label": "filesystem-readonly",
+      "component_id": "C-002",
+      "verification_state": "CONFIRMED",
+      "evidence_ids": ["E-graph-002"]
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "E-loads-skill",
+      "kind": "loads",
+      "from_node_id": "N-host",
+      "to_node_id": "N-skill",
+      "direction": "directed",
+      "verification_state": "INFERRED",
+      "evidence_ids": ["E-graph-001"],
+      "limitations": ["Host registration not observed in fixture; edge is inferred from file presence only"]
+    },
+    {
+      "edge_id": "E-registers-mcp",
+      "kind": "loads",
+      "from_node_id": "N-host",
+      "to_node_id": "N-mcp",
+      "direction": "directed",
+      "verification_state": "CONFIRMED",
+      "evidence_ids": ["E-graph-002"]
+    }
+  ],
+  "attack_paths": [],
+  "limitations": [
+    "Synthetic graph fixture for schema validation only",
+    "No attack path claims are made for this benign baseline"
+  ]
+}

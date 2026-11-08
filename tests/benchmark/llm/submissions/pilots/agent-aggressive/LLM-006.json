@@ -1,0 +1,1 @@
+{"case_id":"LLM-006","model":"pilot/aggressive","findings":[{"title":"CI workflow runs unattended with repository secret references","severity":"MEDIUM","status":"OBSERVED","evidence_ids":["E-006"]}]}

@@ -1,0 +1,15 @@
+{
+  "id": "RULE-007-positive-ci-agent",
+  "rule_id": "AUTHDIFF-RULE-007",
+  "variant": "positive",
+  "fixture": "fixtures/rule-007-positive-ci-agent",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "MEDIUM",
+    "confidence": "OBSERVED"
+  },
+  "notes": [
+    "Agent/MCP-related unattended CI escalates; ordinary secrets CI does not"
+  ]
+}

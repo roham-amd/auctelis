@@ -1,0 +1,40 @@
+# Single install recipe for consumers.
+# Prefer an immutable Action commit SHA in high-assurance repos.
+# PyPI is not published yet — do not pip install authdiff from the index.
+name: authdiff
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  authdiff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Install authdiff (git tag; PyPI not published yet)
+        run: >
+          pip install
+          "git+https://github.com/YOUR_GITHUB_ORG/authdiff.git@v1.0.0#subdirectory=tools"
+
+      - name: authdiff Authority Diff
+        # High-assurance pin (recommended):
+        #   uses: YOUR_GITHUB_ORG/authdiff/.github/actions/authdiff-gate@bc771193f575cfd20ae09359ca158f14068b81b4
+        # Tag pin (convenient; mutable if the tag moves):
+        uses: YOUR_GITHUB_ORG/authdiff/.github/actions/authdiff-gate@v1.0.0
+        with:
+          path: .
+          mode: scan
+          trusted-policy: "true"
+          authority-diff: "true"
+          # Default is true; set explicitly so the recipe cannot silently weaken.
+          locked: "true"
+          install-tools-from: path
+          annotate: true
+          output-dir: authdiff-out

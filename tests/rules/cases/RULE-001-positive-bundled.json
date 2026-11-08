@@ -1,0 +1,15 @@
+{
+  "id": "RULE-001-positive-bundled",
+  "rule_id": "AUTHDIFF-RULE-001",
+  "variant": "positive",
+  "fixture": "fixtures/rule-001-positive-bundled",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "EXPOSURE",
+    "severity": "MEDIUM",
+    "confidence": "POTENTIAL"
+  },
+  "notes": [
+    "Bundled scripts directory without secrets → exposure, not confirmed exploit"
+  ]
+}

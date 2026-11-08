@@ -1,0 +1,15 @@
+{
+  "id": "RULE-002-positive-env",
+  "rule_id": "AUTHDIFF-RULE-002",
+  "variant": "positive",
+  "fixture": "fixtures/rule-002-positive-env",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "POTENTIAL"
+  },
+  "notes": [
+    "Credential-shaped env inheritance escalates to HIGH (literal secrets are RULE-012 CRITICAL)"
+  ]
+}

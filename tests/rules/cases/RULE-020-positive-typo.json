@@ -1,0 +1,12 @@
+{
+  "id": "RULE-020-positive-typo",
+  "rule_id": "AUTHDIFF-RULE-020",
+  "variant": "positive",
+  "fixture": "fixtures/rule-020-positive-typo",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "EXPOSURE",
+    "severity": "MEDIUM",
+    "confidence": "POTENTIAL"
+  }
+}

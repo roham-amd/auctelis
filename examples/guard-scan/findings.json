@@ -1,0 +1,1300 @@
+{
+  "findings_version": "1.2",
+  "product": "authdiff",
+  "product_version": "1.0.0",
+  "package_version": "1.0.0",
+  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "audited_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+  "collected_at_utc": "2026-11-08T21:40:39Z",
+  "rules_applied": [
+    "AUTHDIFF-RULE-001",
+    "AUTHDIFF-RULE-002",
+    "AUTHDIFF-RULE-003",
+    "AUTHDIFF-RULE-004",
+    "AUTHDIFF-RULE-005",
+    "AUTHDIFF-RULE-006",
+    "AUTHDIFF-RULE-007",
+    "AUTHDIFF-RULE-008",
+    "AUTHDIFF-RULE-009",
+    "AUTHDIFF-RULE-010",
+    "AUTHDIFF-RULE-011",
+    "AUTHDIFF-RULE-012",
+    "AUTHDIFF-RULE-013",
+    "AUTHDIFF-RULE-014",
+    "AUTHDIFF-RULE-015",
+    "AUTHDIFF-RULE-016",
+    "AUTHDIFF-RULE-017",
+    "AUTHDIFF-RULE-018",
+    "AUTHDIFF-RULE-019",
+    "AUTHDIFF-RULE-020",
+    "AUTHDIFF-RULE-021",
+    "AUTHDIFF-RULE-022"
+  ],
+  "provenance": {
+    "product_version": "1.0.0",
+    "package_version": "1.0.0",
+    "rule_pack": "1.6",
+    "findings_contract": "1.2",
+    "authority_lock": "2.0",
+    "audited_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+    "collected_at_utc": "2026-11-08T21:40:39Z"
+  },
+  "authority_layers": {
+    "DECLARED": "What the integration says it requires or exposes.",
+    "CONFIGURED": "What host/repo configuration appears to expose.",
+    "EFFECTIVE": "What the execution environment actually permits.",
+    "VERIFIED": "What an authorized test independently established."
+  },
+  "summary": {
+    "component_count": 6,
+    "authority_bearing_components": 4,
+    "external_data_destinations": 2,
+    "finding_count": 14,
+    "by_severity": {
+      "CRITICAL": 3,
+      "HIGH": 4,
+      "MEDIUM": 4,
+      "LOW": 1,
+      "INFORMATIONAL": 2
+    },
+    "by_finding_class": {
+      "CAPABILITY": 2,
+      "EXPOSURE": 3,
+      "SECURITY_FINDING": 9
+    },
+    "security_findings": 9,
+    "exposure_observations": 3,
+    "capability_observations": 2
+  },
+  "capabilities": [
+    {
+      "kind": "access_network",
+      "status": "POTENTIAL",
+      "component_id": "C-001",
+      "evidence_ids": [
+        "E-INV-C-001"
+      ],
+      "notes": "Derived from priority hint `external_url_reference`.",
+      "origin": "POTENTIAL"
+    },
+    {
+      "kind": "execute_commands",
+      "status": "POTENTIAL",
+      "component_id": "C-001",
+      "evidence_ids": [
+        "E-INV-C-001"
+      ],
+      "notes": "Derived from priority hint `script_reference`.",
+      "origin": "POTENTIAL"
+    },
+    {
+      "kind": "modify_agent_instructions",
+      "status": "OBSERVED",
+      "component_id": "C-001",
+      "evidence_ids": [
+        "E-INV-C-001"
+      ],
+      "notes": "Skills inject instructions into the agent.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "execute_commands",
+      "status": "OBSERVED",
+      "component_id": "C-002",
+      "evidence_ids": [
+        "E-INV-C-002"
+      ],
+      "notes": "Derived from priority hint `local_command_transport`.",
+      "origin": "DECLARED"
+    },
+    {
+      "kind": "invoke_tools",
+      "status": "OBSERVED",
+      "component_id": "C-002",
+      "evidence_ids": [
+        "E-INV-C-002"
+      ],
+      "notes": "MCP registration exposes tool surface to the host agent.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "access_network",
+      "status": "OBSERVED",
+      "component_id": "C-003",
+      "evidence_ids": [
+        "E-INV-C-003"
+      ],
+      "notes": "Derived from priority hint `remote_endpoint`.",
+      "origin": "DECLARED"
+    },
+    {
+      "kind": "invoke_tools",
+      "status": "OBSERVED",
+      "component_id": "C-003",
+      "evidence_ids": [
+        "E-INV-C-003"
+      ],
+      "notes": "MCP registration exposes tool surface to the host agent.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "unattended_operation",
+      "status": "OBSERVED",
+      "component_id": "C-005",
+      "evidence_ids": [
+        "E-INV-C-005"
+      ],
+      "notes": "CI workflows execute with repository privileges.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "access_secrets",
+      "status": "POTENTIAL",
+      "component_id": "C-005",
+      "evidence_ids": [
+        "E-INV-C-005"
+      ],
+      "notes": "Workflows commonly inherit repository secrets.",
+      "origin": "TYPE_DEFAULT"
+    }
+  ],
+  "evidence_registry": [
+    {
+      "evidence_id": "E-001",
+      "component_id": "C-001",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": "skills/bootstrap/SKILL.md",
+      "line_start": 10,
+      "line_end": 10,
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Skill references or bundles executable script content.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "skill_md",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-002",
+      "component_id": "C-001",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": "skills/bootstrap/SKILL.md",
+      "line_start": 17,
+      "line_end": 17,
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Skill instructions reference external HTTP(S) URLs.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "skill_md",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-003",
+      "component_id": "C-001",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": "skills/bootstrap/SKILL.md",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Content markers are heuristic; confirm intent before treating as malicious."
+      ],
+      "summary": "Instruction text contains hide/bypass/fetch-execute style directives.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "skill_md",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-004",
+      "component_id": "C-001",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": "skills/bootstrap/SKILL.md",
+      "line_start": 17,
+      "line_end": 17,
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Component text references download-and-execute patterns (curl|sh / similar).",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "skill_md",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-005",
+      "component_id": "C-001",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": "skills/bootstrap/SKILL.md",
+      "line_start": 11,
+      "line_end": 11,
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Component references a permission-bypass or auto-approve flag.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "skill_md",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-006",
+      "component_id": "C-002",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": 4,
+      "line_end": 4,
+      "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "MCP registration launches local command `npx`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "mcp_config",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-007",
+      "component_id": "C-002",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": 4,
+      "line_end": 4,
+      "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "MCP launcher `npx` appears unpinned (npx -y / uvx / similar).",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "mcp_config",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-008",
+      "component_id": "C-002",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": 6,
+      "line_end": 6,
+      "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "MCP registration embeds a literal secret-like value in env.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "mcp_config",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-009",
+      "component_id": "C-002",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": 4,
+      "line_end": 4,
+      "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Unpinned MCP launcher combined with secret-like env values.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "mcp_config",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-010",
+      "component_id": "C-003",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": 11,
+      "line_end": 11,
+      "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "MCP registration points at remote URL `http://mcp.example.invalid/sse`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "mcp_config",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-011",
+      "component_id": "C-003",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": 11,
+      "line_end": 11,
+      "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "MCP remote endpoint uses cleartext HTTP: `http://mcp.example.invalid/sse`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "mcp_config",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-012",
+      "component_id": "C-004",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".github/workflows/agent.yml",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Unattended workflow/automation surface discovered.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "automations",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-013",
+      "component_id": "C-005",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".github/workflows/agent.yml",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Unattended workflow/automation surface discovered.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "github_workflows",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-014",
+      "component_id": "C-005",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".github/workflows/agent.yml",
+      "line_start": 3,
+      "line_end": 3,
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "collection_method": "deterministic_rule",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Static configuration observation only; host effective permissions not verified.",
+        "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
+      ],
+      "summary": "Workflow combines pull_request_target with agent/MCP-related steps.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": "github_workflows",
+      "rule_pack_version": "1.6",
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-INV-C-001",
+      "component_id": "C-001",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": "skills/bootstrap/SKILL.md",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "collection_method": "inventory_adapter",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Discovery only; does not prove runtime loading."
+      ],
+      "summary": "Component discovered by adapter `skill_md`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": null,
+      "rule_pack_version": null,
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-INV-C-002",
+      "component_id": "C-002",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
+      "collection_method": "inventory_adapter",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Discovery only; does not prove runtime loading."
+      ],
+      "summary": "Component discovered by adapter `mcp_config`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": null,
+      "rule_pack_version": null,
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-INV-C-003",
+      "component_id": "C-003",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
+      "collection_method": "inventory_adapter",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Discovery only; does not prove runtime loading."
+      ],
+      "summary": "Component discovered by adapter `mcp_config`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": null,
+      "rule_pack_version": null,
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-INV-C-004",
+      "component_id": "C-004",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".github/workflows/agent.yml",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "collection_method": "inventory_adapter",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Discovery only; does not prove runtime loading."
+      ],
+      "summary": "Component discovered by adapter `automations`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": null,
+      "rule_pack_version": null,
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-INV-C-005",
+      "component_id": "C-005",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".github/workflows/agent.yml",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "collection_method": "inventory_adapter",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Discovery only; does not prove runtime loading."
+      ],
+      "summary": "Component discovered by adapter `github_workflows`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": null,
+      "rule_pack_version": null,
+      "derived_from": []
+    },
+    {
+      "evidence_id": "E-INV-C-006",
+      "component_id": "C-006",
+      "evidence_class": "SOURCE_STATIC",
+      "verification_status": "OBSERVED",
+      "file_path": ".cursor/mcp.json",
+      "line_start": null,
+      "line_end": null,
+      "content_digest": "sha256:f96daed4e08186f65c69fb357c7d82c6a1dcf253a209a1b95c9a45cd12af60d0",
+      "collection_method": "inventory_adapter",
+      "source_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
+      "observed_at": "2026-11-08T21:40:39Z",
+      "limitations": [
+        "Discovery only; does not prove runtime loading."
+      ],
+      "summary": "Component discovered by adapter `host_profiles`.",
+      "authority_layer": "CONFIGURED",
+      "parser_version": null,
+      "rule_pack_version": null,
+      "derived_from": []
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "F-001",
+      "rule_id": "AUTHDIFF-RULE-001",
+      "title": "Skill references executable scripts",
+      "severity": "INFORMATIONAL",
+      "confidence": "POTENTIAL",
+      "description": "Skill `bootstrap` references scripts or a bundled scripts directory. This establishes an execution *capability*; host inheritance and approval enforcement remain unverified.",
+      "component_ids": [
+        "C-001"
+      ],
+      "evidence_ids": [
+        "E-001"
+      ],
+      "capabilities": [
+        "execute_commands"
+      ],
+      "attacker_control": "Malicious or compromised skill instructions / scripts",
+      "entry_point": "skills/bootstrap/SKILL.md",
+      "trust_boundary": "Agent instruction surface \u2192 host execution",
+      "impact": "Potential local command execution under the host agent identity",
+      "missing_controls": [
+        "Independent approval for script execution",
+        "Host effective environment / secret inheritance"
+      ],
+      "recommended_action": "Treat as an authority surface: verify whether scripts inherit sensitive environment variables and whether execution requires independent approval.",
+      "exploitability": "UNKNOWN",
+      "exposure": "REPO_CONFIG",
+      "finding_class": "CAPABILITY",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "ls the skill directory; confirm whether scripts/ is present and executed.",
+      "fix_snippet": "",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-002",
+      "rule_id": "AUTHDIFF-RULE-005",
+      "title": "Skill references external URLs",
+      "severity": "LOW",
+      "confidence": "OBSERVED",
+      "description": "Skill `bootstrap` references external URLs. A URL is an exposure indicator, not proof of malicious content.",
+      "component_ids": [
+        "C-001"
+      ],
+      "evidence_ids": [
+        "E-002"
+      ],
+      "capabilities": [
+        "access_network",
+        "modify_agent_instructions"
+      ],
+      "attacker_control": "Compromised remote resource referenced by the skill",
+      "entry_point": "skills/bootstrap/SKILL.md",
+      "trust_boundary": "Reviewed skill \u2192 unreviewed remote content",
+      "impact": "Potential instruction injection or data exfiltration guidance",
+      "missing_controls": [
+        "Pinned remote content digests",
+        "Egress policy for agent fetches"
+      ],
+      "recommended_action": "Pin or vendor remote references; treat remote content as untrusted.",
+      "exploitability": "UNKNOWN",
+      "exposure": "EXTERNAL_URL",
+      "finding_class": "EXPOSURE",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "",
+      "fix_snippet": "",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-003",
+      "rule_id": "AUTHDIFF-RULE-010",
+      "title": "Instruction text directs hide, bypass, or fetch-execute behavior",
+      "severity": "MEDIUM",
+      "confidence": "OBSERVED",
+      "description": "`bootstrap` contains instruction patterns that hide actions, bypass confirmation, or fetch-and-execute remote content. Review before trusting.",
+      "component_ids": [
+        "C-001"
+      ],
+      "evidence_ids": [
+        "E-003"
+      ],
+      "capabilities": [
+        "modify_agent_instructions"
+      ],
+      "attacker_control": "Instruction content in the component itself",
+      "entry_point": "skills/bootstrap/SKILL.md",
+      "trust_boundary": "Untrusted instructions \u2192 privileged agent tools",
+      "impact": "Agent may follow injected instructions leading to privileged actions",
+      "missing_controls": [
+        "Instruction isolation",
+        "Tool allowlists for untrusted content"
+      ],
+      "recommended_action": "Rewrite instructions; forbid hide/bypass/remote-exec directives in skills.",
+      "exploitability": "UNKNOWN",
+      "exposure": "REPO_CONFIG",
+      "finding_class": "EXPOSURE",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "Search the SKILL.md for hide/bypass/fetch-and-execute phrasing.",
+      "fix_snippet": "",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-004",
+      "rule_id": "AUTHDIFF-RULE-015",
+      "title": "Download-and-execute pattern in agent surface",
+      "severity": "CRITICAL",
+      "confidence": "OBSERVED",
+      "description": "`bootstrap` references piping a remote download into a shell. That is remote code execution under the agent/host identity if followed.",
+      "component_ids": [
+        "C-001"
+      ],
+      "evidence_ids": [
+        "E-004"
+      ],
+      "capabilities": [
+        "execute_commands",
+        "access_network"
+      ],
+      "attacker_control": "Remote URL content at fetch time",
+      "entry_point": "skills/bootstrap/SKILL.md",
+      "trust_boundary": "Reviewed instructions \u2192 unreviewed remote script",
+      "impact": "Arbitrary remote code execution",
+      "missing_controls": [
+        "Pinned script digest",
+        "No pipe-to-shell in agent surfaces"
+      ],
+      "recommended_action": "Vendor and pin scripts; never curl|sh from skills or hooks.",
+      "exploitability": "UNKNOWN",
+      "exposure": "DOWNLOAD_EXEC",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "Search the file for `curl .*|` / `wget .*|` / `iwr .*| iex`.",
+      "fix_snippet": "Replace with a pinned local script checked into the repo.",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-005",
+      "rule_id": "AUTHDIFF-RULE-017",
+      "title": "Permission-bypass or auto-approve flag in agent surface",
+      "severity": "HIGH",
+      "confidence": "OBSERVED",
+      "description": "`bootstrap` references a flag that disables human approval (e.g. `--dangerously-skip-permissions`, `--yolo`, auto-approve). That expands effective authority without a corresponding control.",
+      "component_ids": [
+        "C-001"
+      ],
+      "evidence_ids": [
+        "E-005"
+      ],
+      "capabilities": [
+        "modify_approvals",
+        "execute_commands",
+        "unattended_operation"
+      ],
+      "attacker_control": "Anyone who can influence the command/config that sets the flag",
+      "entry_point": "skills/bootstrap/SKILL.md",
+      "trust_boundary": "Human approval gate \u2192 bypassed automated agent",
+      "impact": "Privileged tool use without interactive confirmation",
+      "missing_controls": [
+        "Require approval for high-impact tools",
+        "Disallow bypass flags in CI"
+      ],
+      "recommended_action": "Remove bypass flags; keep approval required for privileged actions.",
+      "exploitability": "UNKNOWN",
+      "exposure": "PERMISSION_BYPASS",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "grep for dangerously-skip-permissions / yolo / autoApprove / bypass.",
+      "fix_snippet": "Delete the bypass flag; keep interactive or policy-gated approvals.",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-006",
+      "rule_id": "AUTHDIFF-RULE-002",
+      "title": "MCP local command sets non-secret environment",
+      "severity": "INFORMATIONAL",
+      "confidence": "OBSERVED",
+      "description": "MCP server `unpinned-demo` is registered with a local command transport. Presence of a local process is a capability observation, not proof of abuse.",
+      "component_ids": [
+        "C-002"
+      ],
+      "evidence_ids": [
+        "E-006"
+      ],
+      "capabilities": [
+        "execute_commands",
+        "invoke_tools"
+      ],
+      "attacker_control": "Compromised MCP server binary/package or tool-poisoned metadata",
+      "entry_point": ".cursor/mcp.json",
+      "trust_boundary": "Host agent \u2192 MCP child process",
+      "impact": "Tool calls execute under the MCP process identity with host-granted access",
+      "missing_controls": [
+        "Exact artifact digest of the launched binary/package",
+        "Host-side authorization binding for tool arguments"
+      ],
+      "recommended_action": "Record as an execution capability; verify host isolation before treating as risk.",
+      "exploitability": "UNKNOWN",
+      "exposure": "REPO_CONFIG",
+      "finding_class": "CAPABILITY",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "Open the MCP config and inspect command=`npx` plus env/args.",
+      "fix_snippet": "Pin the MCP binary/package; drop broad path args; avoid inheriting secrets.",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-007",
+      "rule_id": "AUTHDIFF-RULE-011",
+      "title": "MCP server launched via unpinned package installer",
+      "severity": "HIGH",
+      "confidence": "OBSERVED",
+      "description": "MCP server `unpinned-demo` uses an unpinned launcher (`npx` -y demo-evil-mcp). A later package publish can change behavior without a config edit (rug-pull risk).",
+      "component_ids": [
+        "C-002"
+      ],
+      "evidence_ids": [
+        "E-007"
+      ],
+      "capabilities": [
+        "execute_commands",
+        "invoke_tools"
+      ],
+      "attacker_control": "Malicious or compromised package published to the unpinned name",
+      "entry_point": ".cursor/mcp.json",
+      "trust_boundary": "Host agent \u2192 package registry \u2192 MCP process",
+      "impact": "Arbitrary code execution under the host agent identity after a registry update",
+      "missing_controls": [
+        "Pinned version or content digest",
+        "Allowlisted package source"
+      ],
+      "recommended_action": "Pin an exact version or digest; avoid `npx -y` / floating `uvx` tags.",
+      "exploitability": "UNKNOWN",
+      "exposure": "UNPINNED_LAUNCHER",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "grep the MCP JSON for npx -y / uvx and confirm no @version pin.",
+      "fix_snippet": "Use \"command\": \"npx\", \"args\": [\"-y\", \"pkg@1.2.3\"] or a local pinned binary.",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-008",
+      "rule_id": "AUTHDIFF-RULE-012",
+      "title": "Literal secret-like value in MCP env",
+      "severity": "CRITICAL",
+      "confidence": "OBSERVED",
+      "description": "MCP server `unpinned-demo` appears to embed a literal credential in `env` rather than a placeholder reference. Committed secrets are an immediate exposure.",
+      "component_ids": [
+        "C-002"
+      ],
+      "evidence_ids": [
+        "E-008"
+      ],
+      "capabilities": [
+        "access_secrets"
+      ],
+      "attacker_control": "Anyone with repo or backup access can read the credential",
+      "entry_point": ".cursor/mcp.json",
+      "trust_boundary": "Repository contents \u2192 MCP process environment",
+      "impact": "Credential theft and downstream account takeover",
+      "missing_controls": [
+        "Secret store / OS keychain",
+        "Placeholder env expansion only"
+      ],
+      "recommended_action": "Replace literal values with `${ENV}` references; rotate the secret.",
+      "exploitability": "UNKNOWN",
+      "exposure": "LITERAL_SECRET",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "Open the MCP JSON env block; confirm values are placeholders, not literals.",
+      "fix_snippet": "Use \"API_KEY\": \"${API_KEY}\" and inject from the host secret store.",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-009",
+      "rule_id": "AUTHDIFF-RULE-021",
+      "title": "Unpinned MCP launcher with secret-bearing env",
+      "severity": "CRITICAL",
+      "confidence": "OBSERVED",
+      "description": "MCP server `unpinned-demo` combines an unpinned package launcher with secret-like environment values. A registry rug-pull can inherit those secrets without a config change.",
+      "component_ids": [
+        "C-002"
+      ],
+      "evidence_ids": [
+        "E-009"
+      ],
+      "capabilities": [
+        "execute_commands",
+        "access_secrets",
+        "invoke_tools"
+      ],
+      "attacker_control": "Compromised registry package + embedded or inherited credentials",
+      "entry_point": ".cursor/mcp.json",
+      "trust_boundary": "Package registry \u2192 MCP process env \u2192 secret material",
+      "impact": "Credential theft or privileged tool abuse after an unpinned update",
+      "missing_controls": [
+        "Pinned package version/digest",
+        "Env placeholders only (no literals)"
+      ],
+      "recommended_action": "Pin the package and replace env literals with ${ENV} references.",
+      "exploitability": "UNKNOWN",
+      "exposure": "UNPINNED_WITH_SECRETS",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "Confirm npx -y/uvx without pin AND secret-named env keys in the same server.",
+      "fix_snippet": "Pin pkg@1.2.3; set \"API_KEY\": \"${API_KEY}\" (not a literal).",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-010",
+      "rule_id": "AUTHDIFF-RULE-003",
+      "title": "MCP server uses remote endpoint",
+      "severity": "MEDIUM",
+      "confidence": "OBSERVED",
+      "description": "MCP server `cleartext-remote` is configured with a remote URL. This is an external exposure surface; TLS identity and credential forwarding are not verified by this rule.",
+      "component_ids": [
+        "C-003"
+      ],
+      "evidence_ids": [
+        "E-010"
+      ],
+      "capabilities": [
+        "access_network",
+        "invoke_tools"
+      ],
+      "attacker_control": "Compromised remote MCP endpoint or MITM without transport identity",
+      "entry_point": ".cursor/mcp.json",
+      "trust_boundary": "Host agent \u2192 remote network service",
+      "impact": "Potential exfiltration or tool abuse via remote MCP",
+      "missing_controls": [
+        "Transport identity / TLS pinning",
+        "OAuth / credential forwarding scope review"
+      ],
+      "recommended_action": "Verify endpoint identity, TLS, OAuth scopes, and whether secrets are forwarded.",
+      "exploitability": "UNKNOWN",
+      "exposure": "REMOTE_ENDPOINT",
+      "finding_class": "EXPOSURE",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "",
+      "fix_snippet": "",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-011",
+      "rule_id": "AUTHDIFF-RULE-013",
+      "title": "Remote MCP endpoint uses cleartext HTTP",
+      "severity": "HIGH",
+      "confidence": "OBSERVED",
+      "description": "MCP server `cleartext-remote` points at `http://mcp.example.invalid/sse` over HTTP. Tool traffic and any forwarded credentials lack transport confidentiality/integrity.",
+      "component_ids": [
+        "C-003"
+      ],
+      "evidence_ids": [
+        "E-011"
+      ],
+      "capabilities": [
+        "access_network",
+        "invoke_tools",
+        "access_secrets"
+      ],
+      "attacker_control": "Network MITM on the path to the MCP endpoint",
+      "entry_point": ".cursor/mcp.json",
+      "trust_boundary": "Host agent \u2192 cleartext network \u2192 remote MCP",
+      "impact": "Credential and tool-argument interception or modification",
+      "missing_controls": [
+        "HTTPS / TLS",
+        "Certificate pinning where appropriate"
+      ],
+      "recommended_action": "Use https:// only; reject plain HTTP remote MCP registrations.",
+      "exploitability": "UNKNOWN",
+      "exposure": "INSECURE_TRANSPORT",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "LITERAL_CONFIG",
+      "verify_in_60s": "Confirm the url field starts with https://.",
+      "fix_snippet": "Change \"url\": \"http://...\" to \"https://...\".",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-012",
+      "rule_id": "AUTHDIFF-RULE-007",
+      "title": "Unattended automation or CI workflow present",
+      "severity": "MEDIUM",
+      "confidence": "OBSERVED",
+      "description": "`agent` is unattended CI that also references agent/MCP-related steps. Review triggers, tokens, and whether agent authority can run unattended.",
+      "component_ids": [
+        "C-004"
+      ],
+      "evidence_ids": [
+        "E-012"
+      ],
+      "capabilities": [
+        "unattended_operation",
+        "access_secrets",
+        "invoke_agent_tooling"
+      ],
+      "attacker_control": "Malicious trigger payload or compromised workflow definition",
+      "entry_point": ".github/workflows/agent.yml",
+      "trust_boundary": "Trigger \u2192 privileged unattended execution",
+      "impact": "Actions may run without interactive human approval",
+      "missing_controls": [
+        "Webhook authentication / replay protection",
+        "Least-privilege workflow tokens"
+      ],
+      "recommended_action": "Confirm agent/MCP steps need this workflow; pin launchers; least-privilege tokens.",
+      "exploitability": "UNKNOWN",
+      "exposure": "REPO_CONFIG",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "",
+      "fix_snippet": "",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-013",
+      "rule_id": "AUTHDIFF-RULE-007",
+      "title": "Unattended automation or CI workflow present",
+      "severity": "MEDIUM",
+      "confidence": "OBSERVED",
+      "description": "`agent` is unattended CI that also references agent/MCP-related steps. Review triggers, tokens, and whether agent authority can run unattended.",
+      "component_ids": [
+        "C-005"
+      ],
+      "evidence_ids": [
+        "E-013"
+      ],
+      "capabilities": [
+        "unattended_operation",
+        "access_secrets",
+        "invoke_agent_tooling"
+      ],
+      "attacker_control": "Malicious trigger payload or compromised workflow definition",
+      "entry_point": ".github/workflows/agent.yml",
+      "trust_boundary": "Trigger \u2192 privileged unattended execution",
+      "impact": "Actions may run without interactive human approval",
+      "missing_controls": [
+        "Webhook authentication / replay protection",
+        "Least-privilege workflow tokens"
+      ],
+      "recommended_action": "Confirm agent/MCP steps need this workflow; pin launchers; least-privilege tokens.",
+      "exploitability": "UNKNOWN",
+      "exposure": "REPO_CONFIG",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "",
+      "fix_snippet": "",
+      "suppressed": false
+    },
+    {
+      "finding_id": "F-014",
+      "rule_id": "AUTHDIFF-RULE-016",
+      "title": "pull_request_target workflow invokes agent-related steps",
+      "severity": "HIGH",
+      "confidence": "POTENTIAL",
+      "description": "CI workflow `agent` uses `pull_request_target` together with agent/MCP-related steps. Fork PRs can often influence checkout/content while retaining privileged secrets \u2014 a classic CI + agent abuse path.",
+      "component_ids": [
+        "C-005"
+      ],
+      "evidence_ids": [
+        "E-014"
+      ],
+      "capabilities": [
+        "unattended_operation",
+        "access_secrets",
+        "execute_commands"
+      ],
+      "attacker_control": "Malicious pull request from a fork",
+      "entry_point": ".github/workflows/agent.yml",
+      "trust_boundary": "Fork PR content \u2192 privileged workflow + agent tools",
+      "impact": "Secret theft or privileged agent actions from untrusted PR content",
+      "missing_controls": [
+        "Avoid pull_request_target for untrusted code",
+        "Persist-credentials false + explicit safe checkout"
+      ],
+      "recommended_action": "Prefer pull_request; never feed fork PR code to privileged agents.",
+      "exploitability": "UNKNOWN",
+      "exposure": "PR_TARGET_AGENT",
+      "finding_class": "SECURITY_FINDING",
+      "evidence_strength": "INFERRED_HINT",
+      "verify_in_60s": "Confirm `on: pull_request_target` and whether agent steps touch PR code.",
+      "fix_snippet": "Switch to pull_request, or isolate secrets from any PR-controlled checkout.",
+      "suppressed": false
+    }
+  ],
+  "relationships": [],
+  "coverage": {
+    "adapter_matrix": [
+      {
+        "family": "Skill",
+        "adapter": "skill_md",
+        "maturity": "SUPPORTED",
+        "notes": "Discovers SKILL.md manifests; does not verify runtime behavior."
+      },
+      {
+        "family": "MCP",
+        "adapter": "mcp_config",
+        "maturity": "PARTIAL",
+        "notes": "Client registration JSON including mcp_example.json; effective host binding is MANUAL_ONLY."
+      },
+      {
+        "family": "MCP server source",
+        "adapter": "mcp_server_source",
+        "maturity": "PARTIAL",
+        "notes": "Heuristic discovery of MCP server implementations; tool authz not verified."
+      },
+      {
+        "family": "A2A",
+        "adapter": "a2a_agent_card",
+        "maturity": "PARTIAL",
+        "notes": "Agent card JSON identity; message trust and delegation are MANUAL_ONLY."
+      },
+      {
+        "family": "Instruction rules",
+        "adapter": "instruction_rules",
+        "maturity": "SUPPORTED",
+        "notes": "AGENTS.md, CLAUDE.md, and Cursor rules pack paths."
+      },
+      {
+        "family": "Hook",
+        "adapter": "hooks",
+        "maturity": "PARTIAL",
+        "notes": "hooks.json + hooks/ layouts with lifecycle/identity hints; Claude settings hooks via claude_settings. Effective host binding MANUAL_ONLY."
+      },
+      {
+        "family": "Plugin",
+        "adapter": "plugins",
+        "maturity": "PARTIAL",
+        "notes": "Manifest heuristics only; publisher and OAuth scopes are MANUAL_ONLY."
+      },
+      {
+        "family": "Subagent",
+        "adapter": "subagents",
+        "maturity": "PARTIAL",
+        "notes": "agents/ and subagents/ definitions; inherited permissions need deep review."
+      },
+      {
+        "family": "Automation",
+        "adapter": "automations",
+        "maturity": "PARTIAL",
+        "notes": "Workflow and automation manifests; effective credentials are NOT VERIFIED."
+      },
+      {
+        "family": "CI / GitHub Actions",
+        "adapter": "github_workflows",
+        "maturity": "PARTIAL",
+        "notes": "Discovers .github/workflows; does not evaluate runner trust or secret exfil paths."
+      },
+      {
+        "family": "Host effective permissions",
+        "adapter": "host_profiles",
+        "maturity": "PARTIAL",
+        "notes": "Host profile markers only; effective runtime permissions stay MANUAL_ONLY."
+      },
+      {
+        "family": "Browser agents",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; no dedicated discovery adapter."
+      },
+      {
+        "family": "Memory / RAG",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; tenant isolation not auto-discovered."
+      },
+      {
+        "family": "Model providers",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; endpoint/model config discovery not automated."
+      },
+      {
+        "family": "Multimodal artifacts",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Assessment module exists; no artifact inspection adapters."
+      },
+      {
+        "family": "Runtime behavior",
+        "adapter": null,
+        "maturity": "UNSUPPORTED",
+        "notes": "No runtime harness in passive mode."
+      },
+      {
+        "family": "Publisher / artifact provenance",
+        "adapter": null,
+        "maturity": "MANUAL_ONLY",
+        "notes": "Digest helpers exist; full signature/SBOM verification is not shipped."
+      }
+    ],
+    "authority_layers": {
+      "DECLARED": "What the integration says it requires or exposes.",
+      "CONFIGURED": "What host/repo configuration appears to expose.",
+      "EFFECTIVE": "What the execution environment actually permits.",
+      "VERIFIED": "What an authorized test independently established."
+    },
+    "component_counts_by_type": {
+      "Skill": 1,
+      "MCP Server Registration": 2,
+      "Automation / Workflow": 1,
+      "CI Workflow": 1,
+      "Agent Host": 1
+    },
+    "component_counts_by_maturity": {
+      "SUPPORTED": 1,
+      "PARTIAL": 5,
+      "MANUAL_ONLY": 0,
+      "UNSUPPORTED": 0
+    },
+    "deterministically_discovered": 6,
+    "supported_ratio": 0.1667,
+    "unparsed_agent_config_count": 0,
+    "parser_events": [],
+    "manual_review_families": [
+      "Browser agents",
+      "Memory / RAG",
+      "Model providers",
+      "Multimodal artifacts",
+      "Runtime behavior",
+      "Publisher / artifact provenance"
+    ],
+    "high_priority_review_areas": [
+      {
+        "component_id": "C-001",
+        "name": "bootstrap",
+        "type": "Skill",
+        "repository_path": "skills/bootstrap/SKILL.md",
+        "hints": [
+          "external_url_reference",
+          "script_reference",
+          "download_and_execute",
+          "permission_bypass_flag",
+          "instruction_abuse_content",
+          "executable_evidence"
+        ]
+      },
+      {
+        "component_id": "C-002",
+        "name": "unpinned-demo",
+        "type": "MCP Server Registration",
+        "repository_path": ".cursor/mcp.json",
+        "hints": [
+          "local_command_transport",
+          "unpinned_package_launcher",
+          "sets_environment",
+          "literal_secret_in_env"
+        ]
+      },
+      {
+        "component_id": "C-003",
+        "name": "cleartext-remote",
+        "type": "MCP Server Registration",
+        "repository_path": ".cursor/mcp.json",
+        "hints": [
+          "remote_endpoint",
+          "insecure_http_remote"
+        ]
+      },
+      {
+        "component_id": "C-004",
+        "name": "agent",
+        "type": "Automation / Workflow",
+        "repository_path": ".github/workflows/agent.yml",
+        "hints": [
+          "scheduled_or_event_trigger",
+          "credential_reference",
+          "agent_related_step"
+        ]
+      },
+      {
+        "component_id": "C-005",
+        "name": "agent",
+        "type": "CI Workflow",
+        "repository_path": ".github/workflows/agent.yml",
+        "hints": [
+          "secret_reference",
+          "pull_request_target",
+          "agent_related_step",
+          "pull_request_target_with_agent"
+        ]
+      },
+      {
+        "component_id": "C-006",
+        "name": "Cursor",
+        "type": "Agent Host",
+        "repository_path": ".cursor/mcp.json",
+        "hints": [
+          "host_declared_configuration"
+        ]
+      }
+    ],
+    "not_verified": [
+      "Runtime behavior",
+      "Publisher identity",
+      "Effective host permissions",
+      "Credential isolation"
+    ],
+    "layer_honesty": "Passive scans establish DECLARED/CONFIGURED authority only. EFFECTIVE and VERIFIED require host or authorized runtime evidence."
+  },
+  "limitations": [
+    "Deterministic rules produce OBSERVED/POTENTIAL findings, not confirmed exploits.",
+    "CAPABILITY observations are not vulnerabilities; SECURITY_FINDING requires exposure conditions and missing controls.",
+    "Passive scans establish DECLARED/CONFIGURED authority only.",
+    "Host EFFECTIVE permissions and VERIFIED runtime behavior remain NOT VERIFIED.",
+    "Incomplete adapter coverage means absence of findings is not evidence of safety."
+  ],
+  "target_policy_ignored": false
+}

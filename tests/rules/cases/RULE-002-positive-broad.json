@@ -1,0 +1,17 @@
+{
+  "id": "RULE-002-positive-broad",
+  "rule_id": "AUTHDIFF-RULE-002",
+  "variant": "positive",
+  "fixture": "fixtures/rule-002-positive-broad",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "OBSERVED",
+    "fail_on": "high",
+    "fail_on_exit_code": 1
+  },
+  "notes": [
+    "Broad filesystem args (/, ~, ..) escalate with OBSERVED confidence"
+  ]
+}

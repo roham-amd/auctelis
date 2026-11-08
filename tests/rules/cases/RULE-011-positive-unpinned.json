@@ -1,0 +1,12 @@
+{
+  "id": "RULE-011-positive-unpinned",
+  "rule_id": "AUTHDIFF-RULE-011",
+  "variant": "positive",
+  "fixture": "fixtures/rule-011-positive-unpinned",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "OBSERVED"
+  }
+}

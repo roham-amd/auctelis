@@ -1,0 +1,34 @@
+# VCS / IDE
+.git
+.github
+.cursor
+.idea
+.vscode
+*.code-workspace
+
+# Local Python / caches
+.venv
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+tools/.venv
+tools/authdiff_tools.egg-info
+.pytest_cache
+
+# Local audit outputs
+authdiff-out/
+authdiff-out-smoke/
+
+# Not required for the runtime CLI image (kit procedure + tools remain)
+docs/
+examples/
+tests/
+control-packs/
+skills/
+
+# Docker build context noise
+.dockerignore
+Dockerfile
+docker-compose*.yml

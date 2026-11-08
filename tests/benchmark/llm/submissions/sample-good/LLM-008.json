@@ -1,0 +1,1 @@
+{"case_id":"LLM-008","model":"sample-auditor/good","findings":[{"title":"Skill name or path suggests prompt-injection oriented content","severity":"LOW","status":"POTENTIAL","evidence_ids":["E-1"]}]}

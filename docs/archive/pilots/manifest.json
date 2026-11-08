@@ -1,0 +1,48 @@
+{
+  "manifest_version": "1.0",
+  "purpose": "Curated pilot targets for authdiff adoption and false-positive review",
+  "pilots": [
+    {
+      "id": "skill-to-mcp-path",
+      "path": "tests/benchmark/fixtures/skill-to-mcp-path",
+      "kind": "fixture",
+      "enabled": true,
+      "notes": "Positive authority path: skill + local MCP with broad args"
+    },
+    {
+      "id": "benign-skill-only",
+      "path": "tests/benchmark/fixtures/benign-skill-only",
+      "kind": "fixture",
+      "enabled": true,
+      "notes": "Negative control: benign skill should not fire MCP rules"
+    },
+    {
+      "id": "corpus-benign-skill-mcp",
+      "path": "tests/corpus/fixtures/benign-skill-mcp",
+      "kind": "fixture",
+      "enabled": true,
+      "notes": "Corpus benign skill+MCP combination"
+    },
+    {
+      "id": "corpus-prompt-injection-skill",
+      "path": "tests/corpus/fixtures/prompt-injection-skill",
+      "kind": "fixture",
+      "enabled": true,
+      "notes": "Injection-oriented skill naming / content indicators"
+    },
+    {
+      "id": "host-cursor-declared",
+      "path": "tests/hosts/fixtures/claude-code-declared",
+      "kind": "fixture",
+      "enabled": true,
+      "notes": "Host profile markers (Claude Code declared)"
+    },
+    {
+      "id": "aesa-self",
+      "path": ".",
+      "kind": "self",
+      "enabled": true,
+      "notes": "Scan the AESA repository itself (dogfood)"
+    }
+  ]
+}

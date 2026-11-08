@@ -1,0 +1,9 @@
+{
+  "id": "RULE-012-negative-placeholder",
+  "rule_id": "AUTHDIFF-RULE-012",
+  "variant": "negative",
+  "fixture": "fixtures/rule-012-negative-placeholder",
+  "expect": {
+    "rule_fired": false
+  }
+}

@@ -1,0 +1,1 @@
+{"case_id":"LLM-004","model":"pilot/careful","findings":[{"title":"Pre-tool hook can intercept or mutate tool use","severity":"MEDIUM","status":"POTENTIAL","evidence_ids":["E-004"]}]}

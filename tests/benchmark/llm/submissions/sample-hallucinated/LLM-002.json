@@ -1,0 +1,14 @@
+{
+  "case_id": "LLM-002",
+  "model": "sample-auditor/hallucinated",
+  "findings": [
+    {
+      "finding_id": "F-BAD-1",
+      "title": "Confirmed remote MCP credential exfiltration",
+      "severity": "CRITICAL",
+      "status": "CONFIRMED",
+      "evidence_ids": [],
+      "description": "Invented finding with no evidence."
+    }
+  ]
+}

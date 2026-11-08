@@ -1,0 +1,12 @@
+{
+  "id": "RULE-016-positive-pr-target",
+  "rule_id": "AUTHDIFF-RULE-016",
+  "variant": "positive",
+  "fixture": "fixtures/rule-016-positive-pr-target",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "POTENTIAL"
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "schema": "authdiff.atlas.precision.v1",
+  "product": "authdiff",
+  "product_version": "1.0.0",
+  "updated_at": "2026-11-08",
+  "policy": {
+    "high_critical_require_literal_config": true,
+    "demote_below_precision": 0.7,
+    "min_labeled_for_gate": 100,
+    "target_precision_high_critical": 0.9
+  },
+  "rules": [
+    {
+      "rule_id": "AUTHDIFF-RULE-001",
+      "evidence_strength": "mixed",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-002",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-003",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-004",
+      "evidence_strength": "INFERRED_HINT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-005",
+      "evidence_strength": "INFERRED_HINT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-006",
+      "evidence_strength": "INFERRED_HINT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-007",
+      "evidence_strength": "INFERRED_HINT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-008",
+      "evidence_strength": "TYPE_DEFAULT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-009",
+      "evidence_strength": "INFERRED_HINT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-010",
+      "evidence_strength": "NAME_MARKER",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "LOW"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-011",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-012",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-013",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-014",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-015",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-016",
+      "evidence_strength": "INFERRED_HINT",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-017",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-018",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-019",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-020",
+      "evidence_strength": "NAME_MARKER",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "LOW"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-021",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    },
+    {
+      "rule_id": "AUTHDIFF-RULE-022",
+      "evidence_strength": "LITERAL_CONFIG",
+      "labeled_n": 0,
+      "tp": 0,
+      "fp": 0,
+      "precision": null,
+      "default_severity": "keep"
+    }
+  ],
+  "notes": "N=0 until blind labeling. Fixture regression is tests/test_atlas_lite.py + attack-replay."
+}

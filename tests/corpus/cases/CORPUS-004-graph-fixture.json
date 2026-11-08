@@ -1,0 +1,6 @@
+{
+  "case_id": "CORPUS-004-graph-fixture",
+  "title": "Ecosystem graph schema validates minimal path",
+  "label": "benign",
+  "graph_fixture": "../validation/positive/minimal-graph.json"
+}

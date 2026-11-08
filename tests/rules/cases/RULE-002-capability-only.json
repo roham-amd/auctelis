@@ -1,0 +1,20 @@
+{
+  "id": "RULE-002-capability-only",
+  "rule_id": "AUTHDIFF-RULE-002",
+  "variant": "ambiguous",
+  "fixture": "fixtures/rule-002-capability-only",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "CAPABILITY",
+    "severity": "INFORMATIONAL",
+    "forbid_finding_class": [
+      "SECURITY_FINDING"
+    ],
+    "fail_on": "high",
+    "fail_on_exit_code": 0,
+    "no_security_findings": true
+  },
+  "notes": [
+    "Local MCP alone must not fail CI high gate"
+  ]
+}

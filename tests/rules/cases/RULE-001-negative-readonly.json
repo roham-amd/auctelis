@@ -1,0 +1,13 @@
+{
+  "id": "RULE-001-negative-readonly",
+  "rule_id": "AUTHDIFF-RULE-001",
+  "variant": "negative",
+  "fixture": "fixtures/rule-001-negative-readonly",
+  "expect": {
+    "rule_fired": false,
+    "no_security_findings": true
+  },
+  "notes": [
+    "Readonly skill must not fire script rule"
+  ]
+}

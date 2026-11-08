@@ -1,0 +1,9 @@
+{
+  "id": "RULE-015-negative-local",
+  "rule_id": "AUTHDIFF-RULE-015",
+  "variant": "negative",
+  "fixture": "fixtures/rule-015-negative-local",
+  "expect": {
+    "rule_fired": false
+  }
+}

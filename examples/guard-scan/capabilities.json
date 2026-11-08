@@ -1,0 +1,94 @@
+{
+  "capabilities": [
+    {
+      "kind": "access_network",
+      "status": "POTENTIAL",
+      "component_id": "C-001",
+      "evidence_ids": [
+        "E-INV-C-001"
+      ],
+      "notes": "Derived from priority hint `external_url_reference`.",
+      "origin": "POTENTIAL"
+    },
+    {
+      "kind": "execute_commands",
+      "status": "POTENTIAL",
+      "component_id": "C-001",
+      "evidence_ids": [
+        "E-INV-C-001"
+      ],
+      "notes": "Derived from priority hint `script_reference`.",
+      "origin": "POTENTIAL"
+    },
+    {
+      "kind": "modify_agent_instructions",
+      "status": "OBSERVED",
+      "component_id": "C-001",
+      "evidence_ids": [
+        "E-INV-C-001"
+      ],
+      "notes": "Skills inject instructions into the agent.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "execute_commands",
+      "status": "OBSERVED",
+      "component_id": "C-002",
+      "evidence_ids": [
+        "E-INV-C-002"
+      ],
+      "notes": "Derived from priority hint `local_command_transport`.",
+      "origin": "DECLARED"
+    },
+    {
+      "kind": "invoke_tools",
+      "status": "OBSERVED",
+      "component_id": "C-002",
+      "evidence_ids": [
+        "E-INV-C-002"
+      ],
+      "notes": "MCP registration exposes tool surface to the host agent.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "access_network",
+      "status": "OBSERVED",
+      "component_id": "C-003",
+      "evidence_ids": [
+        "E-INV-C-003"
+      ],
+      "notes": "Derived from priority hint `remote_endpoint`.",
+      "origin": "DECLARED"
+    },
+    {
+      "kind": "invoke_tools",
+      "status": "OBSERVED",
+      "component_id": "C-003",
+      "evidence_ids": [
+        "E-INV-C-003"
+      ],
+      "notes": "MCP registration exposes tool surface to the host agent.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "unattended_operation",
+      "status": "OBSERVED",
+      "component_id": "C-005",
+      "evidence_ids": [
+        "E-INV-C-005"
+      ],
+      "notes": "CI workflows execute with repository privileges.",
+      "origin": "TYPE_DEFAULT"
+    },
+    {
+      "kind": "access_secrets",
+      "status": "POTENTIAL",
+      "component_id": "C-005",
+      "evidence_ids": [
+        "E-INV-C-005"
+      ],
+      "notes": "Workflows commonly inherit repository secrets.",
+      "origin": "TYPE_DEFAULT"
+    }
+  ]
+}

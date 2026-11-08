@@ -1,0 +1,15 @@
+{
+  "id": "RULE-021-ambiguous-placeholder",
+  "rule_id": "AUTHDIFF-RULE-021",
+  "variant": "ambiguous",
+  "fixture": "fixtures/rule-021-ambiguous-placeholder",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "HIGH",
+    "confidence": "POTENTIAL"
+  },
+  "notes": [
+    "Placeholder secret lowers combo severity vs literal token"
+  ]
+}

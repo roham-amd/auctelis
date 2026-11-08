@@ -1,0 +1,9 @@
+version: 1
+
+policy:
+  # Day-one default is advisory — promote to enforce after precision holds.
+  mode: advisory
+  fail_on: never
+  output_dir: authdiff-out
+  # baseline: .authdiff/baseline.json
+  ignore: []

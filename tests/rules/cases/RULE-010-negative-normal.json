@@ -1,0 +1,11 @@
+{
+  "id": "RULE-010-negative-normal",
+  "rule_id": "AUTHDIFF-RULE-010",
+  "variant": "negative",
+  "fixture": "fixtures/rule-010-negative-normal",
+  "expect": {
+    "rule_fired": false,
+    "no_security_findings": true
+  },
+  "notes": []
+}

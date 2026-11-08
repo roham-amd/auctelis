@@ -1,0 +1,23 @@
+# Local authdiff container — kit baked into the image; mount a target repo at /work.
+#
+#   docker compose build
+#   TARGET=/path/to/repo docker compose run --rm authdiff scan /work -o /tmp/authdiff-out
+#   docker compose run --rm authdiff doctor --home /work
+#
+# Prefer writing artifacts outside the mounted target (e.g. /tmp/authdiff-out).
+
+services:
+  authdiff:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: authdiff:local
+    working_dir: /work
+    volumes:
+      - ${TARGET:-.}:/work
+    # Drop privileges already handled by USER in the Dockerfile.
+  # Compat alias
+  authdiff:
+    extends:
+      service: authdiff
+    image: authdiff:local

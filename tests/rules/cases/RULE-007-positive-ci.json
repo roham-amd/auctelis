@@ -1,0 +1,17 @@
+{
+  "id": "RULE-007-positive-ci",
+  "rule_id": "AUTHDIFF-RULE-007",
+  "variant": "positive",
+  "fixture": "fixtures/rule-007-positive-ci",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "CAPABILITY",
+    "severity": "INFORMATIONAL",
+    "forbid_finding_class": [
+      "SECURITY_FINDING"
+    ]
+  },
+  "notes": [
+    "CI alone is capability"
+  ]
+}

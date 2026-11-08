@@ -1,0 +1,229 @@
+{
+  "audit_version": "1.0",
+  "repository": "https://github.com/example-org/example-agent-catalog",
+  "repository_role": "Awesome-list",
+  "repository_visibility": "Public",
+  "audited_commit": null,
+  "tree_sha": null,
+  "previous_audited_commit": null,
+  "audit_mode": "full",
+  "workflow_mode": "discovery_then_risk_prioritized_deep_audit",
+  "audit_scope_mode": "catalog_inventory",
+  "audit_date_utc": "2026-11-02T00:00:00Z",
+  "environment_mode": "DEGRADED_READ_ONLY",
+  "repository_decision": "ECOSYSTEM_INVENTORY_ONLY",
+  "overall_risk_rating": "INSUFFICIENT EVIDENCE",
+  "evidence_confidence": "LOW",
+  "capability_matrix": [],
+  "component_inventory": {
+    "total_discovered": 2,
+    "deeply_reviewed": 0,
+    "partially_reviewed": 0,
+    "inventory_only": 2,
+    "not_reviewed": 2,
+    "out_of_scope": 0,
+    "external_references": 1,
+    "external_sources_deeply_reviewed": 0,
+    "pending_batches": []
+  },
+  "risk_dimensions": {
+    "component_security_risk": "NOT ASSESSED",
+    "agent_authority_runtime_risk": "INSUFFICIENT EVIDENCE",
+    "supply_chain_trust_risk": "INSUFFICIENT EVIDENCE",
+    "production_data_protection_risk": "INSUFFICIENT EVIDENCE"
+  },
+  "components": [
+    {
+      "component_id": "C-001",
+      "name": "example-filesystem-mcp",
+      "type": "MCP Server",
+      "reference_kind": "EXTERNAL_SOURCE_REPOSITORY",
+      "repository_path": "README.md#filesystem-mcp",
+      "source_type": "External repo",
+      "source_reference": "https://github.com/example-org/filesystem-mcp",
+      "source_commit": null,
+      "version": null,
+      "artifact_reference": null,
+      "artifact_digest": null,
+      "publisher": null,
+      "installation_method": "Unknown",
+      "update_policy": "Unknown",
+      "host_agent": "Unknown",
+      "host_version": null,
+      "capabilities": ["filesystem read/write"],
+      "sensitive_permissions": ["Read local files", "Write/delete files"],
+      "external_destinations": [],
+      "execution_model": null,
+      "discovery_status": "IDENTIFIED",
+      "source_review_status": "NOT VERIFIED",
+      "artifact_integrity_status": "NOT VERIFIED",
+      "source_artifact_traceability_status": "NOT VERIFIED",
+      "host_integration_status": "NOT VERIFIED",
+      "runtime_review_status": "NOT VERIFIED",
+      "cross_component_review_status": "NOT VERIFIED",
+      "coverage": {
+        "population_defined": true,
+        "applicable_surfaces": null,
+        "reviewed": null,
+        "not_verified": null,
+        "not_reviewed": null,
+        "not_applicable": null,
+        "omissions": ["External source not authorized for deep review"]
+      },
+      "risk_dimensions": {
+        "component_security_risk": "NOT ASSESSED",
+        "agent_authority_runtime_risk": "INSUFFICIENT EVIDENCE",
+        "supply_chain_trust_risk": "INSUFFICIENT EVIDENCE",
+        "production_data_protection_risk": "INSUFFICIENT EVIDENCE"
+      },
+      "evidence_confidence": "LOW",
+      "risk_rating": "INSUFFICIENT EVIDENCE",
+      "component_security_decision": "NOT ASSESSED",
+      "production_suitability_decision": "NOT ASSESSED",
+      "allowed_restricted_use": null,
+      "prohibited_use": [],
+      "finding_ids": [],
+      "hard_gates": [],
+      "conditions": [],
+      "evidence_ids": ["E-001"],
+      "unverified_areas": [
+        "External implementation source",
+        "Consumed artifact digest",
+        "Host permission model"
+      ],
+      "limitations": [
+        "EXTERNAL_SOURCE_SCOPE=repository_only"
+      ]
+    }
+  ],
+  "external_sources": [],
+  "cross_component_analysis": {
+    "performed": false,
+    "interaction_graph_reference": null,
+    "tool_chaining_reviewed": false,
+    "delegation_reviewed": false,
+    "hook_interactions_reviewed": false,
+    "automation_interactions_reviewed": false,
+    "workflow_interactions_reviewed": false,
+    "shared_credentials_reviewed": false,
+    "shared_memory_reviewed": false,
+    "tool_shadowing_reviewed": false,
+    "approval_bypass_reviewed": false,
+    "tenant_isolation_reviewed": false,
+    "cross_component_risks": []
+  },
+  "coverage": {
+    "population_defined": true,
+    "applicable_surfaces": 8,
+    "reviewed": 2,
+    "not_verified": 4,
+    "not_reviewed": 2,
+    "not_applicable": 0,
+    "omissions": [
+      "Deep source review of external MCP repositories",
+      "Host configuration evidence",
+      "Runtime validation"
+    ]
+  },
+  "trust_chain": {
+    "source_identity_verified": null,
+    "artifact_identity_verified": null,
+    "artifact_digest_verified": null,
+    "signature_verified": null,
+    "provenance_verified": null,
+    "source_artifact_traceability_verified": null,
+    "host_permissions_verified": null,
+    "runtime_configuration_verified": null,
+    "runtime_behavior_tested": false
+  },
+  "observations": {
+    "prompt_injection_found": null,
+    "tool_poisoning_found": null,
+    "tool_shadowing_or_collision_found": null,
+    "dynamic_metadata_drift_found": null,
+    "excessive_agency_found": null,
+    "unauthorized_tool_access_confirmed": null,
+    "sensitive_data_exfiltration_confirmed": null,
+    "cross_tenant_issue_confirmed": null,
+    "malicious_behavior_confirmed": null,
+    "malicious_package_match": null,
+    "active_or_historical_secret_exposure_confirmed": null,
+    "external_data_transmission_confirmed": null,
+    "oauth_confused_deputy_found": null,
+    "approval_replay_or_bypass_found": null,
+    "memory_or_context_poisoning_found": null,
+    "hook_execution_risk_found": null,
+    "unsafe_automation_found": null,
+    "subagent_privilege_escalation_found": null,
+    "cross_component_attack_path_found": null,
+    "model_supply_chain_issue_found": null,
+    "browser_agent_security_issue_found": null,
+    "cloud_infrastructure_issue_found": null
+  },
+  "findings_count": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "informational": 1
+  },
+  "findings": [
+    {
+      "finding_id": "F-001",
+      "title": "External MCP references inventoried without deep-source authorization",
+      "severity": "INFORMATIONAL",
+      "evidence_label": "CONFIRMED",
+      "affected_component_ids": ["C-001"],
+      "evidence_ids": ["E-001", "E-999"],
+      "description": "Catalog entries reference external MCP repositories. Under EXTERNAL_SOURCE_SCOPE=repository_only, implementations remain unreviewed.",
+      "remediation": "Authorize exact external repositories and pin refs/digests before deep audit or production consideration."
+    }
+  ],
+  "evidence_registry": [
+    {
+      "evidence_id": "E-001",
+      "evidence_type": "SOURCE_STATIC",
+      "repository": "example-org/example-agent-catalog",
+      "commit_sha": null,
+      "tree_sha": null,
+      "component_id": "C-001",
+      "path_or_source": "README.md",
+      "line_start": null,
+      "line_end": null,
+      "artifact_digest": null,
+      "external_reference": "https://github.com/example-org/filesystem-mcp",
+      "retrieval_date_utc": "2026-11-02T00:00:00Z",
+      "claim_supported": "Catalog lists an external filesystem MCP reference",
+      "evidence_label": "CONFIRMED",
+      "verification_method": "Illustrative example only",
+      "limitations": ["Example fixture; not a real audit"]
+    }
+  ],
+  "modules_applied": [],
+  "sbom": {
+    "generated": false,
+    "format": null,
+    "tool": null,
+    "tool_version": null,
+    "scope": null,
+    "digest": null,
+    "limitations": ["SBOM not generated in inventory-only example"]
+  },
+  "component_hard_gates": [],
+  "cross_component_hard_gates": [],
+  "conditions": [],
+  "unverified_critical_areas": [
+    "Exact audited commit of target catalog",
+    "External MCP source and artifacts",
+    "Host permissions and runtime behavior"
+  ],
+  "limitations": [
+    "Illustrative sample summary for schema/demo purposes",
+    "No live target was audited to produce this fixture"
+  ],
+  "follow_on_test_plan_required": null,
+  "json_validation_status": "NOT VALIDATED",
+  "score_type": "NONE",
+  "score": null,
+  "recommend_production_use": false
+}

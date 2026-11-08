@@ -1,0 +1,110 @@
+# Dependabot — authdiff toolchain (uv) + Docker base images + CI Actions
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+# uv guide: https://docs.astral.sh/uv/guides/integration/dependabot/
+#
+# Source of truth:
+#   - Direct deps: tools/pyproject.toml
+#   - Dev deps: [dependency-groups] in tools/pyproject.toml
+#   - Exact versions + hashes: tools/uv.lock
+#   - Container bases: Dockerfile tag@digest pins (python + astral-sh/uv)
+#
+# After merging Dependabot PRs, prefer:
+#   uv add <pkg> / uv lock --upgrade
+#   uv sync --locked
+#   authdiff-dev build all
+#   docker compose build   # after Docker base bumps
+# Security updates ignore cooldown and open independently of the version schedule.
+
+version: 2
+
+updates:
+  # --- uv / PyPI (authdiff under tools/) ---
+  - package-ecosystem: uv
+    directory: /tools
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: "deps"
+      include: scope
+    groups:
+      python-runtime:
+        patterns:
+          - "jsonschema*"
+          - "packaging"
+          - "referencing"
+          - "attrs"
+          - "rpds-py"
+        exclude-patterns:
+          - "pytest*"
+          - "ruff"
+          - "Pygments"
+          - "pluggy"
+          - "iniconfig"
+          - "colorama"
+      python-dev:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "Pygments"
+          - "pluggy"
+          - "iniconfig"
+          - "colorama"
+      python-build:
+        patterns:
+          - "setuptools"
+
+  # --- Docker base images (Dockerfile tag@digest) ---
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
+      semver-major-days: 7
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "docker"
+      include: scope
+    groups:
+      docker-images:
+        patterns:
+          - "*"
+
+  # --- GitHub Actions (workflows + composite actions) ---
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    # github-actions does not support semver-*-days cooldown fields.
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "ci"
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"

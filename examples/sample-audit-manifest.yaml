@@ -1,0 +1,22 @@
+manifest_version: "1.0"
+authdiff_product_version: "3.0.0"
+audit_procedure_version: "1.0"
+scope_mode: selected_component_deep_audit
+repository: https://github.com/example-org/example-agent-catalog
+audited_commit: null
+tree_sha: null
+acquired_at_utc: "2026-11-03T10:00:00Z"
+passive_mode: true
+included_paths:
+  - skills/
+  - .cursor/
+excluded_paths:
+  - node_modules/
+environment_mode: ISOLATED_TOOLING
+adapter_versions:
+  authdiff: "0.3.0"
+  skill_md: "0.3.0"
+  mcp_config: "0.3.0"
+limitations:
+  - Illustrative manifest only
+  - External sources not authorized in this example

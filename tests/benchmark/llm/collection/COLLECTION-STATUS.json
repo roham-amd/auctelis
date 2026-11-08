@@ -1,0 +1,23 @@
+{
+  "status_version": "1.0",
+  "contract_id": "AgentSecBench-LLM-EVAL-0.3.0",
+  "dataset_version": "0.3.0",
+  "collection_status": "open",
+  "opened_utc": "2026-11-04",
+  "target_close_utc": "2026-12-04",
+  "hard_stop_utc": "2026-12-18",
+  "funnel": {
+    "invitations": 0,
+    "responses": 0,
+    "packages_issued": 0,
+    "submissions_received": 0,
+    "valid_external_intakes": 0,
+    "distinct_agent_configurations": 0,
+    "held_out_cases_scored_external": 0
+  },
+  "minimum_evidence_met": false,
+  "notes": [
+    "Zeros are intentional until outreach produces independent valid intakes.",
+    "Do not substitute pilots, samples, or templates."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "RULE-006-ambiguous-wording",
+  "rule_id": "AUTHDIFF-RULE-006",
+  "variant": "ambiguous",
+  "fixture": "fixtures/rule-006-ambiguous-wording",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "CAPABILITY",
+    "severity": "LOW",
+    "confidence": "POTENTIAL",
+    "forbid_finding_class": [
+      "SECURITY_FINDING"
+    ]
+  },
+  "notes": [
+    "Wording-only credential mentions stay capability inventory"
+  ]
+}

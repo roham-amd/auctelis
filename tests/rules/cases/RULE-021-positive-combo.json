@@ -1,0 +1,12 @@
+{
+  "id": "RULE-021-positive-combo",
+  "rule_id": "AUTHDIFF-RULE-021",
+  "variant": "positive",
+  "fixture": "fixtures/rule-021-positive-combo",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "CRITICAL",
+    "confidence": "OBSERVED"
+  }
+}
