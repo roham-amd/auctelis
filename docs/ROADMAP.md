@@ -65,7 +65,7 @@ validation while external submissions remain N=0.
 
 ### Days 13–20 · Authority gate
 
-- [x] Action `locked` default **true** (1.0.0)
+- [x] Action `locked` default **true** (current pin `@v0.2.0`)
 - [x] Trusted base-ref policy loading
 - [x] Addition / expansion / reduction / replacement / representation / mixed tests
 - [x] Gated findings require evidence ids (`is_gate_finding`)

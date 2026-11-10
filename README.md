@@ -33,14 +33,14 @@ committed [`AUTHORITY.lock`](docs/AUTHORITY-LOCK.md) — not a long report.
 uvx --from authdiff authdiff demo
 
 # Current supported path (git tag) until the package is on the index:
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools" authdiff demo
 ```
 
 Persistent install (if continuing):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
 # Later: uv tool install --python 3.12 authdiff
 
 authdiff demo             # canned Authority Diff (aha moment; works from wheel)
@@ -98,8 +98,8 @@ Single recipe (git-tag install + Action). Full example:
 # PyPI not published yet — install from the pinned kit tag, then use Action-bundled tools:
 - run: >
     pip install
-    "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools"
-- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v1.0.0
+    "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
+- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.2.0
   with:
     path: .
     trusted-policy: "true"

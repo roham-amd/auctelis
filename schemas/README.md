@@ -21,7 +21,7 @@ authdiff-dev validate claim path/to/claim.json
 
 | File | Version | Purpose |
 | --- | --- | --- |
-| [`authority-lock.schema.json`](authority-lock.schema.json) | lock `version` **2** | **`AUTHORITY.lock`** — approved authority baseline (north-star artifact) |
+| [`authority-lock.schema.json`](authority-lock.schema.json) | lock `version` **1** | **`AUTHORITY.lock`** — approved authority baseline (north-star artifact) |
 | [`authority-policy.schema.json`](authority-policy.schema.json) | policy contract | `.authdiff.yml` / gate policy shape |
 | [`agent-authority-manifest.schema.json`](agent-authority-manifest.schema.json) | `authdiff.authority_manifest.v1` | Declared vs observed Agent Authority Manifest |
 

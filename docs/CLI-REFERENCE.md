@@ -26,7 +26,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | Core | `scan` / `check` / bare `authdiff` | Repo findings + SARIF (add `--locked`, `--full`) |
 | Core | `lock` | Write / update / `--check` `AUTHORITY.lock` |
 | Core | `ci init` / `init-gate` | `.authdiff.yml` + workflow + CODEOWNERS + lock |
-| Review | `delta` | New-only authority gate vs `--baseline` |
+| Review | `delta` | Alias of `scan` with finding risk-delta vs `--baseline` (≠ `gate --base-lock`) |
 | Review | `harden` / `fix` | Dry-run least-privilege patch proposals |
 | Review | `explain` | Detailed explanation of a finding id |
 | Review | `baseline` | Save / show finding baselines (≠ lock) |

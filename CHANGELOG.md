@@ -7,6 +7,12 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Align remaining install pins and lock docs with **0.2.0** / `AUTHORITY.lock` **v1**
+  (`README.md`, `tools/README.md`, `schemas/README.md`, examples, skill).
+- Document `delta` as a `scan` alias (finding risk-delta), distinct from `gate --base-lock`.
+
 ## [0.2.0] — 2026-11-10
 
 ### Added

@@ -15,7 +15,7 @@ authdiff open microsoft/playwright-mcp -o docs/pilots/results/external-one
 | --- | --- |
 | Commit | `404be8eb89abecff77a55152b6d843d140c78372` |
 | Product / tools (at scan time) | authdiff **3.9.1** / authdiff **0.12.1** |
-| Follow-up | **3.10.0+** demotes ordinary RULE-007 CI noise; regenerate under **1.0.0** before citing |
+| Follow-up | **3.10.0+** demotes ordinary RULE-007 CI noise; regenerate under **0.2.0** before citing |
 | Verdict | `REJECT` / PR decision `BLOCK` |
 | Components | 15 |
 | Gated findings | 11 (1 HIGH, 9 MEDIUM, 1 LOW) |

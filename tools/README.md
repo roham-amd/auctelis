@@ -8,7 +8,7 @@ Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `authdiff` **1.0.0** · Product: authdiff **1.0.0**
+Package: `authdiff` **0.2.0** · Product: authdiff **0.2.0**
 
 ---
 
@@ -36,13 +36,14 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools
+  git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
 authdiff demo
 authdiff doctor
 authdiff open github.com/org/some-skill
 authdiff scan /path/to/target-repo   # bare `authdiff` also defaults to scan .
-authdiff lock
+authdiff lock --accept-gated         # when HIGH/CRITICAL findings are present
+authdiff ci init --owner @your-team
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -127,7 +128,7 @@ uv run --locked authdiff benchmark run
 # Primary product surface
 uv run authdiff doctor [--home DIR] [-o DIR] [--agent]
 uv run authdiff vet SOURCE [-o DIR] [--agent]
-uv run authdiff init-gate [PATH] [--force]
+uv run authdiff ci init --owner @TEAM [PATH] [--force]
 uv run authdiff scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
 uv run authdiff harden [--findings PATH]
 uv run authdiff init-manifest [PATH] [--force]
@@ -165,7 +166,7 @@ uv run authdiff lint [--fix] [--format] [--check-format]
 | `cli/` | argparse construction + command dispatch |
 | `security/` | Guard engine: capabilities, rules, scan, baseline, report |
 | `security/rules.py` | Deterministic rules AUTHDIFF-RULE-001…022 (pack 1.6) |
-| `authority_lock.py` | AUTHORITY.lock v2 write / check / diff |
+| `authority_lock.py` | AUTHORITY.lock v1 write / check / diff |
 | `security/scan.py` | Artifact writer + policy fail-on + PR comment |
 | `security/decision.py` | BLOCK / REVIEW / NO-GATED-FINDINGS |
 | `harden.py` / `authority_manifest.py` | Dry-run patches + AUTHORITY.yml |

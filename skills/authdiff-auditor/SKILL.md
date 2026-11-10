@@ -57,7 +57,7 @@ authdiff diff lock <base>/AUTHORITY.lock <head>/AUTHORITY.lock --agent
 authdiff fix --findings <OUT>/authdiff-out/findings.json
 # Humans only (unset AUTHDIFF_AGENT):
 # authdiff lock --approval @security-owners
-# authdiff ci init
+# authdiff ci init --owner @security-owners
 ```
 
 Read `agent-digest.json` first. Contract fields: `decision`, `gated`, `suppressions`,
