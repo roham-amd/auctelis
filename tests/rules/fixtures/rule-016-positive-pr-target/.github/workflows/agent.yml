@@ -5,4 +5,4 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - run: echo claude agent mcp
+      - run: npx -y some-agent-bot

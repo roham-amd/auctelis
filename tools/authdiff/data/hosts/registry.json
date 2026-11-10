@@ -209,6 +209,58 @@
         "VS Code MCP trust / tool approval mode (NOT VERIFIED from files alone)"
       ],
       "limitations": ["JSONC tolerated; effective host binding remains PARTIAL."]
+    },
+    "zed": {
+      "display_name": "Zed",
+      "support": "PARTIAL",
+      "approval_models": ["unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": ".zed/settings.json",
+          "description": "Zed project MCP / context server registrations",
+          "permission_kind": "declared",
+          "authority_keys": ["context_servers.*.command"]
+        }
+      ],
+      "declared_permission_fields": ["context_servers.*.command", "context_servers.*.url"],
+      "effective_permission_requires": ["Zed runtime tool approval (NOT VERIFIED from files alone)"],
+      "limitations": ["Project settings are declared intent only."]
+    },
+    "continue": {
+      "display_name": "Continue",
+      "support": "PARTIAL",
+      "approval_models": ["per-call", "unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": ".continue/config.json",
+          "description": "Continue MCP server map",
+          "permission_kind": "declared",
+          "authority_keys": ["mcpServers.*.command", "experimental.modelContextProtocolServers"]
+        }
+      ],
+      "declared_permission_fields": ["mcpServers", "experimental.modelContextProtocolServers"],
+      "effective_permission_requires": ["Continue host approval mode (NOT VERIFIED)"],
+      "limitations": ["List-shaped MCP entries normalized to named registrations."]
+    },
+    "opencode": {
+      "display_name": "opencode",
+      "support": "PARTIAL",
+      "approval_models": ["unknown"],
+      "config_surfaces": [
+        {
+          "path_glob": "opencode.json",
+          "description": "opencode MCP registrations",
+          "permission_kind": "declared"
+        },
+        {
+          "path_glob": ".opencode/**",
+          "description": "opencode project configuration",
+          "permission_kind": "declared"
+        }
+      ],
+      "declared_permission_fields": ["mcpServers.*.command"],
+      "effective_permission_requires": ["opencode runtime permissions (NOT VERIFIED)"],
+      "limitations": ["Declared configuration only."]
     }
   }
 }

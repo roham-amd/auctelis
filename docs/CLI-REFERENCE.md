@@ -3,7 +3,7 @@
 Primary command: **`authdiff`**. Compatibility alias: **`authdiff`**.
 Maintainer entry: **`authdiff-dev`** (build / lint / corpus / benchmark / …).
 
-Package `authdiff` **1.0.0** · product **1.0.0** · rule pack **1.6** (001–022).
+Package `authdiff` **0.2.0** · product **0.2.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 lock semantics: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) ·
@@ -89,24 +89,38 @@ Default `--fail-on high`.
 ## `authdiff lock`
 
 ```bash
-authdiff lock [PATH] [--check] [--update] [--lock-file PATH] [--approval OWNER]
+authdiff lock [PATH] [--check] [--update] [--lock-file PATH] [--approval OWNER] [--accept-gated]
 ```
 
-Writes a sorted `AUTHORITY.lock` (v2) of authority records. `--check` regenerates
+Writes a sorted `AUTHORITY.lock` (v1) of authority records. `--check` regenerates
 and exits `1` on drift (same as `authdiff check --locked`). `--approval OWNER`
 appends a human approval record bound to the sealed `lock_hash`, commit, and
-policy hash. Protect the file with CODEOWNERS; prefer this over long-term
+policy hash. `--accept-gated` is required when the tree has HIGH/CRITICAL gated
+findings. Protect the file with CODEOWNERS; prefer this over long-term
 reliance on suppressions alone. Agents with `AUTHDIFF_AGENT=1` cannot write locks.
 
 ## `authdiff ci init` / `init-gate`
 
 ```bash
-authdiff ci init [PATH] [--force]
+authdiff ci init [PATH] --owner @TEAM [--force]
 ```
 
 Writes `.authdiff.yml`, `.github/workflows/authdiff-gate.yml` (`locked: true`),
-`.github/CODEOWNERS` (placeholder `@YOUR_TEAM` for `AUTHORITY.lock`), and an
-initial `AUTHORITY.lock`. Does not overwrite existing files unless `--force`.
+`.github/CODEOWNERS` (with `--owner` for `AUTHORITY.lock`), and an
+initial `AUTHORITY.lock` (gated findings accepted for the adoption seal).
+Does not overwrite existing files unless `--force`. `--owner` is required.
+
+## `authdiff gate`
+
+```bash
+authdiff gate [PATH] --base-lock PATH [--head-lock PATH] [--approved-by @USER]...
+```
+
+Compares observed (or `--head-lock`) authority to an approved base lock. Exits `1`
+on addition / expansion / replacement / policy change until a CODEOWNERS identity
+for `AUTHORITY.lock` appears in `--approved-by` or as an approving GitHub PR
+review (when `GITHUB_TOKEN` + PR context are present). Reductions alone do not
+require approval. The Action invokes this after the Authority Diff scan.
 
 ---
 

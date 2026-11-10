@@ -28,28 +28,29 @@ repository `examples/` tree.
 **One-shot demo** (`uvx` is ephemeral — it does not leave a persistent `authdiff` on PATH):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools" authdiff demo
 ```
 
 **Persistent tool install:**
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
 
 authdiff demo
 authdiff doctor
 authdiff open github.com/org/some-skill
 authdiff scan .
 authdiff lock
-authdiff ci init
+authdiff ci init --owner @you
+authdiff gate --base-lock AUTHORITY.lock   # after a base lock exists
 ```
 
 Bare `authdiff` (no subcommand) defaults to `authdiff scan .`.
 
 Package and CLI name: **`authdiff`**. Maintainer commands: **`authdiff-dev`**.
 
-Public mental model: **demo → doctor → vet → scan → lock → ci**.
+Public mental model: **demo → doctor → vet → scan → lock → gate → ci**.
 
 ## From a checkout
 
@@ -77,7 +78,7 @@ Consumer recipe: [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.e
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 1.0.0 |
-| Package `authdiff` | 1.0.0 |
-| `AUTHORITY.lock` schema | 2 |
+| Product (`VERSION`) | 0.2.0 |
+| Package `authdiff` | 0.2.0 |
+| `AUTHORITY.lock` schema | 1 |
 | Rule pack | 1.6 |

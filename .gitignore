@@ -88,6 +88,7 @@ tools/authdiff_tools.egg-info/
 
 # Virtual environments (uv manages .venv — never commit)
 .venv/
+.venv-*/
 venv/
 ENV/
 env/

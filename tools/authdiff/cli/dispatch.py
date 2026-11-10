@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Any, cast
 
 from authdiff.audit import ProfileName, run_audit
 from authdiff.audit_diff import diff_graphs, diff_reports
-from authdiff.authority_lock import check_locked, diff_authority_locks, run_lock_command
+from authdiff.authority_lock import (
+    build_authority_lock,
+    check_locked,
+    diff_authority_locks,
+    run_lock_command,
+)
 from authdiff.authority_manifest import init_manifest, verify_manifest, write_verify_report
 from authdiff.benchmark.governance import verify_dataset_integrity
 from authdiff.benchmark.intake import (
@@ -29,6 +35,7 @@ from authdiff.export.agent_digest import fence_untrusted, render_agent_digest
 from authdiff.export.annotate import render_github_annotations, render_text_annotations
 from authdiff.export.pr_comment import render_authority_diff_comment
 from authdiff.export.sarif import report_to_sarif
+from authdiff.gate import load_lock_owners, render_gate_report, run_gate
 from authdiff.harden import run_harden
 from authdiff.hosts.profiles import get_host_profile, list_host_profiles
 from authdiff.inventory.collector import collect_inventory, inventory_to_json
@@ -108,6 +115,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_init_gate(args)
         case "lock":
             return _cmd_lock(args)
+        case "gate":
+            return _cmd_gate(args)
         case "explain":
             return _cmd_explain(args)
         case "baseline":
@@ -222,6 +231,23 @@ def _cmd_scan(args: argparse.Namespace) -> int:
     findings_doc["suppression_count"] = len(payload.get("suppressions") or [])
     findings_doc["target_policy_ignored"] = target_policy_ignored
 
+    base_lock_path = getattr(args, "base_lock", None)
+    base_lock_delta: dict[str, Any] | None = None
+    if base_lock_path is not None and Path(base_lock_path).is_file():
+        try:
+            head_lock = build_authority_lock(args.path, scan=scan)
+            base_lock_delta = diff_authority_locks(
+                load_authority_lock(Path(base_lock_path)),
+                head_lock,
+            )
+            payload["base_lock_delta"] = base_lock_delta
+            write_json(Path(payload["output_dir"]) / "base-lock-delta.json", base_lock_delta)
+            # Fail on meaningful authority growth vs the approved (base) lock.
+            if code == 0 and base_lock_delta.get("summary", {}).get("meaningful_authority_change"):
+                code = 1
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"warning: --base-lock ignored ({exc})")
+
     if getattr(args, "locked", False):
         lock_report, lock_code = check_locked(
             args.path,
@@ -231,19 +257,45 @@ def _cmd_scan(args: argparse.Namespace) -> int:
         payload["authority_lock"] = lock_report
         if lock_code and code == 0:
             code = lock_code
-        lock_delta = lock_report.get("delta") if isinstance(lock_report, dict) else None
-        if isinstance(lock_delta, dict):
-            # Refresh PR comment so lock expansions appear in the five-question format.
+        lock_delta = (
+            base_lock_delta
+            if isinstance(base_lock_delta, dict)
+            else (lock_report.get("delta") if isinstance(lock_report, dict) else None)
+        )
+        if (
+            isinstance(lock_delta, dict)
+            or payload.get("risk_delta_doc")
+            or payload.get("risk_delta")
+        ):
+            # Prefer the full risk-delta document so evidence / new findings
+            # survive into the PR comment (summary-only drops them).
+            risk_for_comment = payload.get("risk_delta_doc") or (
+                {"summary": payload["risk_delta"]} if payload.get("risk_delta") else None
+            )
             comment = render_authority_diff_comment(
                 findings_doc,
-                risk_delta={"summary": payload["risk_delta"]}
-                if payload.get("risk_delta")
-                else None,
+                risk_delta=risk_for_comment,
                 authority_delta=payload.get("authority_delta"),
-                lock_delta=lock_delta,
+                lock_delta=lock_delta if isinstance(lock_delta, dict) else None,
+                policy_mode=payload.get("policy_mode"),
+                needs_approval_from=load_lock_owners(args.path),
             )
             payload["pr_comment"] = comment
             write_text(Path(payload["output_dir"]) / "pr-comment.md", comment)
+    elif isinstance(base_lock_delta, dict):
+        risk_for_comment = payload.get("risk_delta_doc") or (
+            {"summary": payload["risk_delta"]} if payload.get("risk_delta") else None
+        )
+        comment = render_authority_diff_comment(
+            findings_doc,
+            risk_delta=risk_for_comment,
+            authority_delta=payload.get("authority_delta"),
+            lock_delta=base_lock_delta,
+            policy_mode=payload.get("policy_mode"),
+            needs_approval_from=load_lock_owners(args.path),
+        )
+        payload["pr_comment"] = comment
+        write_text(Path(payload["output_dir"]) / "pr-comment.md", comment)
 
     if getattr(args, "agent", False):
         # Never put raw findings in ``extra`` — ``digest.update`` would overwrite
@@ -289,8 +341,30 @@ def _cmd_lock(args: argparse.Namespace) -> int:
         update=bool(getattr(args, "update", False)),
         lock_path=getattr(args, "lock_file", None),
         approval=getattr(args, "approval", None),
+        accept_gated=bool(getattr(args, "accept_gated", False)),
     )
     print(text)
+    return code
+
+
+def _cmd_gate(args: argparse.Namespace) -> int:
+    """Base→head lock gate with CODEOWNERS / PR-approval enforcement."""
+    report, code = run_gate(
+        args.path,
+        base_lock=args.base_lock,
+        head_lock=getattr(args, "head_lock", None),
+        approved_by=list(getattr(args, "approved_by", None) or []),
+    )
+    if getattr(args, "agent", False):
+        print_json(report)
+    else:
+        print(render_gate_report(report))
+    gate_out_env = os.environ.get("AUTHDIFF_OUTPUT_DIR")
+    if gate_out_env:
+        gate_out = Path(gate_out_env)
+        gate_out.mkdir(parents=True, exist_ok=True)
+        write_json(gate_out / "gate-report.json", report)
+        write_text(gate_out / "gate-report.txt", render_gate_report(report))
     return code
 
 
@@ -476,7 +550,7 @@ def _refuse_agent_mutation(command: str) -> int | None:
 
 
 def _cmd_demo(args: argparse.Namespace) -> int:
-    """Run the canned vulnerable fixture and print the PR Authority Diff comment."""
+    """Run the canned vulnerable fixture and print the Authority Diff (+/- lock lines)."""
     target = _demo_target()
     if target is None:
         print(
@@ -487,26 +561,58 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     out = (args.output_dir or Path("authdiff-out-demo")).resolve()
     print(f"authdiff demo → {target}")
     print("Expected: gated findings (unpinned launcher, secrets, HTTP MCP, curl|sh, …)")
-    scan, payload, code = run_scan(
+    # Demo is an aha walkthrough, not a CI gate — always scan advisory then show +/-.
+    scan, payload, _code = run_scan(
         target,
         output_dir=out,
-        fail_on=args.fail_on,
+        fail_on="never",
         full_report=False,
     )
-    comment = payload.get("pr_comment") or ""
+    empty = {
+        "version": 1,
+        "records": [],
+        "policy_hash": None,
+        "mcp_tools": {},
+    }
+    head_lock = build_authority_lock(target, scan=scan)
+    lock_delta = diff_authority_locks(empty, head_lock)
     print()
+    print("Authority delta (empty → demo):")
+    for line in lock_delta.get("lines") or []:
+        print(f"  {line}")
+    if not lock_delta.get("lines"):
+        print("  (no lock records)")
+    print()
+    comment = render_authority_diff_comment(
+        scan.to_findings_doc(),
+        risk_delta=payload.get("risk_delta_doc"),
+        authority_delta=payload.get("authority_delta"),
+        lock_delta=lock_delta,
+        policy_mode="advisory",
+    )
+    write_text(out / "pr-comment.md", comment)
     print(comment.strip() or "(no PR comment generated)")
     print()
     print(f"Artifacts: {out}")
-    print(f"Findings: {len(scan.findings)} · exit={code}")
+    print(f"Findings: {len(scan.findings)}")
     print("Next: authdiff doctor → open → scan → lock → ci init")
-    return code
+    # First-run aha always exits 0 so install scripts and tutorials succeed.
+    return 0
 
 
 def _cmd_init_gate(args: argparse.Namespace) -> int:
     refused = _refuse_agent_mutation("ci init")
     if refused is not None:
         return refused
+    owner = (getattr(args, "owner", None) or "").strip()
+    if not owner or owner in {"@YOUR_TEAM", "YOUR_TEAM"}:
+        print(
+            "ci init requires --owner @team-or-user (refusing placeholder @YOUR_TEAM).\n"
+            "Example: authdiff ci init --owner @security-owners"
+        )
+        return 2
+    if not owner.startswith("@"):
+        owner = f"@{owner}"
     root = args.path.resolve()
     root.mkdir(parents=True, exist_ok=True)
     policy_path = root / ".authdiff.yml"
@@ -514,12 +620,15 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     workflow_path = workflow_dir / "authdiff-gate.yml"
     codeowners_path = root / ".github" / "CODEOWNERS"
     policy_body, workflow_body, codeowners_body = _init_gate_templates()
+    codeowners_body = codeowners_body.replace("@YOUR_TEAM", owner)
     wrote: list[str] = []
     if policy_path.exists() and not args.force:
         print(f"Exists (use --force): {policy_path}")
     else:
         policy_path.write_text(policy_body, encoding="utf-8")
         wrote.append(str(policy_path))
+        # Round-trip guard: generated policy must load.
+        load_policy(policy_path)
     if workflow_path.exists() and not args.force:
         print(f"Exists (use --force): {workflow_path}")
     else:
@@ -536,15 +645,25 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     if lock_path.exists() and not args.force:
         print(f"Exists (use --force): {lock_path}")
     else:
-        msg, _code = run_lock_command(root, lock_path=lock_path, check=False)
+        # Initial seal accepts current gated state; CODEOWNERS owner is the approver.
+        msg, lock_code = run_lock_command(
+            root,
+            lock_path=lock_path,
+            check=False,
+            approval=owner,
+            accept_gated=True,
+        )
         print(msg)
+        if lock_code != 0:
+            return lock_code
         wrote.append(str(lock_path))
     if wrote:
         print("Wrote:")
         for path in wrote:
             print(f"  {path}")
     print("Next: git add AUTHORITY.lock .authdiff.yml .github/ && open a PR")
-    print("Replace @YOUR_TEAM in .github/CODEOWNERS (workflow already uses locked: true).")
+    print(f"CODEOWNERS owner: {owner} (workflow already uses locked: true).")
+    print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
     print("Pin the Action + tools install to an immutable git tag/SHA (PyPI is not published yet).")
     return 0
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 _EPILOG = """
-public core:  demo → doctor → vet/open → scan/check → lock → ci init
+public core:  demo → doctor → vet/open → scan/check → lock → gate → ci init
 review:       explain | diff lock | delta | annotate | fix/harden  (optional)
 advanced:     run | snapshot | artifact-vet | atlas | lsp-validate | manifests
               (omitted from brief help — see docs/CLI-REFERENCE.md)
@@ -27,7 +27,9 @@ Agents must set AUTHDIFF_AGENT=1 and must not run lock / ci init / policy edits.
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — six jobs, not six brand names.
-CORE_PUBLIC_COMMANDS = frozenset({"demo", "doctor", "vet", "open", "scan", "check", "lock", "ci"})
+CORE_PUBLIC_COMMANDS = frozenset(
+    {"demo", "doctor", "vet", "open", "scan", "check", "lock", "gate", "ci"}
+)
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -46,6 +48,7 @@ _PRODUCT_COMMANDS = frozenset(
         "init-gate",
         "init",
         "lock",
+        "gate",
         "explain",
         "baseline",
         "diff",
@@ -145,6 +148,11 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     ci_init = ci_sub.add_parser("init", help="Write advisory .authdiff.yml + consumer workflow")
     ci_init.add_argument("path", type=Path, nargs="?", default=Path("."))
     ci_init.add_argument("--force", action="store_true")
+    ci_init.add_argument(
+        "--owner",
+        metavar="@TEAM",
+        help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners); required",
+    )
     ci_init.set_defaults(command="ci")
     scan.add_argument("path", type=Path, nargs="?", default=Path("."))
     scan.add_argument(
@@ -196,6 +204,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--lock-file",
         type=Path,
         help="AUTHORITY.lock path for --locked (default: <target>/AUTHORITY.lock)",
+    )
+    scan.add_argument(
+        "--base-lock",
+        type=Path,
+        help=(
+            "Approved AUTHORITY.lock (typically from the PR base ref). "
+            "Diffed against observed head authority; fails on addition/expansion."
+        ),
     )
     scan.add_argument(
         "--full",
@@ -271,8 +287,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     demo.add_argument(
         "--fail-on",
         choices=["never", "high", "any"],
-        default="high",
-        help="Exit policy for the demo scan (default: high)",
+        default="never",
+        help="Ignored for exit code (demo always exits 0); kept for compatibility",
     )
 
     harden = sub.add_parser(
@@ -326,6 +342,11 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Overwrite existing .authdiff.yml / workflow stub",
     )
+    init_gate.add_argument(
+        "--owner",
+        metavar="@TEAM",
+        help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners); required",
+    )
 
     lock_cmd = sub.add_parser(
         "lock",
@@ -354,6 +375,43 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
             "Record a human approval binding (owner identity) on the written lock. "
             "Required for accountable expansions; agents must not set this."
         ),
+    )
+    lock_cmd.add_argument(
+        "--accept-gated",
+        action="store_true",
+        help=(
+            "Allow writing a lock when the tree has HIGH/CRITICAL gated findings. "
+            "Use for intentional baseline seals; prefer remediating first."
+        ),
+    )
+
+    gate_cmd = sub.add_parser(
+        "gate",
+        help="Fail on unapproved authority addition/expansion vs a base AUTHORITY.lock",
+    )
+    gate_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
+    gate_cmd.add_argument(
+        "--base-lock",
+        type=Path,
+        required=True,
+        help="Approved AUTHORITY.lock from the PR base ref (or prior release)",
+    )
+    gate_cmd.add_argument(
+        "--head-lock",
+        type=Path,
+        help="Head AUTHORITY.lock (default: regenerate from the scan target)",
+    )
+    gate_cmd.add_argument(
+        "--approved-by",
+        action="append",
+        default=[],
+        metavar="@USER",
+        help="Trusted approver identity (repeatable). Also reads GitHub PR approvals in CI.",
+    )
+    gate_cmd.add_argument(
+        "--agent",
+        action="store_true",
+        help="Emit JSON gate report",
     )
 
     explain = sub.add_parser("explain", help=_ADV)

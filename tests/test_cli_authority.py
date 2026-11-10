@@ -57,7 +57,7 @@ def test_cli_doctor_help_and_empty_home(tmp_path: Path, capsys):
 
 def test_cli_init_gate_writes_files(tmp_path: Path, capsys):
     root = tmp_path / "repo"
-    code = main(["init-gate", str(root)])
+    code = main(["init-gate", str(root), "--owner", "@sec-owners"])
     out = capsys.readouterr().out
     assert code == 0
     assert (root / ".authdiff.yml").is_file()
@@ -65,8 +65,10 @@ def test_cli_init_gate_writes_files(tmp_path: Path, capsys):
     workflow = (root / ".github" / "workflows" / "authdiff-gate.yml").read_text(encoding="utf-8")
     assert "trusted-policy" in workflow
     assert "Wrote" in out
+    owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
+    assert "@sec-owners" in owners
 
-    code2 = main(["init-gate", str(root)])
+    code2 = main(["init-gate", str(root), "--owner", "@sec-owners"])
     out2 = capsys.readouterr().out
     assert code2 == 0
     assert "Exists" in out2

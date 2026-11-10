@@ -1,0 +1,8 @@
+{
+  "context_servers": {
+    "docs": {
+      "command": "uvx",
+      "args": ["mcp-docs@1.0.0"]
+    }
+  }
+}

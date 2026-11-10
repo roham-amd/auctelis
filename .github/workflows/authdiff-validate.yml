@@ -68,15 +68,16 @@ jobs:
           uv venv /tmp/authdiff-wheel-smoke --python 3.12.16
           uv pip install --python /tmp/authdiff-wheel-smoke dist/*.whl
           # Demo must work from the installed wheel without the repo examples/ tree.
-          # demo defaults to fail-on high (exit 1 on BLOCK). Bare scan defaults to
-          # fail-on never, so smoke uses --fail-on high under bash -e.
+          # demo always exits 0 (aha walkthrough). Bare scan uses --fail-on high.
           set +e
           /tmp/authdiff-wheel-smoke/bin/authdiff demo -o /tmp/authdiff-wheel-demo
           demo_rc=$?
           /tmp/authdiff-wheel-smoke/bin/authdiff scan ../examples/demo-vulnerable -o /tmp/authdiff-wheel-out --fail-on high
           scan_rc=$?
           set -e
-          test "$demo_rc" -eq 1
+          test "$demo_rc" -eq 0
           test "$scan_rc" -eq 1
+          grep -E 'Authority delta|ADVISORY|BLOCK' /tmp/authdiff-wheel-demo/pr-comment.md
           grep -E 'DECISION:[[:space:]]*BLOCK' /tmp/authdiff-wheel-out/scan-summary.txt
+          /tmp/authdiff-wheel-smoke/bin/authdiff gate --help >/dev/null
           /tmp/authdiff-wheel-smoke/bin/authdiff --help >/dev/null

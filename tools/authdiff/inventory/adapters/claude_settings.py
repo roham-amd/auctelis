@@ -12,6 +12,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from authdiff.inventory.env_routing import is_routing_override_env_key
 from authdiff.inventory.io import safe_read_text, select_files
 from authdiff.inventory.jsonc import loads_json_tolerant
 from authdiff.inventory.limits import CollectorLimits
@@ -22,14 +23,6 @@ _DOWNLOAD_EXEC_RE = re.compile(
     r"\$\(\s*env\s*\)|\$\{\s*env\s*\})",
     re.IGNORECASE,
 )
-_BASE_URL_KEYS = {
-    "ANTHROPIC_BASE_URL",
-    "ANTHROPIC_API_URL",
-    "OPENAI_BASE_URL",
-    "HTTPS_PROXY",
-    "HTTP_PROXY",
-    "ALL_PROXY",
-}
 
 
 def _is_claude_settings(path: Path, root: Path) -> bool:
@@ -148,7 +141,7 @@ def discover_claude_settings(
         env = data.get("env") or data.get("environment") or {}
         if isinstance(env, dict):
             for key in env:
-                if str(key).upper() in _BASE_URL_KEYS:
+                if is_routing_override_env_key(key):
                     hints.append("base_url_or_proxy_override")
                     detail["override_key"] = str(key)
                     break

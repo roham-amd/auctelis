@@ -1,13 +1,13 @@
 {
   "manifest_version": "1.0",
   "product": "authdiff",
-  "product_version": "1.0.0",
+  "product_version": "0.2.0",
   "package_name": "authdiff",
-  "package_version": "1.0.0",
-  "primary_command": "authdiff lock",
+  "package_version": "0.2.0",
+  "primary_command": "authdiff gate",
   "north_star": "Know what authority your AI agents have, what changes when integrations are introduced, and whether those changes have been approved.",
   "positioning": "The authority lockfile and PR security gate for AI agents.",
-  "release_status": "released",
+  "release_status": "pre-1.0",
   "contracts": {
     "audit_procedure": "1.0",
     "audit_report_schema": "1.0",

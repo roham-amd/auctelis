@@ -34,7 +34,7 @@ def test_lock_write_check_and_diff(tmp_path: Path):
             }
         },
     )
-    dest, lock = write_authority_lock(root)
+    dest, lock = write_authority_lock(root, accept_gated=True)
     assert dest.name == "AUTHORITY.lock"
     assert lock["version"] == 1
     assert lock["records"]

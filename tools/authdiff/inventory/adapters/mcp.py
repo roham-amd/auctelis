@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from authdiff.inventory.env_routing import is_routing_override_env_key
 from authdiff.inventory.io import safe_read_text, select_files
 from authdiff.inventory.jsonc import loads_json_tolerant
 from authdiff.inventory.limits import CollectorLimits
@@ -182,14 +183,109 @@ def _is_broad_path_arg(arg: Any) -> bool:
     return ".." in parts
 
 
+_KNOWN_MCP_REL_PATHS = frozenset(
+    {
+        ".cursor/mcp.json",
+        ".vscode/mcp.json",
+        ".gemini/settings.json",
+        ".zed/settings.json",
+        ".zed/settings.local.json",
+        ".config/zed/settings.json",
+        ".continue/config.json",
+        ".codex/mcp.json",
+        ".kiro/settings/mcp.json",
+        ".kiro/mcp.json",
+        ".roo/mcp.json",
+        ".amazonq/mcp.json",
+        ".opencode/mcp.json",
+        ".opencode/settings.json",
+        "opencode.json",
+    }
+)
+
+
+def _coerce_server_map(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return {str(k): v for k, v in raw.items() if isinstance(v, dict)}
+    if isinstance(raw, list):
+        out: dict[str, Any] = {}
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name") or item.get("id") or item.get("server")
+            if name:
+                out[str(name)] = item
+        return out
+    return {}
+
+
+def _extract_mcp_servers(data: dict[str, Any]) -> dict[str, Any]:
+    for key in ("mcpServers", "servers", "context_servers", "mcp_servers"):
+        block = data.get(key)
+        if block:
+            servers = _coerce_server_map(block)
+            if servers:
+                return servers
+    mcp = data.get("mcp")
+    if isinstance(mcp, dict):
+        for key in ("servers", "mcpServers"):
+            block = mcp.get(key)
+            if block:
+                servers = _coerce_server_map(block)
+                if servers:
+                    return servers
+    exp = data.get("experimental")
+    if isinstance(exp, dict):
+        for key in ("modelContextProtocolServers", "mcpServers"):
+            block = exp.get(key)
+            if block:
+                servers = _coerce_server_map(block)
+                if servers:
+                    return servers
+    return {}
+
+
+def _host_id_from_repository_path(rel: str) -> str:
+    lowered = rel.lower()
+    padded = f"/{lowered}"
+    for marker, hid in (
+        (".cursor/", "cursor"),
+        (".claude/", "claude-code"),
+        (".vscode/", "vscode"),
+        (".codex/", "codex"),
+        (".gemini/", "gemini"),
+        (".windsurf/", "windsurf"),
+        (".zed/", "zed"),
+        (".config/zed/", "zed"),
+        (".continue/", "continue"),
+        (".kiro/", "kiro"),
+        (".roo/", "roo-code"),
+        (".amazonq/", "amazon-q"),
+        (".opencode/", "opencode"),
+    ):
+        if marker in padded:
+            return hid
+    if lowered in {"opencode.json", ".claude.json", ".mcp.json"}:
+        if "opencode" in lowered:
+            return "opencode"
+        return "claude-code"
+    return ""
+
+
 def _is_mcp_config_candidate(path: Path, root: Path) -> bool:
     rel = path.relative_to(root).as_posix().lower()
     name = path.name.lower()
-    if name in {"mcp.json", "mcp_config.json", "mcp_example.json", ".mcp.json"}:
+    if name in {
+        "mcp.json",
+        "mcp_config.json",
+        "mcp_example.json",
+        ".mcp.json",
+        ".claude.json",  # Claude Code user-scope MCP registry
+    }:
         return True
     if name.endswith(".json") and "mcp" in name:
         return True
-    return rel in {".cursor/mcp.json", ".vscode/mcp.json", "mcp.json", ".mcp.json"}
+    return rel in _KNOWN_MCP_REL_PATHS
 
 
 def _is_mcp_server_source(path: Path) -> bool:
@@ -253,8 +349,8 @@ def discover_mcp_configs(
 
         if not isinstance(data, dict):
             continue
-        servers = data.get("mcpServers") or data.get("servers") or {}
-        if not isinstance(servers, dict) or not servers:
+        servers = _extract_mcp_servers(data)
+        if not servers:
             # Candidate filename but not an MCP registration document.
             continue
 
@@ -302,44 +398,45 @@ def discover_mcp_configs(
             ):
                 hints.append("permission_bypass_flag")
             env_keys: list[str] = []
+            url_destinations: list[str] = []
+            mcp_detail: dict[str, Any] = {}
             if isinstance(env, dict):
                 env_keys = sorted(str(k) for k in env)
+                for ek, ev in env.items():
+                    if not is_routing_override_env_key(ek):
+                        continue
+                    hints.append("base_url_or_proxy_override")
+                    if not mcp_detail.get("override_key"):
+                        mcp_detail["override_key"] = str(ek)
+                    val = str(ev or "").strip()
+                    if val and not val.startswith("${"):
+                        url_destinations.append(val)
             elif isinstance(env, list):
                 env_keys = sorted(str(item) for item in env if isinstance(item, str))
             # Derive a coarse host id from path so copying the same server under
             # another host tree is a distinct authority record.
-            host_id = ""
-            lowered_rel = rel.lower()
-            for marker, hid in (
-                (".cursor/", "cursor"),
-                (".claude/", "claude-code"),
-                (".vscode/", "vscode"),
-                (".codex/", "codex"),
-                (".gemini/", "gemini"),
-                (".windsurf/", "windsurf"),
-                ("/.zed/", "zed"),
-            ):
-                if marker in f"/{lowered_rel}":
-                    host_id = hid
-                    break
-            results.append(
-                {
-                    "name": name,
-                    "type": "MCP Server Registration",
-                    "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
-                    "repository_path": rel,
-                    "adapter": "mcp_config",
-                    "adapter_maturity": "PARTIAL",
-                    "discovery_status": "IDENTIFIED",
-                    "declared_transport": cfg.get("transport") or cfg.get("type"),
-                    "command": cfg.get("command"),
-                    "args": list(args) if isinstance(args, list) else [],
-                    "url": cfg.get("url"),
-                    "env_keys": env_keys,
-                    "host_id": host_id,
-                    "priority_hints": hints,
-                }
-            )
+            host_id = _host_id_from_repository_path(rel)
+            entry: dict[str, Any] = {
+                "name": name,
+                "type": "MCP Server Registration",
+                "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
+                "repository_path": rel,
+                "adapter": "mcp_config",
+                "adapter_maturity": "PARTIAL",
+                "discovery_status": "IDENTIFIED",
+                "declared_transport": cfg.get("transport") or cfg.get("type"),
+                "command": cfg.get("command"),
+                "args": list(args) if isinstance(args, list) else [],
+                "url": cfg.get("url"),
+                "env_keys": env_keys,
+                "host_id": host_id,
+                "priority_hints": hints,
+            }
+            if url_destinations:
+                entry["destinations"] = sorted(set(url_destinations))
+            if mcp_detail:
+                entry["mcp_detail"] = mcp_detail
+            results.append(entry)
 
     # MCP server implementations (source), distinct from client registration JSON.
     for path in select_files(files, _is_mcp_server_source):

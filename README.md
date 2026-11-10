@@ -47,8 +47,9 @@ authdiff demo             # canned Authority Diff (aha moment; works from wheel)
 authdiff doctor           # host authority map
 authdiff open github.com/org/some-skill
 authdiff scan .           # bare `authdiff` also defaults to scan .
-authdiff lock             # write AUTHORITY.lock
-authdiff ci init          # .authdiff.yml + workflow + CODEOWNERS
+authdiff lock             # write AUTHORITY.lock (--accept-gated if needed)
+authdiff gate --base-lock path/to/base.lock  # fail until CODEOWNER approves
+authdiff ci init --owner @you  # .authdiff.yml + workflow + CODEOWNERS
 authdiff check --locked   # fail on lock drift
 ```
 
@@ -67,8 +68,9 @@ fenced JSON digest. Use `--full` for the long report. Agents should export
 | `authdiff doctor` | Host authority map |
 | `authdiff open` / `vet` | Pre-install verdict (safe shallow clone) |
 | `authdiff` / `scan` / `check` | Repo authority scan (add `--locked`) |
-| `authdiff lock` | Write / update `AUTHORITY.lock` (`--approval` for human binding) |
-| `authdiff ci init` | `.authdiff.yml` + workflow + CODEOWNERS |
+| `authdiff lock` | Write / update `AUTHORITY.lock` (`--approval`, `--accept-gated`) |
+| `authdiff gate` | Fail on unapproved addition/expansion vs `--base-lock` |
+| `authdiff ci init --owner @team` | `.authdiff.yml` + workflow + CODEOWNERS |
 
 Review / advanced / maintainer tiers: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
 [`docs/CLI-REFERENCE.md`](docs/CLI-REFERENCE.md).

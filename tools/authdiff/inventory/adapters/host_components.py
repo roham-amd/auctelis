@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from authdiff.inventory.adapters.workflow_signals import workflow_text_has_agent_step
 from authdiff.inventory.io import safe_read_text, select_files
 from authdiff.inventory.limits import CollectorLimits
 
@@ -95,7 +96,8 @@ def discover_automations(
         files,
         lambda p: (
             p.name in {"automations.json", "automation.yaml", "automation.yml"}
-            or (".github" in p.parts and "workflows" in p.parts and p.suffix in {".yml", ".yaml"})
+            # GitHub Actions workflows are owned by discover_github_workflows
+            # (type "CI Workflow") — do not double-register them here.
             or ("automations" in p.parts and p.suffix in {".json", ".yaml", ".yml", ".md"})
         ),
     ):
@@ -111,19 +113,7 @@ def discover_automations(
             hints.append("scheduled_or_event_trigger")
         if any(token in lowered for token in ("secret", "token", "password")):
             hints.append("credential_reference")
-        agent_tokens = (
-            "authdiff ",
-            "authdiff",
-            "claude",
-            "cursor",
-            "openai",
-            "codex",
-            "agent ",
-            "mcp",
-            "anthropic",
-            "modelcontextprotocol",
-        )
-        if any(tok in lowered for tok in agent_tokens):
+        if workflow_text_has_agent_step(raw):
             hints.append("agent_related_step")
         results.append(
             {

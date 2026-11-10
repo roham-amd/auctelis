@@ -189,8 +189,6 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
         "version": LOCK_VERSION,
         "product": "authdiff",
         "product_version": product_version(),
-        "repository": str(root),
-        "audited_commit": scan.commit,
         "policy_hash": _policy_hash(root),
         "records": records,
         # Broker / snapshot compatibility (tool pins filled by `snapshot`).
@@ -206,13 +204,18 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
             if r["kind"] == "MCP Server Registration"
         },
     }
-    # Seal authority state without human metadata so approvals can bind to it.
+    # Seal authority state only. Absolute `repository` path and `audited_commit`
+    # are volatile across clones / no-op re-locks and must not churn lock_hash
+    # (merge conflicts on hash alone with identical records).
+    _SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
     canonical = json.dumps(
-        {k: v for k, v in body.items() if k != "lock_hash"},
+        {k: v for k, v in body.items() if k not in _SEAL_EXCLUDE},
         sort_keys=True,
         separators=(",", ":"),
     )
     body["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+    # Non-sealed metadata for humans / tooling (ignored by normalize_lock_for_compare).
+    body["audited_commit"] = scan.commit
     # Preserve prior human approvals / accepted findings across regenerations.
     body["approvals"] = []
     body["approved_findings"] = []
@@ -227,13 +230,38 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
     return body
 
 
+def _gated_lock_blockers(scan: ScanResult) -> list[str]:
+    """HIGH/CRITICAL gate findings that must not be silently blessed into a lock."""
+    from authdiff.security.gating import is_high_gate_finding
+
+    blockers: list[str] = []
+    for finding in scan.findings:
+        if not is_high_gate_finding(finding):
+            continue
+        blockers.append(f"{finding.rule_id} [{finding.severity}] {finding.title}")
+    return blockers
+
+
 def write_authority_lock(
     root: Path,
     *,
     path: Path | None = None,
     approval_owner: str | None = None,
+    accept_gated: bool = False,
+    scan: ScanResult | None = None,
 ) -> tuple[Path, dict[str, Any]]:
-    lock = build_authority_lock(root)
+    root = root.resolve()
+    if scan is None:
+        scan = run_security_scan(root)
+    blockers = _gated_lock_blockers(scan)
+    if blockers and not accept_gated:
+        preview = "; ".join(blockers[:3])
+        more = f" (+{len(blockers) - 3} more)" if len(blockers) > 3 else ""
+        raise ValueError(
+            "refusing to lock a tree with high/critical gated findings without "
+            f"--accept-gated. Seen: {preview}{more}"
+        )
+    lock = build_authority_lock(root, scan=scan)
     if approval_owner and approval_owner.strip():
         # Approvals bind to the sealed authority hash; they are not part of it.
         record = build_approval_record(
@@ -450,13 +478,15 @@ def render_lock_diff_lines(
     for rec in added[:limit]:
         pin = rec.get("pin_state") or "unknown"
         caps = ", ".join(rec.get("capabilities") or []) or "authority"
+        # Lead with destination host so PR comments keep "who receives it"
+        # even when the line is truncated later.
         dest = ", ".join((rec.get("destinations") or [])[:2])
-        dest_bit = f", reaches {dest}" if dest else ""
+        dest_bit = f" reaches {dest};" if dest else ""
         env = ", ".join((rec.get("env_keys") or [])[:3])
-        env_bit = f", passes {env}" if env else ""
+        env_bit = f" passes {env};" if env else ""
         label = rec.get("name") or rec.get("id")
         lines.append(
-            f"+ addition {rec.get('kind')} `{label}`: {caps}; pin={pin}{dest_bit}{env_bit}"
+            f"+ addition {rec.get('kind')} `{label}`:{dest_bit}{env_bit} {caps}; pin={pin}"
         )
     for rec in removed[: max(0, limit - len(lines))]:
         label = rec.get("name") or rec.get("id")
@@ -506,6 +536,7 @@ def run_lock_command(
     update: bool = False,
     lock_path: Path | None = None,
     approval: str | None = None,
+    accept_gated: bool = False,
 ) -> tuple[str, int]:
     root = root.resolve()
     path = lock_path or default_lock_path(root)
@@ -519,10 +550,19 @@ def run_lock_command(
             f"AUTHORITY.lock out of date — authority changed, needs owner review.\n{body}",
             code,
         )
-    dest, lock = write_authority_lock(root, path=path, approval_owner=approval)
+    try:
+        dest, lock = write_authority_lock(
+            root,
+            path=path,
+            approval_owner=approval,
+            accept_gated=accept_gated,
+        )
+    except ValueError as exc:
+        return str(exc), 1
     n = len(lock.get("records") or [])
     action = "Updated" if update or path.exists() else "Wrote"
     approval_bit = ""
     if approval and approval.strip():
         approval_bit = f" · approval recorded for {approval.strip()}"
-    return f"{action} {dest} ({n} authority records){approval_bit}.", 0
+    gated_bit = " · gated findings accepted" if accept_gated else ""
+    return f"{action} {dest} ({n} authority records){approval_bit}{gated_bit}.", 0

@@ -29,8 +29,9 @@ from authdiff.security.gating import is_gate_finding, is_high_gate_finding
 
 # Escape markdown specials *except* hyphen inside finding IDs (F-004).
 _MD_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+.!|>])")
-_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+_URL_RE = re.compile(r"https?://([^/\s]+)(\S*)", re.IGNORECASE)
 _MENTION_RE = re.compile(r"(^|[^/\w])@[\w-]+")
+_SEV_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
 
 # Sticky-comment marker for `gh pr comment --edit-last` / create-or-update flows.
 AUTHDIFF_COMMENT_MARKER = "<!-- authdiff-authority-diff -->"
@@ -41,10 +42,23 @@ def escape_markdown(value: str, *, max_len: int = 160) -> str:
     text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
     # Strip terminal/OSC control sequences as well as markdown.
     text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07]*\x07", "", text)
-    text = _URL_RE.sub("[redacted-url]", text)
+    # Keep destination hosts visible in code spans; drop URL paths (injection defense).
+    # Placeholders survive markdown escaping, then expand to unescaped `` `host` ``.
+    hosts: list[str] = []
+
+    def _stash_host(match: re.Match[str]) -> str:
+        host = match.group(1) or "redacted-host"
+        # Hostnames are shown inside code spans; strip only injection-prone chars.
+        safe = re.sub(r"[\\`*_{}\[\]()#!|>]", "", host)
+        hosts.append(safe or "redacted-host")
+        return f"\x00HOST{len(hosts) - 1}\x00"
+
+    text = _URL_RE.sub(_stash_host, text)
     text = _MENTION_RE.sub(r"\1[@]", text)
     text = text.replace("<", "&lt;").replace(">", "&gt;")
     text = _MD_SPECIAL.sub(r"\\\1", text)
+    for idx, host in enumerate(hosts):
+        text = text.replace(f"\x00HOST{idx}\x00", f"`{host}`")
     if len(text) > max_len:
         text = text[: max_len - 1] + "…"
     return text
@@ -164,7 +178,18 @@ def _required_action(
     new_powers: list[Any],
     lock_lines: list[str],
     establishment: str,
+    *,
+    advisory: bool = False,
+    needs_approval_from: list[str] | None = None,
 ) -> str:
+    owners = [o for o in (needs_approval_from or []) if o]
+    if owners and lock_lines:
+        who = ", ".join(owners[:3])
+        return f"Needs approval from: {who}"
+    if advisory and decision == "BLOCK":
+        return "ADVISORY: would BLOCK under enforce — remediate or promote policy.mode"
+    if advisory and decision == "REVIEW":
+        return "ADVISORY: would REVIEW under enforce — approve or narrow authority"
     if decision == "BLOCK":
         return "Required: remediate high/critical authority, then re-run gate"
     if decision == "REVIEW":
@@ -181,6 +206,10 @@ def _required_action(
     return "Required: no gated action — still review Unknowns before merge"
 
 
+def _sort_findings_by_severity(items: list[Any]) -> list[Any]:
+    return sorted(items, key=lambda f: _SEV_RANK.get(_sev(f).upper(), 9))
+
+
 def render_authority_diff_comment(
     findings_doc: dict[str, Any],
     *,
@@ -188,6 +217,8 @@ def render_authority_diff_comment(
     authority_delta: dict[str, Any] | None = None,
     authority_snapshot: dict[str, Any] | None = None,
     lock_delta: dict[str, Any] | None = None,
+    policy_mode: str | None = None,
+    needs_approval_from: list[str] | None = None,
     max_lines: int = 12,
 ) -> str:
     """Render a short PR body focused on the Authority Diff questions."""
@@ -207,6 +238,7 @@ def render_authority_diff_comment(
         lock_delta=lock_delta if isinstance(lock_delta, dict) else None,
         decision=decision,
     )
+    advisory = (policy_mode or "").lower() == "advisory"
 
     new_powers: list[Any] = []
     has_baseline = risk_delta is not None
@@ -221,6 +253,7 @@ def render_authority_diff_comment(
         new_powers = [f for f in findings if is_high_gate_finding(f)] or [
             f for f in findings if is_gate_finding(f)
         ]
+    new_powers = _sort_findings_by_severity(new_powers)
 
     component_lines: list[str] = []
     delta_doc = authority_delta or (risk_delta or {}).get("authority_delta")
@@ -235,10 +268,13 @@ def render_authority_diff_comment(
         lock_lines = list(lock_delta.get("lines") or [])
         lock_summary = dict(lock_delta.get("summary") or {})
 
+    decision_label = (
+        f"ADVISORY (would {decision})" if advisory and decision in {"BLOCK", "REVIEW"} else decision
+    )
     # Marker is sticky-comment metadata — not counted toward the ≤12 visible lines.
     visible: list[str] = [
         "### authdiff Authority Diff",
-        f"**Decision:** `{decision}`",
+        f"**Decision:** `{decision_label}`",
     ]
 
     # 1. What changed?
@@ -273,7 +309,8 @@ def render_authority_diff_comment(
     visible.append("**Authority delta:**")
     authority_bullets: list[str] = []
     for line in (lock_lines or component_lines)[:2]:
-        authority_bullets.append(f"- {escape_markdown(line, max_len=120)}")
+        # Keep destination / env key names; 180 chars fits typical +/- lines.
+        authority_bullets.append(f"- {escape_markdown(line, max_len=180)}")
     if not authority_bullets and new_powers:
         finding = new_powers[0]
         where = _evidence_locator(finding, evidence_registry) or _entry(finding)
@@ -324,9 +361,23 @@ def render_authority_diff_comment(
     visible.append(escape_markdown(_unknowns_line(coverage), max_len=160))
 
     # 6. Required action
+    approval_owners = list(needs_approval_from or [])
+    growth = bool(
+        int(lock_summary.get("additions") or 0)
+        or int(lock_summary.get("expansions") or 0)
+        or int(lock_summary.get("replacements") or 0)
+        or lock_summary.get("policy_changed")
+    )
     visible.append(
         escape_markdown(
-            _required_action(decision, new_powers, lock_lines, establishment),
+            _required_action(
+                decision,
+                new_powers,
+                lock_lines,
+                establishment,
+                advisory=advisory,
+                needs_approval_from=approval_owners if growth else None,
+            ),
             max_len=160,
         )
     )

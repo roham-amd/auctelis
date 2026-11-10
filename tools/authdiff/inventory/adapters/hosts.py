@@ -56,6 +56,22 @@ def _windsurf_markers(path: Path, root: Path) -> bool:
     return name in {".windsurfrules", "windsurfrules"} or "windsurf" in path.parts
 
 
+def _zed_markers(path: Path, root: Path) -> bool:
+    rel = path.relative_to(root).as_posix().lower()
+    return rel.startswith(".zed/") or rel.startswith(".config/zed/")
+
+
+def _continue_markers(path: Path, root: Path) -> bool:
+    rel = path.relative_to(root).as_posix().lower()
+    return rel.startswith(".continue/")
+
+
+def _opencode_markers(path: Path, root: Path) -> bool:
+    rel = path.relative_to(root).as_posix().lower()
+    name = path.name.lower()
+    return name == "opencode.json" or rel.startswith(".opencode/")
+
+
 def discover_host_profiles(
     root: Path,
     *,
@@ -71,6 +87,9 @@ def discover_host_profiles(
         "codex": [],
         "gemini": [],
         "windsurf": [],
+        "zed": [],
+        "continue": [],
+        "opencode": [],
     }
 
     for path in select_files(files, lambda p: True):
@@ -87,6 +106,12 @@ def discover_host_profiles(
             found["gemini"].append(rel)
         if _windsurf_markers(path, root):
             found["windsurf"].append(rel)
+        if _zed_markers(path, root):
+            found["zed"].append(rel)
+        if _continue_markers(path, root):
+            found["continue"].append(rel)
+        if _opencode_markers(path, root):
+            found["opencode"].append(rel)
         # Bound memory: do not keep unbounded path lists.
         for key in found:
             if len(found[key]) > 20:

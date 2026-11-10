@@ -5,7 +5,7 @@ state** for a repository. It is more important than a long audit report.
 
 Schema: [`../schemas/authority-lock.schema.json`](../schemas/authority-lock.schema.json)  
 Implementation: `tools/authdiff/authority_lock.py`  
-Version field: `version: 2` (record-level identity)
+Version field: `version: 1` (record-level identity; sealed hash excludes volatile path/commit metadata)
 
 ---
 

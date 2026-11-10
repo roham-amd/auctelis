@@ -1,7 +1,8 @@
 # authdiff roadmap
 
 **Product:** the authority lockfile and PR security gate for AI agents  
-**Current:** 1.0.0 / tooling 1.0.0 / rule pack 1.6  
+**Current:** 0.2.0 / tooling 0.2.0 / rule pack 1.6  
+
 
 This roadmap applies the strategic diagnosis: keep building around
 `AUTHORITY.lock` + PR Authority Diff + CI gate. Do not expand into a

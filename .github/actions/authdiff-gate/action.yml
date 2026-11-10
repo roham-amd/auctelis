@@ -241,9 +241,11 @@ runs:
         AUTHDIFF_BASE_REF: ${{ github.base_ref }}
         AUTHDIFF_NO_POLICY: ${{ inputs.no-policy }}
         AUTHDIFF_TRUSTED_POLICY: ${{ steps.trusted_policy.outputs.path }}
+        AUTHDIFF_LOCK_FILE: ${{ inputs.lock-file }}
       run: |
         set -euo pipefail
         echo "path=" >> "$GITHUB_OUTPUT"
+        echo "lock=" >> "$GITHUB_OUTPUT"
         base="origin/${AUTHDIFF_BASE_REF}"
         if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
           if ! git fetch --no-tags origin "${AUTHDIFF_BASE_REF}:refs/remotes/origin/${AUTHDIFF_BASE_REF}" 2>/dev/null; then
@@ -255,13 +257,28 @@ runs:
         work="${RUNNER_TEMP}/authdiff-base-worktree"
         out="${RUNNER_TEMP}/authdiff-base-out"
         baseline="${RUNNER_TEMP}/authdiff-base-baseline.json"
+        base_lock="${RUNNER_TEMP}/authdiff-base-AUTHORITY.lock"
         rm -rf "$work" "$out"
+        rm -f "$base_lock"
         git worktree add --detach "$work" "$base"
         # Scan the same relative path under the base worktree when possible.
         target="$work"
         rel="${AUTHDIFF_PATH#./}"
         if [[ "$rel" != "." && -d "$work/$rel" ]]; then
           target="$work/$rel"
+        fi
+        # Extract the approved lock from the base ref (product gate input).
+        lock_rel="${AUTHDIFF_LOCK_FILE:-AUTHORITY.lock}"
+        lock_rel="${lock_rel#./}"
+        if [[ -f "$target/$lock_rel" ]]; then
+          cp "$target/$lock_rel" "$base_lock"
+          echo "Base-ref AUTHORITY.lock copied: $base_lock"
+          echo "lock=${base_lock}" >> "$GITHUB_OUTPUT"
+        elif git show "${base}:${lock_rel}" >"$base_lock" 2>/dev/null; then
+          echo "Base-ref AUTHORITY.lock extracted from ${base}:${lock_rel}"
+          echo "lock=${base_lock}" >> "$GITHUB_OUTPUT"
+        else
+          echo "No base-ref AUTHORITY.lock; lock delta will be absolute-on-head only."
         fi
         base_args=(scan "$target" -o "$out" --save-baseline "$baseline" --fail-on never)
         if [[ "${AUTHDIFF_NO_POLICY}" == "true" ]]; then
@@ -282,6 +299,7 @@ runs:
         AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
         AUTHDIFF_BASELINE: ${{ inputs.baseline }}
         AUTHDIFF_AUTH_DIFF_BASELINE: ${{ steps.auth_diff.outputs.path }}
+        AUTHDIFF_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
         AUTHDIFF_FAIL_ON: ${{ inputs.fail-on }}
         AUTHDIFF_POLICY: ${{ inputs.policy }}
         AUTHDIFF_NO_POLICY: ${{ inputs.no-policy }}
@@ -321,14 +339,52 @@ runs:
         if [[ -n "$baseline" ]]; then
           args+=(--baseline "$baseline")
         fi
+        if [[ -n "${AUTHDIFF_BASE_LOCK:-}" && -f "${AUTHDIFF_BASE_LOCK}" ]]; then
+          args+=(--base-lock "$AUTHDIFF_BASE_LOCK")
+          echo "Comparing head authority against base-ref AUTHORITY.lock"
+        fi
         if [[ "${AUTHDIFF_LOCKED}" == "true" ]]; then
           args+=(--locked)
           if [[ -n "${AUTHDIFF_LOCK_FILE}" ]]; then
             args+=(--lock-file "$AUTHDIFF_LOCK_FILE")
           fi
-          echo "AUTHORITY.lock drift check enabled (Action v2)"
+          echo "AUTHORITY.lock drift check enabled"
         fi
         CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff; "$CLI" "${args[@]}"
+
+    - name: Enforce base-lock gate (CODEOWNERS approval)
+      if: >-
+        inputs.mode == 'scan' &&
+        inputs.locked == 'true' &&
+        github.event_name == 'pull_request' &&
+        steps.auth_diff.outputs.lock != ''
+      shell: bash
+      env:
+        AUTHDIFF_PATH: ${{ inputs.path }}
+        AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
+        AUTHDIFF_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
+        AUTHDIFF_LOCK_FILE: ${{ inputs.lock-file }}
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff
+        head_lock="${AUTHDIFF_LOCK_FILE:-AUTHORITY.lock}"
+        head_path="${AUTHDIFF_PATH%/}/${head_lock}"
+        head_path="${head_path#./}"
+        gate_args=(gate "$AUTHDIFF_PATH" --base-lock "$AUTHDIFF_BASE_LOCK")
+        if [[ -f "$head_path" ]]; then
+          gate_args+=(--head-lock "$head_path")
+        fi
+        # PR approvals from CODEOWNERS are resolved via GITHUB_TOKEN + event payload.
+        set +e
+        "$CLI" "${gate_args[@]}"
+        gate_code=$?
+        set -e
+        if [[ -f "$AUTHDIFF_OUTPUT_DIR/gate-report.txt" ]]; then
+          echo "## authdiff gate" >> "$GITHUB_STEP_SUMMARY"
+          cat "$AUTHDIFF_OUTPUT_DIR/gate-report.txt" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        exit "$gate_code"
 
     - name: Annotate pull request findings
       if: inputs.mode == 'scan' && inputs.annotate == 'true'

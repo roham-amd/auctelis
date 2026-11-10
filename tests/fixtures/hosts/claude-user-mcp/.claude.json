@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "user-scope": {
+      "command": "node",
+      "args": ["mcp.js"]
+    }
+  }
+}

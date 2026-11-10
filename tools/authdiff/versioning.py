@@ -14,9 +14,9 @@ from importlib.metadata import version as pkg_version
 from authdiff.paths import version_file_path, versions_path
 
 # Embedded fallbacks — kept in sync by ``authdiff build`` / release checklist.
-_EMBEDDED_PRODUCT_VERSION = "1.0.0"
+_EMBEDDED_PRODUCT_VERSION = "0.2.0"
 _EMBEDDED_VERSIONS: dict[str, str] = {
-    "authdiff_product": "1.0.0",
+    "authdiff_product": "0.2.0",
     "audit_procedure": "1.0",
     "audit_report_schema": "1.0",
     "ecosystem_graph_schema": "1.0",
@@ -25,7 +25,7 @@ _EMBEDDED_VERSIONS: dict[str, str] = {
     "agent_benchmark": "0.3.0",
     "agent_benchmark_llm": "0.3.0",
     "rule_quality_pack": "1.2.0",
-    "build_tool": "authdiff-1.0.0",
+    "build_tool": "authdiff-0.2.0",
     "findings_contract": "1.2",
     "baseline_contract": "1.3",
     "rule_pack": "1.6",

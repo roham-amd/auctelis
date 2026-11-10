@@ -1,0 +1,21 @@
+{
+  "schema": "authdiff.atlas.labeling.v1",
+  "description": "Blind labeling row template — copy per finding; do not commit live labels into precision.json until reviewed.",
+  "finding_label": {
+    "finding_id": "",
+    "rule_id": "AUTHDIFF-RULE-000",
+    "repository_path": "",
+    "entry_point": "",
+    "label": "pending",
+    "verdict": null,
+    "reviewer": "",
+    "reviewed_at": null,
+    "notes": ""
+  },
+  "verdict_values": ["true_positive", "false_positive", "uncertain", "out_of_scope"],
+  "label_values": ["pending", "labeled"],
+  "ledger_sync": {
+    "precision_json": "docs/atlas/precision.json",
+    "increment_fields": ["labeled_n", "tp", "fp", "precision"]
+  }
+}

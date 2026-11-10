@@ -80,13 +80,17 @@ def discover_toml_mcp_configs(
     events: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
-    for path in select_files(
-        files,
-        lambda p: (
-            p.name.lower() in {"config.toml", "mcp.toml", "codex.toml"}
-            or (p.suffix.lower() == ".toml" and "mcp" in p.name.lower())
-        ),
-    ):
+
+    def _toml_mcp_candidate(path: Path) -> bool:
+        name = path.name.lower()
+        parts = {part.lower() for part in path.parts}
+        if name in {"config.toml", "mcp.toml", "codex.toml"}:
+            return True
+        if name.endswith(".toml") and "mcp" in name:
+            return True
+        return bool(name == "config.toml" and (".codex" in parts or "codex" in parts))
+
+    for path in select_files(files, _toml_mcp_candidate):
         raw = safe_read_text(path, root=root, limits=limits, events=events, adapter="toml_mcp")
         rel = path.relative_to(root).as_posix()
         if raw is None:

@@ -1,6 +1,6 @@
 # authdiff scan — operator guide
 
-Guard scan path for **1.0.0**: deterministic discovery plus evidence-backed
+Guard scan path for **0.2.0**: deterministic discovery plus evidence-backed
 observations via `authdiff scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./authdiff-out` (not inside the target tree).
@@ -102,7 +102,7 @@ TARGET=/path/to/target-repo docker compose run --rm authdiff \
 
 1. **Bounded inventory** — adapters walk the tree with file/depth/byte limits; refuse symlink escape; emit `inventory.json` + coverage matrix; attach content digests and fingerprints.
 2. **Capability extraction** — map hints/types to capability kinds with explicit `origin` (`DECLARED` / `POTENTIAL` / `TYPE_DEFAULT`; never claim effective host permissions from type defaults alone).
-3. **Rule engine** — apply versioned rules `AUTHDIFF-RULE-001`…`022` (pack **1.5**) classifying each hit as `CAPABILITY`, `EXPOSURE`, or `SECURITY_FINDING` (see [`SECURITY-RULES.md`](SECURITY-RULES.md)).
+3. **Rule engine** — apply versioned rules `AUTHDIFF-RULE-001`…`022` (pack **1.6**) classifying each hit as `CAPABILITY`, `EXPOSURE`, or `SECURITY_FINDING` (see [`SECURITY-RULES.md`](SECURITY-RULES.md)).
 4. **Evidence registry** — each finding references evidence with path, optional line span, content digest, and audited commit when known.
 5. **Reporting** — authority snapshot + Markdown + JSON + SARIF; `authdiff explain` for one finding.
 6. **Optional baseline delta** — fingerprint-aware comparison; CI `--fail-on` ignores pure capability observations.

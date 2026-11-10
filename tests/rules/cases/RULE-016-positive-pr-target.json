@@ -7,6 +7,6 @@
     "rule_fired": true,
     "finding_class": "SECURITY_FINDING",
     "severity": "HIGH",
-    "confidence": "POTENTIAL"
+    "confidence": "OBSERVED"
   }
 }

@@ -30,6 +30,8 @@ def write_scan_artifacts(
     risk_delta_doc: dict[str, Any] | None = None,
     authority_snapshot: dict[str, Any] | None = None,
     authority_delta: dict[str, Any] | None = None,
+    lock_delta: dict[str, Any] | None = None,
+    policy_mode: str | None = None,
     suppressions: list[dict[str, str]] | None = None,
     target_policy_ignored: bool = False,
     full_report: bool = False,
@@ -63,6 +65,8 @@ def write_scan_artifacts(
         risk_delta=risk_delta_doc,
         authority_delta=authority_delta,
         authority_snapshot=authority_snapshot,
+        lock_delta=lock_delta,
+        policy_mode=policy_mode,
     )
     write_text(output_dir / "pr-comment.md", comment)
     write_json(output_dir / "authority-sbom.json", build_authority_sbom(scan))
@@ -174,6 +178,7 @@ def run_scan(
             risk_delta_doc["authority_delta"] = authority_delta
             risk_delta_doc["component_delta_lines"] = render_component_delta_lines(authority_delta)
 
+    policy_mode = policy.mode if policy is not None else None
     payload = write_scan_artifacts(
         scan,
         out,
@@ -181,12 +186,15 @@ def run_scan(
         risk_delta_doc=risk_delta_doc,
         authority_snapshot=authority_snapshot,
         authority_delta=authority_delta,
+        policy_mode=policy_mode,
         suppressions=suppressed,
         target_policy_ignored=target_policy_ignored,
         full_report=full_report,
     )
     if risk_delta_summary is not None:
         payload["risk_delta"] = risk_delta_summary
+    if risk_delta_doc is not None:
+        payload["risk_delta_doc"] = risk_delta_doc
     if authority_delta is not None:
         payload["authority_delta"] = authority_delta
 

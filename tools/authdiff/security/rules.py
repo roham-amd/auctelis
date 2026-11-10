@@ -1079,11 +1079,12 @@ def rule_base_url_or_proxy_override(
     findings: list[Finding],
     ctx: EvidenceContext,
 ) -> None:
-    if component.get("type") != "Host Settings":
+    ctype = str(component.get("type") or "")
+    if ctype not in {"Host Settings", "MCP Server Registration"}:
         return
     if "base_url_or_proxy_override" not in set(component.get("priority_hints") or []):
         return
-    detail = component.get("settings_detail") or {}
+    detail = component.get("settings_detail") or component.get("mcp_detail") or {}
     key = str(detail.get("override_key") or "ANTHROPIC_BASE_URL")
     ev = build_rule_evidence(
         evidences,
@@ -1100,7 +1101,7 @@ def rule_base_url_or_proxy_override(
         severity="HIGH",
         confidence="OBSERVED",
         description=(
-            f"`{_label(component)}` sets `{key}` in project env. That can redirect "
+            f"`{_label(component)}` sets `{key}` in configuration env. That can redirect "
             "model traffic (and prompts/secrets in-flight) to an attacker-controlled endpoint."
         ),
         component=component,
@@ -1128,7 +1129,10 @@ def rule_pull_request_target_with_agent(
 ) -> None:
     if component.get("type") != "CI Workflow":
         return
-    if "pull_request_target_with_agent" not in set(component.get("priority_hints") or []):
+    hints = set(component.get("priority_hints") or [])
+    if "pull_request_target_with_agent" not in hints:
+        return
+    if "workflow_mitigation_present" in hints:
         return
     ev = build_rule_evidence(
         evidences,
@@ -1143,11 +1147,11 @@ def rule_pull_request_target_with_agent(
         rule_id="AUTHDIFF-RULE-016",
         title="pull_request_target workflow invokes agent-related steps",
         severity="HIGH",
-        confidence="POTENTIAL",
+        confidence="OBSERVED",
         description=(
             f"CI workflow `{_label(component)}` uses `pull_request_target` together with "
-            "agent/MCP-related steps. Fork PRs can often influence checkout/content while "
-            "retaining privileged secrets — a classic CI + agent abuse path."
+            "observed agent/MCP steps (`uses:` or launcher CLI). Fork PRs can often influence "
+            "checkout/content while retaining privileged secrets — a classic CI + agent abuse path."
         ),
         component=component,
         evidence=ev,
@@ -1163,7 +1167,7 @@ def rule_pull_request_target_with_agent(
         recommended_action="Prefer pull_request; never feed fork PR code to privileged agents.",
         finding_class="SECURITY_FINDING",
         exposure="PR_TARGET_AGENT",
-        evidence_strength="INFERRED_HINT",
+        evidence_strength="LITERAL_CONFIG",
         verify_in_60s="Confirm `on: pull_request_target` and whether agent steps touch PR code.",
         fix_snippet="Switch to pull_request, or isolate secrets from any PR-controlled checkout.",
     )

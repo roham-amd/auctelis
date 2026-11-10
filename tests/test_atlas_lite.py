@@ -19,6 +19,8 @@ def test_benign_corpus_never_blocks(tmp_path: Path):
         decision = compute_decision(scan.findings, coverage=scan.coverage)
         assert decision != "BLOCK", f"{fixture.name} BLOCKED: {[f.rule_id for f in scan.findings]}"
         assert not any(is_high_gate_finding(f) for f in scan.findings), fixture.name
+        rule016 = [f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-016"]
+        assert not rule016, f"{fixture.name} must not fire RULE-016 alone: {rule016}"
 
 
 def test_attack_fixtures_gate(tmp_path: Path):

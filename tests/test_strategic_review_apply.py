@@ -15,7 +15,7 @@ from authdiff.security.scan import run_scan
 
 
 def test_core_public_commands_are_six_jobs():
-    # Aliases (open/check) are part of the six-job surface, not extra products.
+    # Aliases (open/check) are part of the public surface, not extra products.
     assert {
         "demo",
         "doctor",
@@ -24,10 +24,11 @@ def test_core_public_commands_are_six_jobs():
         "scan",
         "check",
         "lock",
+        "gate",
         "ci",
     } == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in ("demo", "doctor", "vet", "scan", "lock", "ci"):
+    for name in ("demo", "doctor", "vet", "scan", "lock", "gate", "ci"):
         assert name in help_text
     # Review / advanced stay callable but are omitted from brief help.
     assert "Propose least-privilege" not in help_text
@@ -43,8 +44,8 @@ def test_demo_target_resolves_packaged_fixture():
 
 
 def test_demo_command_runs(tmp_path: Path):
-    code = main(["demo", "-o", str(tmp_path / "out"), "--fail-on", "never"])
-    assert code in {0, 1}
+    code = main(["demo", "-o", str(tmp_path / "out")])
+    assert code == 0
     assert (tmp_path / "out" / "findings.json").is_file()
     assert (tmp_path / "out" / "pr-comment.md").is_file()
 
@@ -57,7 +58,7 @@ def test_addition_class_and_approval_record(tmp_path: Path):
         json.dumps({"mcpServers": {"a": {"command": "npx", "args": ["-y", "pkg-a"]}}}),
         encoding="utf-8",
     )
-    dest, lock = write_authority_lock(root)
+    dest, lock = write_authority_lock(root, accept_gated=True)
     assert dest.is_file()
     assert lock.get("approvals") == []
 
@@ -77,7 +78,7 @@ def test_addition_class_and_approval_record(tmp_path: Path):
     assert delta["summary"]["additions"] >= 1
     assert any(c.get("change_class") == "addition" for c in delta["changes"]["added"])
 
-    code = main(["lock", str(root), "--approval", "@security-owners"])
+    code = main(["lock", str(root), "--approval", "@security-owners", "--accept-gated"])
     assert code == 0
     sealed = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
     assert sealed["approvals"]

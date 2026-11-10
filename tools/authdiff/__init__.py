@@ -6,6 +6,6 @@ Public entry points:
   ``authdiff.inventory.collector.collect_inventory``
 """
 
-__version__ = "1.0.0"
-__product_version__ = "1.0.0"
+__version__ = "0.2.0"
+__product_version__ = "0.2.0"
 __product_name__ = "authdiff"

@@ -38,7 +38,9 @@ class Suppression:
 
 
 @dataclass
-class AesaPolicy:
+class AuthdiffPolicy:
+    """Repository policy loaded from ``.authdiff.yml``."""
+
     version: int = 1
     mode: str = "advisory"  # advisory | enforce
     fail_on: str = "never"  # never | high | any
@@ -77,6 +79,10 @@ class AesaPolicy:
                     if suffix and fnmatch.fnmatch(normalized, suffix):
                         return item
         return None
+
+
+# Backward-compatible alias (pre-rebrand name).
+AesaPolicy = AuthdiffPolicy
 
 
 def discover_policy_file(start: Path, *, stop_at: Path | None = None) -> Path | None:
@@ -155,7 +161,7 @@ def _parse_suppressions(raw: Any) -> list[Suppression]:
     return out
 
 
-def load_policy(path: Path) -> AesaPolicy:
+def load_policy(path: Path) -> AuthdiffPolicy:
     """Load and validate a ``.authdiff.yml`` policy file."""
     data = _parse_simple_yaml(path.read_text(encoding="utf-8"))
     version = int(data.get("version") or 1)
@@ -176,7 +182,7 @@ def load_policy(path: Path) -> AesaPolicy:
     if not isinstance(require_review, list):
         raise ValueError("policy.require_review must be a list")
     base = path.parent
-    return AesaPolicy(
+    return AuthdiffPolicy(
         version=version,
         mode=mode,
         fail_on=fail_on,
@@ -190,7 +196,7 @@ def load_policy(path: Path) -> AesaPolicy:
 
 def apply_policy_defaults(
     *,
-    policy: AesaPolicy | None,
+    policy: AuthdiffPolicy | None,
     fail_on: str | None,
     fail_on_from_cli: bool,
 ) -> str | None:
@@ -200,8 +206,51 @@ def apply_policy_defaults(
     return None if policy.fail_on == "never" else policy.fail_on
 
 
+def _strip_yaml_comment(line: str) -> str:
+    """Drop unquoted ``# …`` trailers so ``fail_on: never  # note`` stays valid."""
+    in_single = False
+    in_double = False
+    for i, ch in enumerate(line):
+        if ch == "'" and not in_double:
+            in_single = not in_single
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+        elif ch == "#" and not in_single and not in_double:
+            return line[:i].rstrip()
+    return line
+
+
+def _parse_flow_sequence(token: str) -> list[Any] | None:
+    """Parse a single-line flow sequence ``[]`` / ``[a, b]``; else return None."""
+    text = token.strip()
+    if not (text.startswith("[") and text.endswith("]")):
+        return None
+    inner = text[1:-1].strip()
+    if not inner:
+        return []
+    items: list[Any] = []
+    buf: list[str] = []
+    in_single = False
+    in_double = False
+    for ch in inner:
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            buf.append(ch)
+        elif ch == '"' and not in_single:
+            in_double = not in_double
+            buf.append(ch)
+        elif ch == "," and not in_single and not in_double:
+            items.append("".join(buf).strip())
+            buf = []
+        else:
+            buf.append(ch)
+    if buf or inner.endswith(","):
+        items.append("".join(buf).strip())
+    return items
+
+
 def _parse_simple_yaml(text: str) -> dict[str, Any]:
-    """Indent-aware subset: mappings, lists of mappings/scalars, quoted strings."""
+    """Indent-aware subset: mappings, lists of mappings/scalars, quoted strings, flow ``[]``."""
 
     def parse_scalar(token: str) -> Any:
         if token in {"", "~", "null", "Null", "NULL"}:
@@ -210,6 +259,9 @@ def _parse_simple_yaml(text: str) -> dict[str, Any]:
             return True
         if token in {"false", "False", "FALSE"}:
             return False
+        flow = _parse_flow_sequence(token)
+        if flow is not None:
+            return [parse_scalar(item) if item else None for item in flow]
         if len(token) >= 2 and token[0] == token[-1] and token[0] in {"'", '"'}:
             return token[1:-1]
         if re.fullmatch(r"-?\d+", token):
@@ -218,10 +270,11 @@ def _parse_simple_yaml(text: str) -> dict[str, Any]:
 
     entries: list[tuple[int, str]] = []
     for raw in text.splitlines():
-        if not raw.strip() or raw.lstrip().startswith("#"):
+        stripped = _strip_yaml_comment(raw)
+        if not stripped.strip() or stripped.lstrip().startswith("#"):
             continue
-        indent = len(raw) - len(raw.lstrip(" "))
-        entries.append((indent, raw.strip()))
+        indent = len(stripped) - len(stripped.lstrip(" "))
+        entries.append((indent, stripped.strip()))
 
     def next_child_kind(from_idx: int, parent_indent: int) -> str:
         for j in range(from_idx + 1, len(entries)):

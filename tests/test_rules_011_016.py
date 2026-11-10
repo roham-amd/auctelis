@@ -105,13 +105,13 @@ def test_rule_016_pr_target_agent(tmp_path: Path):
     (wf / "agent.yml").write_text(
         "name: agent\non:\n  pull_request_target:\n"
         "jobs:\n  run:\n    runs-on: ubuntu-latest\n"
-        "    steps:\n      - run: echo claude mcp\n",
+        "    steps:\n      - run: npx -y some-agent-bot\n",
         encoding="utf-8",
     )
     scan = run_security_scan(root)
     hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-016")
     assert hit.severity == "HIGH"
-    assert hit.evidence_strength == "INFERRED_HINT"
+    assert hit.evidence_strength == "LITERAL_CONFIG"
 
 
 def test_rule_010_name_marker_strength():
@@ -129,6 +129,7 @@ def test_rule_010_content_abuse_strength():
     root = Path(__file__).resolve().parents[0] / "rules" / "fixtures" / "rule-010-positive-content"
     scan = run_security_scan(root)
     hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-010")
+    # Heuristic instruction phrasing is INFERRED_HINT (not LITERAL_CONFIG), EXPOSURE/MEDIUM.
     assert hit.evidence_strength == "INFERRED_HINT"
     assert hit.finding_class == "EXPOSURE"
     assert hit.severity == "MEDIUM"

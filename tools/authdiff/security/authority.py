@@ -108,7 +108,8 @@ def _identity(component: dict[str, Any]) -> list[str]:
         else:
             out.append("env_credentials")
     if "base_url_or_proxy_override" in hints:
-        out.append("anthropic_base_url_override")
+        detail = component.get("settings_detail") or component.get("mcp_detail") or {}
+        out.append(str(detail.get("override_key") or "base_url_override"))
     return out
 
 

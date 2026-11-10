@@ -4,11 +4,11 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **1.0.0** |
-| Tooling package | **1.0.0** (`authdiff`) |
+| Product release | **0.2.0** |
+| Tooling package | **0.2.0** (`authdiff`) |
 | Rule pack | **1.6** (rules 001–022) |
-| Primary path | `authdiff demo` → `lock` → `ci init` → `check --locked` |
-| Policy file | `.authdiff.yml` (compat name) + `AUTHORITY.lock` (CODEOWNERS) |
+| Primary path | `authdiff demo` → `lock` → `ci init --owner` → `gate` / Action |
+| Policy file | `.authdiff.yml` + `AUTHORITY.lock` (CODEOWNERS) |
 | Action | `.github/actions/authdiff-gate` (display name: authdiff) |
 
 Normative depth: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`GUARD-SCAN.md`](GUARD-SCAN.md),
@@ -36,18 +36,20 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools" authdiff demo
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v1.0.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
 
 authdiff doctor                          # host authority map
 authdiff open github.com/org/some-skill  # pre-install verdict
 authdiff scan .                          # bare `authdiff` also defaults to scan .
-authdiff lock                            # write AUTHORITY.lock
-authdiff ci init                         # .authdiff.yml + workflow + CODEOWNERS
+authdiff lock                            # write AUTHORITY.lock (--accept-gated if needed)
+authdiff ci init --owner @security-owners
 authdiff check --locked .
+# On PRs the Action compares head to the base-ref lock and runs:
+# authdiff gate --base-lock <base-AUTHORITY.lock>
 ```
 
 Single CI recipe: [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.example.yml).

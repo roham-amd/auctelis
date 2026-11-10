@@ -88,8 +88,9 @@ def test_product_cli_hides_maintainer_commands():
 def test_init_gate_writes_codeowners(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()
-    assert main(["ci", "init", str(root)]) == 0
+    assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0
     assert (root / ".authdiff.yml").is_file()
     assert (root / ".github" / "workflows" / "authdiff-gate.yml").is_file()
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "AUTHORITY.lock" in owners
+    assert "@sec-owners" in owners
