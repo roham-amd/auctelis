@@ -8,7 +8,7 @@ Product path only. Historical material lives under [`archive/`](archive/).
 | --- | --- |
 | [`PRODUCT.md`](PRODUCT.md) | Frozen product contract, naming, command tiers |
 | [`ROADMAP.md`](ROADMAP.md) | 30/90-day plan + success metrics |
-| [`PRODUCT-STRATEGY-REVIEW-PROMPT.md`](PRODUCT-STRATEGY-REVIEW-PROMPT.md) | Prompt for an external AI **status** review of latest main (contract fidelity, not redesign) |
+| [`PRODUCT-STRATEGY-REVIEW-PROMPT.md`](PRODUCT-STRATEGY-REVIEW-PROMPT.md) | Prompt for an external AI strategy review: accurate current state, then full freedom to redesign or scrap |
 | [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) | Lock semantics, identity, diff classes |
 | [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) | Adapter maturity / unknowns |
 | [`adapters/`](adapters/) | Per-surface maturity specs |
