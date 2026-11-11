@@ -1,10 +1,13 @@
-"""Authority gate: base-lock diff + trusted CODEOWNER approval.
+"""Authority gate: base-lock diff + CODEOWNERS presence + GitHub-native approval.
 
-Product contract: no addition/expansion reaches green until a CODEOWNERS
-reviewer for ``AUTHORITY.lock`` has approved the change. Approvals are
-*read* from GitHub PR reviews (or an explicit ``--approved-by`` override for
-local/CI harnesses) — the write-only ``approvals[]`` array on the lock is
-not consulted.
+Product contract: authority growth fails until a PR is approved under GitHub
+CODEOWNERS/rulesets. This module no longer matches individual logins to
+``@org/team`` owners — that is GitHub's job. We only:
+
+1. Schema-validate / reject hollow base locks when head has authority
+2. Require CODEOWNERS coverage for AUTHORITY.lock (from base ref when provided)
+3. On meaningful growth, require at least one APPROVED PR review (or
+   ``--approved-by`` for local harnesses)
 """
 
 from __future__ import annotations
@@ -17,8 +20,19 @@ from pathlib import Path
 from typing import Any
 
 from authdiff.authority_lock import LOCK_NAME, build_authority_lock, diff_authority_locks
-from authdiff.lock_io import load_authority_lock
+from authdiff.lock_io import AuthorityLockError, load_authority_lock
 from authdiff.security.engine import ScanResult, run_security_scan
+
+# Authority-bearing path globs that CODEOWNERS should cover (docs + ci init).
+AUTHORITY_PATH_HINTS = (
+    LOCK_NAME,
+    ".authdiff.yml",
+    "**/.mcp.json",
+    "**/.cursor/mcp.json",
+    "**/.claude/settings.json",
+    "**/hooks.json",
+    "**/SKILL.md",
+)
 
 
 def parse_codeowners_for_path(
@@ -36,7 +50,6 @@ def parse_codeowners_for_path(
         if not parts:
             continue
         pattern, *rest = parts
-        # Simple basename / exact / trailing match — enough for AUTHORITY.lock.
         normalized = pattern.replace("\\", "/").lstrip("/")
         target_norm = target.replace("\\", "/").lstrip("/")
         if (
@@ -48,12 +61,34 @@ def parse_codeowners_for_path(
     return owners
 
 
-def load_lock_owners(root: Path) -> list[str]:
+def load_codeowners_text(root: Path, *, codeowners_path: Path | None = None) -> str:
+    if codeowners_path is not None and codeowners_path.is_file():
+        return codeowners_path.read_text(encoding="utf-8")
     for rel in (".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"):
         path = root / rel
         if path.is_file():
-            return parse_codeowners_for_path(path.read_text(encoding="utf-8"))
-    return []
+            return path.read_text(encoding="utf-8")
+    return ""
+
+
+def load_lock_owners(
+    root: Path,
+    *,
+    codeowners_path: Path | None = None,
+    codeowners_text: str | None = None,
+) -> list[str]:
+    text = (
+        codeowners_text
+        if codeowners_text is not None
+        else load_codeowners_text(root, codeowners_path=codeowners_path)
+    )
+    if not text:
+        return []
+    return parse_codeowners_for_path(text)
+
+
+def codeowners_covers_lock(codeowners_text: str) -> bool:
+    return bool(parse_codeowners_for_path(codeowners_text, target=LOCK_NAME))
 
 
 def _normalize_owner(value: str) -> str:
@@ -61,10 +96,6 @@ def _normalize_owner(value: str) -> str:
     if text.startswith("@"):
         return text.lower()
     return f"@{text}".lower()
-
-
-def _login_to_owner(login: str) -> str:
-    return _normalize_owner(login)
 
 
 def fetch_pr_approving_logins(
@@ -92,7 +123,6 @@ def fetch_pr_approving_logins(
         return []
     if not isinstance(payload, list):
         return []
-    # Last review per user wins.
     latest: dict[str, str] = {}
     for review in payload:
         if not isinstance(review, dict):
@@ -103,7 +133,7 @@ def fetch_pr_approving_logins(
         if not login:
             continue
         latest[login.lower()] = state
-    return [_login_to_owner(login) for login, state in latest.items() if state == "APPROVED"]
+    return [_normalize_owner(login) for login, state in latest.items() if state == "APPROVED"]
 
 
 def resolve_approvers(
@@ -114,7 +144,7 @@ def resolve_approvers(
     token: str | None = None,
     api_base: str | None = None,
 ) -> list[str]:
-    """Merge explicit ``--approved-by`` with GitHub PR approvals when available."""
+    """Collect GitHub PR approvals and explicit ``--approved-by`` harness overrides."""
     found = [_normalize_owner(x) for x in (approved_by or []) if x and x.strip()]
     repo = repository or os.environ.get("GITHUB_REPOSITORY")
     token = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -122,7 +152,6 @@ def resolve_approvers(
     if pr is None:
         raw = os.environ.get("AUTHDIFF_PR_NUMBER") or os.environ.get("GITHUB_PR_NUMBER")
         if not raw:
-            # actions/github-script style event path
             event_path = os.environ.get("GITHUB_EVENT_PATH")
             if event_path and Path(event_path).is_file():
                 try:
@@ -141,7 +170,6 @@ def resolve_approvers(
                 api_base=api_base or os.environ.get("GITHUB_API_URL") or "https://api.github.com",
             )
         )
-    # Dedupe preserving order.
     out: list[str] = []
     seen: set[str] = set()
     for item in found:
@@ -151,23 +179,13 @@ def resolve_approvers(
     return out
 
 
-def trusted_approval_present(
-    *,
-    required_owners: list[str],
-    approvers: list[str],
-) -> bool:
-    if not required_owners:
-        # No CODEOWNERS → cannot establish trust; treat as unapproved.
-        return False
-    required = {_normalize_owner(o) for o in required_owners}
-    have = {_normalize_owner(a) for a in approvers}
-    # Team owners (@org/team) cannot be matched to a user login without GraphQL;
-    # accept exact match, or user login when owner is a bare @user.
-    if required & have:
-        return True
-    # If only team owners are listed, require an explicit --approved-by that
-    # matches the team slug exactly (operators can pass @org/team in harnesses).
-    return bool(required & have)
+def github_native_approval_present(*, approvers: list[str]) -> bool:
+    """True when GitHub (or a harness) has recorded at least one approval.
+
+    CODEOWNERS/rulesets decide *who* may approve; authdiff only checks that an
+    approval exists once owners are configured on the base ref.
+    """
+    return bool(approvers)
 
 
 def run_gate(
@@ -180,50 +198,110 @@ def run_gate(
     repository: str | None = None,
     pr_number: int | None = None,
     token: str | None = None,
+    codeowners_path: Path | None = None,
+    codeowners_text: str | None = None,
 ) -> tuple[dict[str, Any], int]:
-    """Compare base→head lock; fail on meaningful growth without trusted approval."""
+    """Compare base→head lock; fail on growth without GitHub-native approval."""
     root = root.resolve()
-    base = load_authority_lock(base_lock)
-    if head_lock is not None and head_lock.is_file():
-        head = load_authority_lock(head_lock)
-    else:
-        if scan is None:
-            scan = run_security_scan(root)
-        head = build_authority_lock(root, scan=scan)
+    try:
+        base = load_authority_lock(base_lock)
+    except AuthorityLockError as exc:
+        return {
+            "ok": False,
+            "verdict": "FAIL_CLOSED",
+            "error": str(exc),
+            "needs_approval": True,
+            "required_owners": [],
+            "approvers": [],
+            "approved": False,
+            "lines": [],
+        }, 2
+    try:
+        if head_lock is not None and head_lock.is_file():
+            head = load_authority_lock(head_lock)
+        else:
+            if scan is None:
+                scan = run_security_scan(root)
+            head = build_authority_lock(root, scan=scan)
+    except AuthorityLockError as exc:
+        return {
+            "ok": False,
+            "verdict": "FAIL_CLOSED",
+            "error": str(exc),
+            "needs_approval": True,
+            "required_owners": [],
+            "approvers": [],
+            "approved": False,
+            "lines": [],
+        }, 2
+
+    base_records = list(base.get("records") or [])
+    head_records = list(head.get("records") or [])
+    hollow_base = not base_records and not (base.get("mcp_tools") or {})
+    if hollow_base and head_records:
+        return {
+            "ok": False,
+            "verdict": "FAIL_CLOSED",
+            "error": (
+                "hollow base AUTHORITY.lock (no records); refuse to gate growth. "
+                "Commit a real lock on the base ref first."
+            ),
+            "needs_approval": True,
+            "required_owners": [],
+            "approvers": [],
+            "approved": False,
+            "meaningful_authority_change": True,
+            "lines": [],
+        }, 1
+
     delta = diff_authority_locks(base, head)
     summary = delta.get("summary") or {}
     meaningful = bool(summary.get("meaningful_authority_change"))
-    owners = load_lock_owners(root)
+    owners = load_lock_owners(
+        root, codeowners_path=codeowners_path, codeowners_text=codeowners_text
+    )
+    co_text = (
+        codeowners_text
+        if codeowners_text is not None
+        else load_codeowners_text(root, codeowners_path=codeowners_path)
+    )
+    owners_present = codeowners_covers_lock(co_text) if co_text else bool(owners)
     approvers = resolve_approvers(
         approved_by=approved_by,
         repository=repository,
         pr_number=pr_number,
         token=token,
     )
-    approved = trusted_approval_present(required_owners=owners, approvers=approvers)
+    approved = github_native_approval_present(approvers=approvers)
     needs_approval = meaningful and bool(
         int(summary.get("additions") or 0)
         or int(summary.get("expansions") or 0)
         or int(summary.get("replacements") or 0)
         or summary.get("policy_changed")
     )
-    ok = (not needs_approval) or approved
+    ok = (not needs_approval) or (owners_present and approved)
     report: dict[str, Any] = {
         "ok": ok,
         "verdict": "PASS" if ok else "NEEDS_APPROVAL",
         "meaningful_authority_change": meaningful,
         "needs_approval": needs_approval,
         "required_owners": owners,
+        "owners_present": owners_present,
         "approvers": approvers,
         "approved": approved,
         "delta": delta,
         "lines": delta.get("lines") or [],
+        "authority_path_hints": list(AUTHORITY_PATH_HINTS),
     }
-    if not owners and needs_approval:
+    if needs_approval and not owners_present:
         report["error"] = (
-            "AUTHORITY.lock has no CODEOWNERS entry; cannot verify a trusted approver. "
-            "Run `authdiff ci init --owner @team`."
+            "AUTHORITY.lock has no CODEOWNERS entry on the trusted ref; "
+            "cannot rely on GitHub-native approval. "
+            "Run `authdiff ci init --owner @user` and protect authority paths."
         )
+        report["ok"] = False
+        report["verdict"] = "NEEDS_APPROVAL"
+        return report, 1
     return report, 0 if ok else 1
 
 
@@ -231,7 +309,11 @@ def render_gate_report(report: dict[str, Any]) -> str:
     lines = [f"authdiff gate — {report.get('verdict')}"]
     if report.get("needs_approval"):
         owners = ", ".join(report.get("required_owners") or []) or "(none)"
-        lines.append(f"Needs approval from: {owners}")
+        lines.append(f"CODEOWNERS for AUTHORITY.lock: {owners}")
+        lines.append(
+            "Approval model: GitHub-native CODEOWNERS/rulesets "
+            "(any APPROVED review counts once owners are configured)."
+        )
         approvers = ", ".join(report.get("approvers") or []) or "(none yet)"
         lines.append(f"Approvers seen: {approvers}")
     for line in report.get("lines") or []:

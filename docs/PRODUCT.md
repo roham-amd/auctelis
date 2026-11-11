@@ -2,10 +2,10 @@
 
 **Product:** `authdiff` — the authority lockfile and PR security gate for AI agents  
 **Also known as:** Agent Authority Change Control  
-**Release:** 0.2.0 · **Package:** `authdiff` 0.2.0 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Release:** 0.3.0 · **Package:** `authdiff` 0.3.0 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
 
 This page freezes what the product is, what it is not, and which commands are
-primary. Historical methodology lives under [`archive/`](../archive/).
+primary. Research/archive trees were removed in 0.3.0.
 Execution plan: [`ROADMAP.md`](ROADMAP.md).
 
 ---
@@ -54,8 +54,8 @@ Public path: **demo → doctor → vet/open → scan/check → lock → gate →
 | `authdiff gate` | Fail on unapproved addition/expansion vs `--base-lock` |
 | `authdiff ci init --owner @team` | Policy + workflow + CODEOWNERS + initial lock |
 
-Maintainer / research surfaces (`authdiff-dev`, atlas, benchmark, pilots, corpus)
-are secondary and must not block the product loop.
+Maintainer surfaces (`authdiff-dev` build / lint / corpus / deps) are secondary
+and must not block the product loop.
 
 ---
 

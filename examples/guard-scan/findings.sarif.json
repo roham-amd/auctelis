@@ -6,7 +6,7 @@
       "tool": {
         "driver": {
           "name": "authdiff",
-          "version": "1.0.0",
+          "version": "0.3.0",
           "informationUri": "https://github.com/roham-amd/authdiff",
           "rules": [
             {
@@ -337,26 +337,10 @@
           ]
         },
         {
-          "ruleId": "AUTHDIFF-RULE-007",
-          "level": "warning",
-          "message": {
-            "text": "`agent` is unattended CI that also references agent/MCP-related steps. Review triggers, tokens, and whether agent authority can run unattended."
-          },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": {
-                  "uri": ".github/workflows/agent.yml"
-                }
-              }
-            }
-          ]
-        },
-        {
           "ruleId": "AUTHDIFF-RULE-016",
           "level": "error",
           "message": {
-            "text": "CI workflow `agent` uses `pull_request_target` together with agent/MCP-related steps. Fork PRs can often influence checkout/content while retaining privileged secrets \u2014 a classic CI + agent abuse path."
+            "text": "CI workflow `agent` uses `pull_request_target` together with observed agent/MCP steps (`uses:` or launcher CLI). Fork PRs can often influence checkout/content while retaining privileged secrets \u2014 a classic CI + agent abuse path."
           },
           "locations": [
             {

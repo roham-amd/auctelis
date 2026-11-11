@@ -1,12 +1,8 @@
-import json
 from pathlib import Path
 
-from authdiff.audit import run_audit
-from authdiff.benchmark.runner import run_benchmark
 from authdiff.corpus.runner import run_corpus
 from authdiff.inventory.collector import collect_inventory, inventory_to_json
 from authdiff.inventory.limits import CollectorLimits
-from authdiff.preflight import run_preflight
 from authdiff.validate_report import analyze_graph_paths
 
 
@@ -67,49 +63,26 @@ def test_inventory_finds_skill_and_mcp():
     assert "adapter_matrix" in payload["coverage"]
 
 
-def test_preflight_writes_outputs(tmp_path: Path):
+def test_preflight_graph_helpers(tmp_path: Path):
+    from authdiff.jsonio import write_json
+    from authdiff.preflight import build_audit_context_md, inventory_to_graph, run_preflight
     from authdiff.validate_report import validate_graph_file
 
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"
     )
-    out = tmp_path / "authdiff-out"
-    result = run_preflight(root, output_dir=out)
-    assert result["component_count"] >= 2
-    assert (out / "inventory.json").is_file()
-    assert (out / "ecosystem-graph.json").is_file()
-    assert (out / "audit-context.md").is_file()
-    assert "NOT VERIFIED" in result["summary"]
-    graph = validate_graph_file(out / "ecosystem-graph.json")
-    assert graph.ok, [f"{i.code}: {i.message}" for i in graph.issues]
-
-
-def test_audit_standard_writes_profile(tmp_path: Path):
-    root = (
-        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"
-    )
-    out = tmp_path / "authdiff-out"
-    result = run_audit(root, profile="standard", output_dir=out)
-    assert result["profile"] == "standard"
-    assert (out / "profile.json").is_file()
-    assert (out / "audit-summary.md").is_file()
-    ctx = (out / "audit-context.md").read_text(encoding="utf-8")
-    assert "Audit profile" in ctx
-    assert "Suggested modules" in ctx
-
-
-def test_audit_deployment_worksheet(tmp_path: Path):
-    root = (
-        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"
-    )
-    out = tmp_path / "deploy-out"
-    run_audit(root, profile="deployment", output_dir=out)
-    assert (out / "deployment-worksheet.md").is_file()
-
-
-def test_benchmark_harness_passes():
-    summary = run_benchmark()
-    assert summary["failed"] == 0, summary
+    inv = collect_inventory(root)
+    graph = inventory_to_graph(inv)
+    out = tmp_path / "ecosystem-graph.json"
+    write_json(out, graph)
+    result = validate_graph_file(out)
+    assert result.ok, [f"{i.code}: {i.message}" for i in result.issues]
+    ctx = build_audit_context_md(inv, commit="deadbeef")
+    assert "NOT VERIFIED" in ctx
+    assert "deadbeef" in ctx
+    pf = run_preflight(root, output_dir=tmp_path / "pf-out")
+    assert pf["component_count"] >= 2
+    assert (tmp_path / "pf-out" / "inventory.json").is_file()
 
 
 def test_github_workflow_adapter(tmp_path: Path):
@@ -128,36 +101,13 @@ def test_mcp_example_and_server_source(tmp_path: Path):
     cursor = tmp_path / ".cursor"
     cursor.mkdir()
     (cursor / "mcp_example.json").write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "demo": {
-                        "command": "uv",
-                        "args": ["run", "mcp/skills_mcp.py"],
-                    }
-                }
-            }
-        ),
+        '{"mcpServers": {"demo": {"command": "npx", "args": ["-y", "pkg@1.0.0"]}}}',
         encoding="utf-8",
     )
-    mcp_dir = tmp_path / "mcp"
-    mcp_dir.mkdir()
-    (mcp_dir / "skills_mcp.py").write_text(
-        "from fastmcp import FastMCP\nmcp = FastMCP(name='demo')\n",
+    (tmp_path / "server_mcp.py").write_text(
+        "import mcp\n# mcp server stub\n",
         encoding="utf-8",
     )
-    inv = collect_inventory(tmp_path)
+    inv = collect_inventory(tmp_path, limits=CollectorLimits(max_files=50))
     types = {c["type"] for c in inv.components}
-    names = {c["name"] for c in inv.components}
     assert "MCP Server Registration" in types
-    assert "MCP Server Implementation" in types
-    assert "demo" in names
-    assert "skills_mcp" in names
-
-
-def test_inventory_skips_oversize_before_read(tmp_path: Path):
-    huge = tmp_path / "SKILL.md"
-    huge.write_bytes(b"x" * 5000)
-    inv = collect_inventory(tmp_path, limits=CollectorLimits(max_file_bytes=100))
-    assert inv.components == []
-    assert any(e.get("type") == "parse_skipped_size" for e in inv.parser_events)

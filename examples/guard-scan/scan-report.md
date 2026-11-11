@@ -5,25 +5,25 @@ Absence of findings is not evidence of safety when coverage is incomplete.
 
 ```text
 authdiff — Authority Diff for AI agents
-Product: authdiff 1.0.0  (tooling 1.0.0)
-Repository: C:\Users\rohaa\Projects\authdiff\examples\demo-vulnerable
-Commit: 6a9db84ded397ca6ced2cf9dfd82b381754bd2ea
+Product: authdiff 0.3.0  (tooling 0.3.0)
+Repository: examples/demo-vulnerable
+Commit: 5de10f8eab81e114eb23041c18c896d3af95ed1a
 
 DECISION: BLOCK
   BLOCK: 7 high/critical authority issue(s) require a fix or explicit risk acceptance before merge/install.
-  Observed 12 gated finding(s) and 2 capability observation(s).
+  Observed 11 gated finding(s) and 2 capability observation(s).
   Next: `authdiff explain F-00N` for evidence, or `authdiff fix` for dry-run fix patches.
-  Coverage: 17% SUPPORTED (1/6); PARTIAL=5 MANUAL_ONLY=0 — clean result ≠ safe.
+  Coverage: 20% SUPPORTED (1/5); PARTIAL=4 MANUAL_ONLY=0 — clean result ≠ safe.
 
 DECISION SUMMARY
-  Components discovered              6
+  Components discovered              5
   Authority-bearing components       4
   External connections               2
   High-priority review items         7
   Unverified control surfaces        4
 
 OBSERVATION CLASSES
-  Security findings                  9
+  Security findings                  8
   Exposure observations              3
   Capability observations            2
 
@@ -58,13 +58,12 @@ EXAMPLE AUTHORITY PATH
 
 COMPONENTS BY TYPE
   Agent Host               1
-  Automation / Workflow    1
   CI Workflow              1
   MCP Server Registration  2
   Skill                    1
 
 ALL FINDINGS
-  CRITICAL 3  HIGH 4  MEDIUM 4  LOW 1  INFO 2
+  CRITICAL 3  HIGH 4  MEDIUM 3  LOW 1  INFO 2
   [SECURITY_FINDING/CRITICAL/OBSERVED] F-004 Download-and-execute pattern in agent surface
       evidence: skills/bootstrap/SKILL.md:17
       action: Vendor and pin scripts; never curl|sh from skills or hooks.
@@ -83,13 +82,10 @@ ALL FINDINGS
   [SECURITY_FINDING/HIGH/OBSERVED] F-011 Remote MCP endpoint uses cleartext HTTP
       evidence: .cursor/mcp.json:11
       action: Use https:// only; reject plain HTTP remote MCP registrations.
-  [SECURITY_FINDING/HIGH/POTENTIAL] F-014 pull_request_target workflow invokes agent-related steps
+  [SECURITY_FINDING/HIGH/OBSERVED] F-013 pull_request_target workflow invokes agent-related steps
       evidence: .github/workflows/agent.yml:3
       action: Prefer pull_request; never feed fork PR code to privileged agents.
   [SECURITY_FINDING/MEDIUM/OBSERVED] F-012 Unattended automation or CI workflow present
-      evidence: .github/workflows/agent.yml
-      action: Confirm agent/MCP steps need this workflow; pin launchers; least-privilege tokens.
-  [SECURITY_FINDING/MEDIUM/OBSERVED] F-013 Unattended automation or CI workflow present
       evidence: .github/workflows/agent.yml
       action: Confirm agent/MCP steps need this workflow; pin launchers; least-privilege tokens.
   [EXPOSURE/MEDIUM/OBSERVED] F-003 Instruction text directs hide, bypass, or fetch-execute behavior
@@ -101,10 +97,13 @@ ALL FINDINGS
   [EXPOSURE/LOW/OBSERVED] F-002 Skill references external URLs
       evidence: skills/bootstrap/SKILL.md:17
       action: Pin or vendor remote references; treat remote content as untrusted.
+  [CAPABILITY/INFORMATIONAL/POTENTIAL] F-001 Skill references executable scripts
+      evidence: skills/bootstrap/SKILL.md:10
+      action: Treat as an authority surface: verify whether scripts inherit sensitive environment variables and whether execution requires independent approval.
 
 COVERAGE
-  Deterministically discovered  6
-  Adapter maturity              {'SUPPORTED': 1, 'PARTIAL': 5, 'MANUAL_ONLY': 0, 'UNSUPPORTED': 0}
+  Deterministically discovered  5
+  Adapter maturity              {'SUPPORTED': 1, 'PARTIAL': 4, 'MANUAL_ONLY': 0, 'UNSUPPORTED': 0}
 
 ADAPTER COVERAGE
   Skill                        SUPPORTED    skill_md
@@ -170,7 +169,7 @@ IMPORTANT
 - **F-011** [SECURITY_FINDING/HIGH/OBSERVED] Remote MCP endpoint uses cleartext HTTP
   - Evidence: `.cursor/mcp.json:11`
   - Action: Use https:// only; reject plain HTTP remote MCP registrations.
-- **F-014** [SECURITY_FINDING/HIGH/POTENTIAL] pull_request_target workflow invokes agent-related steps
+- **F-013** [SECURITY_FINDING/HIGH/OBSERVED] pull_request_target workflow invokes agent-related steps
   - Evidence: `.github/workflows/agent.yml:3`
   - Action: Prefer pull_request; never feed fork PR code to privileged agents.
 
@@ -188,11 +187,9 @@ IMPORTANT
   - Pin an exact version or digest; avoid `npx -y` / floating `uvx` tags.
 - **F-011** [SECURITY_FINDING/HIGH/OBSERVED] Remote MCP endpoint uses cleartext HTTP
   - Use https:// only; reject plain HTTP remote MCP registrations.
-- **F-014** [SECURITY_FINDING/HIGH/POTENTIAL] pull_request_target workflow invokes agent-related steps
+- **F-013** [SECURITY_FINDING/HIGH/OBSERVED] pull_request_target workflow invokes agent-related steps
   - Prefer pull_request; never feed fork PR code to privileged agents.
 - **F-012** [SECURITY_FINDING/MEDIUM/OBSERVED] Unattended automation or CI workflow present
-  - Confirm agent/MCP steps need this workflow; pin launchers; least-privilege tokens.
-- **F-013** [SECURITY_FINDING/MEDIUM/OBSERVED] Unattended automation or CI workflow present
   - Confirm agent/MCP steps need this workflow; pin launchers; least-privilege tokens.
 - **F-003** [EXPOSURE/MEDIUM/OBSERVED] Instruction text directs hide, bypass, or fetch-execute behavior
   - Rewrite instructions; forbid hide/bypass/remote-exec directives in skills.

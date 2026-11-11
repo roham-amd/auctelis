@@ -43,11 +43,7 @@ def test_apply_policy_defaults_cli_wins():
 
 def test_suppression_filters_findings(tmp_path: Path):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "skill-to-mcp-path"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
     policy_path = tmp_path / ".authdiff.yml"
     policy_path.write_text(SAMPLE, encoding="utf-8")
@@ -65,11 +61,7 @@ def test_suppression_filters_findings(tmp_path: Path):
 
 def test_default_output_not_under_target(tmp_path: Path, monkeypatch):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "benign-skill-only"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-only"
     )
     cwd = tmp_path / "cwd"
     cwd.mkdir()

@@ -1,7 +1,4 @@
-"""Preflight helpers: git identity, graph seed, context rendering.
-
-``run_preflight`` delegates to ``run_audit(profile=\"quick\")`` for a single write path.
-"""
+"""Preflight helpers: git identity, graph seed, context rendering."""
 
 from __future__ import annotations
 
@@ -175,11 +172,10 @@ def build_audit_context_md(result: InventoryResult, *, commit: str | None) -> st
             "",
             "## Next steps for AI audit agent",
             "",
-            "1. Optional deep mode: `archive/methodology/prompts/04-passive-guardrails.md`.",
-            "2. Use this inventory; do not claim full ecosystem discovery beyond adapter coverage.",
-            "3. Select high-priority components; load archived `modules/*.md` only if needed.",
-            "4. Produce narrative report + `audit-report` JSON; validate with `authdiff validate report`.",
-            "5. Keep runtime, publisher identity, and host effective permissions as NOT VERIFIED unless new evidence is supplied.",
+            "1. Use this inventory; do not claim full ecosystem discovery beyond adapter coverage.",
+            "2. Review high-priority components with `authdiff scan` / `authdiff lock`.",
+            "3. Produce findings via `authdiff scan`; validate reports with `authdiff-dev validate report`.",
+            "4. Keep runtime, publisher identity, and host effective permissions as NOT VERIFIED unless new evidence is supplied.",
             "",
             "## Safety",
             "",
@@ -246,7 +242,26 @@ def render_preflight_text(result: InventoryResult, *, commit: str | None, out_di
 
 
 def run_preflight(target: Path, *, output_dir: Path | None = None) -> dict[str, Any]:
-    """Compatibility wrapper — same artifacts as ``authdiff audit --profile quick``."""
-    from authdiff.audit import run_audit
+    """Write inventory + graph + context for a target (legacy preflight path)."""
+    from authdiff.inventory.collector import collect_inventory
+    from authdiff.jsonio import write_json, write_text
 
-    return run_audit(target, profile="quick", output_dir=output_dir)
+    target = target.resolve()
+    out = (output_dir or (target / "authdiff-out")).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    inv = collect_inventory(target)
+    commit = resolve_git_commit(target)
+    graph = inventory_to_graph(inv)
+    from authdiff.inventory.collector import inventory_to_json
+
+    write_json(out / "inventory.json", inventory_to_json(inv))
+    write_json(out / "ecosystem-graph.json", graph)
+    context = build_audit_context_md(inv, commit=commit)
+    write_text(out / "audit-context.md", context)
+    write_text(out / "preflight-summary.md", render_preflight_text(inv, commit=commit, out_dir=out))
+    return {
+        "component_count": len(inv.components),
+        "commit": commit,
+        "output_dir": str(out),
+        "summary": context,
+    }

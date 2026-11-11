@@ -1,9 +1,9 @@
 {
   "manifest_version": "1.0",
   "product": "authdiff",
-  "product_version": "0.2.0",
+  "product_version": "0.3.0",
   "package_name": "authdiff",
-  "package_version": "0.2.0",
+  "package_version": "0.3.0",
   "primary_command": "authdiff gate",
   "north_star": "Know what authority your AI agents have, what changes when integrations are introduced, and whether those changes have been approved.",
   "positioning": "The authority lockfile and PR security gate for AI agents.",
@@ -57,7 +57,7 @@
     "decision": "BLOCK | REVIEW | NO-GATED-FINDINGS (unparsed agent configs fail closed as REVIEW; baseline mode is new-only; NAME_MARKER never gates; require_review classes auto-fail; gated findings require evidence_ids)"
   },
   "compatibility": {
-    "supported_product_line": "1.x",
+    "supported_product_line": "0.x",
     "minimum_python": "3.12"
   }
 }

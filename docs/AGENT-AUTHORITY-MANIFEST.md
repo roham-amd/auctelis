@@ -1,26 +1,32 @@
-# Agent Authority Manifest
+# Agent Authority Manifest (legacy)
 
 Compact, vendor-neutral declaration of the authority an AI-agent integration
-**requires** or **exposes**. authdiff drafts and verifies manifests; it also
-exports an independently observed [`authority-sbom.json`](../tools/authdiff/export/authority_sbom.py).
+**requires** or **exposes**. In 0.3.0 the product source of truth is
+[`AUTHORITY.lock`](AUTHORITY-LOCK.md); the experimental `AUTHORITY.yml` /
+`init-manifest` / `verify-manifest` CLI was removed.
 
-Schema: [`../schemas/agent-authority-manifest.schema.json`](../schemas/agent-authority-manifest.schema.json)
+authdiff still exports an independently observed
+[`authority-sbom.json`](../tools/authdiff/export/authority_sbom.py) from
+`authdiff scan` when full artifacts are enabled.
 
-## Commands
+Schema (if present in checkout):
+[`../schemas/agent-authority-manifest.schema.json`](../schemas/agent-authority-manifest.schema.json)
+
+## Current workflow
 
 ```bash
-authdiff init-manifest .          # draft AUTHORITY.yml from observed inventory
-authdiff verify-manifest .        # fail on undeclared component growth
-authdiff scan .                   # also writes authdiff-out/authority-sbom.json
+authdiff scan .                   # findings + inventory (+ SBOM with --full)
+authdiff lock .                   # seal AUTHORITY.lock
+authdiff gate . --base-lock path/to/base.lock
 ```
 
 ## Trust rule
 
-A publisher-signed manifest is still **untrusted** until an independent scanner
+A publisher-signed declaration is still **untrusted** until an independent scanner
 observes the artifact. Differences between declared and observed capabilities
 are the security signal.
 
 ## Layers
 
-Manifests record **Declared** intent. Scanners fill **Configured/Observed**
+Declarations record **Declared** intent. Scanners fill **Configured/Observed**
 fields. **Effective** and **Verified** require host or authorized runtime evidence.

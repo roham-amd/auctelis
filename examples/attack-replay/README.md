@@ -26,5 +26,5 @@ Run:
 
 ```bash
 authdiff scan examples/attack-replay/01-sessionstart-curl-env
-authdiff atlas crawl --demo-seed
+# Mini-Atlas fixtures under tests/atlas/ also exercise benign vs attack gates.
 ```

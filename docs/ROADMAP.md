@@ -1,7 +1,7 @@
 # authdiff roadmap
 
 **Product:** the authority lockfile and PR security gate for AI agents  
-**Current:** 0.2.0 / tooling 0.2.0 / rule pack 1.6  
+**Current:** 0.3.0 / tooling 0.3.0 / rule pack 1.6  
 
 
 This roadmap applies the strategic diagnosis: keep building around
@@ -43,7 +43,38 @@ validation while external submissions remain N=0.
 
 ---
 
-## 30-day plan — status (applied in 3.9–3.11)
+## 30-day plan — status (applied through 0.3.0)
+
+### Days 1–3 · Gate truth (0.3.0)
+
+- [x] `scan --base-lock` is advisory; `authdiff gate` is the only growth verdict
+- [x] Action posts comment/summary/artifacts with `if: always()`, then fails on scan/gate codes
+- [x] Six-scenario gate harness (`tests/test_gate_scenarios.py`)
+- [x] Dogfood: `AUTHORITY.lock`, `.authdiff.yml`, CODEOWNERS, local Action workflow
+- [x] `SECURITY.md` + `supported_product_line: 0.x`; examples regenerated without local Windows paths
+- [x] Branch-protection / ruleset docs in `AUTHDIFF-GATE.md`
+- [ ] Publish `authdiff` 0.3.0 to PyPI + tag `v0.3.0` (needs maintainer release)
+- [x] Mark GitHub Release `v1.0.0` prerelease/superseded
+
+### Days 4–14 · Pins (0.3.0)
+
+- [x] Lock records include `launcher`, `args_digest`, `url_host`, `script_digest`
+- [x] Same-name package/launcher swap classified as `replacement`
+- [x] `lock --snapshot` / `--resolve` hint; schema-validate locks on load
+- [x] Hostile lock tests (malformed / hollow / reorder)
+
+### Days 15–21 · Approval (0.3.0)
+
+- [x] Delete homemade owner∩approver matching; GitHub-native approval model
+- [x] Action loads CODEOWNERS from base ref (`--codeowners`)
+- [x] Ruleset / stale-review docs in `AUTHDIFF-GATE.md`
+
+### Days 22–30 · Habit + shrink (0.3.0)
+
+- [x] `lock --home` + Claude PreToolUse hook template
+- [x] README leads with `doctor`
+- [x] Kill list: archive/atlas/pilots/kit + unused schemas + research CLI
+- [ ] Five outside repos + 100 blind labels *(operator / outreach)*
 
 ### Days 1–5 · One release truth
 
@@ -65,7 +96,7 @@ validation while external submissions remain N=0.
 
 ### Days 13–20 · Authority gate
 
-- [x] Action `locked` default **true** (current pin `@v0.2.0`)
+- [x] Action `locked` default **true** (current pin `@v0.3.0`)
 - [x] Trusted base-ref policy loading
 - [x] Addition / expansion / reduction / replacement / representation / mixed tests
 - [x] Gated findings require evidence ids (`is_gate_finding`)
@@ -151,4 +182,3 @@ architecture until local CLI + CI workflows are insufficient for real users.
 - [`AGENT-AUTHORITY-MANIFEST.md`](AGENT-AUTHORITY-MANIFEST.md) — manifest / SBOM  
 - [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) — lock semantics  
 - [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) — adapter honesty  
-- [`archive/RADICAL-ALTERNATIVES.md`](archive/RADICAL-ALTERNATIVES.md) — deferred 10x pivots  

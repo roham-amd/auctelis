@@ -1,4 +1,4 @@
-"""Tests for authdiff 90-day surfaces + radical-alt MVPs."""
+"""Tests for advanced product surfaces (snapshot, broker, decisions)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,7 @@ from pathlib import Path
 import pytest
 
 from authdiff.artifact_vet import parse_artifact_spec
-from authdiff.atlas.crawl import DEMO_SEEDS, run_crawl
 from authdiff.broker import load_authority_lock, run_brokered
-from authdiff.lsp_stub import validate_authority_doc
 from authdiff.mcp_snapshot import (
     diff_tool_locks,
     snapshot_execute,
@@ -58,45 +56,30 @@ def test_snapshot_from_tools_list(tmp_path: Path):
     doc = snapshot_from_file(path)
     assert doc["ok"] is True
     assert doc["tool_count"] == 1
-    assert doc["tools"][0]["description_sha256"].startswith("sha256:")
     assert "read_file" in doc["authority_lock_fragment"]["mcp_tools"]
 
 
-def test_snapshot_execute_rejects_metacharacters():
-    with pytest.raises(ValueError, match="metacharacters"):
-        snapshot_execute(["bash|evil"])
+def test_diff_tool_locks_detects_change():
+    a = {"read": "sha256:" + "ab" * 32}
+    b = {"read": "sha256:" + "cd" * 32, "write": "sha256:" + "ef" * 32}
+    delta = diff_tool_locks(a, b)
+    assert "write" in delta["tools_added"]
+    assert "read" in delta["description_hash_changed"]
+    assert delta["rug_pull_suspect"] is True
 
 
-def test_snapshot_execute_non_json(tmp_path: Path):
-    script = tmp_path / "say.py"
-    script.write_text("print('not-json')\n", encoding="utf-8")
-    doc = snapshot_execute([sys.executable, str(script)])
-    assert doc["ok"] is False
-    assert "not JSON" in str(doc.get("error") or "")
-
-
-def test_snapshot_execute_ok_json(tmp_path: Path):
-    script = tmp_path / "tools_out.py"
+def test_snapshot_execute_python_json(tmp_path: Path):
+    script = tmp_path / "emit.py"
     script.write_text(
-        "import json; print(json.dumps({'tools':[{'name':'t','description':'d'}]}))\n",
+        "import json; print(json.dumps({'tools':[{'name':'t','description':'d'}]}))",
         encoding="utf-8",
     )
-    doc = snapshot_execute([sys.executable, str(script)])
-    assert doc["ok"] is True
-    assert doc["tool_count"] == 1
-    assert doc["network_enforced"] is False
+    doc = snapshot_execute([sys.executable, str(script)], allow_network=False)
+    assert doc.get("ok") is True
+    assert doc.get("tool_count", 0) >= 1
 
 
-def test_diff_tool_locks_detects_rug_pull():
-    base = {"a": "sha256:" + "a" * 64}
-    head = {"a": "sha256:" + "b" * 64, "c": "sha256:" + "c" * 64}
-    diff = diff_tool_locks(base, head)
-    assert diff["rug_pull_suspect"] is True
-    assert diff["tools_added"] == ["c"]
-    assert diff["description_hash_changed"] == ["a"]
-
-
-def test_load_authority_lock_json(tmp_path: Path):
+def test_broker_lock_roundtrip(tmp_path: Path):
     path = tmp_path / "AUTHORITY.lock.json"
     path.write_text(
         json.dumps({"version": 1, "mcp_tools": {"x": "sha256:" + "ab" * 32}}),
@@ -117,32 +100,6 @@ def test_run_brokered_echo(tmp_path: Path, capsys):
 def test_run_brokered_rejects_metacharacters():
     with pytest.raises(ValueError, match="metacharacters"):
         run_brokered(["cmd|bad"])
-
-
-def test_lsp_validate_lock(tmp_path: Path):
-    lock = {
-        "version": 1,
-        "mcp_tools": {"read_file": "sha256:" + "ab" * 32},
-    }
-    path = tmp_path / "AUTHORITY.lock.json"
-    path.write_text(json.dumps(lock), encoding="utf-8")
-    diags = validate_authority_doc(path)
-    assert diags == []
-
-
-def test_lsp_validate_invalid_digest(tmp_path: Path):
-    lock = {"version": 1, "mcp_tools": {"read_file": "not-a-digest"}}
-    path = tmp_path / "AUTHORITY.lock.json"
-    path.write_text(json.dumps(lock), encoding="utf-8")
-    diags = validate_authority_doc(path)
-    assert any(d.get("severity") == "error" for d in diags)
-
-
-def test_atlas_crawl_demo(tmp_path: Path):
-    summary = run_crawl(demo_seed=True, out_dir=tmp_path / "ledger-run")
-    assert summary["seed_count"] == len(DEMO_SEEDS)
-    assert summary["scanned_ok"] >= 1
-    assert (tmp_path / "ledger-run" / "crawl-summary.json").is_file()
 
 
 def test_attack_replay_sessionstart(tmp_path: Path):

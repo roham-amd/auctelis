@@ -76,8 +76,34 @@ _AUTHORITY_FIELDS = (
     "env_keys",
     "pin_state",
     "approval_posture",
+    # Pinned facts: same name with different launcher/args/host is a replacement.
+    "launcher",
+    "args_digest",
+    "url_host",
+    "script_digest",
 )
 _REPRESENTATION_FIELDS = ("path", "digest", "fingerprint")
+_PIN_IDENTITY_FIELDS = ("launcher", "args_digest", "url_host", "script_digest")
+
+
+def args_digest(args: list[Any] | tuple[Any, ...] | None) -> str:
+    """Stable digest of MCP/hook argv (canonical JSON)."""
+    payload = list(args or [])
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return f"sha256:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+
+
+def url_host(url: str | None) -> str:
+    from urllib.parse import urlparse
+
+    text = str(url or "").strip()
+    if not text:
+        return ""
+    try:
+        host = urlparse(text).hostname
+    except ValueError:
+        return ""
+    return str(host or "").lower()
 
 
 def default_lock_path(root: Path) -> Path:
@@ -145,6 +171,17 @@ def _record_from_component(
         }
     )
     key = identity_key({"host": host, "kind": kind, "name": name})
+    launcher = str(raw.get("command") or "").strip()
+    raw_args = raw.get("args")
+    args_list = list(raw_args) if isinstance(raw_args, list) else []
+    digest = str(raw.get("content_digest") or "")
+    kind_l = kind.lower()
+    # Hooks/skills: content digest is the script/tree pin.
+    script_digest = digest if ("hook" in kind_l or "skill" in kind_l) else ""
+    destinations = list(comp.get("destinations") or [])
+    host_from_url = url_host(str(raw.get("url") or ""))
+    if host_from_url and host_from_url not in destinations:
+        destinations = [*destinations, host_from_url]
     return {
         "id": logical,
         "identity_key": key,
@@ -152,13 +189,17 @@ def _record_from_component(
         "kind": kind,
         "name": name,
         "path": path,
-        "digest": str(raw.get("content_digest") or ""),
+        "digest": digest,
         "fingerprint": str(comp.get("fingerprint") or ""),
         "pin_state": str(comp.get("pin_state") or "unknown"),
         "approval_posture": str(comp.get("approval_posture") or "unknown"),
         "capabilities": list(comp.get("capabilities") or []),
-        "destinations": list(comp.get("destinations") or []),
+        "destinations": destinations,
         "env_keys": list(raw.get("env_keys") or []),
+        "launcher": launcher,
+        "args_digest": args_digest(args_list) if (launcher or args_list) else "",
+        "url_host": host_from_url,
+        "script_digest": script_digest,
     }
 
 
@@ -195,6 +236,8 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
         "mcp_tools": {},
         "mcp_servers": {
             r["name"] or r["id"]: {
+                "command": r.get("launcher") or "",
+                "args_digest": r.get("args_digest") or "",
                 "path": r["path"],
                 "digest": r["digest"],
                 "pin_state": r["pin_state"],
@@ -296,6 +339,10 @@ def normalize_lock_for_compare(lock: dict[str, Any]) -> dict[str, Any]:
             "capabilities": sorted(str(c) for c in (rec.get("capabilities") or [])),
             "destinations": sorted(str(d) for d in (rec.get("destinations") or [])),
             "env_keys": sorted(str(k) for k in (rec.get("env_keys") or [])),
+            "launcher": str(rec.get("launcher") or ""),
+            "args_digest": str(rec.get("args_digest") or ""),
+            "url_host": str(rec.get("url_host") or ""),
+            "script_digest": str(rec.get("script_digest") or ""),
         }
         records.append(normalized)
     records.sort(
@@ -368,6 +415,9 @@ def classify_record_change(
             a_rank = _APPROVAL_RANK.get(str(a_val or "unknown"), 1)
             grew = grew or a_rank > b_rank
             shrank = shrank or a_rank < b_rank
+        elif field in _PIN_IDENTITY_FIELDS:
+            # Same-name pin identity change → replacement (handled below).
+            pass
 
     for field in _REPRESENTATION_FIELDS:
         if before.get(field) != after.get(field):
@@ -529,6 +579,31 @@ def check_locked(
     return report, 0 if ok else 1
 
 
+def merge_mcp_tools_into_lock(
+    lock: dict[str, Any],
+    mcp_tools: dict[str, str],
+) -> dict[str, Any]:
+    """Merge opt-in tools/list pins into the lock and reseal ``lock_hash``."""
+    merged = dict(lock)
+    tools = dict(merged.get("mcp_tools") or {})
+    tools.update({str(k): str(v) for k, v in mcp_tools.items() if k and v})
+    merged["mcp_tools"] = dict(sorted(tools.items()))
+    _SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
+    canonical = json.dumps(
+        {k: v for k, v in merged.items() if k not in _SEAL_EXCLUDE},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    merged["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+    return merged
+
+
+def home_lock_path(home: Path | None = None) -> Path:
+    """Per-user lock of host authority (``~/.authdiff/AUTHORITY.lock``)."""
+    base = (home or Path.home()).expanduser().resolve()
+    return base / ".authdiff" / LOCK_NAME
+
+
 def run_lock_command(
     root: Path,
     *,
@@ -537,6 +612,7 @@ def run_lock_command(
     lock_path: Path | None = None,
     approval: str | None = None,
     accept_gated: bool = False,
+    mcp_tools: dict[str, str] | None = None,
 ) -> tuple[str, int]:
     root = root.resolve()
     path = lock_path or default_lock_path(root)
@@ -559,10 +635,14 @@ def run_lock_command(
         )
     except ValueError as exc:
         return str(exc), 1
+    if mcp_tools:
+        lock = merge_mcp_tools_into_lock(lock, mcp_tools)
+        dest.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     n = len(lock.get("records") or [])
     action = "Updated" if update or path.exists() else "Wrote"
     approval_bit = ""
     if approval and approval.strip():
         approval_bit = f" · approval recorded for {approval.strip()}"
     gated_bit = " · gated findings accepted" if accept_gated else ""
-    return f"{action} {dest} ({n} authority records){approval_bit}{gated_bit}.", 0
+    tools_bit = f" · mcp_tools={len(lock.get('mcp_tools') or {})}" if mcp_tools else ""
+    return f"{action} {dest} ({n} authority records){approval_bit}{gated_bit}{tools_bit}.", 0

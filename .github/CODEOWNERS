@@ -1,0 +1,4 @@
+# Protect the agent-authority lockfile like dependency locks.
+# Owner is set by `authdiff ci init --owner @team` (placeholder replaced at write time).
+AUTHORITY.lock @roham-amd
+.authdiff.yml @roham-amd

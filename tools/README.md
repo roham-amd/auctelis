@@ -1,14 +1,14 @@
 # authdiff tooling (`authdiff`)
 
 Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
-`AUTHORITY.lock`, CI gate helpers, plus maintainer corpus / AgentSecBench harness.
+`AUTHORITY.lock`, and CI gate helpers.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
 **Scan guide:** [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md)  
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `authdiff` **0.2.0** · Product: authdiff **0.2.0**
+Package: `authdiff` **0.3.0** · Product: authdiff **0.3.0**
 
 ---
 
@@ -36,7 +36,7 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools
+  git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
 authdiff demo
 authdiff doctor
@@ -59,9 +59,7 @@ uv run authdiff doctor
 uv run authdiff scan /path/to/target-repo
 ```
 
-Primary path: **`doctor` / `vet` / `scan`**.  
-`authdiff audit --profile …` remains for agent handoff packages.
-`authdiff annotate` emits PR annotations; `authdiff pilots run` exercises curated targets.
+Primary path: **`doctor` / `lock` / `scan` / `gate` / `ci`**.
 
 `.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`) and the Docker base (`python:3.12.16-slim-trixie@sha256:…`).
 
@@ -73,7 +71,7 @@ Primary path: **`doctor` / `vet` / `scan`**.
 | Dev deps | `pyproject.toml` `[dependency-groups] dev` (`uv add --dev …`) |
 | Exact versions + hashes | `uv.lock` (commit it) |
 | Install | `uv sync --locked` |
-| Updates | `uv add` / `uv lock --upgrade` / `authdiff deps upgrade` |
+| Updates | `uv add` / `uv lock --upgrade` / `authdiff-dev deps upgrade` |
 | Git | Commit `pyproject.toml`, `uv.lock`, `.python-version` — ignore `.venv/` |
 
 ```bash
@@ -82,7 +80,7 @@ uv add --dev ruff
 uv lock --upgrade
 uv sync --locked
 uv tree
-authdiff deps outdated
+authdiff-dev deps outdated
 ```
 
 ### Docker
@@ -95,7 +93,7 @@ TARGET=/path/to/repo docker compose run --rm authdiff \
   scan /work -o /work/authdiff-out
 ```
 
-Operator guide: [`../docs/archive/docker-agent-audit.md`](../docs/archive/docker-agent-audit.md).
+Operator guide: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 
 ### Pre-commit (optional)
 
@@ -109,13 +107,12 @@ Config: [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 ### Quality gates
 
 ```bash
-uv run --locked authdiff lint --check-format
+uv run --locked authdiff-dev lint --check-format
 uv run --locked mypy authdiff
 uv run --locked pip-audit
 uv run --locked pytest -q ../tests
 uv run --locked authdiff-dev build all
-uv run --locked authdiff corpus run
-uv run --locked authdiff benchmark run
+uv run --locked authdiff-dev corpus run
 ```
 
 **Dependabot** (`.github/dependabot.yml`): weekly `uv`, `docker` (tag@digest), and SHA-pinned `github-actions`.
@@ -130,31 +127,21 @@ uv run authdiff doctor [--home DIR] [-o DIR] [--agent]
 uv run authdiff vet SOURCE [-o DIR] [--agent]
 uv run authdiff ci init --owner @TEAM [PATH] [--force]
 uv run authdiff scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
+uv run authdiff lock [PATH] [--check] [--accept-gated] [--home]
+uv run authdiff gate [PATH] --base-lock PATH
 uv run authdiff harden [--findings PATH]
-uv run authdiff init-manifest [PATH] [--force]
-uv run authdiff verify-manifest [PATH] [-o REPORT.json]
 uv run authdiff explain F-001 -o DIR [--agent]
 uv run authdiff annotate FINDINGS.json --format github|text|pr-comment
-uv run authdiff baseline save|show …
 
-# Agent handoff / discovery
-uv run authdiff audit PATH --profile quick|standard|deployment
-uv run authdiff preflight PATH
-uv run authdiff inventory PATH
-
-# Validation / interop
-uv run authdiff validate report|graph|claim PATH
-uv run authdiff graph paths PATH
-uv run authdiff diff report|graph|risk …
-uv run authdiff export sarif REPORT.json
-uv run authdiff verify digest|manifest …
-
-# Engineering
-uv run authdiff-dev build all|schemas|prompts [--write]
-uv run authdiff corpus run
-uv run authdiff benchmark run
-uv run authdiff deps outdated|upgrade
-uv run authdiff lint [--fix] [--format] [--check-format]
+# Maintainer (authdiff-dev)
+uv run authdiff-dev validate report PATH
+uv run authdiff-dev inventory PATH
+uv run authdiff-dev export sarif REPORT.json
+uv run authdiff-dev verify digest PATH
+uv run authdiff-dev build all|schemas
+uv run authdiff-dev corpus run
+uv run authdiff-dev deps outdated|upgrade
+uv run authdiff-dev lint [--fix] [--format] [--check-format]
 ```
 
 ---
@@ -166,23 +153,25 @@ uv run authdiff lint [--fix] [--format] [--check-format]
 | `cli/` | argparse construction + command dispatch |
 | `security/` | Guard engine: capabilities, rules, scan, baseline, report |
 | `security/rules.py` | Deterministic rules AUTHDIFF-RULE-001…022 (pack 1.6) |
-| `authority_lock.py` | AUTHORITY.lock v1 write / check / diff |
+| `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
+| `gate.py` | Base-lock growth gate + CODEOWNERS / PR approval |
 | `security/scan.py` | Artifact writer + policy fail-on + PR comment |
 | `security/decision.py` | BLOCK / REVIEW / NO-GATED-FINDINGS |
-| `harden.py` / `authority_manifest.py` | Dry-run patches + AUTHORITY.yml |
+| `harden.py` | Dry-run least-privilege patch proposals |
 | `doctor.py` / `vet.py` | Host map + pre-install verdict |
 | `inventory/` | Bounded I/O, adapter registry, collector, coverage |
 | `inventory/adapters/` | Skills, MCP, hooks, plugins, subagents, automations, A2A, workflows |
-| `audit.py` / `preflight.py` | Profile orchestration + graph seed + audit-context |
+| `preflight.py` | Graph seed + audit-context helpers |
 | `export/` | SARIF, annotations, PR comment, agent digest |
 | `validate_report.py` / `semantic.py` | Schema + semantic validation |
 | `graph/analysis.py` | Graph path helpers |
-| `benchmark/` / `corpus/` | AgentSecBench + tooling corpus runners |
-| `supply_chain/` | Digest / manifest helpers |
-| `build.py` / `prompt_build.py` | Consistency checks + monolith |
+| `corpus/` | Tooling corpus runner |
+| `supply_chain/` | Digest helpers |
+| `build.py` | Consistency checks (schemas, versions, links, pins) |
 | `versioning.py` | Product/package version resolution |
 | `deps.py` / `pins.py` / `lint.py` | Engineering helpers |
 | `jsonio.py` | Shared JSON/text I/O |
+| `broker.py` / `mcp_snapshot.py` / `process_env.py` | Advanced run/snapshot surfaces |
 
 Library entry points are documented in the package docstring and [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md).
 
@@ -212,6 +201,5 @@ Incomplete coverage must never be treated as a clean security result.
 ## Related product docs
 
 - [`../docs/AUTHDIFF-GATE.md`](../docs/AUTHDIFF-GATE.md)
-- [`../docs/archive/AESA-3.0-PRODUCT-SPEC.md`](../docs/archive/AESA-3.0-PRODUCT-SPEC.md) (historical)
 - [`../docs/EVIDENCE-MODEL.md`](../docs/EVIDENCE-MODEL.md)
-- [`../docs/archive/toolchain-threat-model.md`](../docs/archive/toolchain-threat-model.md)
+- [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)

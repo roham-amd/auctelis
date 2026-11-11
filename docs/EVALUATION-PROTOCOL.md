@@ -2,8 +2,8 @@
 
 How to judge authdiff quality without mistaking one demo scan for proof.
 
-Related: [`pilots/`](pilots/), [`atlas/`](atlas/), [`ROADMAP.md`](ROADMAP.md),
-[`tests/rules/`](../tests/rules/).
+Related: [`ROADMAP.md`](ROADMAP.md), [`tests/rules/`](../tests/rules/),
+[`tests/atlas/`](../tests/atlas/) (fixture corpus).
 
 ---
 
@@ -26,14 +26,15 @@ Select unrelated repositories that differ in agent configuration:
 | 4 | Plugin / connector permissions |
 | 5 | CI workflows with agent/MCP steps |
 
-Current published pilot: [`pilots/`](pilots/) — `microsoft/playwright-mcp` (N=1).
+Historical note: one pre-0.3.0 external scan of `microsoft/playwright-mcp` (N=1)
+existed under `docs/pilots/` and was removed in the shrink; regenerate before citing.
 
 ## Procedure (per repository)
 
 ```bash
-authdiff open <owner/repo> -o docs/pilots/results/<slug>
+authdiff open <owner/repo> -o authdiff-out-pilot/<slug>
 # or, for a local checkout:
-authdiff scan <path> -o docs/pilots/results/<slug> --full
+authdiff scan <path> -o authdiff-out-pilot/<slug> --full
 ```
 
 Capture:
@@ -61,7 +62,7 @@ For each gated finding on a holdout set:
 
 ## Reporting
 
-Publish a short note under `docs/pilots/` with:
+Publish a short note (issue or `docs/` page) with:
 
 1. Repo + commit
 2. Coverage honesty (supported ratio)

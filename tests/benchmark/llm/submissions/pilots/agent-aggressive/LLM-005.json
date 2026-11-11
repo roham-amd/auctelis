@@ -1,1 +1,0 @@
-{"case_id":"LLM-005","model":"pilot/aggressive","findings":[{"title":"Skill instructions reference secrets or credentials","severity":"HIGH","status":"POTENTIAL","evidence_ids":["E-005"]}]}

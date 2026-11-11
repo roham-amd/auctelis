@@ -150,7 +150,8 @@ def test_pr_comment_advisory_and_url_host(tmp_path: Path):
     assert "/mcp" not in escaped
 
 
-def test_base_lock_fails_on_addition(tmp_path: Path):
+def test_base_lock_advisory_on_addition(tmp_path: Path):
+    """scan --base-lock records growth but does not fail; gate is the verdict."""
     root = tmp_path / "repo"
     mcp = root / ".cursor"
     mcp.mkdir(parents=True)
@@ -161,6 +162,8 @@ def test_base_lock_fails_on_addition(tmp_path: Path):
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
     base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    (root / ".github").mkdir(parents=True)
+    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec-owners\n", encoding="utf-8")
     (mcp / "mcp.json").write_text(
         json.dumps(
             {
@@ -184,11 +187,13 @@ def test_base_lock_fails_on_addition(tmp_path: Path):
             str(base),
         ]
     )
-    assert code == 1
+    assert code == 0
     delta = json.loads((tmp_path / "out" / "base-lock-delta.json").read_text(encoding="utf-8"))
     assert delta["summary"]["additions"] >= 1
     comment = (tmp_path / "out" / "pr-comment.md").read_text(encoding="utf-8")
     assert "addition" in comment.lower()
+    assert main(["gate", str(root), "--base-lock", str(base)]) == 1
+    assert main(["gate", str(root), "--base-lock", str(base), "--approved-by", "@sec-owners"]) == 0
 
 
 def test_workflows_not_double_registered(tmp_path: Path):

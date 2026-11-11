@@ -1,32 +1,18 @@
-"""Command handlers — one cohesive module, low coupling to argparse construction."""
+"""Command handlers for the live authdiff / authdiff-dev CLI surface."""
 
 from __future__ import annotations
 
 import argparse
 import os
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
-from authdiff.audit import ProfileName, run_audit
-from authdiff.audit_diff import diff_graphs, diff_reports
 from authdiff.authority_lock import (
     build_authority_lock,
     check_locked,
     diff_authority_locks,
     run_lock_command,
 )
-from authdiff.authority_manifest import init_manifest, verify_manifest, write_verify_report
-from authdiff.benchmark.governance import verify_dataset_integrity
-from authdiff.benchmark.intake import (
-    build_submitter_package,
-    collection_status,
-    intake_submission_dir,
-    list_external_intakes,
-    verify_evaluation_contract,
-)
-from authdiff.benchmark.llm_runner import _load_dataset_manifest, run_llm_benchmark
-from authdiff.benchmark.report import build_evaluation_report
-from authdiff.benchmark.runner import run_benchmark
 from authdiff.build import build_all, sync_schemas
 from authdiff.corpus.runner import run_corpus
 from authdiff.deps import outdated_report, upgrade_pins
@@ -42,26 +28,12 @@ from authdiff.inventory.collector import collect_inventory, inventory_to_json
 from authdiff.jsonio import print_json, read_json, write_json, write_text
 from authdiff.lint import run_ruff
 from authdiff.lock_io import load_authority_lock
-from authdiff.pilots.runner import load_manifest, run_pilots
 from authdiff.policy import apply_policy_defaults, discover_policy_file, load_policy
-from authdiff.prompt_build import write_monolith
-from authdiff.rules_quality.runner import run_rule_quality
-from authdiff.security.baseline import (
-    baseline_path,
-    diff_against_baseline,
-    load_baseline,
-    save_baseline,
-)
-from authdiff.security.engine import ScanResult, run_security_scan
+from authdiff.security.engine import ScanResult
 from authdiff.security.report import render_finding_explanation
 from authdiff.security.scan import run_scan
 from authdiff.supply_chain.digest import sha256_file, verify_file_digest
-from authdiff.supply_chain.manifest import build_digest_manifest
-from authdiff.validate_report import (
-    analyze_graph_paths,
-    validate_graph_file,
-    validate_report_file,
-)
+from authdiff.validate_report import validate_report_file
 from authdiff.vet import run_vet
 
 
@@ -107,10 +79,6 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_demo(args)
         case "harden":
             return _cmd_harden(args)
-        case "init-manifest":
-            return _cmd_init_manifest(args)
-        case "verify-manifest":
-            return _cmd_verify_manifest(args)
         case "init-gate":
             return _cmd_init_gate(args)
         case "lock":
@@ -119,20 +87,12 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_gate(args)
         case "explain":
             return _cmd_explain(args)
-        case "baseline":
-            return _cmd_baseline(args)
         case "build":
             return _cmd_build(args)
         case "validate":
             return _cmd_validate(args)
-        case "graph":
-            return _cmd_graph(args)
         case "inventory":
             return _cmd_inventory(args)
-        case "audit":
-            return _cmd_audit(args.path, args.profile, args.output_dir)
-        case "preflight":
-            return _cmd_audit(args.path, "quick", args.output_dir)
         case "verify":
             return _cmd_verify(args)
         case "diff":
@@ -141,14 +101,10 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_export(args)
         case "annotate":
             return _cmd_annotate(args)
-        case "pilots":
-            return _cmd_pilots(args)
         case "hosts":
             return _cmd_hosts(args)
         case "corpus":
             return _cmd_corpus()
-        case "benchmark":
-            return _cmd_benchmark(args)
         case "deps":
             return _cmd_deps(args)
         case "lint":
@@ -159,10 +115,6 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_snapshot(args)
         case "artifact-vet":
             return _cmd_artifact_vet(args)
-        case "atlas":
-            return _cmd_atlas(args)
-        case "lsp-validate":
-            return _cmd_lsp_validate(args)
         case _:
             return 2
 
@@ -242,9 +194,14 @@ def _cmd_scan(args: argparse.Namespace) -> int:
             )
             payload["base_lock_delta"] = base_lock_delta
             write_json(Path(payload["output_dir"]) / "base-lock-delta.json", base_lock_delta)
-            # Fail on meaningful authority growth vs the approved (base) lock.
-            if code == 0 and base_lock_delta.get("summary", {}).get("meaningful_authority_change"):
-                code = 1
+            # Advisory only: growth vs the approved (base) lock is the gate's
+            # verdict (`authdiff gate`), so scan/check keep writing the delta
+            # without failing the job before CODEOWNERS approval can run.
+            if base_lock_delta.get("summary", {}).get("meaningful_authority_change"):
+                print(
+                    "authority delta vs --base-lock is meaningful; "
+                    "verdict belongs to `authdiff gate` (scan stays advisory)."
+                )
         except (OSError, ValueError, TypeError) as exc:
             print(f"warning: --base-lock ignored ({exc})")
 
@@ -335,15 +292,55 @@ def _cmd_lock(args: argparse.Namespace) -> int:
         refused = _refuse_agent_mutation("lock")
         if refused is not None:
             return refused
+    from authdiff.authority_lock import home_lock_path
+    from authdiff.doctor import discover_host_surfaces
+
+    root = args.path
+    lock_path = getattr(args, "lock_file", None)
+    if bool(getattr(args, "home", False)):
+        home = Path.home()
+        # Prefer the first present host surface directory as the scan root.
+        surfaces = discover_host_surfaces(home=home)
+        present = [s for s in surfaces if s.exists]
+        if present:
+            root = Path(present[0].path)
+            if root.is_file():
+                root = root.parent
+        else:
+            root = home
+        lock_path = lock_path or home_lock_path(home)
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    mcp_tools: dict[str, str] | None = None
+    snap = getattr(args, "snapshot", None)
+    if snap is not None:
+        from authdiff.mcp_snapshot import snapshot_from_file
+
+        doc = snapshot_from_file(Path(snap))
+        frag = (doc.get("authority_lock_fragment") or {}).get("mcp_tools") or {}
+        if not frag and doc.get("tools"):
+            frag = {
+                str(t.get("name")): str(t.get("description_sha256"))
+                for t in doc["tools"]
+                if isinstance(t, dict) and t.get("name") and t.get("description_sha256")
+            }
+        mcp_tools = {str(k): str(v) for k, v in frag.items()}
+
     text, code = run_lock_command(
-        args.path,
+        root,
         check=bool(getattr(args, "check", False)),
         update=bool(getattr(args, "update", False)),
-        lock_path=getattr(args, "lock_file", None),
+        lock_path=lock_path,
         approval=getattr(args, "approval", None),
         accept_gated=bool(getattr(args, "accept_gated", False)),
+        mcp_tools=mcp_tools,
     )
     print(text)
+    if code == 0 and bool(getattr(args, "resolve", False)):
+        print(
+            "Next (opt-in network): authdiff snapshot --execute -- <mcp-launcher…> "
+            "then authdiff lock --snapshot tools.json"
+        )
     return code
 
 
@@ -354,6 +351,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         base_lock=args.base_lock,
         head_lock=getattr(args, "head_lock", None),
         approved_by=list(getattr(args, "approved_by", None) or []),
+        codeowners_path=getattr(args, "codeowners", None),
     )
     if getattr(args, "agent", False):
         print_json(report)
@@ -450,21 +448,6 @@ def _cmd_harden(args: argparse.Namespace) -> int:
         apply=bool(getattr(args, "apply", False)),
     )
     print(text)
-    return code
-
-
-def _cmd_init_manifest(args: argparse.Namespace) -> int:
-    text, code = init_manifest(args.path, force=bool(args.force))
-    print(text)
-    return code
-
-
-def _cmd_verify_manifest(args: argparse.Namespace) -> int:
-    report, code = verify_manifest(args.path)
-    if getattr(args, "output", None):
-        write_verify_report(report, args.output)
-        print(f"Wrote {args.output}")
-    print_json(report)
     return code
 
 
@@ -700,111 +683,22 @@ def _cmd_explain(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_baseline(args: argparse.Namespace) -> int:
-    match args.baseline_cmd:
-        case "save":
-            findings_path = args.output_dir / "findings.json"
-            if not findings_path.is_file():
-                print(f"Missing {findings_path}; run `authdiff scan` first.")
-                return 1
-            doc = read_json(findings_path)
-            # Prefer re-scan of the recorded repository so fingerprints stay current.
-            repo = Path(str(doc.get("repository") or ""))
-            scan = run_security_scan(repo) if repo.is_dir() else ScanResult.from_findings_doc(doc)
-            dest = args.path or baseline_path(args.output_dir)
-            saved = save_baseline(scan, dest)
-            print(
-                f"Wrote baseline with {len(saved.get('finding_keys') or [])} finding keys: {dest}"
-            )
-            return 0
-        case "show":
-            if not args.path.is_file():
-                print(f"Baseline not found: {args.path}")
-                return 1
-            print_json(load_baseline(args.path))
-            return 0
-        case _:
-            return 2
-
-
 def _cmd_build(args: argparse.Namespace) -> int:
     match args.target:
         case "schemas":
             for line in sync_schemas():
                 print(line)
-        case "prompts":
-            # Archived methodology only — not on the product build path.
-            print(
-                "NOTE: monolith generation is archive/methodology-only "
-                "(removed from authdiff-dev build all)."
-            )
-            print_json(write_monolith(check_only=not args.write))
         case _:
             print_json(build_all())
     return 0
 
 
-def _validate_claim(path: Path) -> tuple[bool, list[Any]]:
-    from dataclasses import dataclass
-
-    @dataclass
-    class Issue:
-        code: str
-        message: str
-        path: str = ""
-
-    doc = read_json(path)
-    issues: list[Issue] = []
-    required = ("claim", "status", "evidence_ids")
-    for key in required:
-        if key not in doc:
-            issues.append(Issue("CLAIM_MISSING_FIELD", f"Missing required field `{key}`"))
-    status = doc.get("status")
-    allowed = {
-        "OBSERVED",
-        "CONFIRMED",
-        "POTENTIAL",
-        "NOT VERIFIED",
-        "NOT ASSESSED",
-        "NOT APPLICABLE",
-    }
-    if status is not None and status not in allowed:
-        issues.append(Issue("CLAIM_BAD_STATUS", f"Invalid status {status!r}"))
-    evidence_ids = doc.get("evidence_ids")
-    if evidence_ids is not None and not isinstance(evidence_ids, list):
-        issues.append(Issue("CLAIM_BAD_EVIDENCE", "evidence_ids must be a list"))
-    if status == "CONFIRMED" and (not evidence_ids):
-        issues.append(
-            Issue(
-                "CLAIM_UNSUPPORTED_CONFIRMED",
-                "CONFIRMED claims require non-empty evidence_ids",
-            )
-        )
-    return (len(issues) == 0, issues)
-
-
 def _cmd_validate(args: argparse.Namespace) -> int:
     semantic = not getattr(args, "no_semantic", False)
-    match args.validate_cmd:
-        case "report":
-            report_result = validate_report_file(args.path, semantic=semantic)
-            return _print_validation(args.path, ok=report_result.ok, issues=report_result.issues)
-        case "graph":
-            graph_result = validate_graph_file(args.path, semantic=semantic)
-            return _print_validation(args.path, ok=graph_result.ok, issues=graph_result.issues)
-        case "claim":
-            ok, issues = _validate_claim(args.path)
-            return _print_validation(args.path, ok=ok, issues=issues)
-        case _:
-            return 2
-
-
-def _cmd_graph(args: argparse.Namespace) -> int:
-    if args.graph_cmd != "paths":
+    if args.validate_cmd != "report":
         return 2
-    found = analyze_graph_paths(args.path)
-    print_json([path.__dict__ for path in found])
-    return 0
+    report_result = validate_report_file(args.path, semantic=semantic)
+    return _print_validation(args.path, ok=report_result.ok, issues=report_result.issues)
 
 
 def _cmd_inventory(args: argparse.Namespace) -> int:
@@ -812,65 +706,34 @@ def _cmd_inventory(args: argparse.Namespace) -> int:
     return _write_or_print(inventory_to_json(result), args.output)
 
 
-def _cmd_audit(path: Path, profile: str, output_dir: Path | None) -> int:
-    payload = run_audit(
-        path,
-        profile=cast(ProfileName, profile),
-        output_dir=output_dir,
-    )
-    print(payload["summary"])
+def _cmd_verify(args: argparse.Namespace) -> int:
+    if args.verify_cmd != "digest":
+        return 2
+    if args.expected:
+        ok, actual = verify_file_digest(args.path, args.expected)
+        print_json({"ok": ok, "sha256": actual})
+        return 0 if ok else 1
+    print_json({"sha256": sha256_file(args.path)})
     return 0
 
 
-def _cmd_verify(args: argparse.Namespace) -> int:
-    match args.verify_cmd:
-        case "digest":
-            if args.expected:
-                ok, actual = verify_file_digest(args.path, args.expected)
-                print_json({"ok": ok, "sha256": actual})
-                return 0 if ok else 1
-            print_json({"sha256": sha256_file(args.path)})
-            return 0
-        case "manifest":
-            return _write_or_print(build_digest_manifest(args.path), args.output)
-        case _:
-            return 2
-
-
 def _cmd_diff(args: argparse.Namespace) -> int:
-    match args.diff_kind:
-        case "report":
-            print_json(diff_reports(read_json(args.base), read_json(args.target)))
-            return 0
-        case "graph":
-            print_json(diff_graphs(read_json(args.base), read_json(args.target)))
-            return 0
-        case "risk":
-            findings = read_json(args.findings)
-            repo = findings.get("repository")
-            if repo and Path(repo).is_dir():
-                scan = run_security_scan(Path(repo))
-            else:
-                scan = ScanResult.from_findings_doc(findings)
-            print_json(diff_against_baseline(scan, load_baseline(args.baseline)))
-            return 0
-        case "lock":
-            delta = diff_authority_locks(
-                load_authority_lock(args.base),
-                load_authority_lock(args.head),
-            )
-            if getattr(args, "agent", False):
-                print_json(delta)
-            else:
-                if not delta["lines"]:
-                    print("No authority lock changes.")
-                else:
-                    print("\n".join(delta["lines"]))
-                if delta["summary"].get("policy_changed"):
-                    print("~ policy_hash changed")
-            return 1 if delta["summary"]["authority_changed"] else 0
-        case _:
-            return 2
+    if args.diff_kind != "lock":
+        return 2
+    delta = diff_authority_locks(
+        load_authority_lock(args.base),
+        load_authority_lock(args.head),
+    )
+    if getattr(args, "agent", False):
+        print_json(delta)
+    else:
+        if not delta["lines"]:
+            print("No authority lock changes.")
+        else:
+            print("\n".join(delta["lines"]))
+        if delta["summary"].get("policy_changed"):
+            print("~ policy_hash changed")
+    return 1 if delta["summary"]["authority_changed"] else 0
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
@@ -908,53 +771,6 @@ def _cmd_annotate(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_pilots(args: argparse.Namespace) -> int:
-    match args.pilots_cmd:
-        case "list":
-            manifest = load_manifest(args.manifest)
-            print_json(
-                {
-                    "pilots": [
-                        {
-                            "id": p.get("id"),
-                            "path": p.get("path"),
-                            "kind": p.get("kind"),
-                            "enabled": p.get("enabled", True),
-                            "notes": p.get("notes"),
-                        }
-                        for p in manifest.get("pilots") or []
-                    ]
-                }
-            )
-            return 0
-        case "run":
-            report = run_pilots(
-                manifest_path=args.manifest,
-                output_dir=args.output_dir,
-                only=args.only,
-            )
-            print_json(
-                {
-                    "ok_count": report["ok_count"],
-                    "pilot_count": report["pilot_count"],
-                    "summary": report.get("summary_md"),
-                    "results": [
-                        {
-                            "id": r.get("id"),
-                            "status": r.get("status"),
-                            "finding_count": r.get("finding_count"),
-                            "component_count": r.get("component_count"),
-                        }
-                        for r in report["results"]
-                    ],
-                }
-            )
-            hard_fail = {"missing", "error"}
-            return 1 if any(r.get("status") in hard_fail for r in report["results"]) else 0
-        case _:
-            return 2
-
-
 def _cmd_hosts(args: argparse.Namespace) -> int:
     match args.hosts_cmd:
         case "list":
@@ -975,69 +791,6 @@ def _cmd_hosts(args: argparse.Namespace) -> int:
 def _cmd_corpus() -> int:
     summary = run_corpus()
     print_json(summary)
-    return 0 if summary.get("failed", 0) == 0 else 1
-
-
-def _cmd_benchmark(args: argparse.Namespace) -> int:
-    match args.benchmark_cmd:
-        case "run":
-            summary = run_benchmark()
-        case "rules":
-            summary = run_rule_quality()
-        case "governance":
-            summary = verify_dataset_integrity(_load_dataset_manifest())
-            print_json(summary)
-            return 0 if summary.get("ok") else 1
-        case "contract":
-            if getattr(args, "contract_cmd", None) != "verify":
-                return 2
-            summary = verify_evaluation_contract()
-            print_json(summary)
-            return 0 if summary.get("ok") else 1
-        case "intake":
-            summary = intake_submission_dir(
-                args.source,
-                agent_id=args.agent_id,
-                provenance=args.provenance,
-                dry_run=bool(getattr(args, "dry_run", False)),
-            )
-            print_json(summary)
-            return 0 if summary.get("ok") else 1
-        case "intakes":
-            summary = list_external_intakes()
-            print_json(summary)
-            return 0
-        case "collection-status":
-            summary = collection_status()
-            print_json(summary)
-            return 0
-        case "submitter-package":
-            summary = build_submitter_package(args.output)
-            print_json(summary)
-            return 0 if summary.get("ok") else 1
-        case "llm":
-            if getattr(args, "report", False):
-                if not getattr(args, "submissions", None):
-                    print("--report requires --submissions DIR")
-                    return 2
-                summary = build_evaluation_report(
-                    submissions=args.submissions,
-                    split=getattr(args, "split", "all"),
-                    provenance=getattr(args, "provenance", "any"),
-                )
-                print_json(summary)
-                return 0 if summary.get("dataset_integrity", {}).get("ok") else 1
-            summary = run_llm_benchmark(
-                submissions=getattr(args, "submissions", None),
-                validate_only=bool(getattr(args, "validate_only", False)),
-                split=getattr(args, "split", "all"),
-            )
-        case _:
-            return 2
-    print_json(summary)
-    # governance-style integrity failures are embedded for llm validate
-    if summary.get("dataset_integrity") and not summary["dataset_integrity"].get("ok"):
-        return 1
     return 0 if summary.get("failed", 0) == 0 else 1
 
 
@@ -1111,27 +864,3 @@ def _cmd_artifact_vet(args: argparse.Namespace) -> int:
         print(f"Wrote {args.output}")
     print_json(report.to_dict())
     return 0 if report.verdict == "ALLOW_WITH_GAPS" else 1
-
-
-def _cmd_atlas(args: argparse.Namespace) -> int:
-    from authdiff.atlas.crawl import run_crawl
-    from authdiff.jsonio import print_json
-
-    if args.atlas_cmd != "crawl":
-        return 2
-    summary = run_crawl(
-        seed_file=args.seed,
-        demo_seed=bool(args.demo_seed) or args.seed is None,
-        out_dir=args.output_dir,
-    )
-    print_json(summary)
-    return 0 if summary.get("scanned_ok") else 1
-
-
-def _cmd_lsp_validate(args: argparse.Namespace) -> int:
-    from authdiff.jsonio import print_json
-    from authdiff.lsp_stub import validate_authority_doc
-
-    diags = validate_authority_doc(args.path)
-    print_json({"path": str(args.path), "diagnostics": diags})
-    return 1 if any(d.get("severity") == "error" for d in diags) else 0

@@ -9,11 +9,11 @@ from pathlib import Path
 from typing import Any
 
 _EPILOG = """
-public core:  demo → doctor → vet/open → scan/check → lock → gate → ci init
+public core:  doctor → lock → scan/check → gate → ci init  (demo/vet optional)
 review:       explain | diff lock | delta | annotate | fix/harden  (optional)
-advanced:     run | snapshot | artifact-vet | atlas | lsp-validate | manifests
+advanced:     run | snapshot | artifact-vet
               (omitted from brief help — see docs/CLI-REFERENCE.md)
-maintainer:   authdiff-dev only (build | lint | corpus | benchmark | …)
+maintainer:   authdiff-dev only (build | lint | corpus | deps | …)
 
 Bare `authdiff` (or a path / scan flags) defaults to `scan .`.
 Passive scans never execute target code.
@@ -43,21 +43,16 @@ _PRODUCT_COMMANDS = frozenset(
         "demo",
         "harden",
         "fix",
-        "init-manifest",
-        "verify-manifest",
         "init-gate",
         "init",
         "lock",
         "gate",
         "explain",
-        "baseline",
         "diff",
         "annotate",
         "run",
         "snapshot",
         "artifact-vet",
-        "atlas",
-        "lsp-validate",
     }
 )
 
@@ -65,16 +60,11 @@ _DEV_COMMANDS = frozenset(
     {
         "build",
         "validate",
-        "graph",
         "inventory",
-        "audit",
-        "preflight",
         "verify",
         "export",
-        "pilots",
         "hosts",
         "corpus",
-        "benchmark",
         "deps",
         "lint",
     }
@@ -308,29 +298,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Request automatic apply (disabled; always dry-run in this release)",
     )
 
-    init_manifest = sub.add_parser(
-        "init-manifest",
-        help=_ADV,
-    )
-    init_manifest.add_argument("path", type=Path, nargs="?", default=Path("."))
-    init_manifest.add_argument(
-        "--force",
-        action="store_true",
-        help="Overwrite existing AUTHORITY.yml",
-    )
-
-    verify_manifest = sub.add_parser(
-        "verify-manifest",
-        help=_ADV,
-    )
-    verify_manifest.add_argument("path", type=Path, nargs="?", default=Path("."))
-    verify_manifest.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        help="Optional path to write the verify report JSON",
-    )
-
     init_gate = sub.add_parser(
         "init-gate",
         help=_ADV,
@@ -384,6 +351,27 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
             "Use for intentional baseline seals; prefer remediating first."
         ),
     )
+    lock_cmd.add_argument(
+        "--home",
+        action="store_true",
+        help=(
+            "Lock host authority under ~/.authdiff/AUTHORITY.lock "
+            "(scans Cursor/Claude/VS Code configs under $HOME)."
+        ),
+    )
+    lock_cmd.add_argument(
+        "--snapshot",
+        type=Path,
+        help="Merge mcp_tools pins from a tools/list snapshot JSON into the lock",
+    )
+    lock_cmd.add_argument(
+        "--resolve",
+        action="store_true",
+        help=(
+            "Opt-in: after locking, remind to run `authdiff snapshot --execute` "
+            "for live tools/list pins (no network from lock itself)."
+        ),
+    )
 
     gate_cmd = sub.add_parser(
         "gate",
@@ -406,7 +394,15 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="append",
         default=[],
         metavar="@USER",
-        help="Trusted approver identity (repeatable). Also reads GitHub PR approvals in CI.",
+        help=(
+            "Harness override: record an approval identity. In CI, any APPROVED "
+            "PR review counts once CODEOWNERS covers AUTHORITY.lock (GitHub-native)."
+        ),
+    )
+    gate_cmd.add_argument(
+        "--codeowners",
+        type=Path,
+        help="Trusted CODEOWNERS file (prefer base-ref copy in CI)",
     )
     gate_cmd.add_argument(
         "--agent",
@@ -429,41 +425,11 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Emit structured remediation JSON for agents",
     )
 
-    baseline = sub.add_parser("baseline", help=_ADV)
-    baseline_sub = baseline.add_subparsers(dest="baseline_cmd", required=True)
-    b_save = baseline_sub.add_parser("save", help="Save baseline from findings.json")
-    b_save.add_argument(
-        "-o",
-        "--output-dir",
-        type=Path,
-        default=Path("authdiff-out"),
-        help="Scan output directory containing findings.json",
-    )
-    b_save.add_argument(
-        "--path",
-        type=Path,
-        help="Baseline destination (default: <output-dir>/baseline.json)",
-    )
-    b_show = baseline_sub.add_parser("show", help="Print a baseline.json")
-    b_show.add_argument("path", type=Path, nargs="?", default=Path("authdiff-out/baseline.json"))
-
     if include_dev:
         _add_dev_commands(sub)
 
     diff_parser = sub.add_parser("diff", help=_ADV)
     diff_sub = diff_parser.add_subparsers(dest="diff_kind", required=True)
-    diff_rep = diff_sub.add_parser("report", help="Diff two audit report JSON files")
-    diff_rep.add_argument("base", type=Path)
-    diff_rep.add_argument("target", type=Path)
-    diff_gr = diff_sub.add_parser("graph", help="Diff two ecosystem graph JSON files")
-    diff_gr.add_argument("base", type=Path)
-    diff_gr.add_argument("target", type=Path)
-    diff_risk = diff_sub.add_parser(
-        "risk",
-        help="Diff current findings.json against a baseline.json",
-    )
-    diff_risk.add_argument("baseline", type=Path)
-    diff_risk.add_argument("findings", type=Path)
     diff_lock = diff_sub.add_parser(
         "lock",
         help="Diff two AUTHORITY.lock files (record-level authority)",
@@ -556,32 +522,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Write artifact report JSON",
     )
 
-    atlas = sub.add_parser("atlas", help=_ADV)
-    atlas_sub = atlas.add_subparsers(dest="atlas_cmd", required=True)
-    atlas_crawl = atlas_sub.add_parser("crawl", help="Scan seed repos into docs/atlas/ledger")
-    atlas_crawl.add_argument(
-        "--seed",
-        type=Path,
-        help="JSON seed file ({repos:[…]} or list)",
-    )
-    atlas_crawl.add_argument(
-        "--demo-seed",
-        action="store_true",
-        help="Include bundled demo/attack-replay seeds",
-    )
-    atlas_crawl.add_argument(
-        "-o",
-        "--output-dir",
-        type=Path,
-        help="Override ledger run directory",
-    )
-
-    lsp = sub.add_parser(
-        "lsp-validate",
-        help=_ADV,
-    )
-    lsp.add_argument("path", type=Path)
-
     # argparse still registers help=SUPPRESS choices; drop them from --help listing.
     sub._choices_actions = [a for a in sub._choices_actions if a.help != _ADV]
 
@@ -589,69 +529,38 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
 
 def _add_dev_commands(sub: Any) -> None:
-    """Maintainer / research commands — only on ``authdiff-dev``."""
+    """Maintainer commands — only on ``authdiff-dev`` (research surface removed)."""
     build = sub.add_parser("build", help="Run build and consistency checks")
     build.add_argument(
         "target",
         nargs="?",
         default="all",
-        choices=["all", "schemas", "prompts"],
+        choices=["all", "schemas"],
         help="Build target (default: all)",
     )
-    build.add_argument("--write", action="store_true", help="Write generated monolith")
+    build.add_argument("--write", action="store_true", help="Write generated assets")
 
     val = sub.add_parser("validate", help="Validate authdiff JSON artifacts")
     val_sub = val.add_subparsers(dest="validate_cmd", required=True)
-    rep = val_sub.add_parser("report", help="Validate audit report summary JSON")
+    rep = val_sub.add_parser("report", help="Validate findings/report JSON")
     rep.add_argument("path", type=Path)
     rep.add_argument("--no-semantic", action="store_true")
-    graph = val_sub.add_parser("graph", help="Validate ecosystem graph JSON")
-    graph.add_argument("path", type=Path)
-    graph.add_argument("--no-semantic", action="store_true")
-    claim = val_sub.add_parser("claim", help="Validate a structured agent claim JSON object")
-    claim.add_argument("path", type=Path)
-
-    graph_cmd = sub.add_parser("graph", help="Graph utilities")
-    graph_sub = graph_cmd.add_subparsers(dest="graph_cmd", required=True)
-    paths = graph_sub.add_parser("paths", help="List auto-discovered attack paths")
-    paths.add_argument("path", type=Path)
 
     inv = sub.add_parser("inventory", help="Passive read-only inventory of a directory")
     inv.add_argument("path", type=Path)
     inv.add_argument("-o", "--output", type=Path, help="Write JSON to file")
-
-    audit = sub.add_parser("audit", help="Unified passive assessment package")
-    audit.add_argument("path", type=Path, nargs="?", default=Path("."))
-    audit.add_argument("--profile", choices=["quick", "standard", "deployment"], default="standard")
-    audit.add_argument("-o", "--output-dir", type=Path)
-
-    pre = sub.add_parser("preflight", help="Alias of audit --profile quick")
-    pre.add_argument("path", type=Path, nargs="?", default=Path("."))
-    pre.add_argument("-o", "--output-dir", type=Path)
 
     verify = sub.add_parser("verify", help="Supply-chain verification helpers")
     verify_sub = verify.add_subparsers(dest="verify_cmd", required=True)
     digest = verify_sub.add_parser("digest", help="Compute or verify SHA-256 of a file")
     digest.add_argument("path", type=Path)
     digest.add_argument("--expected", help="Expected sha256 hex digest")
-    manifest = verify_sub.add_parser("manifest", help="Build passive digest manifest")
-    manifest.add_argument("path", type=Path)
-    manifest.add_argument("-o", "--output", type=Path)
 
     export = sub.add_parser("export", help="Export interoperable formats")
     export_sub = export.add_subparsers(dest="export_cmd", required=True)
     sarif_cmd = export_sub.add_parser("sarif", help="Export SARIF 2.1.0")
     sarif_cmd.add_argument("report", type=Path)
     sarif_cmd.add_argument("-o", "--output", type=Path)
-
-    pilots = sub.add_parser("pilots", help="Run curated pilot-repository Guard scans")
-    pilots_sub = pilots.add_subparsers(dest="pilots_cmd", required=True)
-    pilots_run = pilots_sub.add_parser("run", help="Scan enabled pilots")
-    pilots_run.add_argument("--manifest", type=Path)
-    pilots_run.add_argument("-o", "--output-dir", type=Path)
-    pilots_run.add_argument("--only", nargs="+")
-    pilots_list = pilots_sub.add_parser("list", help="List pilots")
-    pilots_list.add_argument("--manifest", type=Path)
 
     hosts = sub.add_parser("hosts", help="List or show agent-host profiles")
     hosts_sub = hosts.add_subparsers(dest="hosts_cmd", required=True)
@@ -662,36 +571,6 @@ def _add_dev_commands(sub: Any) -> None:
     corp = sub.add_parser("corpus", help="Security regression corpus harness")
     corp_sub = corp.add_subparsers(dest="corpus_cmd", required=True)
     corp_sub.add_parser("run")
-
-    bench = sub.add_parser("benchmark", help="AgentSecBench harness")
-    bench_sub = bench.add_subparsers(dest="benchmark_cmd", required=True)
-    bench_sub.add_parser("run")
-    bench_sub.add_parser("rules")
-    bench_llm = bench_sub.add_parser("llm")
-    bench_llm.add_argument("--submissions", type=Path)
-    bench_llm.add_argument("--validate-only", action="store_true")
-    bench_llm.add_argument("--split", choices=["public", "held_out", "all"], default="all")
-    bench_llm.add_argument("--report", action="store_true")
-    bench_llm.add_argument(
-        "--provenance",
-        choices=["external", "pilot", "sample", "template", "any"],
-        default="any",
-    )
-    bench_sub.add_parser("governance")
-    bench_contract = bench_sub.add_parser("contract")
-    contract_sub = bench_contract.add_subparsers(dest="contract_cmd", required=True)
-    contract_sub.add_parser("verify")
-    bench_intake = bench_sub.add_parser("intake")
-    bench_intake.add_argument("source", type=Path)
-    bench_intake.add_argument("--agent-id", required=True)
-    bench_intake.add_argument(
-        "--provenance", choices=["external", "pilot", "sample", "template"], default="external"
-    )
-    bench_intake.add_argument("--dry-run", action="store_true")
-    bench_sub.add_parser("intakes")
-    bench_sub.add_parser("collection-status")
-    bench_pkg = bench_sub.add_parser("submitter-package")
-    bench_pkg.add_argument("-o", "--output", type=Path, required=True)
 
     deps = sub.add_parser("deps", help="Check/upgrade dependencies")
     deps_sub = deps.add_subparsers(dest="deps_cmd", required=True)

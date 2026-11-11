@@ -73,9 +73,9 @@
     {
       "kind": "unattended_operation",
       "status": "OBSERVED",
-      "component_id": "C-005",
+      "component_id": "C-004",
       "evidence_ids": [
-        "E-INV-C-005"
+        "E-INV-C-004"
       ],
       "notes": "CI workflows execute with repository privileges.",
       "origin": "TYPE_DEFAULT"
@@ -83,9 +83,9 @@
     {
       "kind": "access_secrets",
       "status": "POTENTIAL",
-      "component_id": "C-005",
+      "component_id": "C-004",
       "evidence_ids": [
-        "E-INV-C-005"
+        "E-INV-C-004"
       ],
       "notes": "Workflows commonly inherit repository secrets.",
       "origin": "TYPE_DEFAULT"

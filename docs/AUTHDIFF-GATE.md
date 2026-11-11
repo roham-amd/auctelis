@@ -4,12 +4,13 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.2.0** |
-| Tooling package | **0.2.0** (`authdiff`) |
+| Product release | **0.3.0** |
+| Tooling package | **0.3.0** (`authdiff`) |
 | Rule pack | **1.6** (rules 001–022) |
 | Primary path | `authdiff demo` → `lock` → `ci init --owner` → `gate` / Action |
 | Policy file | `.authdiff.yml` + `AUTHORITY.lock` (CODEOWNERS) |
 | Action | `.github/actions/authdiff-gate` (display name: authdiff) |
+| Verdict | `authdiff gate` (scan `--base-lock` is advisory) |
 
 Normative depth: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`GUARD-SCAN.md`](GUARD-SCAN.md),
 [`POLICY.md`](POLICY.md), [`DOCUMENTATION-INDEX.md`](DOCUMENTATION-INDEX.md).
@@ -36,23 +37,38 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools" authdiff demo
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
 
 authdiff doctor                          # host authority map
 authdiff open github.com/org/some-skill  # pre-install verdict
 authdiff scan .                          # bare `authdiff` also defaults to scan .
 authdiff lock                            # write AUTHORITY.lock (--accept-gated if needed)
-authdiff ci init --owner @security-owners
+authdiff ci init --owner @security-owner
 authdiff check --locked .
 # On PRs the Action compares head to the base-ref lock and runs:
 # authdiff gate --base-lock <base-AUTHORITY.lock>
+# scan --base-lock only writes the delta; gate is the merge verdict.
 ```
 
 Single CI recipe: [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.example.yml).
+
+### Branch protection / rulesets (required)
+
+Treat the Action like a dependency lock gate:
+
+1. Require the `authdiff` workflow job on PRs to the default branch.
+2. Require CODEOWNERS review for `AUTHORITY.lock`, `.authdiff.yml`, and
+   authority-bearing paths (`**/.mcp.json`, `**/.cursor/mcp.json`, hooks, skills).
+3. Enable **dismiss stale pull request approvals when new commits are pushed**.
+4. Prefer rulesets over legacy branch-protection when available; include team
+   owners there (GitHub enforces `@org/team`; `authdiff gate` matches `@user`
+   logins from reviews).
+5. Do not allow administrators to bypass the required checks on the default branch
+   in production repos.
 
 ### Secure Action pin (recommended)
 
@@ -110,7 +126,7 @@ Never let the agent edit or approve policy without a human.
 | CLI (`doctor` / `vet` / `scan` / `lock`) | Primary product |
 | GitHub Action (trusted policy) | Supported (composite) |
 | AI agent skill | Supported (`skills/authdiff-auditor`) |
-| Prompt-only kit | Archived methodology fallback |
+| Prompt-only kit | Removed in 0.3.0 shrink |
 | MCP server assistant | Deferred |
 | Web workbench / marketplace | Deferred |
 

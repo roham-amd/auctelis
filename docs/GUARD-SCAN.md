@@ -1,6 +1,6 @@
 # authdiff scan — operator guide
 
-Guard scan path for **0.2.0**: deterministic discovery plus evidence-backed
+Guard scan path for **0.3.0**: deterministic discovery plus evidence-backed
 observations via `authdiff scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./authdiff-out` (not inside the target tree).
@@ -31,7 +31,7 @@ Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK
 | --- | --- |
 | `AUTHORITY.lock` | **Product source of truth** for “what authority is approved”. CODEOWNERS-reviewed. |
 | `baseline.json` | Finding/fingerprint risk delta for PR Authority Diff comments. |
-| `AUTHORITY.yml` | Experimental declared-vs-observed manifest (`init-manifest`). |
+| `AUTHORITY.yml` | Legacy declared-vs-observed manifest (removed from product CLI in 0.3.0). |
 
 It does **not**:
 
@@ -150,17 +150,17 @@ authdiff-out/
 
 ---
 
-## Scan vs audit profiles
+## Scan vs inventory
 
-| Concern | `authdiff scan` | `authdiff audit --profile …` (advanced) |
+| Concern | `authdiff scan` | `authdiff-dev inventory` |
 | --- | --- | --- |
-| Deterministic findings | Yes | No (inventory + handoff only) |
-| SARIF | Yes | Via separate export of a later report |
-| Default artifacts | PR comment, findings, inventory, SARIF | Rich audit-context handoff |
+| Deterministic findings | Yes | No (components only) |
+| SARIF | Yes | No |
+| Default artifacts | PR comment, findings, inventory, SARIF | Inventory JSON |
 | `--full` extras | Graph, capabilities, long reports | — |
-| Recommended first command | **Yes** (`authdiff demo` then `scan`) | Maintainer / deep-review only |
+| Recommended first command | **Yes** (`authdiff demo` then `scan`) | Maintainer discovery only |
 
-Prefer `authdiff lock` + CI Authority Diff over legacy `audit` profiles.
+Prefer `authdiff lock` + `authdiff gate` + CI Authority Diff for product workflows.
 
 ---
 
@@ -206,7 +206,7 @@ Never `uv sync` a PR-controlled `tools/` directory as the scanner.
 2. Run `authdiff scan <target> --agent -o <OUT>/authdiff-out`.
 3. Point the agent at `agent-digest.json` first, then `findings.json`.
 4. Agent may run `authdiff explain` / dry-run `harden` only — never approve locks or edit policy.
-5. Archived methodology under `archive/methodology/` is **not** on the product path.
+5. Research/archive trees were removed in 0.3.0 — product path is lock + gate + doctor.
 
 ---
 

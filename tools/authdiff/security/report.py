@@ -323,7 +323,7 @@ def render_finding_explanation(scan: ScanResult, finding: Finding) -> str:
             "## Verification requirements",
             "",
             "- Do not promote this to CONFIRMED / Verified impact without independent evidence.",
-            "- Optional: `authdiff fix` for dry-run patches; kit under `archive/methodology/`.",
+            "- Optional: `authdiff fix` for dry-run patches; `authdiff doctor` for host map.",
             "",
         ]
     )

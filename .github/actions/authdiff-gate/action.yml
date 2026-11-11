@@ -16,7 +16,7 @@ inputs:
     required: false
     default: "quick"
   mode:
-    description: scan (Guard rules) or audit (inventory handoff only)
+    description: scan (default). Legacy audit mode removed in 0.3.0.
     required: false
     default: "scan"
   baseline-inventory:
@@ -62,7 +62,7 @@ inputs:
       Path to authdiff tools/ containing pyproject.toml. Empty (default) resolves to
       the Action-bundled tools directory when present, never the consumer
       workspace `tools/` by accident. Set to `path` or `pypi` to use a
-      preinstalled `authdiff`/`authdiff` on PATH (skip uv sync).
+      preinstalled `authdiff` on PATH (skip uv sync).
     required: false
     default: ""
   upload-sarif:
@@ -108,13 +108,13 @@ runs:
         # Special values path|pypi mean: use preinstalled CLI on PATH.
         chosen="${AUTHDIFF_INSTALL_TOOLS_FROM}"
         if [[ "${chosen}" == "path" || "${chosen}" == "pypi" ]]; then
-          if ! command -v authdiff >/dev/null 2>&1 && ! command -v authdiff >/dev/null 2>&1; then
-            echo "::error::install-tools-from=${chosen} but neither authdiff nor authdiff is on PATH. pip/uv install authdiff first."
+          if ! command -v authdiff >/dev/null 2>&1; then
+            echo "::error::install-tools-from=${chosen} but authdiff is not on PATH. pip/uv install authdiff first."
             exit 1
           fi
           echo "mode=path" >> "$GITHUB_OUTPUT"
           echo "dir=" >> "$GITHUB_OUTPUT"
-          echo "Using preinstalled authdiff/authdiff on PATH."
+          echo "Using preinstalled authdiff on PATH."
           exit 0
         fi
         bundled="$(cd "$AUTHDIFF_ACTION_PATH/../../.." && pwd)/tools"
@@ -122,10 +122,10 @@ runs:
           if [[ -f "${bundled}/pyproject.toml" ]]; then
             chosen="${bundled}"
             echo "Using Action-bundled authdiff tools: ${chosen}"
-          elif command -v authdiff >/dev/null 2>&1 || command -v authdiff >/dev/null 2>&1; then
+          elif command -v authdiff >/dev/null 2>&1; then
             echo "mode=path" >> "$GITHUB_OUTPUT"
             echo "dir=" >> "$GITHUB_OUTPUT"
-            echo "install-tools-from empty; using preinstalled authdiff/authdiff on PATH."
+            echo "install-tools-from empty; using preinstalled authdiff on PATH."
             exit 0
           elif [[ -f tools/pyproject.toml ]]; then
             echo "::error::install-tools-from is empty and Action-bundled tools were not found. Refusing to default to workspace ./tools (PR-controlled code execution risk). Pass install-tools-from explicitly to a pinned authdiff checkout, or install authdiff and set install-tools-from: path."
@@ -246,6 +246,7 @@ runs:
         set -euo pipefail
         echo "path=" >> "$GITHUB_OUTPUT"
         echo "lock=" >> "$GITHUB_OUTPUT"
+        echo "codeowners=" >> "$GITHUB_OUTPUT"
         base="origin/${AUTHDIFF_BASE_REF}"
         if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
           if ! git fetch --no-tags origin "${AUTHDIFF_BASE_REF}:refs/remotes/origin/${AUTHDIFF_BASE_REF}" 2>/dev/null; then
@@ -258,8 +259,9 @@ runs:
         out="${RUNNER_TEMP}/authdiff-base-out"
         baseline="${RUNNER_TEMP}/authdiff-base-baseline.json"
         base_lock="${RUNNER_TEMP}/authdiff-base-AUTHORITY.lock"
+        base_owners="${RUNNER_TEMP}/authdiff-base-CODEOWNERS"
         rm -rf "$work" "$out"
-        rm -f "$base_lock"
+        rm -f "$base_lock" "$base_owners"
         git worktree add --detach "$work" "$base"
         # Scan the same relative path under the base worktree when possible.
         target="$work"
@@ -280,18 +282,35 @@ runs:
         else
           echo "No base-ref AUTHORITY.lock; lock delta will be absolute-on-head only."
         fi
+        # Trusted CODEOWNERS from the base ref (PR authors cannot weaken owners).
+        if [[ -f "$work/.github/CODEOWNERS" ]]; then
+          cp "$work/.github/CODEOWNERS" "$base_owners"
+        elif [[ -f "$work/CODEOWNERS" ]]; then
+          cp "$work/CODEOWNERS" "$base_owners"
+        elif git show "${base}:.github/CODEOWNERS" >"$base_owners" 2>/dev/null; then
+          :
+        elif git show "${base}:CODEOWNERS" >"$base_owners" 2>/dev/null; then
+          :
+        else
+          rm -f "$base_owners"
+        fi
+        if [[ -f "$base_owners" ]]; then
+          echo "Base-ref CODEOWNERS copied: $base_owners"
+          echo "codeowners=${base_owners}" >> "$GITHUB_OUTPUT"
+        fi
         base_args=(scan "$target" -o "$out" --save-baseline "$baseline" --fail-on never)
         if [[ "${AUTHDIFF_NO_POLICY}" == "true" ]]; then
           base_args+=(--no-policy)
         elif [[ -n "${AUTHDIFF_TRUSTED_POLICY:-}" ]]; then
           base_args+=(--policy "$AUTHDIFF_TRUSTED_POLICY")
         fi
-        CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff; "$CLI" "${base_args[@]}"
+        authdiff "${base_args[@]}"
         echo "Base-ref baseline written: $baseline"
         echo "path=${baseline}" >> "$GITHUB_OUTPUT"
         git worktree remove --force "$work" || true
 
     - name: Run authdiff scan (passive)
+      id: scan
       if: inputs.mode == 'scan'
       shell: bash
       env:
@@ -341,7 +360,7 @@ runs:
         fi
         if [[ -n "${AUTHDIFF_BASE_LOCK:-}" && -f "${AUTHDIFF_BASE_LOCK}" ]]; then
           args+=(--base-lock "$AUTHDIFF_BASE_LOCK")
-          echo "Comparing head authority against base-ref AUTHORITY.lock"
+          echo "Comparing head authority against base-ref AUTHORITY.lock (advisory; gate decides)"
         fi
         if [[ "${AUTHDIFF_LOCKED}" == "true" ]]; then
           args+=(--locked)
@@ -350,10 +369,21 @@ runs:
           fi
           echo "AUTHORITY.lock drift check enabled"
         fi
-        CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff; "$CLI" "${args[@]}"
+        # Capture exit so comment/artifact steps can still run; gate is the
+        # authority-growth verdict. Re-fail after reporting when scan itself failed.
+        set +e
+        authdiff "${args[@]}"
+        scan_code=$?
+        set -e
+        echo "code=${scan_code}" >> "$GITHUB_OUTPUT"
+        if [[ "$scan_code" -ne 0 ]]; then
+          echo "::warning::authdiff scan exited ${scan_code}; continuing so gate/comment/artifact can run."
+        fi
 
     - name: Enforce base-lock gate (CODEOWNERS approval)
+      id: gate
       if: >-
+        always() &&
         inputs.mode == 'scan' &&
         inputs.locked == 'true' &&
         github.event_name == 'pull_request' &&
@@ -363,11 +393,11 @@ runs:
         AUTHDIFF_PATH: ${{ inputs.path }}
         AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
         AUTHDIFF_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
+        AUTHDIFF_BASE_CODEOWNERS: ${{ steps.auth_diff.outputs.codeowners }}
         AUTHDIFF_LOCK_FILE: ${{ inputs.lock-file }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
-        CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff
         head_lock="${AUTHDIFF_LOCK_FILE:-AUTHORITY.lock}"
         head_path="${AUTHDIFF_PATH%/}/${head_lock}"
         head_path="${head_path#./}"
@@ -375,19 +405,24 @@ runs:
         if [[ -f "$head_path" ]]; then
           gate_args+=(--head-lock "$head_path")
         fi
-        # PR approvals from CODEOWNERS are resolved via GITHUB_TOKEN + event payload.
+        if [[ -n "${AUTHDIFF_BASE_CODEOWNERS:-}" && -f "${AUTHDIFF_BASE_CODEOWNERS}" ]]; then
+          gate_args+=(--codeowners "$AUTHDIFF_BASE_CODEOWNERS")
+          echo "Using trusted base-ref CODEOWNERS: $AUTHDIFF_BASE_CODEOWNERS"
+        fi
+        # Any APPROVED PR review counts once base CODEOWNERS covers AUTHORITY.lock.
         set +e
-        "$CLI" "${gate_args[@]}"
+        authdiff "${gate_args[@]}"
         gate_code=$?
         set -e
+        echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
         if [[ -f "$AUTHDIFF_OUTPUT_DIR/gate-report.txt" ]]; then
           echo "## authdiff gate" >> "$GITHUB_STEP_SUMMARY"
           cat "$AUTHDIFF_OUTPUT_DIR/gate-report.txt" >> "$GITHUB_STEP_SUMMARY"
         fi
-        exit "$gate_code"
+        # Do not exit yet — comment/artifact steps use always(). Final step fails the job.
 
     - name: Annotate pull request findings
-      if: inputs.mode == 'scan' && inputs.annotate == 'true'
+      if: always() && inputs.mode == 'scan' && inputs.annotate == 'true'
       shell: bash
       env:
         AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -398,11 +433,10 @@ runs:
           echo "No findings.json; skipping annotations."
           exit 0
         fi
-        CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff
-        "$CLI" annotate "$FINDINGS" --format github
+        authdiff annotate "$FINDINGS" --format github
 
     - name: Authority Diff PR comment
-      if: inputs.mode == 'scan' && inputs.annotate == 'true' && github.event_name == 'pull_request'
+      if: always() && inputs.mode == 'scan' && inputs.annotate == 'true' && github.event_name == 'pull_request'
       shell: bash
       env:
         AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -418,11 +452,9 @@ runs:
         fi
         if [[ ! -f "$COMMENT" ]]; then
           if [[ -f "$DELTA" ]]; then
-            CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff
-            "$CLI" annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
+            authdiff annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
           else
-            CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff
-            "$CLI" annotate "$FINDINGS" --format pr-comment >"$COMMENT"
+            authdiff annotate "$FINDINGS" --format pr-comment >"$COMMENT"
           fi
         fi
         echo "## authdiff Authority Diff" >> "$GITHUB_STEP_SUMMARY"
@@ -457,18 +489,6 @@ runs:
           echo "gh unavailable; Authority Diff written to $COMMENT and job summary."
         fi
 
-    - name: Run authdiff audit (legacy profile handoff)
-      if: inputs.mode == 'audit'
-      shell: bash
-      env:
-        AUTHDIFF_PATH: ${{ inputs.path }}
-        AUTHDIFF_PROFILE: ${{ inputs.profile }}
-        AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
-      run: |
-        set -euo pipefail
-        CLI=authdiff; command -v authdiff >/dev/null 2>&1 || CLI=authdiff
-        "$CLI" audit "$AUTHDIFF_PATH" --profile "$AUTHDIFF_PROFILE" -o "$AUTHDIFF_OUTPUT_DIR"
-
     - name: Diff against baseline inventory (optional)
       if: inputs.baseline-inventory != ''
       shell: bash
@@ -500,6 +520,7 @@ runs:
         " "$BASE" "$CUR" "$OUT"
 
     - name: Report incomplete coverage
+      if: always()
       shell: bash
       env:
         AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -523,7 +544,7 @@ runs:
         " "$INV"
 
     - name: Note SARIF path
-      if: inputs.upload-sarif == 'true' && inputs.mode == 'scan'
+      if: always() && inputs.upload-sarif == 'true' && inputs.mode == 'scan'
       shell: bash
       env:
         AUTHDIFF_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -537,7 +558,38 @@ runs:
         fi
 
     - name: Upload authdiff artifacts
+      if: always()
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: authdiff-out
         path: ${{ inputs.output-dir }}
+        if-no-files-found: warn
+
+    - name: Fail job on scan or gate verdict
+      if: always() && inputs.mode == 'scan'
+      shell: bash
+      env:
+        AUTHDIFF_SCAN_CODE: ${{ steps.scan.outputs.code }}
+        AUTHDIFF_GATE_CODE: ${{ steps.gate.outputs.code }}
+        AUTHDIFF_SCAN_OUTCOME: ${{ steps.scan.outcome }}
+        AUTHDIFF_GATE_OUTCOME: ${{ steps.gate.outcome }}
+      run: |
+        set -euo pipefail
+        if [[ "${AUTHDIFF_SCAN_OUTCOME}" == "skipped" ]]; then
+          echo "::error::authdiff scan did not run (earlier step failed)."
+          exit 1
+        fi
+        scan_code="${AUTHDIFF_SCAN_CODE:-0}"
+        gate_code="${AUTHDIFF_GATE_CODE:-0}"
+        # Empty gate output means the gate step was skipped (no base lock / not a PR).
+        [[ -z "$scan_code" ]] && scan_code=0
+        [[ -z "$gate_code" || "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]] && gate_code=0
+        if [[ "$gate_code" -ne 0 ]]; then
+          echo "::error::authdiff gate exited ${gate_code} (unapproved authority growth)."
+          exit "$gate_code"
+        fi
+        if [[ "$scan_code" -ne 0 ]]; then
+          echo "::error::authdiff scan exited ${scan_code}."
+          exit "$scan_code"
+        fi
+        echo "authdiff scan and gate passed."

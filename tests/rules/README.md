@@ -1,18 +1,14 @@
-# Guard rule-quality pack
+# Guard rule fixtures
 
 Positive, negative, and ambiguous fixtures for deterministic security rules
-in pack **1.5** (`AUTHDIFF-RULE-001` … `AUTHDIFF-RULE-022`).
+in pack **1.6** (`AUTHDIFF-RULE-001` … `AUTHDIFF-RULE-022`).
 
 ```bash
-cd tools && uv run authdiff-dev benchmark rules
-# or
-cd tools && uv run pytest ../tests/test_rule_quality.py -q
+cd tools && uv run pytest ../tests/test_rules_011_016.py ../tests/test_workflow_rule_calibration.py -q
 ```
 
 Separate from:
 
-- `authdiff-dev benchmark run` — AgentSecBench inventory/rule smoke cases
-- `authdiff-dev benchmark llm` — model-agnostic AI submission scoring (offline;
-  not independent product validation while external N=0)
 - `tests/corpus` — tooling regression corpus
-- Focused unit coverage under `tests/test_rules_*.py`
+- `tests/atlas` — mini benign/attack gate fixtures
+- Focused unit coverage under `tests/test_rules_*.py` and related scan tests

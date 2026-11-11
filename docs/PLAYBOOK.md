@@ -51,21 +51,27 @@ scanner finding on `MANUAL_ONLY` surfaces as safety.
 
 ## CODEOWNERS
 
+Use **user** owners for `authdiff gate` login matching. Prefer GitHub-native
+CODEOWNERS/rulesets (with stale-review dismissal) for `@org/team` owners — the
+CLI cannot map team slugs to individual PR approvers without an exact
+`--approved-by @org/team` harness override.
+
 ```text
-AUTHORITY.lock  @org/security-owners
-.authdiff.yml       @org/security-owners
-**/.mcp.json    @org/security-owners
-**/.cursor/mcp.json @org/security-owners
-**/.claude/settings.json @org/security-owners
+AUTHORITY.lock  @security-owner
+.authdiff.yml       @security-owner
+**/.mcp.json    @security-owner
+**/.cursor/mcp.json @security-owner
+**/.claude/settings.json @security-owner
 ```
 
 ## Tooling path
 
 ```bash
 # Git install only today — PyPI not published yet
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools" authdiff doctor
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools" authdiff doctor
 authdiff open <url-or-path>
 authdiff ci init --owner @you && authdiff lock --accept-gated
 authdiff demo   # canned bad fixture + PR comment (exits 0)
+# scan --base-lock is advisory; gate is the authority-growth verdict:
 authdiff gate --base-lock AUTHORITY.lock
 ```

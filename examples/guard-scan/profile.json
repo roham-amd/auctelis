@@ -1,8 +1,8 @@
 {
   "authdiff_audit_profile": "scan",
   "product": "authdiff",
-  "product_version": "1.0.0",
-  "package_version": "1.0.0",
+  "product_version": "0.3.0",
+  "package_version": "0.3.0",
   "purpose": "Authority Diff + deterministic security observations",
   "deliverable": "PR comment, findings, inventory, SARIF; --full adds graph/report",
   "rules_applied": [

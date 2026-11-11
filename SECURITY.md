@@ -4,12 +4,14 @@
 
 | Project version | Supported |
 | --- | --- |
-| 1.0.x | Yes |
-| < 1.0.0 | No |
+| 0.3.x | Yes |
+| 0.2.x | Yes (security fixes backported when practical) |
+| 1.0.x | No (yanked / superseded pre-1.0 line; do not use) |
+| < 0.2.0 | No |
 
-Tooling package version (`authdiff`, currently **1.0.0**) is tracked in
+Tooling package version (`authdiff`, currently **0.3.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
-`tools/pyproject.toml` and `tools/authdiff/__init__.py`.
+`tools/pyproject.toml` and `VERSION`.
 
 ## What this project is
 
@@ -22,7 +24,6 @@ a penetration-testing tool, runtime sandbox, marketplace certification authority
 or substitute for organizational risk acceptance.
 
 Operator and contributor documentation map: [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md).  
-Threats against the toolchain itself: [`docs/archive/toolchain-threat-model.md`](docs/archive/toolchain-threat-model.md).  
 Deterministic rule catalog: [`docs/SECURITY-RULES.md`](docs/SECURITY-RULES.md).
 
 ## Reporting a vulnerability in authdiff itself
@@ -49,8 +50,14 @@ Do **not** include production secrets, customer data, or live exploit payloads a
 
 ## Auditor safety expectations
 
-Operators and audit agents must treat target repositories as **untrusted data**. Passive audits must remain read-only: no install, no execute, no contact with target-controlled services. See `archive/methodology/prompts/04-passive-guardrails.md` and [`docs/archive/toolchain-threat-model.md`](docs/archive/toolchain-threat-model.md).
+Operators and audit agents must treat target repositories as **untrusted data**. Passive audits must remain read-only: no install, no execute, no contact with target-controlled services.
 
 Deterministic collectors apply resource limits (`max_files`, `max_depth`, `max_file_bytes`). Limits reduce abuse risk; they are not a full sandbox.
 
 Composite GitHub Action inputs must be passed via environment variables into shell steps (never interpolated raw into bash) — see `.github/actions/authdiff-gate/action.yml`.
+
+## Gate trust notes
+
+- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `authdiff gate`, not by `scan --base-lock` (advisory delta only).
+- Prefer GitHub-native CODEOWNERS / rulesets (including team owners and stale-review dismissal) as the approval source of truth.
+- `authdiff gate` matches `@user` logins from PR reviews; `@org/team` owners require an exact `--approved-by` harness override or native CODEOWNERS enforcement outside this CLI.

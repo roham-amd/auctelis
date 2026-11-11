@@ -2,7 +2,7 @@
 
 authdiff’s intellectual core is an **evidence-first** model. This document is normative for how deterministic tooling and AI auditors must treat facts.
 
-Related: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`SECURITY-RULES.md`](SECURITY-RULES.md), [`../archive/methodology/prompts/03-report-contract.md`](../archive/methodology/prompts/03-report-contract.md), [`../schemas/structured-claim.schema.json`](../schemas/structured-claim.schema.json).
+Related: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`SECURITY-RULES.md`](SECURITY-RULES.md).
 
 ---
 
@@ -154,7 +154,7 @@ Extracted by `tools/authdiff/security/capabilities.py` and refined during deep r
 | `access_persistent_memory` | Can it access persistent memory? |
 | `unattended_operation` | Can it run without a human present? |
 
-Capability-first assessment is preferred over merely counting component types. See [`archive/threat-scenarios.md`](archive/threat-scenarios.md).
+Capability-first assessment is preferred over merely counting component types.
 
 ---
 
@@ -294,7 +294,7 @@ Validate:
 authdiff validate claim claim.json
 ```
 
-Schema: [`../schemas/structured-claim.schema.json`](../schemas/structured-claim.schema.json).
+Schema: `../schemas/structured-claim.schema.json`.
 
 ---
 
@@ -318,4 +318,4 @@ Preserve rejected findings and reasons. Revalidate after changes. Prefer baselin
 | Developer | Exact file, what is wrong, how to fix, how to verify |
 | Security reviewer | Evidence, attack path, verified vs inferred, residual risk |
 
-Full narrative structure: [`../archive/methodology/prompts/01-core-prompt.md`](../archive/methodology/prompts/01-core-prompt.md) Section 21. JSON contract: [`../archive/methodology/prompts/03-report-contract.md`](../archive/methodology/prompts/03-report-contract.md).
+Narrative reports are optional operator artifacts. Prefer Guard `findings.json` + `AUTHORITY.lock` as the product source of truth.

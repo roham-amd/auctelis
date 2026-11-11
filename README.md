@@ -30,30 +30,33 @@ committed [`AUTHORITY.lock`](docs/AUTHORITY-LOCK.md) — not a long report.
 
 ```bash
 # Preferred once PyPI is live:
-uvx --from authdiff authdiff demo
+uvx --from authdiff authdiff doctor
 
 # Current supported path (git tag) until the package is on the index:
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools" authdiff doctor
 ```
 
 Persistent install (if continuing):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
 # Later: uv tool install --python 3.12 authdiff
 
-authdiff demo             # canned Authority Diff (aha moment; works from wheel)
-authdiff doctor           # host authority map
+authdiff doctor           # your host authority map (the aha)
+authdiff lock --home      # seal ~/.authdiff/AUTHORITY.lock
+authdiff                  # bare CLI → scan . (drift when AUTHORITY.lock exists)
+authdiff demo             # canned evil fixture (optional)
 authdiff open github.com/org/some-skill
-authdiff scan .           # bare `authdiff` also defaults to scan .
-authdiff lock             # write AUTHORITY.lock (--accept-gated if needed)
-authdiff gate --base-lock path/to/base.lock  # fail until CODEOWNER approves
+authdiff lock             # write repo AUTHORITY.lock (--accept-gated if needed)
+authdiff gate --base-lock path/to/base.lock  # fail until GitHub-native approval
 authdiff ci init --owner @you  # .authdiff.yml + workflow + CODEOWNERS
 authdiff check --locked   # fail on lock drift
 ```
 
-Public path: **demo → doctor → vet → scan → lock → ci**.
+Hook (Claude Code): `tools/authdiff/templates/claude-pretool-authority-hook.sh`
+
+Public path: **doctor → lock → scan/gate → ci**.
 
 Artifacts default to **`./authdiff-out`**. Target `.authdiff.yml` suppressions are **ignored**
 unless you pass `--policy` or `--trust-target-policy`. Use `--agent` for a compact
@@ -64,13 +67,13 @@ fenced JSON digest. Use `--full` for the long report. Agents should export
 
 | Command | Purpose |
 | --- | --- |
-| `authdiff demo` | First-run Authority Diff (packaged fixture) |
-| `authdiff doctor` | Host authority map |
-| `authdiff open` / `vet` | Pre-install verdict (safe shallow clone) |
+| `authdiff doctor` | Host authority map (lead with this) |
+| `authdiff lock` / `lock --home` | Write repo or `~/.authdiff` lock (`--snapshot`, `--accept-gated`) |
 | `authdiff` / `scan` / `check` | Repo authority scan (add `--locked`) |
-| `authdiff lock` | Write / update `AUTHORITY.lock` (`--approval`, `--accept-gated`) |
-| `authdiff gate` | Fail on unapproved addition/expansion vs `--base-lock` |
-| `authdiff ci init --owner @team` | `.authdiff.yml` + workflow + CODEOWNERS |
+| `authdiff gate` | Fail on growth vs `--base-lock` until GitHub-native approval |
+| `authdiff ci init --owner @user` | `.authdiff.yml` + workflow + CODEOWNERS |
+| `authdiff open` / `vet` | Pre-install verdict (safe shallow clone) |
+| `authdiff demo` | Packaged evil fixture (optional aha) |
 
 Review / advanced / maintainer tiers: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
 [`docs/CLI-REFERENCE.md`](docs/CLI-REFERENCE.md).
@@ -81,7 +84,7 @@ Docs: [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md) ·
 [`docs/ROADMAP.md`](docs/ROADMAP.md) ·
 demo [`examples/demo-vulnerable/`](examples/demo-vulnerable/)
 
-Archived methodology kit: [`archive/methodology/`](archive/methodology/)
+Research/archive trees were removed in 0.3.0; see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 (prompts, modules, control-packs — not the product path).
 
 ---
@@ -98,8 +101,8 @@ Single recipe (git-tag install + Action). Full example:
 # PyPI not published yet — install from the pinned kit tag, then use Action-bundled tools:
 - run: >
     pip install
-    "git+https://github.com/roham-amd/authdiff.git@v0.2.0#subdirectory=tools"
-- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.2.0
+    "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
+- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.0
   with:
     path: .
     trusted-policy: "true"

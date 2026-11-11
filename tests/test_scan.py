@@ -5,11 +5,7 @@ from authdiff.security.scan import run_scan
 
 def test_scan_emits_findings_and_sarif(tmp_path: Path):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "skill-to-mcp-path"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
     out = tmp_path / "authdiff-out"
     scan, payload, code = run_scan(root, output_dir=out)
@@ -38,11 +34,7 @@ def test_scan_emits_findings_and_sarif(tmp_path: Path):
 def test_scan_mcp_broad_args_is_security_finding(tmp_path: Path):
     """Local MCP + broad filesystem args escalate beyond a capability observation."""
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "skill-to-mcp-path"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
     out = tmp_path / "authdiff-out"
     scan, _payload, _code = run_scan(root, output_dir=out)
@@ -57,11 +49,7 @@ def test_scan_mcp_broad_args_is_security_finding(tmp_path: Path):
 
 def test_scan_benign_skill_no_mcp_rules(tmp_path: Path):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "benign-skill-only"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-only"
     )
     out = tmp_path / "authdiff-out"
     scan, _payload, code = run_scan(root, output_dir=out)
@@ -73,11 +61,7 @@ def test_scan_benign_skill_no_mcp_rules(tmp_path: Path):
 
 def test_scan_fail_on_high(tmp_path: Path):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "skill-to-mcp-path"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
     out = tmp_path / "authdiff-out"
     _scan, _payload, code = run_scan(root, output_dir=out, fail_on="high")
@@ -86,11 +70,7 @@ def test_scan_fail_on_high(tmp_path: Path):
 
 def test_capability_origin_on_type_defaults(tmp_path: Path):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "benign-skill-only"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-only"
     )
     out = tmp_path / "authdiff-out"
     scan, _payload, _code = run_scan(root, output_dir=out)
@@ -103,11 +83,7 @@ def test_baseline_fingerprints(tmp_path: Path):
     from authdiff.security.baseline import diff_against_baseline, save_baseline
 
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "benchmark"
-        / "fixtures"
-        / "skill-to-mcp-path"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
     out = tmp_path / "authdiff-out"
     scan, _payload, _code = run_scan(root, output_dir=out)
@@ -122,19 +98,13 @@ def test_baseline_fingerprints(tmp_path: Path):
     assert delta["summary"]["findings_added"] == 0
 
 
-def test_validate_claim_confirmed_requires_evidence(tmp_path: Path):
-    from authdiff.cli.dispatch import _validate_claim
-    from authdiff.jsonio import write_json
+def test_validate_report_rejects_non_report_doc(tmp_path: Path):
+    import pytest
 
-    path = tmp_path / "claim.json"
-    write_json(
-        path,
-        {
-            "claim": "Can execute commands",
-            "status": "CONFIRMED",
-            "evidence_ids": [],
-        },
-    )
-    ok, issues = _validate_claim(path)
-    assert not ok
-    assert any(i.code == "CLAIM_UNSUPPORTED_CONFIRMED" for i in issues)
+    from authdiff.jsonio import write_json
+    from authdiff.validate_report import validate_report_file
+
+    path = tmp_path / "findings.json"
+    write_json(path, {"findings": "not-a-list"})
+    with pytest.raises(SystemExit, match="JSON Schema validation failed"):
+        validate_report_file(path)

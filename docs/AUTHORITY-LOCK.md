@@ -103,11 +103,26 @@ authdiff diff lock A.lock B.lock
 Protect the file:
 
 ```text
-# CODEOWNERS
-AUTHORITY.lock  @org/security-owners
+# CODEOWNERS — prefer @user; GitHub-native rulesets enforce @org/team.
+AUTHORITY.lock  @security-owner
 ```
 
-`authdiff ci init` writes a CODEOWNERS stub for this path.
+`authdiff ci init --owner @you` writes a CODEOWNERS stub for this path.
+
+### Pinned facts (0.3.0)
+
+Each record may also seal:
+
+| Field | Meaning |
+| --- | --- |
+| `launcher` | Executable / transport (`npx`, `uvx`, `node`, …) |
+| `args_digest` | SHA-256 of canonical JSON argv |
+| `url_host` | Hostname for URL MCP transports |
+| `script_digest` | Content digest for hooks / skill trees |
+
+Same identity with a different launcher/args/host is a **`replacement`** (needs approval).
+Opt-in: `authdiff lock --snapshot tools.json` merges `mcp_tools` description pins;
+`authdiff lock --home` seals `~/.authdiff/AUTHORITY.lock`.
 
 ---
 

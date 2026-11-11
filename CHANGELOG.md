@@ -7,11 +7,36 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-11-12
+
+### Added
+
+- **Pinned facts** on lock records: `launcher`, `args_digest`, `url_host`, `script_digest`
+  (same-name package/launcher swap is a blocking `replacement`).
+- `lock --home`, `lock --snapshot`, `lock --resolve` hint; Claude PreToolUse hook template.
+- Schema validation on every JSON `AUTHORITY.lock` load (fail closed on malformed).
+- Six-scenario gate harness + hostile-lock tests.
+- Dogfood: repo `AUTHORITY.lock`, CODEOWNERS, local Action workflow.
+- Corpus fixtures `skill-to-mcp-path` / `benign-skill-only` (moved off deleted benchmark tree).
+
+### Changed
+
+- **Gate is the verdict:** `scan --base-lock` is advisory; Action uses `always()` for
+  comment/artifacts then fails on scan/gate codes.
+- Approval model is **GitHub-native**: any APPROVED PR review counts once base-ref
+  CODEOWNERS covers `AUTHORITY.lock` (no homemade `@org/team` login matching).
+- Action loads CODEOWNERS from the **base ref**; legacy `mode=audit` removed.
+- README leads with `doctor`; public path doctor → lock → gate → ci.
+- Kill list: removed `archive/`, `docs/archive/`, `kit/`, `docs/atlas/`, `docs/pilots/`,
+  five unused schemas, and research CLI (`benchmark`, `atlas`, `pilots`, `audit`, …).
+- Docs and maintainer surface aligned to lock + gate + doctor; CLI reference rewritten.
+
 ### Fixed
 
-- Align remaining install pins and lock docs with **0.2.0** / `AUTHORITY.lock` **v1**
-  (`README.md`, `tools/README.md`, `schemas/README.md`, examples, skill).
-- Document `delta` as a `scan` alias (finding risk-delta), distinct from `gate --base-lock`.
+- `SECURITY.md` / `supported_product_line: 0.x`; `v1.0.0` Release marked superseded.
+- Branch-protection / ruleset guidance in `AUTHDIFF-GATE.md`.
+- Rebrand debris in the Action PATH check.
+- Preflight no longer depends on removed `audit` module; dispatch helpers restored after shrink.
 
 ## [0.2.0] — 2026-11-10
 

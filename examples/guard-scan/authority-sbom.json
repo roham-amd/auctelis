@@ -1,12 +1,12 @@
 {
   "schema": "authdiff.authority_sbom.v1",
   "product": "authdiff",
-  "product_version": "1.0.0",
-  "package_version": "1.0.0",
+  "product_version": "0.3.0",
+  "package_version": "0.3.0",
   "rule_pack": "1.6",
-  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
-  "audited_commit": "6a9db84ded397ca6ced2cf9dfd82b381754bd2ea",
-  "collected_at_utc": "2026-11-08T21:40:39Z",
+  "repository": "examples/demo-vulnerable",
+  "audited_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
+  "collected_at_utc": "2026-11-11T12:38:10Z",
   "authority_layers": {
     "DECLARED": "What the integration says it requires or exposes.",
     "CONFIGURED": "What host/repo configuration appears to expose.",
@@ -22,8 +22,8 @@
       "path": "skills/bootstrap/SKILL.md",
       "adapter": "skill_md",
       "adapter_maturity": "SUPPORTED",
-      "fingerprint": "ff5f1d2055d3a64f",
-      "content_digest": "sha256:b49c909f444c497b044a04d270e6206d79df76d3452efc7a63ee01bdd040e4cd",
+      "fingerprint": "1adac0942a7e3b04",
+      "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "authority_layer": "CONFIGURED",
       "capabilities": [
         {
@@ -148,24 +148,6 @@
     {
       "component_id": "C-004",
       "name": "agent",
-      "type": "Automation / Workflow",
-      "path": ".github/workflows/agent.yml",
-      "adapter": "automations",
-      "adapter_maturity": "PARTIAL",
-      "fingerprint": "647b903b8a200984",
-      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
-      "authority_layer": "CONFIGURED",
-      "capabilities": [],
-      "destinations": [],
-      "priority_hints": [
-        "scheduled_or_event_trigger",
-        "credential_reference",
-        "agent_related_step"
-      ]
-    },
-    {
-      "component_id": "C-005",
-      "name": "agent",
       "type": "CI Workflow",
       "path": ".github/workflows/agent.yml",
       "adapter": "github_workflows",
@@ -177,9 +159,9 @@
         {
           "kind": "unattended_operation",
           "status": "OBSERVED",
-          "component_id": "C-005",
+          "component_id": "C-004",
           "evidence_ids": [
-            "E-INV-C-005"
+            "E-INV-C-004"
           ],
           "notes": "CI workflows execute with repository privileges.",
           "origin": "TYPE_DEFAULT"
@@ -187,9 +169,9 @@
         {
           "kind": "access_secrets",
           "status": "POTENTIAL",
-          "component_id": "C-005",
+          "component_id": "C-004",
           "evidence_ids": [
-            "E-INV-C-005"
+            "E-INV-C-004"
           ],
           "notes": "Workflows commonly inherit repository secrets.",
           "origin": "TYPE_DEFAULT"
@@ -204,7 +186,7 @@
       ]
     },
     {
-      "component_id": "C-006",
+      "component_id": "C-005",
       "name": "Cursor",
       "type": "Agent Host",
       "path": ".cursor/mcp.json",
@@ -334,18 +316,17 @@
     "component_counts_by_type": {
       "Skill": 1,
       "MCP Server Registration": 2,
-      "Automation / Workflow": 1,
       "CI Workflow": 1,
       "Agent Host": 1
     },
     "component_counts_by_maturity": {
       "SUPPORTED": 1,
-      "PARTIAL": 5,
+      "PARTIAL": 4,
       "MANUAL_ONLY": 0,
       "UNSUPPORTED": 0
     },
-    "deterministically_discovered": 6,
-    "supported_ratio": 0.1667,
+    "deterministically_discovered": 5,
+    "supported_ratio": 0.2,
     "unparsed_agent_config_count": 0,
     "parser_events": [],
     "manual_review_families": [
@@ -396,17 +377,6 @@
       {
         "component_id": "C-004",
         "name": "agent",
-        "type": "Automation / Workflow",
-        "repository_path": ".github/workflows/agent.yml",
-        "hints": [
-          "scheduled_or_event_trigger",
-          "credential_reference",
-          "agent_related_step"
-        ]
-      },
-      {
-        "component_id": "C-005",
-        "name": "agent",
         "type": "CI Workflow",
         "repository_path": ".github/workflows/agent.yml",
         "hints": [
@@ -417,7 +387,7 @@
         ]
       },
       {
-        "component_id": "C-006",
+        "component_id": "C-005",
         "name": "Cursor",
         "type": "Agent Host",
         "repository_path": ".cursor/mcp.json",

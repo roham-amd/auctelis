@@ -39,7 +39,23 @@
           "approval_posture": { "type": "string" },
           "capabilities": { "type": "array", "items": { "type": "string" } },
           "destinations": { "type": "array", "items": { "type": "string" } },
-          "env_keys": { "type": "array", "items": { "type": "string" } }
+          "env_keys": { "type": "array", "items": { "type": "string" } },
+          "launcher": {
+            "type": "string",
+            "description": "Executable / transport launcher (npx, uvx, node, …)"
+          },
+          "args_digest": {
+            "type": "string",
+            "description": "sha256 digest of canonical JSON argv"
+          },
+          "url_host": {
+            "type": "string",
+            "description": "Hostname for URL-transported MCP servers"
+          },
+          "script_digest": {
+            "type": "string",
+            "description": "Content digest for hook scripts / skill trees"
+          }
         }
       }
     },

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from authdiff.cli import main
@@ -35,27 +34,6 @@ def test_full_flag_lengthens_report(tmp_path: Path):
     assert full_path.is_file()
     assert "AUTHORITY SURFACES" in full_path.read_text(encoding="utf-8")
     assert (tmp_path / "out" / "inventory.json").is_file()
-
-
-def test_precision_gate_passes_when_unlabeled():
-    path = Path(__file__).resolve().parents[1] / "docs" / "atlas" / "precision.json"
-    data = json.loads(path.read_text(encoding="utf-8"))
-    policy = data["policy"]
-    assert policy["high_critical_require_literal_config"] is True
-    labeled = sum(int(r.get("labeled_n") or 0) for r in data["rules"])
-    # Until N>=100, gate only checks schema honesty — do not invent precision.
-    if labeled < int(policy["min_labeled_for_gate"]):
-        assert all(
-            r.get("precision") in (None, 0) or r.get("labeled_n", 0) == 0 for r in data["rules"]
-        )
-        return
-    threshold = float(policy["demote_below_precision"])
-    for rule in data["rules"]:
-        prec = rule.get("precision")
-        if prec is None:
-            continue
-        if float(prec) < threshold:
-            assert rule.get("default_severity") in {"LOW", "demote", "keep-low"}
 
 
 def test_product_cli_hides_maintainer_commands():
