@@ -7,6 +7,40 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-11-13
+
+### Added
+
+- Gate `--strict-ruleset` / Action `strict-ruleset`: fail growth when ruleset
+  status is `UNVERIFIED` (default remains best-effort with a prominent warning).
+- Explicit adoption ceremony: `BASELINE_ADOPTED` distinct from growth-gate
+  `PASS`; Action step summary + `adoption_bootstrap_verdict()` helper.
+- Field-level lock diff lines (`capabilities` / destinations / env / pin /
+  approval old → new) for PR Authority Diff comments.
+- Pilot kit: `docs/pilots/` tracker, `eval/pilot-metrics.csv`, GitHub pilot
+  issue template; EVALUATION-PROTOCOL / ROADMAP wired to the kill criterion.
+
+### Changed
+
+- Inventory skips all `authdiff-out-*` artifact directories (not only a fixed list).
+- Remove unused `AesaPolicy` alias; consolidate home-lock path helper.
+- Demo CLI help / PRODUCT command table: doctor-first, demo optional.
+- Product / package version **0.3.3**.
+
+### Fixed
+
+- Reconcile `authority-policy.schema.json` with `policy.py` (contract **1.3**):
+  `output_dir` / `baseline` / `require_review` / expiring `ignore`; drop unused
+  `allow_*` fields and top-level `owners`.
+- Docs: INSTALL / CLI / GUARD / GATE / tools README bare-command prose matches
+  doctor-or-scan; install pins and version tables → **0.3.3**.
+- Release manifest: `open_alias` / `fix_alias` marked disabled; build checks
+  reject re-enabling them and catch install/doc/schema drift.
+- Gate reports distinguish `PASS / protection verified` vs
+  `PASS / protection unverified`.
+- Remove stale `authdiff open` residue from rules, vet docs, and issue templates.
+- Markdown link checker ignores local `authdiff-out-*` / `.pytest_cache` trees.
+
 ## [0.3.2] — 2026-11-13
 
 ### Fixed

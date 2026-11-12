@@ -1,6 +1,6 @@
 # authdiff scan — operator guide
 
-Guard scan path for **0.3.2**: deterministic discovery plus evidence-backed
+Guard scan path for **0.3.3**: deterministic discovery plus evidence-backed
 observations via `authdiff scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./authdiff-out` (not inside the target tree).
@@ -72,9 +72,9 @@ Principle: never ask an LLM to establish a fact the CLI can establish; never let
 
 ```bash
 # Recommended first command (git-tag uvx or uv tool install — see INSTALL.md):
-authdiff demo
+authdiff doctor
 
-# Against a real tree (bare `authdiff` defaults to `scan .`):
+# Against a real tree (bare `authdiff` → doctor, or scan . when lock/policy exists):
 authdiff /path/to/target-repo
 authdiff lock /path/to/target-repo
 authdiff explain F-001 -o ./authdiff-out   # if findings exist

@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.3.2** |
-| Tooling package | **0.3.2** (`authdiff`) |
+| Product release | **0.3.3** |
+| Tooling package | **0.3.3** (`authdiff`) |
 | Rule pack | **1.6** (rules 001–022) |
 | Primary path | `authdiff doctor` → `lock` → `scan/gate` → `ci init --owner` / Action |
 | Policy file | `.authdiff.yml` + `AUTHORITY.lock` (CODEOWNERS) |
@@ -37,20 +37,20 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools" authdiff doctor
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
 
 authdiff doctor                          # host authority map
 authdiff vet github.com/org/some-skill  # pre-install verdict
-authdiff scan .                          # bare `authdiff` also defaults to scan .
+authdiff scan .                          # bare `authdiff` → doctor, or scan . when lock/policy exists
 authdiff lock                            # write AUTHORITY.lock (--accept-gated if needed)
 authdiff ci init --owner @security-owner
 authdiff check --locked .
-# On PRs the Action compares head to the base-ref lock and runs:
-# authdiff gate --base-lock <base-AUTHORITY.lock>
+# First lock PR → BASELINE_ADOPTED ceremony (CODEOWNERS review of the baseline).
+# Later PRs: authdiff gate --base-lock <base-AUTHORITY.lock> [--strict-ruleset]
 # scan --base-lock only writes the delta; gate is the merge verdict.
 ```
 
@@ -80,8 +80,19 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
   with:
     trusted-policy: "true"
     authority-diff: "true"
-    locked: "true"   # first-lock adoption PR is allowed; later PRs need base lock
+    locked: "true"          # first-lock → BASELINE_ADOPTED ceremony; later PRs need base lock
+    # strict-ruleset: "true"  # optional: fail growth when ruleset status is UNVERIFIED
 ```
+
+### Adoption vs growth (do not conflate)
+
+| Situation | Verdict | Meaning |
+| --- | --- | --- |
+| PR adds first `AUTHORITY.lock`; base has none | `BASELINE_ADOPTED` | Trust ceremony — CODEOWNERS must review the baseline itself |
+| Base lock exists; head grows authority | Growth gate `PASS` / `NEEDS_REVIEW` | Compare locks; GitHub enforces owner review |
+| Growth + ruleset `OK` | `PASS / protection verified` | Probe confirmed code-owner review requirement |
+| Growth + ruleset `UNVERIFIED` | `PASS / protection unverified` (default) or fail with `strict-ruleset` | Missing token/API access — not green assurance |
+| Growth + ruleset `MISSING` | `NEEDS_REVIEW` | Confirmed absence of code-owner review requirement |
 
 Minimum workflow permissions (example recipe):
 

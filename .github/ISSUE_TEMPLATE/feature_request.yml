@@ -22,7 +22,7 @@ body:
     attributes:
       label: Primary surface
       options:
-        - CLI (demo/doctor/open/scan/lock/ci)
+        - CLI (doctor/lock/scan/gate/ci)
         - AUTHORITY.lock / Authority Diff
         - GitHub Action gate
         - Adapter coverage (MCP/skills/hooks/…)

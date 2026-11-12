@@ -17,15 +17,15 @@ _SKIP_DIRS = {
     ".tox",
     "dist",
     "build",
-    # Guard/self outputs — never re-inventory scanner artifacts as target content
+    # Exact name; prefix authdiff-out-* handled in the walk below
     "authdiff-out",
-    "authdiff-out-smoke",
-    "authdiff-out-test",
-    "authdiff-out-demo",
-    "authdiff-out-doctor",
-    "authdiff-out-dogfood",
-    "authdiff-out-wheel-smoke",
 }
+
+
+def _is_authdiff_output_dir(name: str) -> bool:
+    """Skip scanner artifact dirs (authdiff-out, authdiff-out-pilot, …)."""
+    return name == "authdiff-out" or name.startswith("authdiff-out-")
+
 
 # Default authority-noise dirs (fixtures / docs / tests / canned demos).
 # Opt out with ``default_excludes=False`` / ``scan --include-fixtures``.
@@ -83,7 +83,7 @@ def iter_repo_files(
             continue
         kept: list[str] = []
         for d in dirnames:
-            if d in skip_dirs:
+            if d in skip_dirs or _is_authdiff_output_dir(d):
                 if d in _DEFAULT_EXCLUDE_DIRS and default_excludes:
                     events.append(
                         {

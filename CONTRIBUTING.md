@@ -29,7 +29,7 @@ CI mirrors this in [`.github/workflows/authdiff-validate.yml`](.github/workflows
 - Docker: [`Dockerfile`](Dockerfile) pins `python:3.12.16-slim-trixie@sha256:…` + `ghcr.io/astral-sh/uv:…@sha256:…`; `uv sync --locked --no-dev`.
 - Actions: full commit SHAs with version comments; CI uses `uv python install 3.12.16` + `uv sync --locked` + `uv run --locked …`.
 - Product CLI name is **`authdiff`**; keep **`authdiff`** as a console-script alias. Maintainer commands live on **`authdiff-dev`**.
-- Research/archive trees (`archive/`, `kit/`, atlas/pilots) were removed in 0.3.0 — keep the product path lean (lock + gate + doctor).
+- Research/archive trees (`archive/`, `kit/`, atlas) were removed in 0.3.0 — keep the product path lean (lock + gate + doctor). The `docs/pilots/` tracker is intentional for the five-repo kill criterion.
 - Passive scans must remain read-only. Opt-in execute paths (`run`, `snapshot --execute`) scrub env only and must document sandbox limits.
 - Lock I/O lives in `authdiff.lock_io`; lock build/diff in `authdiff.authority_lock`. Do not pull the scanner into the broker path.
 

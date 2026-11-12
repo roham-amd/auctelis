@@ -26,28 +26,10 @@ service-account*.json
 # Local audit outputs (keep outside target repos; also ignore if created locally)
 authdiff-out/
 authdiff-out-*/
-authdiff-out-smoke/
-authdiff-out-test/
-authdiff-out-demo/
-authdiff-out-sbom/
-authdiff-out-probe/
 signatures/
-docs/atlas/ledger/runs/
-docs/atlas/ledger/index.json
-!docs/atlas/ledger/.gitkeep
 
-# Pilot scan dumps (keep slim exemplars: README, pr-comment, scan-summary, profile)
-docs/pilots/results/**/inventory.json
-docs/pilots/results/**/ecosystem-graph.json
-docs/pilots/results/**/findings.json
-docs/pilots/results/**/findings.sarif.json
-docs/pilots/results/**/capabilities.json
-docs/pilots/results/**/authority-snapshot.json
-docs/pilots/results/**/scan-report.md
-docs/pilots/results/**/scan-summary-full.txt
-docs/pilots/results/**/vet.log
-docs/pilots/results/**/meta-partial.json
-docs/pilots/results/**/agent-digest.json
+# Pilot scan dumps under docs/pilots/results/ (tracker markdown stays tracked)
+docs/pilots/results/
 security-audit-report.md
 security-audit-summary.json
 audit-state.json

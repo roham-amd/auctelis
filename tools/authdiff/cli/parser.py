@@ -273,7 +273,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     demo = sub.add_parser(
         "demo",
-        help="First-run aha: scan demo-vulnerable and print the Authority Diff comment",
+        help="Optional packaged fixture: scan demo-vulnerable and print the Authority Diff",
     )
     demo.add_argument(
         "-o",
@@ -387,6 +387,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--skip-ruleset-check",
         action="store_true",
         help="Skip best-effort GitHub ruleset/branch-protection probe",
+    )
+    gate_cmd.add_argument(
+        "--strict-ruleset",
+        action="store_true",
+        help=(
+            "Fail growth when ruleset status is UNVERIFIED "
+            "(default: PASS with prominent unverified warning)"
+        ),
     )
     gate_cmd.add_argument(
         "--agent",

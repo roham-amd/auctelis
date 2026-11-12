@@ -1243,7 +1243,7 @@ def rule_typosquat_known_name(
         ],
         recommended_action=(
             f"Confirm the name is intentional (not `{hit['known']}`); pin version; "
-            "vet with `authdiff open` before install."
+            "vet with `authdiff vet` before install."
         ),
         finding_class="EXPOSURE",
         exposure="TYPOSQUAT_NAME",

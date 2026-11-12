@@ -4,7 +4,7 @@ Repository-level defaults for the authdiff scan and CI gate.
 
 | Item | Value |
 | --- | --- |
-| Contract | **1.2** (`require_review` auto-fails matched classes; `NAME_MARKER` never satisfies) |
+| Contract | **1.3** (`require_review` auto-fails matched classes; `NAME_MARKER` never satisfies; schema matches `policy.py`) |
 | Local CLI default | Target `.authdiff.yml` is **ignored** unless `--policy PATH` or `--trust-target-policy` (prevents audited repos from suppressing findings) |
 | Discovery (when trusted) | Look for `.authdiff.yml` **inside the scan target tree only** (never parent dirs outside the target) |
 | CI trust | Action `trusted-policy=true` loads `.authdiff.yml` from the **PR base ref** and fails if an *existing* policy file is edited (first-time add is allowed) |

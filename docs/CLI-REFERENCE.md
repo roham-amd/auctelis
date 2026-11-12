@@ -3,7 +3,7 @@
 Primary command: **`authdiff`**.
 Maintainer entry: **`authdiff-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `authdiff` **0.3.2** · product **0.3.2** · rule pack **1.6** (001–022).
+Package `authdiff` **0.3.3** · product **0.3.3** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 lock semantics: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) ·
@@ -11,8 +11,10 @@ roadmap: [`ROADMAP.md`](ROADMAP.md).
 
 Install: [`INSTALL.md`](INSTALL.md).
 
-**Default:** bare `authdiff` (or a path / scan flags without a subcommand) runs
-`scan .`. Advanced commands remain callable but are omitted from brief `--help`.
+**Default:** bare `authdiff` runs `doctor` when the cwd has no `AUTHORITY.lock` /
+`.authdiff.yml`; otherwise `scan .`. A path or scan flags without a subcommand
+still run `scan`. Advanced commands remain callable but are omitted from brief
+`--help`.
 
 ---
 
@@ -23,7 +25,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | Core | `demo` | First-run Authority Diff on packaged `demo-vulnerable` |
 | Core | `doctor` | Host authority map (Cursor / Claude / VS Code / …) |
 | Core | `vet` | Pre-install verdict for a local path or GitHub URL |
-| Core | `scan` / `check` / bare `authdiff` | Repo findings + SARIF (add `--locked`, `--full`) |
+| Core | `scan` / `check` / bare `authdiff` | Repo findings + SARIF; bare → doctor or scan (add `--locked`, `--full`) |
 | Core | `lock` | Write / update / `--check` `AUTHORITY.lock` |
 | Core | `gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
 | Core | `ci init` | `.authdiff.yml` + workflow + CODEOWNERS + lock |
@@ -112,15 +114,19 @@ after a human review. Does not overwrite existing files unless `--force`.
 ## `authdiff gate`
 
 ```bash
-authdiff gate [PATH] --base-lock PATH [--head-lock PATH] [--codeowners PATH] [--skip-ruleset-check]
+authdiff gate [PATH] --base-lock PATH [--head-lock PATH] [--codeowners PATH]
+               [--skip-ruleset-check] [--strict-ruleset]
 ```
 
 Compares observed (or `--head-lock`) authority to an approved base lock. Labels
 GROWTH vs REDUCTION. Exits `1` on growth when CODEOWNERS does not cover
-`AUTHORITY.lock`, or when a best-effort ruleset probe finds no
-code-owner-review requirement. Reductions alone pass. GitHub CODEOWNERS /
-rulesets enforce the human review — authdiff does not count PR approvals.
-`scan --base-lock` is advisory only; **gate** is the verdict.
+`AUTHORITY.lock`, or when a ruleset probe returns `MISSING`. With
+`--strict-ruleset`, `UNVERIFIED` also fails; otherwise growth can `PASS /
+protection unverified` (prominent warning — not the same as verified
+protection). Reductions alone pass. GitHub CODEOWNERS / rulesets enforce the
+human review — authdiff does not count PR approvals. First-lock PRs with no
+base lock are an Action **adoption ceremony** (`BASELINE_ADOPTED`), not a
+growth-gate pass. `scan --base-lock` is advisory only; **gate** is the verdict.
 
 ---
 

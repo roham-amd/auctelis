@@ -25,7 +25,6 @@ Do **not** run `authdiff lock` (except `lock --check`), `ci init`,
 maintainer commands (`authdiff-dev`), `run`, or `snapshot --execute` unless the
 human explicitly opts in and unsets agent mode.
 Do **not** approve locks, edit trusted policy, or auto-apply remediation.
-Do **not** load archived methodology modules unless the operator asks for deep review.
 
 ## Safety
 

@@ -141,7 +141,7 @@ def run_corpus() -> dict:
             failed += 1
 
     return {
-        "corpus_version": "0.3.2",
+        "corpus_version": "0.3.3",
         "passed": passed,
         "failed": failed,
         "cases": results,

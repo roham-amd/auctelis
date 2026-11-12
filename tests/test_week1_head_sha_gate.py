@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from authdiff.gate import check_code_owner_ruleset, growth_label
+from authdiff.gate import adoption_bootstrap_verdict, check_code_owner_ruleset, growth_label
 
 
 def test_growth_label_matrix():
@@ -25,12 +25,9 @@ def test_ruleset_unverified_without_token(monkeypatch):
 
 def test_adoption_bootstrap_decision_matrix():
     """Mirror Action fail-step: locked PR without base lock."""
-
-    def fail_closed(*, base_lock: bool, head_lock: bool) -> bool:
-        if base_lock:
-            return False
-        return not head_lock
-
-    assert fail_closed(base_lock=False, head_lock=True) is False
-    assert fail_closed(base_lock=False, head_lock=False) is True
-    assert fail_closed(base_lock=True, head_lock=True) is False
+    assert adoption_bootstrap_verdict(base_lock_present=False, head_lock_present=True)["ok"]
+    assert not adoption_bootstrap_verdict(base_lock_present=False, head_lock_present=False)["ok"]
+    assert (
+        adoption_bootstrap_verdict(base_lock_present=True, head_lock_present=True)["ceremony"]
+        == "growth_gate"
+    )

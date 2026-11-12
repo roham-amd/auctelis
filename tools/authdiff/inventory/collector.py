@@ -18,7 +18,7 @@ from authdiff.inventory.types import (
     assign_component_ids,
 )
 
-INVENTORY_VERSION = "0.3.2"
+INVENTORY_VERSION = "0.3.3"
 
 
 @dataclass(slots=True)

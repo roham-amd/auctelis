@@ -209,6 +209,55 @@ def growth_label(summary: dict[str, Any]) -> str:
     return "NONE"
 
 
+def adoption_bootstrap_verdict(
+    *,
+    base_lock_present: bool,
+    head_lock_present: bool,
+) -> dict[str, Any]:
+    """Distinguish first-lock adoption from a normal growth-gate pass.
+
+    Used by the GitHub Action (and tests) when there is no base-ref lock.
+    ``BASELINE_ADOPTED`` is **not** equivalent to ``PASS`` on a growth gate.
+    """
+    if base_lock_present:
+        return {
+            "ok": True,
+            "ceremony": "growth_gate",
+            "verdict": "GROWTH_GATE",
+            "message": "Base lock present — run authdiff gate for authority growth.",
+        }
+    if head_lock_present:
+        return {
+            "ok": True,
+            "ceremony": "baseline_adopted",
+            "verdict": "BASELINE_ADOPTED",
+            "message": (
+                "First AUTHORITY.lock on head with no trusted base lock. "
+                "This is a baseline adoption ceremony — require CODEOWNERS review "
+                "of the new lock and protection config before merge. "
+                "Subsequent PRs must pass the growth gate against this base."
+            ),
+        }
+    return {
+        "ok": False,
+        "ceremony": "fail_closed",
+        "verdict": "FAIL_CLOSED",
+        "message": ("locked=true but neither base nor head has AUTHORITY.lock — fail closed."),
+    }
+
+
+def protection_status(ruleset: str | None, *, needs_approval: bool) -> str:
+    """Map ruleset probe → review-protection label for reports."""
+    if not needs_approval:
+        return "n/a"
+    status = str(ruleset or "UNVERIFIED").upper()
+    if status == "OK":
+        return "verified"
+    if status == "MISSING":
+        return "missing"
+    return "unverified"
+
+
 def run_gate(
     root: Path,
     *,
@@ -220,6 +269,7 @@ def run_gate(
     codeowners_path: Path | None = None,
     codeowners_text: str | None = None,
     check_ruleset: bool = True,
+    strict_ruleset: bool = False,
 ) -> tuple[dict[str, Any], int]:
     """Compare base→head lock; fail on growth without CODEOWNERS protection."""
     root = root.resolve()
@@ -313,20 +363,32 @@ def run_gate(
             f"was found ({ruleset_detail}). Enable require_code_owner_review, "
             "then merge the lock diff under CODEOWNERS."
         )
+    elif needs_approval and ruleset_status == "UNVERIFIED" and strict_ruleset:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        error = (
+            "Authority grew but ruleset check is UNVERIFIED under --strict-ruleset "
+            f"({ruleset_detail}). Provide API access, enable code-owner review, "
+            "or omit --strict-ruleset for best-effort mode."
+        )
     elif needs_approval:
-        # CODEOWNERS present; ruleset OK or UNVERIFIED (best-effort). Growth is
-        # labeled for humans — GitHub enforces the actual review.
+        # CODEOWNERS present; ruleset OK or UNVERIFIED (best-effort unless strict).
+        # Growth is labeled for humans — GitHub enforces the actual review.
         ok = True
         verdict = "PASS"
         if ruleset_status == "UNVERIFIED":
             error = (
-                f"Authority growth labeled; ruleset check UNVERIFIED ({ruleset_detail}). "
-                "Confirm a code-owner-review ruleset is enabled."
+                f"PASS / protection unverified — ruleset check UNVERIFIED "
+                f"({ruleset_detail}). Confirm a code-owner-review ruleset is enabled."
             )
 
+    protection = protection_status(ruleset_status, needs_approval=needs_approval)
     report: dict[str, Any] = {
         "ok": ok,
         "verdict": verdict,
+        "ceremony": "growth_gate",
+        "protection": protection,
+        "strict_ruleset": strict_ruleset,
         "meaningful_authority_change": meaningful,
         "needs_approval": needs_approval,
         "label": label,
@@ -344,15 +406,32 @@ def run_gate(
 
 
 def render_gate_report(report: dict[str, Any]) -> str:
-    lines = [f"authdiff gate — {report.get('verdict')}"]
+    verdict = str(report.get("verdict") or "UNKNOWN")
+    protection = str(report.get("protection") or "")
+    if verdict == "PASS" and protection == "verified":
+        header = "authdiff gate — PASS / protection verified"
+    elif verdict == "PASS" and protection == "unverified":
+        header = "authdiff gate — PASS / protection unverified"
+    elif verdict == "BASELINE_ADOPTED":
+        header = "authdiff gate — BASELINE_ADOPTED (adoption ceremony, not growth PASS)"
+    else:
+        header = f"authdiff gate — {verdict}"
+    lines = [header]
     label = str(report.get("label") or "NONE")
+    if report.get("ceremony") == "baseline_adopted":
+        lines.append("Ceremony: baseline adoption (first lock; not a growth-gate pass)")
     lines.append(f"Authority delta: {label}")
     if report.get("needs_approval"):
         owners = ", ".join(report.get("required_owners") or []) or "(none)"
         lines.append(f"CODEOWNERS for AUTHORITY.lock: {owners}")
-        lines.append(
-            f"Ruleset: {report.get('ruleset')} — {report.get('ruleset_detail') or ''}".rstrip(" —")
-        )
+        ruleset_line = (
+            f"Ruleset: {report.get('ruleset')} — {report.get('ruleset_detail') or ''}"
+        ).rstrip(" —")
+        if protection:
+            ruleset_line += f" [{protection}]"
+        lines.append(ruleset_line)
+        if report.get("strict_ruleset"):
+            lines.append("Strict ruleset: ON (UNVERIFIED fails growth)")
         lines.append(
             "Approval model: GitHub-native CODEOWNERS/rulesets "
             "(authdiff labels growth; it does not count PR reviews)."
@@ -361,6 +440,8 @@ def render_gate_report(report: dict[str, Any]) -> str:
         lines.append(f"  {line}")
     if report.get("error"):
         lines.append(str(report["error"]))
+    if report.get("message") and report.get("ceremony") == "baseline_adopted":
+        lines.append(str(report["message"]))
     if report.get("ok") and label == "REDUCTION":
         lines.append("Authority reduced vs base lock — no extra review required.")
     elif report.get("ok") and not report.get("needs_approval"):

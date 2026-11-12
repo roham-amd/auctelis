@@ -35,6 +35,7 @@ __all__ = [
     "classify_record_change",
     "default_lock_path",
     "diff_authority_locks",
+    "field_level_change_bits",
     "identity_key",
     "load_authority_lock",
     "normalize_lock_for_compare",
@@ -523,6 +524,59 @@ def diff_authority_locks(
     }
 
 
+def _short(value: Any, *, max_len: int = 24) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "∅"
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "…"
+
+
+def _set_field_bits(field: str, before: list[str], after: list[str]) -> list[str]:
+    b, a = set(before), set(after)
+    bits: list[str] = []
+    added = sorted(a - b)
+    removed = sorted(b - a)
+    if added:
+        shown = ", ".join(added[:3])
+        bits.append(f"{field} +[{shown}{'…' if len(added) > 3 else ''}]")
+    if removed:
+        shown = ", ".join(removed[:3])
+        bits.append(f"{field} -[{shown}{'…' if len(removed) > 3 else ''}]")
+    return bits
+
+
+def field_level_change_bits(
+    before: dict[str, Any],
+    after: dict[str, Any],
+    *,
+    limit: int = 5,
+) -> list[str]:
+    """Human-readable old → new fragments for lock PR lines."""
+    bits: list[str] = []
+    for field in ("capabilities", "destinations", "env_keys"):
+        bits.extend(
+            _set_field_bits(
+                field,
+                [str(x) for x in (before.get(field) or [])],
+                [str(x) for x in (after.get(field) or [])],
+            )
+        )
+    for field in ("pin_state", "approval_posture", "launcher", "args_digest", "url_host"):
+        b_val, a_val = before.get(field), after.get(field)
+        if str(b_val or "") == str(a_val or ""):
+            continue
+        width = 16 if field == "args_digest" else 28
+        bits.append(f"{field}: {_short(b_val, max_len=width)} → {_short(a_val, max_len=width)}")
+    # Representation-only: surface path when no authority field bits.
+    if not bits and before.get("path") != after.get("path"):
+        bits.append(
+            f"path: {_short(before.get('path'), max_len=36)} → {_short(after.get('path'), max_len=36)}"
+        )
+    return bits[:limit]
+
+
 def render_lock_diff_lines(
     *,
     added: list[dict[str, Any]],
@@ -541,17 +595,29 @@ def render_lock_diff_lines(
         env = ", ".join((rec.get("env_keys") or [])[:3])
         env_bit = f" passes {env};" if env else ""
         label = rec.get("name") or rec.get("id")
+        path = rec.get("path")
+        path_bit = f" @ {path}" if path else ""
         lines.append(
-            f"+ addition {rec.get('kind')} `{label}`:{dest_bit}{env_bit} {caps}; pin={pin}"
+            f"+ addition {rec.get('kind')} `{label}`{path_bit}:{dest_bit}{env_bit} "
+            f"{caps}; pin={pin}"
         )
     for rec in removed[: max(0, limit - len(lines))]:
         label = rec.get("name") or rec.get("id")
-        lines.append(f"- reduction {rec.get('kind')} `{label}`")
+        path = rec.get("path")
+        path_bit = f" @ {path}" if path else ""
+        lines.append(f"- reduction {rec.get('kind')} `{label}`{path_bit}")
     for item in changed[: max(0, limit - len(lines))]:
+        before = item.get("before") or {}
         after = item.get("after") or {}
-        label = after.get("name") or item.get("id")
+        label = after.get("name") or before.get("name") or item.get("id")
         klass = item.get("change_class") or "changed"
-        lines.append(f"~ {klass} {after.get('kind')} `{label}`")
+        path = after.get("path") or before.get("path")
+        path_bit = f" @ {path}" if path else ""
+        detail_bits = field_level_change_bits(before, after)
+        detail = "; ".join(detail_bits) if detail_bits else "fields changed"
+        lines.append(
+            f"~ {klass} {after.get('kind') or before.get('kind')} `{label}`{path_bit}: {detail}"
+        )
     return lines
 
 
@@ -604,8 +670,13 @@ def merge_mcp_tools_into_lock(
     return merged
 
 
-def home_lock_path(home: Path | None = None) -> Path:
-    """Per-user lock of host authority (``~/.authdiff/AUTHORITY.lock``)."""
+def home_lock_path(home: Path | None = None, *, lock_file: Path | None = None) -> Path:
+    """Per-user lock of host authority (``~/.authdiff/AUTHORITY.lock``).
+
+    ``lock_file`` overrides the default path when the caller already resolved one.
+    """
+    if lock_file is not None:
+        return lock_file.expanduser().resolve()
     base = (home or Path.home()).expanduser().resolve()
     return base / ".authdiff" / LOCK_NAME
 

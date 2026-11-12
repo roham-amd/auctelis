@@ -11,9 +11,9 @@
 ### Preferred (once PyPI is live)
 
 ```bash
-uvx --from authdiff authdiff demo
+uvx --from authdiff authdiff doctor
 uv tool install --python 3.12 authdiff
-authdiff demo && authdiff doctor && authdiff lock
+authdiff doctor && authdiff lock
 ```
 
 Trusted Publishing workflow: [`.github/workflows/publish-pypi.yml`](../.github/workflows/publish-pypi.yml).
@@ -25,28 +25,30 @@ repository `examples/` tree.
 
 ### Git-tag fallback (current supported path)
 
-**One-shot demo** (`uvx` is ephemeral — it does not leave a persistent `authdiff` on PATH):
+**One-shot doctor** (`uvx` is ephemeral — it does not leave a persistent `authdiff` on PATH):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools" authdiff doctor
 ```
 
 **Persistent tool install:**
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
 
-authdiff demo
 authdiff doctor
+authdiff lock --home
 authdiff vet github.com/org/some-skill
-authdiff scan .
 authdiff lock
-authdiff ci init --owner @you
 authdiff gate --base-lock AUTHORITY.lock   # after a base lock exists
+authdiff ci init --owner @you
+authdiff demo                              # optional canned fixture
 ```
 
-Bare `authdiff` (no subcommand) defaults to `authdiff scan .`.
+Bare `authdiff` (no subcommand) → `doctor` when the cwd has no `AUTHORITY.lock` /
+`.authdiff.yml`; otherwise → `scan .`. A path or scan flags without a subcommand
+still run `scan`.
 
 Package and CLI name: **`authdiff`**. Maintainer commands: **`authdiff-dev`**.
 
@@ -79,7 +81,7 @@ Consumer recipe: [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.e
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.3.1 |
-| Package `authdiff` | 0.3.1 |
+| Product (`VERSION`) | 0.3.3 |
+| Package `authdiff` | 0.3.3 |
 | `AUTHORITY.lock` schema | 1 |
 | Rule pack | 1.6 |

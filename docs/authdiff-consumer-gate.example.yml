@@ -21,13 +21,13 @@ jobs:
       - name: Install authdiff (git tag; PyPI not published yet)
         run: >
           pip install
-          "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+          "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
 
       - name: authdiff Authority Diff
         # High-assurance pin (recommended):
         #   uses: roham-amd/authdiff/.github/actions/authdiff-gate@<commit-sha>
         # Tag pin (convenient; mutable if the tag moves):
-        uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.2
+        uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.3
         with:
           path: .
           mode: scan
@@ -35,6 +35,9 @@ jobs:
           authority-diff: "true"
           # Default is true; set explicitly so the recipe cannot silently weaken.
           locked: "true"
+          # First-lock PR → BASELINE_ADOPTED ceremony (not a growth PASS).
+          # Optional: fail growth when ruleset probe is UNVERIFIED:
+          # strict-ruleset: "true"
           install-tools-from: path
           annotate: true
           output-dir: authdiff-out

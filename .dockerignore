@@ -19,7 +19,7 @@ tools/authdiff_tools.egg-info
 
 # Local audit outputs
 authdiff-out/
-authdiff-out-smoke/
+authdiff-out-*/
 
 # Not required for the runtime CLI image (kit procedure + tools remain)
 docs/

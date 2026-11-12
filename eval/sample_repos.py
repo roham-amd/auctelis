@@ -59,6 +59,7 @@ def main() -> int:
         )
         print(f"scan exit={proc.returncode} → {out}")
     print("Next: label findings into eval/holdout-labels.csv (blind review).")
+    print("Pilot retention: update docs/pilots/TRACKER.md and eval/pilot-metrics.csv.")
     return 0
 
 

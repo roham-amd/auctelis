@@ -30,7 +30,7 @@ committed [`AUTHORITY.lock`](docs/AUTHORITY-LOCK.md) — not a long report.
 
 ```bash
 # Working install (git tag — PyPI is not published yet):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools" authdiff doctor
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools" authdiff doctor
 
 # Later, once the package is on the index:
 # uvx --from authdiff authdiff doctor
@@ -40,7 +40,7 @@ Persistent install (if continuing):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
 
 authdiff doctor                  # your host authority map (the aha)
 authdiff doctor --since-lock     # one-screen delta vs ~/.authdiff/AUTHORITY.lock
@@ -104,9 +104,9 @@ Single recipe (git-tag install + Action). Full example:
 # PyPI not published yet — install from the pinned kit tag, then use Action-bundled tools:
 - run: >
     pip install
-    "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+    "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
 # Prefer: uses: roham-amd/authdiff/.github/actions/authdiff-gate@<commit-sha>
-- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.2
+- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.3
   with:
     path: .
     trusted-policy: "true"

@@ -1,0 +1,54 @@
+name: External pilot
+description: Track an outside repository adopting the authdiff PR authority gate
+title: "[pilot] "
+labels: ["pilot"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use one issue per outside repository. Self-dogfood of authdiff does not count.
+        Update [`docs/pilots/TRACKER.md`](../docs/pilots/TRACKER.md) when status changes.
+  - type: input
+    id: repo
+    attributes:
+      label: Repository
+      description: owner/name (public or accessible)
+      placeholder: acme/platform-agents
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Primary surface mix
+      options:
+        - MCP registration
+        - Skills (Cursor/Claude)
+        - Hooks + host settings
+        - Plugin / connector permissions
+        - CI agent/MCP workflows
+        - Mixed
+    validations:
+      required: true
+  - type: dropdown
+    id: slot
+    attributes:
+      label: Tracker slot (1–5)
+      options:
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+        - unassigned
+    validations:
+      required: true
+  - type: input
+    id: first_lock
+    attributes:
+      label: First AUTHORITY.lock merge date (UTC)
+      placeholder: 2026-11-20
+  - type: textarea
+    id: notes
+    attributes:
+      label: Setup notes / FP-FN observations
+      description: Link PRs, note UNVERIFIED share, usefulness of PR comment

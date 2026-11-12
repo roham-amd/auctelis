@@ -58,6 +58,10 @@ Diff summary fields:
 - `meaningful_authority_change` — additions / expansions / reductions / replacements / policy
 - `authority_changed` — any lock drift including representation (requires re-lock)
 
+Rendered lock / PR lines include **field-level old → new** for capabilities,
+destinations, env keys, pin/approval posture, launcher, and digests, plus the
+evidence path (`@ path`). Representation-only moves surface `path: old → new`.
+
 `authdiff lock --check` and `check --locked` fail when `authority_changed` is
 true so digests stay honest. Reviewers should prioritize `meaningful_authority_change`.
 

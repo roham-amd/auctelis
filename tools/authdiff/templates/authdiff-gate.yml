@@ -21,12 +21,12 @@ jobs:
       - name: Install authdiff (git tag; PyPI not published yet)
         run: >
           pip install
-          "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+          "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
 
       - name: authdiff Authority Diff
         # High-assurance: pin by commit SHA instead of the mutable tag.
         # uses: roham-amd/authdiff/.github/actions/authdiff-gate@<commit-sha>
-        uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.2
+        uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.3
         with:
           path: .
           mode: scan

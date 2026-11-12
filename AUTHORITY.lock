@@ -1,13 +1,13 @@
 {
   "approvals": [],
   "approved_findings": [],
-  "audited_commit": "c4c7de89845c4d399785b45cd7229a9e3ea4746c",
-  "lock_hash": "e883cf427b915c1c613b049b1622b2f3",
+  "audited_commit": "4edc682fff61bb952c33e742efcc9455f14a35ca",
+  "lock_hash": "527b98a7741021cc2e44664996cd01dc",
   "mcp_servers": {},
   "mcp_tools": {},
   "policy_hash": "sha256:61f1332ed231f7125c465c3f1bd2572e81789ff2b85c482bd2b789ee7db1ccda",
   "product": "authdiff",
-  "product_version": "0.3.1",
+  "product_version": "0.3.3",
   "records": [
     {
       "approval_posture": "unknown",
@@ -80,9 +80,9 @@
         "unattended_operation"
       ],
       "destinations": [],
-      "digest": "sha256:e85e1637223e9561afa724dbc01882caa5f7ebae316dc35e5c0ff9ef4b6ab93c",
+      "digest": "sha256:589bd2103612311097c5f8d917da665780d650bd8db240ede2704d2e2f8beea7",
       "env_keys": [],
-      "fingerprint": "a810ea62325fd105",
+      "fingerprint": "91d16fc0ddddde70",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/release@.github/workflows/release.yml",
       "identity_key": "github_workflows|ci workflow|release",
@@ -160,9 +160,9 @@
         "execute_commands"
       ],
       "destinations": [],
-      "digest": "sha256:d72f797514b41b3ef9c54bdf131fda61bfa9cfc27d248a36d58fb3c1e4f58cf9",
+      "digest": "sha256:31c84e2ea5195a0bd26970429f2a5e5b4277e461dd4e2090e91df1fee83b6dbc",
       "env_keys": [],
-      "fingerprint": "294656a505e1b360",
+      "fingerprint": "57a979ae2bdd7ff4",
       "host": "skill_md",
       "id": "skill_md/Skill/authdiff-auditor@skills/authdiff-auditor/SKILL.md",
       "identity_key": "skill_md|skill|authdiff-auditor",
@@ -171,7 +171,7 @@
       "name": "authdiff-auditor",
       "path": "skills/authdiff-auditor/SKILL.md",
       "pin_state": "n/a",
-      "script_digest": "sha256:d72f797514b41b3ef9c54bdf131fda61bfa9cfc27d248a36d58fb3c1e4f58cf9",
+      "script_digest": "sha256:31c84e2ea5195a0bd26970429f2a5e5b4277e461dd4e2090e91df1fee83b6dbc",
       "url_host": ""
     }
   ],

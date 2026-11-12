@@ -14,7 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from authdiff.authority_lock import build_authority_lock, diff_authority_locks
+from authdiff.authority_lock import (
+    build_authority_lock,
+    diff_authority_locks,
+    home_lock_path,
+)
 from authdiff.lock_io import AuthorityLockError, load_authority_lock
 from authdiff.security.gating import is_gate_finding
 from authdiff.security.scan import run_scan
@@ -187,20 +191,13 @@ def _render_doctor_summary(
     return "\n".join(lines)
 
 
-def _home_lock_path(*, home: Path | None = None, lock_file: Path | None = None) -> Path:
-    if lock_file is not None:
-        return lock_file.expanduser().resolve()
-    root = (home or Path.home()).expanduser().resolve() / ".authdiff"
-    return root / "AUTHORITY.lock"
-
-
 def run_doctor_since_lock(
     *,
     home: Path | None = None,
     lock_file: Path | None = None,
 ) -> tuple[str, int]:
     """One-screen host authority diff vs the sealed home lock."""
-    lock_path = _home_lock_path(home=home, lock_file=lock_file)
+    lock_path = home_lock_path(home, lock_file=lock_file)
     if not lock_path.is_file():
         return (
             "authdiff doctor --since-lock\n"

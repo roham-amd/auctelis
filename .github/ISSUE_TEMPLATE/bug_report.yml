@@ -12,7 +12,7 @@ body:
     attributes:
       label: authdiff version
       description: Output of `authdiff --version` (or package version)
-      placeholder: 1.0.0
+      placeholder: 0.3.3
     validations:
       required: true
   - type: textarea

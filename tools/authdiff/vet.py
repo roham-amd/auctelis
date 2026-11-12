@@ -1,4 +1,4 @@
-"""Pre-install verdict for a candidate skill/MCP package (`authdiff vet` / `open`).
+"""Pre-install verdict for a candidate skill/MCP package (`authdiff vet`).
 
 Clones a remote Git URL into a throwaway directory with hooks disabled, no
 submodules, and no LFS smudge — then runs a Guard scan. Never executes target
@@ -135,7 +135,7 @@ _QUARANTINE_GLOBS = (
 def quarantine_agent_authority(root: Path) -> list[str]:
     """Rename project agent-authority files so opening the tree is safer.
 
-    Used after a remote ``vet``/``open`` clone (and optionally ``--keep-clone``).
+    Used after a remote ``vet`` clone (and optionally ``--keep-clone``).
     Does not delete evidence — appends ``.authdiff-quarantined`` so scanners can still
     read the original content via the renamed path if needed. Returns relative paths
     that were quarantined.

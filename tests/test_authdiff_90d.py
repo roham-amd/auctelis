@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 from authdiff.artifact_vet import parse_artifact_spec
-from authdiff.broker import load_authority_lock, run_brokered
+from authdiff.broker import run_brokered
+from authdiff.lock_io import load_authority_lock
 from authdiff.mcp_snapshot import (
     diff_tool_locks,
     snapshot_execute,

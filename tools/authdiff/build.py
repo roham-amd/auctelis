@@ -253,13 +253,120 @@ def check_version_metadata() -> None:
             f"release-manifest package_version ({manifest.get('package_version')}) != "
             f"canonical build_tool package version ({expected_pkg})"
         )
-    for key in ("findings_contract", "baseline_contract", "rule_pack"):
+    for key in ("findings_contract", "baseline_contract", "rule_pack", "policy_contract"):
         if key in versions and manifest.get("contracts", {}).get(key) != versions.get(key):
             raise SystemExit(
                 f"release-manifest contracts.{key} "
                 f"({manifest.get('contracts', {}).get(key)}) != "
                 f"versions.json {key} ({versions.get(key)})"
             )
+
+    interfaces = manifest.get("interfaces") or {}
+    for dead_alias in ("open_alias", "fix_alias"):
+        if interfaces.get(dead_alias) is True:
+            raise SystemExit(
+                f"release-manifest interfaces.{dead_alias} must be false "
+                "(commands removed; do not advertise enabled aliases)"
+            )
+
+    check_install_doc_versions(product)
+    check_bare_command_docs()
+    check_policy_schema_contract()
+
+
+def check_install_doc_versions(product: str) -> None:
+    """INSTALL.md version table must match root VERSION / package version."""
+    install = repo_root() / "docs" / "INSTALL.md"
+    text = install.read_text(encoding="utf-8")
+    for label in ("Product (`VERSION`)", "Package `authdiff`"):
+        match = re.search(rf"\|\s*{re.escape(label)}\s*\|\s*([^\s|]+)\s*\|", text)
+        if not match:
+            raise SystemExit(f"docs/INSTALL.md missing version row for {label}")
+        if match.group(1) != product:
+            raise SystemExit(f"docs/INSTALL.md {label} is {match.group(1)!r}, expected {product!r}")
+
+
+def check_bare_command_docs() -> None:
+    """Public docs must describe doctor-or-scan bare CLI, not scan-only."""
+    root = repo_root()
+    stale = re.compile(
+        r"bare\s+`authdiff`[^.?\n]{0,80}defaults to\s+`?(?:authdiff\s+)?scan",
+        re.IGNORECASE,
+    )
+    for rel in (
+        "docs/INSTALL.md",
+        "docs/CLI-REFERENCE.md",
+        "docs/GUARD-SCAN.md",
+        "docs/AUTHDIFF-GATE.md",
+        "tools/README.md",
+    ):
+        path = root / rel
+        text = path.read_text(encoding="utf-8")
+        if stale.search(text):
+            raise SystemExit(
+                f"{rel} still claims bare authdiff defaults only to scan; "
+                "document doctor (no lock/policy) or scan . (when present)"
+            )
+
+
+def check_policy_schema_contract() -> None:
+    """Published policy schema must describe fields load_policy actually reads."""
+    schema_path = repo_root() / "schemas" / "authority-policy.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    policy_props = (schema.get("properties") or {}).get("policy", {}).get("properties") or {}
+    required = {
+        "mode",
+        "fail_on",
+        "output_dir",
+        "baseline",
+        "require_review",
+        "ignore",
+    }
+    missing = required - set(policy_props)
+    if missing:
+        raise SystemExit(f"authority-policy.schema.json missing runtime fields: {sorted(missing)}")
+    for obsolete in (
+        "allow_project_mcp_auto_approve",
+        "allow_base_url_overrides",
+        "allow_unpinned_launchers",
+        "max_unparsed_agent_configs",
+    ):
+        if obsolete in policy_props:
+            raise SystemExit(
+                f"authority-policy.schema.json still declares obsolete field {obsolete!r}"
+            )
+    if "owners" in (schema.get("properties") or {}):
+        raise SystemExit(
+            "authority-policy.schema.json must not declare top-level owners "
+            "(CODEOWNERS is the ownership surface)"
+        )
+    Draft202012Validator.check_schema(schema)
+    example = {
+        "version": 1,
+        "policy": {
+            "mode": "enforce",
+            "fail_on": "high",
+            "output_dir": "authdiff-out",
+            "baseline": ".authdiff/baseline.json",
+            "require_review": ["remote_mcp_endpoint"],
+            "ignore": [
+                {
+                    "rule": "AUTHDIFF-RULE-003",
+                    "path": "examples/**",
+                    "justification": "fixture",
+                    "owner": "security-team",
+                    "expires": "2027-06-01",
+                }
+            ],
+        },
+    }
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(example),
+        key=lambda e: list(e.path),
+    )
+    if errors:
+        msgs = "; ".join(f"{list(e.path)}: {e.message}" for e in errors[:5])
+        raise SystemExit(f"policy schema rejected canonical example shape: {msgs}")
 
 
 def validate_json_schema_document() -> None:
@@ -297,15 +404,22 @@ _SKIP_MD_PARTS = frozenset(
         ".git",
         "authdiff-independent-assessment",
         "archive",  # historical methodology; links may be relative to old roots
+        ".pytest_cache",
     }
 )
+
+
+def _skip_markdown_path(path: Path) -> bool:
+    if _SKIP_MD_PARTS.intersection(path.parts):
+        return True
+    return any(part == "authdiff-out" or part.startswith("authdiff-out-") for part in path.parts)
 
 
 def check_internal_markdown_links() -> list[str]:
     root = repo_root()
     checked: list[str] = []
     for md in sorted(root.rglob("*.md")):
-        if _SKIP_MD_PARTS.intersection(md.parts):
+        if _skip_markdown_path(md):
             continue
         text = md.read_text(encoding="utf-8")
         for target in _LINK_RE.findall(text):

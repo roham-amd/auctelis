@@ -2,7 +2,7 @@
 
 **Product:** `authdiff` — the authority lockfile and PR security gate for AI agents  
 **Also known as:** Agent Authority Change Control  
-**Release:** 0.3.2 · **Package:** `authdiff` 0.3.2 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Release:** 0.3.3 · **Package:** `authdiff` 0.3.3 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Research/archive trees were removed in 0.3.0.
@@ -46,8 +46,8 @@ Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional)
 
 | Command | Job |
 | --- | --- |
-| `authdiff demo` | Packaged aha (always exits 0; prints `+/-` lock lines) |
-| `authdiff doctor` | Local host authority map |
+| `authdiff doctor` | Local host authority map (front door) |
+| `authdiff demo` | Optional packaged fixture (always exits 0; prints `+/-` lock lines) |
 | `authdiff vet` | Pre-install scan of a URL or path |
 | `authdiff scan` / `check` | Repo Authority Diff (`--locked`, `--base-lock`) |
 | `authdiff lock` | Write `AUTHORITY.lock` (`--accept-gated`, `--approval`) |

@@ -81,10 +81,6 @@ class AuthdiffPolicy:
         return None
 
 
-# Backward-compatible alias (pre-rebrand name).
-AesaPolicy = AuthdiffPolicy
-
-
 def discover_policy_file(start: Path, *, stop_at: Path | None = None) -> Path | None:
     """Find ``.authdiff.yml`` within the scan tree only.
 

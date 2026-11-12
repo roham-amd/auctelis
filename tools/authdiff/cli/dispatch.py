@@ -357,6 +357,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         head_lock=getattr(args, "head_lock", None),
         codeowners_path=getattr(args, "codeowners", None),
         check_ruleset=not bool(getattr(args, "skip_ruleset_check", False)),
+        strict_ruleset=bool(getattr(args, "strict_ruleset", False)),
     )
     if getattr(args, "agent", False):
         print_json(report)

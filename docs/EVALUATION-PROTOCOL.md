@@ -16,7 +16,8 @@ Related: [`ROADMAP.md`](ROADMAP.md), [`tests/rules/`](../tests/rules/),
 
 ## Minimum pilot matrix (30-day target: 5 repos)
 
-Select unrelated repositories that differ in agent configuration:
+Select unrelated repositories that differ in agent configuration.
+Live tracker: [`pilots/TRACKER.md`](pilots/TRACKER.md). Metrics: [`../eval/pilot-metrics.csv`](../eval/pilot-metrics.csv).
 
 | Slot | Preferred surface mix |
 | --- | --- |
@@ -26,8 +27,8 @@ Select unrelated repositories that differ in agent configuration:
 | 4 | Plugin / connector permissions |
 | 5 | CI workflows with agent/MCP steps |
 
-Historical note: one pre-0.3.0 external scan of `microsoft/playwright-mcp` (N=1)
-existed under `docs/pilots/` and was removed in the shrink; regenerate before citing.
+Self-dogfood of `roham-amd/authdiff` does **not** count. Historical pre-0.3.0
+pilot notes were removed in the shrink; cite only rows with day-30 retention evidence.
 
 ## Procedure (per repository)
 
