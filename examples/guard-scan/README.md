@@ -1,6 +1,6 @@
 # Sample authdiff scan artifacts
 
-Generated from `examples/demo-vulnerable` with authdiff **0.3.0** / tooling **0.3.0**:
+Generated from `examples/demo-vulnerable` with authdiff **0.3.1** / tooling **0.3.1**:
 
 ```bash
 authdiff scan examples/demo-vulnerable -o examples/guard-scan --full --fail-on never

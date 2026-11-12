@@ -90,6 +90,35 @@ def discover_host_surfaces(*, home: Path | None = None) -> list[HostSurface]:
     return found
 
 
+def stage_all_host_surfaces(
+    stack: ExitStack,
+    *,
+    home: Path | None = None,
+) -> tuple[Path, list[HostSurface]]:
+    """Merge every present host surface into one synth root (for ``lock --home``).
+
+    Mirrors doctor staging so ``~/.cursor`` and ``~/.claude`` are both sealed,
+    not only the first present path. Caller must keep ``stack`` alive while the
+    returned path is used.
+    """
+    surfaces = discover_host_surfaces(home=home)
+    present = [s for s in surfaces if s.exists]
+    synth_tmp = stack.enter_context(tempfile.TemporaryDirectory(prefix="authdiff-home-lock-"))
+    synth = Path(synth_tmp)
+    for surface in present:
+        staged = _stage_host_target(surface, stack)
+        for item in staged.iterdir():
+            dest = synth / item.name
+            if item.is_dir():
+                if dest.exists():
+                    shutil.copytree(item, dest, dirs_exist_ok=True)
+                else:
+                    shutil.copytree(item, dest)
+            elif not dest.exists():
+                shutil.copy2(item, dest)
+    return synth, present
+
+
 def _render_doctor_summary(
     *,
     surfaces: list[HostSurface],
@@ -148,9 +177,11 @@ def _render_doctor_summary(
     )
     if top_risks:
         lines.append(
-            "Next: `authdiff harden --findings <doctor-out>/<surface>/findings.json` "
-            "for dry-run fix patches."
+            "Next: `authdiff lock --home` to seal this host map, then "
+            "`authdiff .` on a repo to see authority drift."
         )
+    else:
+        lines.append("Next: `authdiff .` on a repo, or `authdiff lock --home` to seal hosts.")
     return "\n".join(lines)
 
 
@@ -169,7 +200,8 @@ def run_doctor(
             f"{(home or Path.home()).expanduser()}.\n"
             "Looked for: "
             + ", ".join(f"~/{rel}" for _, rel in _HOST_RELATIVE_SURFACES)
-            + "\nInstall Cursor/Claude Code configs, or run `authdiff scan <path>` on a repo."
+            + "\nNext: run `authdiff .` on a repo with agent configs, or "
+            "`authdiff demo` for the canned fixture."
         )
         return text, 0
 

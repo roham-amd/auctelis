@@ -1,10 +1,10 @@
 {
   "snapshot_version": "1.0",
   "product": "authdiff",
-  "product_version": "0.3.0",
-  "repository": "examples/demo-vulnerable",
-  "audited_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-  "collected_at_utc": "2026-11-11T12:38:10Z",
+  "product_version": "0.3.1",
+  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+  "collected_at_utc": "2026-11-12T13:22:39Z",
   "components": [
     {
       "id": "C-005",
@@ -109,5 +109,5 @@
       ]
     }
   ],
-  "snapshot_hash": "55c78f7e9f5814265edded63319647d8"
+  "snapshot_hash": "d5b128f3611d8cac1f81fa219d2dbfde"
 }

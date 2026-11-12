@@ -10,7 +10,7 @@ from authdiff.export.pr_comment import render_authority_diff_comment
 from authdiff.export.sarif import findings_doc_to_sarif
 from authdiff.jsonio import write_json, write_text
 from authdiff.paths import resolve_default_output_dir
-from authdiff.policy import AesaPolicy
+from authdiff.policy import AuthdiffPolicy
 from authdiff.security.authority import (
     build_authority_snapshot,
     diff_authority_snapshots,
@@ -110,7 +110,7 @@ def _evidence_paths(scan: ScanResult, finding_evidence_ids: list[str]) -> list[s
     return [ev.file_path for ev in scan.evidences if ev.evidence_id in wanted and ev.file_path]
 
 
-def apply_suppressions(scan: ScanResult, policy: AesaPolicy | None) -> list[dict[str, str]]:
+def apply_suppressions(scan: ScanResult, policy: AuthdiffPolicy | None) -> list[dict[str, str]]:
     """Mark matching findings ``suppressed: true`` (keep in artifacts); return audit records.
 
     Findings are never deleted: JSON / digests / SARIF retain them with an explicit
@@ -146,7 +146,7 @@ def run_scan(
     baseline: Path | None = None,
     save_baseline_path: Path | None = None,
     fail_on: str | None = None,
-    policy: AesaPolicy | None = None,
+    policy: AuthdiffPolicy | None = None,
     target_policy_ignored: bool = False,
     full_report: bool = False,
 ) -> tuple[ScanResult, dict[str, Any], int]:

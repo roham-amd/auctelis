@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.3.0** |
-| Tooling package | **0.3.0** (`authdiff`) |
+| Product release | **0.3.1** |
+| Tooling package | **0.3.1** (`authdiff`) |
 | Rule pack | **1.6** (rules 001–022) |
 | Primary path | `authdiff demo` → `lock` → `ci init --owner` → `gate` / Action |
 | Policy file | `.authdiff.yml` + `AUTHORITY.lock` (CODEOWNERS) |
@@ -37,11 +37,11 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools" authdiff demo
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
 
 authdiff doctor                          # host authority map
 authdiff open github.com/org/some-skill  # pre-install verdict
@@ -65,8 +65,10 @@ Treat the Action like a dependency lock gate:
    authority-bearing paths (`**/.mcp.json`, `**/.cursor/mcp.json`, hooks, skills).
 3. Enable **dismiss stale pull request approvals when new commits are pushed**.
 4. Prefer rulesets over legacy branch-protection when available; include team
-   owners there (GitHub enforces `@org/team`; `authdiff gate` matches `@user`
-   logins from reviews).
+   owners there. `authdiff gate` requires an APPROVED review on the PR **head**
+   commit (paginated). User CODEOWNERS must intersect approvers; team-only
+   CODEOWNERS are marked `approval_enforcement: UNVERIFIED` — GitHub rulesets
+   must enforce team membership and dismiss stale approvals.
 5. Do not allow administrators to bypass the required checks on the default branch
    in production repos.
 

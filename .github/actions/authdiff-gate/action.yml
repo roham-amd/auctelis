@@ -409,7 +409,7 @@ runs:
           gate_args+=(--codeowners "$AUTHDIFF_BASE_CODEOWNERS")
           echo "Using trusted base-ref CODEOWNERS: $AUTHDIFF_BASE_CODEOWNERS"
         fi
-        # Any APPROVED PR review counts once base CODEOWNERS covers AUTHORITY.lock.
+        # Approvals must cover PR head; user CODEOWNERS must intersect approvers.
         set +e
         authdiff "${gate_args[@]}"
         gate_code=$?
@@ -565,6 +565,12 @@ runs:
         path: ${{ inputs.output-dir }}
         if-no-files-found: warn
 
+    - name: Warn when authority growth is unchecked
+      if: always() && inputs.mode == 'scan' && inputs.locked == 'false'
+      shell: bash
+      run: |
+        echo "::warning::authdiff locked=false — authority growth is unchecked. Set locked=true after AUTHORITY.lock is committed."
+
     - name: Fail job on scan or gate verdict
       if: always() && inputs.mode == 'scan'
       shell: bash
@@ -573,6 +579,9 @@ runs:
         AUTHDIFF_GATE_CODE: ${{ steps.gate.outputs.code }}
         AUTHDIFF_SCAN_OUTCOME: ${{ steps.scan.outcome }}
         AUTHDIFF_GATE_OUTCOME: ${{ steps.gate.outcome }}
+        AUTHDIFF_LOCKED: ${{ inputs.locked }}
+        AUTHDIFF_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
+        AUTHDIFF_EVENT_NAME: ${{ github.event_name }}
       run: |
         set -euo pipefail
         if [[ "${AUTHDIFF_SCAN_OUTCOME}" == "skipped" ]]; then
@@ -581,9 +590,22 @@ runs:
         fi
         scan_code="${AUTHDIFF_SCAN_CODE:-0}"
         gate_code="${AUTHDIFF_GATE_CODE:-0}"
-        # Empty gate output means the gate step was skipped (no base lock / not a PR).
         [[ -z "$scan_code" ]] && scan_code=0
-        [[ -z "$gate_code" || "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]] && gate_code=0
+        [[ -z "$gate_code" ]] && gate_code=0
+        # locked=true on a PR must not silently skip the gate.
+        if [[ "${AUTHDIFF_LOCKED}" == "true" && "${AUTHDIFF_EVENT_NAME}" == "pull_request" ]]; then
+          if [[ -z "${AUTHDIFF_BASE_LOCK}" ]]; then
+            echo "::error::locked=true but base ref has no AUTHORITY.lock — fail closed."
+            exit 1
+          fi
+          if [[ "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]]; then
+            echo "::error::authdiff gate skipped while locked=true on a pull_request."
+            exit 1
+          fi
+        elif [[ "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]]; then
+          gate_code=0
+          echo "authdiff gate skipped (not a locked PR, or no base lock required)."
+        fi
         if [[ "$gate_code" -ne 0 ]]; then
           echo "::error::authdiff gate exited ${gate_code} (unapproved authority growth)."
           exit "$gate_code"

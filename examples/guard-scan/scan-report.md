@@ -5,9 +5,9 @@ Absence of findings is not evidence of safety when coverage is incomplete.
 
 ```text
 authdiff — Authority Diff for AI agents
-Product: authdiff 0.3.0  (tooling 0.3.0)
-Repository: examples/demo-vulnerable
-Commit: 5de10f8eab81e114eb23041c18c896d3af95ed1a
+Product: authdiff 0.3.1  (tooling 0.3.1)
+Repository: C:\Users\rohaa\Projects\authdiff\examples\demo-vulnerable
+Commit: 827a4f339dee9add20a1f4b11bc63d5ba975b562
 
 DECISION: BLOCK
   BLOCK: 7 high/critical authority issue(s) require a fix or explicit risk acceptance before merge/install.

@@ -3,7 +3,7 @@
 Primary command: **`authdiff`**.
 Maintainer entry: **`authdiff-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `authdiff` **0.3.0** · product **0.3.0** · rule pack **1.6** (001–022).
+Package `authdiff` **0.3.1** · product **0.3.1** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 lock semantics: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) ·

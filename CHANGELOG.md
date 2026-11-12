@@ -7,6 +7,42 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-11-12
+
+### Fixed
+
+- Gate: paginate PR reviews; require approval `commit_id` on PR head; user
+  CODEOWNERS must intersect approvers (`OWNER_MISMATCH` otherwise); team-only
+  owners mark `approval_enforcement: UNVERIFIED`.
+- PR comment: CODEOWNERS rendered as code spans (no blank `[@]` approval line).
+- `lock --home` seals **all** present host surfaces (doctor-style staging).
+- `ci init` no longer auto-accepts gated findings or invents a human review.
+- Claude PreToolUse hook reads stdin JSON, fails closed, does not print approve
+  commands into agent context.
+- Action: `locked=true` on a PR without a base lock fails closed; `locked=false`
+  emits an explicit warning.
+- Release workflow requires green validate (lint/mypy/build/pytest) before assets.
+- HIGH/CRITICAL gate (and vet REJECT) require `LITERAL_CONFIG`; `INFERRED_HINT`
+  capped at MEDIUM for RULE-001 / env-inheritance paths.
+- Discover `.claude/commands/**/*.md`; `--version` / `-V`; single public path string.
+- Docs: remove stale `@user` matching / advisory-ci / dangling kill-list fragment;
+  document that PyPI is not published and `v1.0.0` is superseded.
+
+### Changed
+
+- Product / package version **0.3.1**.
+- Runtime dependency surface is `jsonschema` only; `packaging` moved to the
+  maintainer `dev` group.
+- Prefer `AuthdiffPolicy` type name in the scan path (`AesaPolicy` alias retained).
+- Docs and schemas aligned to lock + gate + SBOM (no Agent Authority Manifest CLI).
+
+### Removed
+
+- Unused schemas: `agent-authority-manifest.schema.json`,
+  `AI_Agent_Ecosystem_Security_Audit_v1.schema.json` (alias).
+- Legacy doc `docs/AGENT-AUTHORITY-MANIFEST.md`.
+- Dead version keys: `agent_benchmark*`, `audit_manifest_schema`.
+
 ## [0.3.0] — 2026-11-12
 
 ### Added

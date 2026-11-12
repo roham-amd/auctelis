@@ -19,12 +19,10 @@ def canonical_schema_path() -> Path:
     return repo_root() / "canonical" / "schemas" / "audit-report.schema.json"
 
 
-def published_schema_paths() -> tuple[Path, Path]:
+def published_schema_paths() -> tuple[Path, ...]:
+    """Published audit-report schema path(s) under ``schemas/``."""
     root = repo_root() / "schemas"
-    return (
-        root / "audit-report.schema.json",
-        root / "AI_Agent_Ecosystem_Security_Audit_v1.schema.json",
-    )
+    return (root / "audit-report.schema.json",)
 
 
 def versions_path() -> Path:

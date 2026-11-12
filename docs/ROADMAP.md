@@ -1,7 +1,7 @@
 # authdiff roadmap
 
 **Product:** the authority lockfile and PR security gate for AI agents  
-**Current:** 0.3.0 / tooling 0.3.0 / rule pack 1.6  
+**Current:** 0.3.1 / tooling 0.3.1 / rule pack 1.6  
 
 
 This roadmap applies the strategic diagnosis: keep building around
@@ -32,9 +32,9 @@ firewall until adoption of the core gate is proven.
 | --- | --- | --- |
 | 1 | Authority Lock + PR Gate | **Primary product** |
 | 2 | GitHub Action as CI surface | Ship with #1 (`locked` default **true**) |
-| 3 | One-command local CLI | Core path: demo → doctor → scan → lock → ci init |
-| 4 | Pre-install vet (`open` / `vet`) | Companion entry |
-| 5 | Agent Authority Manifest / SBOM | Shipped MVP (`AUTHORITY.yml` + `authority-sbom.json`) |
+| 3 | One-command local CLI | Core path: doctor → lock → scan/gate → ci init |
+| 4 | Pre-install vet (`open` / `vet`) | Companion annotations (no REJECT from INFERRED_HINT) |
+| 5 | Authority SBOM | Shipped MVP (`AUTHORITY.lock` + `authority-sbom.json`) |
 | 6 | Thin coding-agent skill | `skills/authdiff-auditor` |
 | 7–12 | MCP audit server, web app, marketplace, runtime broker, heavy AgentSecBench | **Deferred** |
 
@@ -42,6 +42,20 @@ AgentSecBench remains research infrastructure. Do not cite it as independent
 validation while external submissions remain N=0.
 
 ---
+
+## 0.3.1 — make it true (applied)
+
+- [x] Gate: paginate reviews, head `commit_id`, user-owner match / team UNVERIFIED
+- [x] PR comment owners as code spans (no blank `[@]`)
+- [x] `lock --home` seals every present host surface
+- [x] `ci init` never auto-accepts gated findings
+- [x] Claude hook stdin JSON + fail-closed
+- [x] Action fail-closed when `locked=true` without base lock
+- [x] Release workflow depends on green validate
+- [x] HIGH/CRITICAL BLOCK requires `LITERAL_CONFIG`; `.claude/commands` coverage
+- [x] `--version`, single `PUBLIC_PATH`, stale doc cleanup
+- [ ] Tag `v0.3.1` + GitHub Release *(maintainer)*
+- [ ] Document superseded `v1.0.0` on the Release UI *(maintainer — already in SECURITY.md)*
 
 ## 30-day plan — status (applied through 0.3.0)
 
@@ -53,8 +67,9 @@ validation while external submissions remain N=0.
 - [x] Dogfood: `AUTHORITY.lock`, `.authdiff.yml`, CODEOWNERS, local Action workflow
 - [x] `SECURITY.md` + `supported_product_line: 0.x`; examples regenerated without local Windows paths
 - [x] Branch-protection / ruleset docs in `AUTHDIFF-GATE.md`
-- [ ] Publish `authdiff` 0.3.0 to PyPI + tag `v0.3.0` (needs maintainer release)
-- [x] Mark GitHub Release `v1.0.0` prerelease/superseded
+- [x] Tag `v0.3.0` shipped; follow-on trust release is **0.3.1**
+- [ ] Publish `authdiff` to PyPI (trusted publisher; not yet on the index)
+- [x] Mark GitHub Release `v1.0.0` prerelease/superseded (see SECURITY.md)
 
 ### Days 4–14 · Pins (0.3.0)
 
@@ -96,7 +111,7 @@ validation while external submissions remain N=0.
 
 ### Days 13–20 · Authority gate
 
-- [x] Action `locked` default **true** (current pin `@v0.3.0`)
+- [x] Action `locked` default **true** (current pin `@v0.3.1`)
 - [x] Trusted base-ref policy loading
 - [x] Addition / expansion / reduction / replacement / representation / mixed tests
 - [x] Gated findings require evidence ids (`is_gate_finding`)
@@ -109,7 +124,7 @@ validation while external submissions remain N=0.
 ### Days 21–30 · External validation
 
 - [x] Evaluation protocol published ([`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md))
-- [x] One external pilot (`docs/pilots/` — playwright-mcp)
+- [ ] External pilots (former `docs/pilots/` removed; regenerate before citing)
 - [ ] Recruit ≥5 external maintainers *(outreach — not code)*
 - [ ] Re-run pilot matrix on ≥5 repos *(operator)*
 
@@ -129,10 +144,10 @@ validation while external submissions remain N=0.
 ### Days 61–90 · Trust + distribution
 
 - [x] Authority SBOM export (`authority-sbom.json`)
-- [x] Agent Authority Manifest schema + draft/verify
+- [x] Authority SBOM export (`authority-sbom.json`; manifest CLI removed)
 - [x] Provenance block on `findings.json`
 - [x] Sigstore release workflow present
-- [x] Precision ledger scaffold ([`atlas/`](atlas/))
+- [x] Precision ledger scaffold ([`atlas/ledger/`](atlas/ledger/))
 - [ ] PyPI publication + signed release checksums on a public tag
 - [ ] Labeled holdout precision ≥ 90% for HIGH/CRITICAL
 - [ ] Second CI provider only if customer demand requires it
@@ -179,6 +194,5 @@ architecture until local CLI + CI workflows are insufficient for real users.
 - [`PRODUCT.md`](PRODUCT.md) — frozen product contract  
 - [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) — audit-process requirements  
 - [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) — external pilots  
-- [`AGENT-AUTHORITY-MANIFEST.md`](AGENT-AUTHORITY-MANIFEST.md) — manifest / SBOM  
 - [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) — lock semantics  
 - [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) — adapter honesty  

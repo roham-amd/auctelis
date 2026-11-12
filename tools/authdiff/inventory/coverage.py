@@ -40,7 +40,10 @@ ADAPTER_COVERAGE: list[dict[str, str | None]] = [
         "family": "Instruction rules",
         "adapter": "instruction_rules",
         "maturity": "SUPPORTED",
-        "notes": "AGENTS.md, CLAUDE.md, and Cursor rules pack paths.",
+        "notes": (
+            "AGENTS.md, CLAUDE.md, Cursor rules pack paths, and "
+            ".claude/commands/**/*.md slash-commands."
+        ),
     },
     {
         "family": "Hook",

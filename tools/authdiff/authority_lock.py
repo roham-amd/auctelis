@@ -305,13 +305,50 @@ def write_authority_lock(
             f"--accept-gated. Seen: {preview}{more}"
         )
     lock = build_authority_lock(root, scan=scan)
+    if accept_gated:
+        from authdiff.security.gating import is_high_gate_finding
+
+        accepted: list[dict[str, Any]] = []
+        for finding in scan.findings:
+            if not is_high_gate_finding(finding):
+                continue
+            accepted.append(
+                {
+                    "rule_id": finding.rule_id,
+                    "severity": finding.severity,
+                    "title": finding.title,
+                    "finding_id": finding.finding_id,
+                }
+            )
+        if accepted:
+            prior = list(lock.get("approved_findings") or [])
+            # Replace prior accepted set for this seal with the explicit accept list.
+            lock["approved_findings"] = accepted
+            # Keep prior entries that are still present only when re-locking cleanly.
+            del prior  # explicit accept is the source of truth for this write
     if approval_owner and approval_owner.strip():
         # Approvals bind to the sealed authority hash; they are not part of it.
+        justification = "Authority state accepted after human review"
+        if accept_gated and lock.get("approved_findings"):
+            ids = sorted(
+                {
+                    str(item.get("rule_id") or "")
+                    for item in (lock.get("approved_findings") or [])
+                    if isinstance(item, dict) and item.get("rule_id")
+                }
+            )
+            if ids:
+                justification = (
+                    "Authority state accepted after human review; "
+                    f"accepted_rule_ids={','.join(ids)}"
+                )
         record = build_approval_record(
             owner=approval_owner,
             lock_hash=str(lock.get("lock_hash") or ""),
             audited_commit=lock.get("audited_commit"),
             policy_hash=lock.get("policy_hash"),
+            justification=justification,
+            exceptions=list(lock.get("approved_findings") or []),
         )
         lock["approvals"] = [*list(lock.get("approvals") or []), record]
     dest = path or default_lock_path(root)

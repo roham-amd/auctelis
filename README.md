@@ -33,14 +33,14 @@ committed [`AUTHORITY.lock`](docs/AUTHORITY-LOCK.md) — not a long report.
 uvx --from authdiff authdiff doctor
 
 # Current supported path (git tag) until the package is on the index:
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools" authdiff doctor
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools" authdiff doctor
 ```
 
 Persistent install (if continuing):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
 # Later: uv tool install --python 3.12 authdiff
 
 authdiff doctor           # your host authority map (the aha)
@@ -56,12 +56,15 @@ authdiff check --locked   # fail on lock drift
 
 Hook (Claude Code): `tools/authdiff/templates/claude-pretool-authority-hook.sh`
 
-Public path: **doctor → lock → scan/gate → ci**.
+Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional).
 
 Artifacts default to **`./authdiff-out`**. Target `.authdiff.yml` suppressions are **ignored**
 unless you pass `--policy` or `--trust-target-policy`. Use `--agent` for a compact
 fenced JSON digest. Use `--full` for the long report. Agents should export
 `AUTHDIFF_AGENT=1` so mutating lock/policy paths are refused.
+
+**Install honesty:** authdiff is **not on PyPI yet**. Install from a git tag (or pin a
+commit SHA). Prefer immutable SHAs for the Action in high-assurance repos.
 
 ### Core commands
 
@@ -70,9 +73,9 @@ fenced JSON digest. Use `--full` for the long report. Agents should export
 | `authdiff doctor` | Host authority map (lead with this) |
 | `authdiff lock` / `lock --home` | Write repo or `~/.authdiff` lock (`--snapshot`, `--accept-gated`) |
 | `authdiff` / `scan` / `check` | Repo authority scan (add `--locked`) |
-| `authdiff gate` | Fail on growth vs `--base-lock` until GitHub-native approval |
-| `authdiff ci init --owner @user` | `.authdiff.yml` + workflow + CODEOWNERS |
-| `authdiff open` / `vet` | Pre-install verdict (safe shallow clone) |
+| `authdiff gate` | Fail on growth vs `--base-lock` until verified approval |
+| `authdiff ci init --owner @user` | `.authdiff.yml` + lock-first workflow + CODEOWNERS |
+| `authdiff open` / `vet` | Pre-install annotations (safe shallow clone; no REJECT from hints) |
 | `authdiff demo` | Packaged evil fixture (optional aha) |
 
 Review / advanced / maintainer tiers: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
@@ -85,11 +88,10 @@ Docs: [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md) ·
 demo [`examples/demo-vulnerable/`](examples/demo-vulnerable/)
 
 Research/archive trees were removed in 0.3.0; see [`docs/ROADMAP.md`](docs/ROADMAP.md).
-(prompts, modules, control-packs — not the product path).
 
 ---
 
-## CI gate (tamper-resistant)
+## CI gate
 
 Single recipe (git-tag install + Action). Full example:
 [`docs/authdiff-consumer-gate.example.yml`](docs/authdiff-consumer-gate.example.yml).
@@ -101,8 +103,8 @@ Single recipe (git-tag install + Action). Full example:
 # PyPI not published yet — install from the pinned kit tag, then use Action-bundled tools:
 - run: >
     pip install
-    "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
-- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.0
+    "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
+- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.1
   with:
     path: .
     trusted-policy: "true"

@@ -8,8 +8,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-_EPILOG = """
-public core:  doctor → lock → scan/check → gate → ci init  (demo/vet optional)
+# Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
+PUBLIC_PATH = "doctor → lock → scan/gate → ci init  (demo / vet optional)"
+
+_EPILOG = f"""
+public core:  {PUBLIC_PATH}
 review:       explain | diff lock | delta | annotate | fix/harden  (optional)
 advanced:     run | snapshot | artifact-vet
               (omitted from brief help — see docs/CLI-REFERENCE.md)
@@ -90,12 +93,14 @@ def normalize_argv(
     if not raw:
         return ["scan", "."]
     head = raw[0]
-    if head in ("-h", "--help") or head in known:
+    if head in ("-h", "--help", "-V", "--version") or head in known:
         return raw
     return ["scan", *raw]
 
 
 def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
+    from authdiff.versioning import package_version, product_version
+
     prog = "authdiff-dev" if include_dev else "authdiff"
     parser = argparse.ArgumentParser(
         prog=prog,
@@ -106,6 +111,12 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         ),
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {product_version()} (package {package_version()})",
     )
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 

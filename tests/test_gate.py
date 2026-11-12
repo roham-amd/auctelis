@@ -57,11 +57,17 @@ def test_gate_blocks_addition_until_approved(tmp_path: Path):
     assert "@sec-owners" in report["required_owners"]
     assert "addition" in render_gate_report(report).lower() or report["lines"]
 
-    # Any APPROVED identity works once CODEOWNERS covers the lock (native model).
-    report2, code2 = run_gate(root, base_lock=base, approved_by=["@alice"])
+    # Non-owner approval must not pass when CODEOWNERS lists user owners.
+    report_bad, code_bad = run_gate(root, base_lock=base, approved_by=["@alice"])
+    assert code_bad == 1
+    assert report_bad.get("approval_enforcement") == "OWNER_MISMATCH"
+
+    # Matching CODEOWNERS user approval passes.
+    report2, code2 = run_gate(root, base_lock=base, approved_by=["@sec-owners"])
     assert code2 == 0
     assert report2["approved"] is True
     assert report2["verdict"] == "PASS"
+    assert report2.get("approval_enforcement") == "OWNER_MATCHED"
 
 
 def test_gate_cli(tmp_path: Path):

@@ -1,4 +1,4 @@
-# Documentation index (authdiff 0.3.0)
+# Documentation index (authdiff 0.3.1)
 
 Skill: [`../skills/authdiff-auditor/SKILL.md`](../skills/authdiff-auditor/SKILL.md)
 
@@ -21,7 +21,6 @@ Product path only. Research/archive trees were removed in the 0.3.0 shrink.
 | [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) | Evidence classes / chain of custody |
 | [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust requirements |
 | [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | External validation procedure |
-| [`AGENT-AUTHORITY-MANIFEST.md`](AGENT-AUTHORITY-MANIFEST.md) | Manifest + Authority SBOM (legacy) |
 | [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.example.yml) | CI install recipe (git tag / SHA; PyPI not published) |
 
 Root: [`README.md`](../README.md) · [`SECURITY.md`](../SECURITY.md) · [`CHANGELOG.md`](../CHANGELOG.md)

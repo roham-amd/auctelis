@@ -2,8 +2,8 @@
   "graph_version": "1.0",
   "audit_id": "scan-guard",
   "scope": {
-    "repository": "examples/demo-vulnerable",
-    "audited_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
+    "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+    "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
     "tree_sha": null
   },
   "nodes": [

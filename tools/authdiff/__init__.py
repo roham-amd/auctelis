@@ -7,6 +7,6 @@ Public entry points:
   ``authdiff.gate.run_gate``, ``authdiff.authority_lock``
 """
 
-__version__ = "0.3.0"
-__product_version__ = "0.3.0"
+__version__ = "0.3.1"
+__product_version__ = "0.3.1"
 __product_name__ = "authdiff"

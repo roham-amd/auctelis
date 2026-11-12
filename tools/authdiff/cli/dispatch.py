@@ -292,24 +292,30 @@ def _cmd_lock(args: argparse.Namespace) -> int:
         refused = _refuse_agent_mutation("lock")
         if refused is not None:
             return refused
+    from contextlib import ExitStack
+
     from authdiff.authority_lock import home_lock_path
-    from authdiff.doctor import discover_host_surfaces
+    from authdiff.doctor import discover_host_surfaces, stage_all_host_surfaces
 
     root = args.path
     lock_path = getattr(args, "lock_file", None)
+    home_stack: ExitStack | None = None
     if bool(getattr(args, "home", False)):
         home = Path.home()
-        # Prefer the first present host surface directory as the scan root.
+        lock_path = lock_path or home_lock_path(home)
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
         surfaces = discover_host_surfaces(home=home)
         present = [s for s in surfaces if s.exists]
         if present:
-            root = Path(present[0].path)
-            if root.is_file():
-                root = root.parent
+            home_stack = ExitStack()
+            home_stack.__enter__()
+            root, staged = stage_all_host_surfaces(home_stack, home=home)
+            print(
+                f"lock --home: sealing {len(staged)} host surface(s): "
+                + ", ".join(f"{s.host_id}:{s.path.name}" for s in staged)
+            )
         else:
             root = home
-        lock_path = lock_path or home_lock_path(home)
-        lock_path.parent.mkdir(parents=True, exist_ok=True)
 
     mcp_tools: dict[str, str] | None = None
     snap = getattr(args, "snapshot", None)
@@ -326,15 +332,19 @@ def _cmd_lock(args: argparse.Namespace) -> int:
             }
         mcp_tools = {str(k): str(v) for k, v in frag.items()}
 
-    text, code = run_lock_command(
-        root,
-        check=bool(getattr(args, "check", False)),
-        update=bool(getattr(args, "update", False)),
-        lock_path=lock_path,
-        approval=getattr(args, "approval", None),
-        accept_gated=bool(getattr(args, "accept_gated", False)),
-        mcp_tools=mcp_tools,
-    )
+    try:
+        text, code = run_lock_command(
+            root,
+            check=bool(getattr(args, "check", False)),
+            update=bool(getattr(args, "update", False)),
+            lock_path=lock_path,
+            approval=getattr(args, "approval", None),
+            accept_gated=bool(getattr(args, "accept_gated", False)),
+            mcp_tools=mcp_tools,
+        )
+    finally:
+        if home_stack is not None:
+            home_stack.close()
     print(text)
     if code == 0 and bool(getattr(args, "resolve", False)):
         print(
@@ -578,7 +588,9 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     print()
     print(f"Artifacts: {out}")
     print(f"Findings: {len(scan.findings)}")
-    print("Next: authdiff doctor → open → scan → lock → ci init")
+    from authdiff.cli.parser import PUBLIC_PATH
+
+    print(f"Next: authdiff {PUBLIC_PATH}")
     # First-run aha always exits 0 so install scripts and tutorials succeed.
     return 0
 
@@ -628,16 +640,26 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     if lock_path.exists() and not args.force:
         print(f"Exists (use --force): {lock_path}")
     else:
-        # Initial seal accepts current gated state; CODEOWNERS owner is the approver.
+        # Never auto-attest gated findings — human must pass --accept-gated explicitly.
         msg, lock_code = run_lock_command(
             root,
             lock_path=lock_path,
             check=False,
-            approval=owner,
-            accept_gated=True,
+            approval=None,
+            accept_gated=False,
         )
         print(msg)
         if lock_code != 0:
+            print(
+                "ci init wrote policy/workflow/CODEOWNERS but did not seal AUTHORITY.lock.\n"
+                "Review gated findings, then run:\n"
+                f"  authdiff lock --accept-gated --approval {owner}\n"
+                "That records accepted rule IDs; ci init never invents a human review."
+            )
+            if wrote:
+                print("Wrote:")
+                for path in wrote:
+                    print(f"  {path}")
             return lock_code
         wrote.append(str(lock_path))
     if wrote:

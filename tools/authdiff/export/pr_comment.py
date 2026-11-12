@@ -173,6 +173,21 @@ def _unknowns_line(coverage: dict[str, Any]) -> str:
     return "Unknown: " + "; ".join(bits)
 
 
+def _format_owners_for_comment(owners: list[str]) -> str:
+    """Render CODEOWNERS as code spans so escape_markdown cannot blank @mentions."""
+    bits: list[str] = []
+    for raw in owners[:3]:
+        name = str(raw or "").strip()
+        if not name:
+            continue
+        if not name.startswith("@"):
+            name = f"@{name}"
+        # Strip injection-prone chars; keep the login visible inside backticks.
+        safe = re.sub(r"[\\`*_{}\[\]()#!|>]", "", name)
+        bits.append(f"`{safe}`")
+    return ", ".join(bits)
+
+
 def _required_action(
     decision: str,
     new_powers: list[Any],
@@ -184,7 +199,8 @@ def _required_action(
 ) -> str:
     owners = [o for o in (needs_approval_from or []) if o]
     if owners and lock_lines:
-        who = ", ".join(owners[:3])
+        who = _format_owners_for_comment(owners) or "(none)"
+        # Owners are already code-spanned; do not re-escape this line.
         return f"Needs approval from: {who}"
     if advisory and decision == "BLOCK":
         return "ADVISORY: would BLOCK under enforce — remediate or promote policy.mode"
@@ -368,19 +384,19 @@ def render_authority_diff_comment(
         or int(lock_summary.get("replacements") or 0)
         or lock_summary.get("policy_changed")
     )
-    visible.append(
-        escape_markdown(
-            _required_action(
-                decision,
-                new_powers,
-                lock_lines,
-                establishment,
-                advisory=advisory,
-                needs_approval_from=approval_owners if growth else None,
-            ),
-            max_len=160,
-        )
+    required = _required_action(
+        decision,
+        new_powers,
+        lock_lines,
+        establishment,
+        advisory=advisory,
+        needs_approval_from=approval_owners if growth else None,
     )
+    # Owner names are already code-spanned; escaping would blank `@alice` → `[@]`.
+    if required.startswith("Needs approval from:"):
+        visible.append(required if len(required) <= 160 else required[:159] + "…")
+    else:
+        visible.append(escape_markdown(required, max_len=160))
 
     suppressed_n = int(findings_doc.get("suppression_count") or 0)
     if not suppressed_n:

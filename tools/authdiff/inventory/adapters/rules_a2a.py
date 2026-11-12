@@ -90,9 +90,22 @@ def _instruction_hints(raw: str) -> list[str]:
     return hints
 
 
+def _is_claude_command(path: Path) -> bool:
+    """Claude Code slash-commands: ``.claude/commands/**/*.md``."""
+    parts = [p.lower() for p in path.parts]
+    if path.suffix.lower() != ".md":
+        return False
+    for i, part in enumerate(parts[:-1]):
+        if part == ".claude" and i + 1 < len(parts) and parts[i + 1] == "commands":
+            return True
+    return False
+
+
 def _is_instruction_file(path: Path, root: Path) -> bool:
     name = path.name
     if name in _RULE_FILE_NAMES:
+        return True
+    if _is_claude_command(path):
         return True
     rel = path.relative_to(root).as_posix().lower()
     if rel in {
@@ -163,10 +176,11 @@ def discover_instruction_rules(
         )
         if raw is None:
             continue
+        kind = "Claude slash command" if _is_claude_command(path) else "Rule / instruction file"
         results.append(
             {
-                "name": path.name,
-                "type": "Rule / instruction file",
+                "name": path.stem if _is_claude_command(path) else path.name,
+                "type": kind,
                 "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
                 "repository_path": rel,
                 "adapter": "instruction_rules",

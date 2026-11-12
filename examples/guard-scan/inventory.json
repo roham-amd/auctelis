@@ -1,8 +1,8 @@
 {
-  "authdiff_inventory_version": "0.3.0",
+  "authdiff_inventory_version": "0.3.1",
   "mode": "passive_read_only",
-  "repository_path": "examples/demo-vulnerable",
-  "collected_at_utc": "2026-11-11T12:38:10Z",
+  "repository_path": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "collected_at_utc": "2026-11-12T13:22:39Z",
   "limits": {
     "max_files": 5000,
     "max_depth": 12,
@@ -45,7 +45,7 @@
         "family": "Instruction rules",
         "adapter": "instruction_rules",
         "maturity": "SUPPORTED",
-        "notes": "AGENTS.md, CLAUDE.md, and Cursor rules pack paths."
+        "notes": "AGENTS.md, CLAUDE.md, Cursor rules pack paths, and .claude/commands/**/*.md slash-commands."
       },
       {
         "family": "Hook",
@@ -341,5 +341,5 @@
     "Deterministic discovery coverage is partial; see coverage.adapter_matrix.",
     "Inventory is not a security clearance or production approval."
   ],
-  "repository_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a"
+  "repository_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562"
 }

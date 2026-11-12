@@ -29,7 +29,7 @@ per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 | MCP client registration | `mcp_config` | PARTIAL | Configured capability ≠ server behavior |
 | MCP server source | `mcp_server_source` | PARTIAL | Tool authz not verified |
 | A2A | `a2a_agent_card` | PARTIAL | Message trust / delegation manual |
-| Instruction rules | `instruction_rules` | SUPPORTED | Host packs vary |
+| Instruction rules | `instruction_rules` | SUPPORTED | Includes `.claude/commands/**/*.md` |
 | Hooks | `hooks` | PARTIAL | Event + execution context |
 | Plugins | `plugins` | PARTIAL | Declared vs host-enforced scope |
 | Subagents | `subagents` | PARTIAL | Inherited vs escalated authority |

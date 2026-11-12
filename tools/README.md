@@ -8,7 +8,7 @@ Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `authdiff` **0.3.0** · Product: authdiff **0.3.0**
+Package: `authdiff` **0.3.1** · Product: authdiff **0.3.1**
 
 ---
 
@@ -36,7 +36,7 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools
+  git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
 authdiff demo
 authdiff doctor

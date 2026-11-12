@@ -21,10 +21,10 @@ jobs:
       - name: Install authdiff (git tag; PyPI not published yet)
         run: >
           pip install
-          "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools"
+          "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
 
       - name: authdiff Authority Diff
-        uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.0
+        uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.1
         with:
           path: .
           mode: scan

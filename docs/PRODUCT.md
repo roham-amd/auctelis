@@ -2,7 +2,7 @@
 
 **Product:** `authdiff` — the authority lockfile and PR security gate for AI agents  
 **Also known as:** Agent Authority Change Control  
-**Release:** 0.3.0 · **Package:** `authdiff` 0.3.0 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Release:** 0.3.1 · **Package:** `authdiff` 0.3.1 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Research/archive trees were removed in 0.3.0.
@@ -42,7 +42,7 @@ One question drives the workflow:
 
 ## Primary commands
 
-Public path: **demo → doctor → vet/open → scan/check → lock → gate → ci init**
+Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional)
 
 | Command | Job |
 | --- | --- |

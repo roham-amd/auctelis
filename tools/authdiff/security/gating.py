@@ -45,10 +45,16 @@ def is_gate_finding(finding: _GateFinding | dict[str, Any]) -> bool:
 
 
 def is_high_gate_finding(finding: _GateFinding | dict[str, Any]) -> bool:
-    """True for CRITICAL/HIGH gate findings (``fail_on=high``)."""
+    """True for CRITICAL/HIGH gate findings backed by ``LITERAL_CONFIG``.
+
+    ``INFERRED_HINT`` may annotate and drive REVIEW, but must never alone produce
+    BLOCK / vet REJECT.
+    """
     if not is_gate_finding(finding):
         return False
-    return finding_severity(finding) in HIGH_SEVERITIES
+    if finding_severity(finding) not in HIGH_SEVERITIES:
+        return False
+    return evidence_strength(finding) == "LITERAL_CONFIG"
 
 
 def gated_findings(findings: list[Any]) -> list[Any]:

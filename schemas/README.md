@@ -5,7 +5,7 @@ Machine-readable contracts for authdiff artifacts.
 Canonical **audit report** source of truth:
 
 - Edit: [`../canonical/schemas/audit-report.schema.json`](../canonical/schemas/audit-report.schema.json)
-- Publish aliases: `authdiff-dev build schemas` → this directory
+- Publish: `authdiff-dev build schemas` → `audit-report.schema.json` in this directory
 
 Validate instances:
 
@@ -19,9 +19,8 @@ authdiff-dev validate report path/to/summary.json
 
 | File | Version | Purpose |
 | --- | --- | --- |
-| [`authority-lock.schema.json`](authority-lock.schema.json) | lock `version` **1** | **`AUTHORITY.lock`** — approved authority baseline (north-star artifact) |
-| [`authority-policy.schema.json`](authority-policy.schema.json) | policy contract | `.authdiff.yml` / gate policy shape |
-| [`agent-authority-manifest.schema.json`](agent-authority-manifest.schema.json) | `authdiff.authority_manifest.v1` | Declared vs observed Agent Authority Manifest (legacy) |
+| [`authority-lock.schema.json`](authority-lock.schema.json) | lock `version` **1** | **`AUTHORITY.lock`** — approved authority baseline |
+| [`authority-policy.schema.json`](authority-policy.schema.json) | policy contract | `.authdiff.yml` gate policy shape |
 
 Semantic contract for the lock (identity, expansion/reduction/representation, pins):
 [`../docs/AUTHORITY-LOCK.md`](../docs/AUTHORITY-LOCK.md).
@@ -32,12 +31,11 @@ Semantic contract for the lock (identity, expansion/reduction/representation, pi
 
 | File | Version field | Purpose |
 | --- | --- | --- |
-| [`audit-report.schema.json`](audit-report.schema.json) | `audit_version` **1.0** | Narrative engagement summary JSON |
-| [`AI_Agent_Ecosystem_Security_Audit_v1.schema.json`](AI_Agent_Ecosystem_Security_Audit_v1.schema.json) | same | Legacy filename alias |
-| [`ecosystem-graph.schema.json`](ecosystem-graph.schema.json) | `graph_version` **1.0** | Nodes/edges/attack_paths seed |
+| [`audit-report.schema.json`](audit-report.schema.json) | `audit_version` **1.0** | Narrative engagement summary JSON (maintainer/corpus) |
+| [`ecosystem-graph.schema.json`](ecosystem-graph.schema.json) | `graph_version` **1.0** | Nodes/edges seed from inventory (not exploit proof) |
 
-Unused research schemas (audit-manifest, audit-diff, evidence-digest-manifest,
-runtime-test-record, structured-claim) were removed in 0.3.0.
+Removed in 0.3.0–0.3.1: research schemas, agent-authority-manifest, and the
+legacy `AI_Agent_Ecosystem_Security_Audit_v1` filename alias.
 
 ---
 
@@ -49,6 +47,7 @@ runtime-test-record, structured-claim) were removed in 0.3.0.
 | --- | --- |
 | `findings.json` | [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md), [`../docs/EVIDENCE-MODEL.md`](../docs/EVIDENCE-MODEL.md) |
 | `inventory.json` | [`../docs/COVERAGE-MATRIX.md`](../docs/COVERAGE-MATRIX.md) |
+| `authority-sbom.json` | [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md) |
 | `findings.sarif.json` | SARIF 2.1.0 via `authdiff.export.sarif` |
 
 ---

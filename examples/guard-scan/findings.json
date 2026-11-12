@@ -1,11 +1,11 @@
 {
   "findings_version": "1.2",
   "product": "authdiff",
-  "product_version": "0.3.0",
-  "package_version": "0.3.0",
-  "repository": "examples/demo-vulnerable",
-  "audited_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-  "collected_at_utc": "2026-11-11T12:38:10Z",
+  "product_version": "0.3.1",
+  "package_version": "0.3.1",
+  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+  "collected_at_utc": "2026-11-12T13:22:39Z",
   "rules_applied": [
     "AUTHDIFF-RULE-001",
     "AUTHDIFF-RULE-002",
@@ -31,13 +31,13 @@
     "AUTHDIFF-RULE-022"
   ],
   "provenance": {
-    "product_version": "0.3.0",
-    "package_version": "0.3.0",
+    "product_version": "0.3.1",
+    "package_version": "0.3.1",
     "rule_pack": "1.6",
     "findings_contract": "1.2",
     "authority_lock": "1.0",
-    "audited_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-    "collected_at_utc": "2026-11-11T12:38:10Z"
+    "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+    "collected_at_utc": "2026-11-12T13:22:39Z"
   },
   "authority_layers": {
     "DECLARED": "What the integration says it requires or exposes.",
@@ -169,8 +169,8 @@
       "line_end": 10,
       "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -191,8 +191,8 @@
       "line_end": 17,
       "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -213,8 +213,8 @@
       "line_end": null,
       "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Content markers are heuristic; confirm intent before treating as malicious."
       ],
@@ -234,8 +234,8 @@
       "line_end": 17,
       "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -256,8 +256,8 @@
       "line_end": 11,
       "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -278,8 +278,8 @@
       "line_end": 4,
       "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -300,8 +300,8 @@
       "line_end": 4,
       "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -322,8 +322,8 @@
       "line_end": 6,
       "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -344,8 +344,8 @@
       "line_end": 4,
       "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -366,8 +366,8 @@
       "line_end": 11,
       "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -388,8 +388,8 @@
       "line_end": 11,
       "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -410,8 +410,8 @@
       "line_end": null,
       "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -432,8 +432,8 @@
       "line_end": 3,
       "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
       "collection_method": "deterministic_rule",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Static configuration observation only; host effective permissions not verified.",
         "CONFIGURED authority \u2260 EFFECTIVE host permissions \u2260 VERIFIED runtime behavior."
@@ -454,8 +454,8 @@
       "line_end": null,
       "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
       "collection_method": "inventory_adapter",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Discovery only; does not prove runtime loading."
       ],
@@ -475,8 +475,8 @@
       "line_end": null,
       "content_digest": "sha256:63cd6a68f83efae8a8fea3134f9762e3b70de7c72d075728871ce6e6855817b6",
       "collection_method": "inventory_adapter",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Discovery only; does not prove runtime loading."
       ],
@@ -496,8 +496,8 @@
       "line_end": null,
       "content_digest": "sha256:3251e3b91f03d9ac3421138c75972128d1bed01aa0e9b69ff8178944813fa87d",
       "collection_method": "inventory_adapter",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Discovery only; does not prove runtime loading."
       ],
@@ -517,8 +517,8 @@
       "line_end": null,
       "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
       "collection_method": "inventory_adapter",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Discovery only; does not prove runtime loading."
       ],
@@ -538,8 +538,8 @@
       "line_end": null,
       "content_digest": "sha256:f96daed4e08186f65c69fb357c7d82c6a1dcf253a209a1b95c9a45cd12af60d0",
       "collection_method": "inventory_adapter",
-      "source_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-      "observed_at": "2026-11-11T12:38:10Z",
+      "source_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+      "observed_at": "2026-11-12T13:22:39Z",
       "limitations": [
         "Discovery only; does not prove runtime loading."
       ],
@@ -1027,7 +1027,7 @@
         "family": "Instruction rules",
         "adapter": "instruction_rules",
         "maturity": "SUPPORTED",
-        "notes": "AGENTS.md, CLAUDE.md, and Cursor rules pack paths."
+        "notes": "AGENTS.md, CLAUDE.md, Cursor rules pack paths, and .claude/commands/**/*.md slash-commands."
       },
       {
         "family": "Hook",

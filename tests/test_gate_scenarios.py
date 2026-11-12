@@ -127,7 +127,7 @@ def test_scenario_approved_goes_green(tmp_path: Path):
 
 
 def test_scenario_team_owner_any_github_approval(tmp_path: Path):
-    """GitHub-native model: any APPROVED review counts once CODEOWNERS covers the lock."""
+    """Team CODEOWNERS: any APPROVED review counts, enforcement marked UNVERIFIED."""
     root = tmp_path / "team"
     _owners(root, "@org/security-owners")
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
@@ -140,7 +140,9 @@ def test_scenario_team_owner_any_github_approval(tmp_path: Path):
         },
     )
     assert run_gate(root, base_lock=base)[1] == 1
-    assert run_gate(root, base_lock=base, approved_by=["@alice"])[1] == 0
+    report, code = run_gate(root, base_lock=base, approved_by=["@alice"])
+    assert code == 0
+    assert report.get("approval_enforcement") == "UNVERIFIED"
 
 
 def test_scenario_hollow_lock_fails_closed(tmp_path: Path):

@@ -1,12 +1,12 @@
 {
   "schema": "authdiff.authority_sbom.v1",
   "product": "authdiff",
-  "product_version": "0.3.0",
-  "package_version": "0.3.0",
+  "product_version": "0.3.1",
+  "package_version": "0.3.1",
   "rule_pack": "1.6",
-  "repository": "examples/demo-vulnerable",
-  "audited_commit": "5de10f8eab81e114eb23041c18c896d3af95ed1a",
-  "collected_at_utc": "2026-11-11T12:38:10Z",
+  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
+  "collected_at_utc": "2026-11-12T13:22:39Z",
   "authority_layers": {
     "DECLARED": "What the integration says it requires or exposes.",
     "CONFIGURED": "What host/repo configuration appears to expose.",
@@ -232,7 +232,7 @@
         "family": "Instruction rules",
         "adapter": "instruction_rules",
         "maturity": "SUPPORTED",
-        "notes": "AGENTS.md, CLAUDE.md, and Cursor rules pack paths."
+        "notes": "AGENTS.md, CLAUDE.md, Cursor rules pack paths, and .claude/commands/**/*.md slash-commands."
       },
       {
         "family": "Hook",

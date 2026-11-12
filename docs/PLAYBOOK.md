@@ -51,10 +51,10 @@ scanner finding on `MANUAL_ONLY` surfaces as safety.
 
 ## CODEOWNERS
 
-Use **user** owners for `authdiff gate` login matching. Prefer GitHub-native
-CODEOWNERS/rulesets (with stale-review dismissal) for `@org/team` owners — the
-CLI cannot map team slugs to individual PR approvers without an exact
-`--approved-by @org/team` harness override.
+Prefer **user** CODEOWNERS so `authdiff gate` can verify approver ∩ owners
+(`OWNER_MATCHED`). Team-only CODEOWNERS (`@org/team`) still accept any APPROVED
+review on the PR head commit but mark enforcement `UNVERIFIED` — enable GitHub
+rulesets (code-owner review + dismiss stale approvals) for real enforcement.
 
 ```text
 AUTHORITY.lock  @security-owner
@@ -68,7 +68,7 @@ AUTHORITY.lock  @security-owner
 
 ```bash
 # Git install only today — PyPI not published yet
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.0#subdirectory=tools" authdiff doctor
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools" authdiff doctor
 authdiff open <url-or-path>
 authdiff ci init --owner @you && authdiff lock --accept-gated
 authdiff demo   # canned bad fixture + PR comment (exits 0)

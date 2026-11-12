@@ -104,8 +104,7 @@ def rule_skill_bundled_scripts(
     ):
         return
     # Capability observation unless stronger host/credential evidence exists.
-    # HIGH requires literal bundled scripts *and* credential handling with
-    # executable evidence — bag-of-words alone must not escalate.
+    # INFERRED_HINT is capped at MEDIUM — HIGH/CRITICAL require LITERAL_CONFIG.
     finding_class: FindingClass = "CAPABILITY"
     severity: Severity = "INFORMATIONAL"
     strength: EvidenceStrength = "INFERRED_HINT"
@@ -115,8 +114,8 @@ def rule_skill_bundled_scripts(
         and "executable_evidence" in hints
     ):
         finding_class = "SECURITY_FINDING"
-        severity = "HIGH"
-        strength = "INFERRED_HINT"  # still inferred: scripts + wording, not a proven exfil path
+        severity = "MEDIUM"
+        strength = "INFERRED_HINT"
     elif "bundled_scripts_directory" in hints:
         finding_class = "EXPOSURE"
         severity = "MEDIUM"
@@ -181,9 +180,10 @@ def rule_mcp_local_command(
 
     # Local process alone = capability. Escalate only with exposure conditions.
     # Mere presence of an `env` block (LOG_LEVEL, NODE_ENV, …) stays INFORMATIONAL.
+    # INFERRED_HINT is capped at MEDIUM (HIGH requires LITERAL_CONFIG).
     if inherits_env:
         finding_class: FindingClass = "SECURITY_FINDING"
-        severity: Severity = "HIGH"
+        severity: Severity = "MEDIUM"
         confidence: VerificationStatus = "POTENTIAL"
         title = "MCP local command may inherit host credentials"
         exposure = "HOST_ENV_INHERITANCE"

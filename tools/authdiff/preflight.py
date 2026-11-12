@@ -1,4 +1,9 @@
-"""Preflight helpers: git identity, graph seed, context rendering."""
+"""Git identity + ecosystem-graph seed for scans.
+
+Product path uses ``resolve_git_commit`` and ``inventory_to_graph`` from
+``security.engine``. The ``run_preflight`` / markdown helpers are maintainer
+and test utilities only — not a second product surface.
+"""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # authdiff scan — operator guide
 
-Guard scan path for **0.3.0**: deterministic discovery plus evidence-backed
+Guard scan path for **0.3.1**: deterministic discovery plus evidence-backed
 observations via `authdiff scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./authdiff-out` (not inside the target tree).
@@ -25,13 +25,13 @@ Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK
 4. What remains **NOT VERIFIED** (coverage gaps)?
 5. What changed vs **`AUTHORITY.lock`** (`--locked`) or a finding **baseline** (optional)?
 
-### Lock vs baseline vs AUTHORITY.yml
+### Lock vs baseline vs SBOM
 
 | Artifact | Role |
 | --- | --- |
 | `AUTHORITY.lock` | **Product source of truth** for “what authority is approved”. CODEOWNERS-reviewed. |
 | `baseline.json` | Finding/fingerprint risk delta for PR Authority Diff comments. |
-| `AUTHORITY.yml` | Legacy declared-vs-observed manifest (removed from product CLI in 0.3.0). |
+| `authority-sbom.json` | Export of observed authority components (advisory inventory, not a lock). |
 
 It does **not**:
 
