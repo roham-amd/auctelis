@@ -1,4 +1,4 @@
-# Documentation index (authdiff 0.3.1)
+# Documentation index (authdiff 0.3.2)
 
 Skill: [`../skills/authdiff-auditor/SKILL.md`](../skills/authdiff-auditor/SKILL.md)
 

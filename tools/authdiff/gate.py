@@ -1,14 +1,15 @@
-"""Authority gate: base-lock diff + CODEOWNERS presence + GitHub-native approval.
+"""Authority gate: base-lock diff + CODEOWNERS + best-effort ruleset check.
 
-Product contract: authority growth fails until a PR is approved under GitHub
-CODEOWNERS/rulesets. This module:
+Product contract (lock-only): GitHub CODEOWNERS / rulesets enforce human
+review. authdiff owns the authority diff:
 
 1. Schema-validate / reject hollow base locks when head has authority
 2. Require CODEOWNERS coverage for AUTHORITY.lock (from base ref when provided)
-3. On meaningful growth, require at least one APPROVED PR review on the PR head
-   commit (paginated). User owners in CODEOWNERS must intersect approvers;
-   team-only CODEOWNERS are marked ``approval_enforcement: UNVERIFIED`` because
-   GitHub team expansion is ruleset territory.
+3. On meaningful growth, fail closed unless CODEOWNERS covers the lock; label
+   growth vs reduction. Do **not** re-implement PR approval matching — that is
+   GitHub's job.
+4. Best-effort check that a code-owner-review ruleset (or classic branch
+   protection) exists when ``GITHUB_TOKEN`` + repository context are present.
 """
 
 from __future__ import annotations
@@ -33,6 +34,11 @@ AUTHORITY_PATH_HINTS = (
     "**/.claude/settings.json",
     "**/hooks.json",
     "**/SKILL.md",
+    # Gate self-protection: a hostile PR can edit the Action that enforces the lock.
+    ".github/workflows/**",
+    ".github/actions/**",
+    "CODEOWNERS",
+    ".github/CODEOWNERS",
 )
 
 
@@ -92,203 +98,115 @@ def codeowners_covers_lock(codeowners_text: str) -> bool:
     return bool(parse_codeowners_for_path(codeowners_text, target=LOCK_NAME))
 
 
-def _normalize_owner(value: str) -> str:
-    text = value.strip()
-    if text.startswith("@"):
-        return text.lower()
-    return f"@{text}".lower()
-
-
-def _is_team_owner(owner: str) -> bool:
-    """GitHub team refs look like ``@org/team``; user logins have no slash."""
-    return "/" in _normalize_owner(owner).lstrip("@")
-
-
-def resolve_head_sha(*, head_sha: str | None = None) -> str | None:
-    """Best-effort PR head SHA from args / Actions env / event payload."""
-    if head_sha and head_sha.strip():
-        return head_sha.strip().lower()
-    for key in ("AUTHDIFF_HEAD_SHA", "GITHUB_SHA"):
-        raw = os.environ.get(key)
-        if raw and raw.strip():
-            return raw.strip().lower()
-    event_path = os.environ.get("GITHUB_EVENT_PATH")
-    if event_path and Path(event_path).is_file():
-        try:
-            event = json.loads(Path(event_path).read_text(encoding="utf-8"))
-            pr = event.get("pull_request") or {}
-            sha = str((pr.get("head") or {}).get("sha") or "").strip()
-            if sha:
-                return sha.lower()
-        except (OSError, json.JSONDecodeError, TypeError):
-            pass
-    return None
-
-
-def _parse_link_next(link_header: str | None) -> str | None:
-    if not link_header:
-        return None
-    for part in link_header.split(","):
-        piece = part.strip()
-        if 'rel="next"' not in piece:
-            continue
-        if piece.startswith("<") and ">" in piece:
-            return piece[1 : piece.index(">")]
-    return None
-
-
-def fetch_pr_approving_logins(
-    *,
-    repository: str,
-    pr_number: int,
-    token: str,
-    api_base: str = "https://api.github.com",
-    head_sha: str | None = None,
-) -> list[str]:
-    """Return logins with an APPROVED review on ``head_sha`` (paginated).
-
-    When ``head_sha`` is set, stale approvals on older commits are ignored.
-    """
-    url: str | None = (
-        f"{api_base.rstrip('/')}/repos/{repository}/pulls/{pr_number}/reviews?per_page=100"
+def _api_get_json(url: str, *, token: str) -> tuple[Any | None, int]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "authdiff-gate",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
     )
-    latest: dict[str, dict[str, str]] = {}
-    pages = 0
-    while url and pages < 20:
-        pages += 1
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "Authorization": f"Bearer {token}",
-                "User-Agent": "authdiff-gate",
-                "X-GitHub-Api-Version": "2022-11-28",
-            },
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-                link = resp.headers.get("Link")
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, json.JSONDecodeError):
-            break
-        if not isinstance(payload, list):
-            break
-        for review in payload:
-            if not isinstance(review, dict):
-                continue
-            user = review.get("user") or {}
-            login = str(user.get("login") or "").strip()
-            state = str(review.get("state") or "").upper()
-            commit_id = str(review.get("commit_id") or "").strip().lower()
-            if not login:
-                continue
-            latest[login.lower()] = {"state": state, "commit_id": commit_id}
-        url = _parse_link_next(link)
-
-    required = (head_sha or "").strip().lower()
-    out: list[str] = []
-    for login, meta in latest.items():
-        if meta.get("state") != "APPROVED":
-            continue
-        commit_id = meta.get("commit_id") or ""
-        if (
-            required
-            and commit_id
-            and not (
-                commit_id == required
-                or commit_id.startswith(required)
-                or required.startswith(commit_id)
-            )
-        ):
-            continue
-        if required and not commit_id:
-            # Missing commit_id cannot prove the approval covers head.
-            continue
-        out.append(_normalize_owner(login))
-    return out
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8")), int(resp.status)
+    except urllib.error.HTTPError as exc:
+        return None, int(exc.code)
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, TypeError):
+        return None, 0
 
 
-def resolve_approvers(
+def check_code_owner_ruleset(
     *,
-    approved_by: list[str] | None = None,
     repository: str | None = None,
-    pr_number: int | None = None,
     token: str | None = None,
     api_base: str | None = None,
-    head_sha: str | None = None,
-) -> list[str]:
-    """Collect GitHub PR approvals and explicit ``--approved-by`` harness overrides."""
-    found = [_normalize_owner(x) for x in (approved_by or []) if x and x.strip()]
-    repo = repository or os.environ.get("GITHUB_REPOSITORY")
-    token = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    sha = resolve_head_sha(head_sha=head_sha)
-    pr = pr_number
-    if pr is None:
-        raw = os.environ.get("AUTHDIFF_PR_NUMBER") or os.environ.get("GITHUB_PR_NUMBER")
-        if not raw:
-            event_path = os.environ.get("GITHUB_EVENT_PATH")
-            if event_path and Path(event_path).is_file():
-                try:
-                    event = json.loads(Path(event_path).read_text(encoding="utf-8"))
-                    raw = str((event.get("pull_request") or {}).get("number") or "")
-                except (OSError, json.JSONDecodeError, TypeError):
-                    raw = ""
-        if raw and raw.isdigit():
-            pr = int(raw)
-    if repo and pr and token:
-        found.extend(
-            fetch_pr_approving_logins(
-                repository=repo,
-                pr_number=pr,
-                token=token,
-                api_base=api_base or os.environ.get("GITHUB_API_URL") or "https://api.github.com",
-                head_sha=sha,
-            )
-        )
-    out: list[str] = []
-    seen: set[str] = set()
-    for item in found:
-        if item not in seen:
-            seen.add(item)
-            out.append(item)
-    return out
+    default_branch: str | None = None,
+) -> tuple[str, str]:
+    """Best-effort: return ``(status, detail)``.
 
-
-def evaluate_approval(
-    *,
-    owners: list[str],
-    approvers: list[str],
-) -> tuple[bool, str]:
-    """Return ``(approved, enforcement)``.
-
-    - User owners present: require intersection with approvers → ``OWNER_MATCHED``.
-    - Only team owners: any APPROVED review counts, but enforcement is
-      ``UNVERIFIED`` (GitHub rulesets must enforce team membership).
-    - Mixed: prefer user intersection when any user owner matched; else UNVERIFIED
-      if a team owner exists and any approval is present.
+    status is one of ``OK``, ``MISSING``, ``UNVERIFIED``.
     """
-    if not approvers:
-        return False, "NO_APPROVAL"
-    normalized_owners = [_normalize_owner(o) for o in owners]
-    user_owners = [o for o in normalized_owners if not _is_team_owner(o)]
-    team_owners = [o for o in normalized_owners if _is_team_owner(o)]
-    approver_set = {_normalize_owner(a) for a in approvers}
-    if user_owners:
-        matched = sorted(approver_set.intersection(user_owners))
-        if matched:
-            return True, "OWNER_MATCHED"
-        if team_owners:
-            return True, "UNVERIFIED"
-        return False, "OWNER_MISMATCH"
-    if team_owners:
-        return True, "UNVERIFIED"
-    # CODEOWNERS present but empty owner parse — treat as unverified presence.
-    return True, "UNVERIFIED"
+    repo = repository or os.environ.get("GITHUB_REPOSITORY")
+    tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    base = (api_base or os.environ.get("GITHUB_API_URL") or "https://api.github.com").rstrip("/")
+    if not repo or not tok:
+        return "UNVERIFIED", "no GITHUB_REPOSITORY/GITHUB_TOKEN — cannot read rulesets"
+    branch = (
+        default_branch
+        or os.environ.get("GITHUB_BASE_REF")
+        or os.environ.get("AUTHDIFF_DEFAULT_BRANCH")
+    )
+    # Rulesets (preferred).
+    payload, status = _api_get_json(f"{base}/repos/{repo}/rulesets", token=tok)
+    if status in {401, 403}:
+        return "UNVERIFIED", f"rulesets API returned HTTP {status} (token scope?)"
+    if status == 200 and isinstance(payload, list):
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            rules = item.get("rules") or []
+            if not isinstance(rules, list):
+                # Need detail fetch for full rules.
+                rid = item.get("id")
+                if rid is None:
+                    continue
+                detail, dstatus = _api_get_json(f"{base}/repos/{repo}/rulesets/{rid}", token=tok)
+                if dstatus != 200 or not isinstance(detail, dict):
+                    continue
+                rules = detail.get("rules") or []
+            for rule in rules if isinstance(rules, list) else []:
+                if not isinstance(rule, dict):
+                    continue
+                if str(rule.get("type") or "") != "pull_request":
+                    continue
+                params = rule.get("parameters") or {}
+                if isinstance(params, dict) and params.get("require_code_owner_review"):
+                    return (
+                        "OK",
+                        f"ruleset {item.get('name') or item.get('id')} requires code-owner review",
+                    )
+        # Listed rulesets but none require code owners.
+        if payload:
+            # Fall through to classic protection before declaring MISSING.
+            pass
+        elif payload == []:
+            pass
+
+    # Classic branch protection fallback.
+    if not branch:
+        meta, mstatus = _api_get_json(f"{base}/repos/{repo}", token=tok)
+        if mstatus == 200 and isinstance(meta, dict):
+            branch = str(meta.get("default_branch") or "") or None
+    if branch:
+        prot, pstatus = _api_get_json(
+            f"{base}/repos/{repo}/branches/{branch}/protection", token=tok
+        )
+        if pstatus in {401, 403}:
+            return "UNVERIFIED", f"branch protection API returned HTTP {pstatus}"
+        if pstatus == 404:
+            return "MISSING", f"no branch protection on {branch} and no code-owner ruleset found"
+        if pstatus == 200 and isinstance(prot, dict):
+            reviews = prot.get("required_pull_request_reviews") or {}
+            if isinstance(reviews, dict) and reviews.get("require_code_owner_reviews"):
+                return "OK", f"branch protection on {branch} requires code-owner reviews"
+            return "MISSING", f"branch protection on {branch} lacks require_code_owner_reviews"
+    return "UNVERIFIED", "could not confirm a code-owner-review ruleset"
 
 
-def github_native_approval_present(*, approvers: list[str]) -> bool:
-    """True when GitHub (or a harness) has recorded at least one approval."""
-    return bool(approvers)
+def growth_label(summary: dict[str, Any]) -> str:
+    """Classify lock delta for comments: GROWTH, REDUCTION, or NONE."""
+    adds = int(summary.get("additions") or 0)
+    expansions = int(summary.get("expansions") or 0)
+    replacements = int(summary.get("replacements") or 0)
+    policy = bool(summary.get("policy_changed"))
+    reductions = int(summary.get("reductions") or 0) + int(summary.get("removals") or 0)
+    if adds or expansions or replacements or policy:
+        return "GROWTH"
+    if reductions:
+        return "REDUCTION"
+    return "NONE"
 
 
 def run_gate(
@@ -297,15 +215,13 @@ def run_gate(
     base_lock: Path,
     head_lock: Path | None = None,
     scan: ScanResult | None = None,
-    approved_by: list[str] | None = None,
     repository: str | None = None,
-    pr_number: int | None = None,
     token: str | None = None,
     codeowners_path: Path | None = None,
     codeowners_text: str | None = None,
-    head_sha: str | None = None,
+    check_ruleset: bool = True,
 ) -> tuple[dict[str, Any], int]:
-    """Compare base→head lock; fail on growth without GitHub-native approval."""
+    """Compare base→head lock; fail on growth without CODEOWNERS protection."""
     root = root.resolve()
     try:
         base = load_authority_lock(base_lock)
@@ -316,9 +232,8 @@ def run_gate(
             "error": str(exc),
             "needs_approval": True,
             "required_owners": [],
-            "approvers": [],
-            "approved": False,
-            "approval_enforcement": "FAIL_CLOSED",
+            "label": "GROWTH",
+            "ruleset": "UNVERIFIED",
             "lines": [],
         }, 2
     try:
@@ -335,9 +250,8 @@ def run_gate(
             "error": str(exc),
             "needs_approval": True,
             "required_owners": [],
-            "approvers": [],
-            "approved": False,
-            "approval_enforcement": "FAIL_CLOSED",
+            "label": "GROWTH",
+            "ruleset": "UNVERIFIED",
             "lines": [],
         }, 2
 
@@ -354,9 +268,8 @@ def run_gate(
             ),
             "needs_approval": True,
             "required_owners": [],
-            "approvers": [],
-            "approved": False,
-            "approval_enforcement": "FAIL_CLOSED",
+            "label": "GROWTH",
+            "ruleset": "UNVERIFIED",
             "meaningful_authority_change": True,
             "lines": [],
         }, 1
@@ -364,6 +277,7 @@ def run_gate(
     delta = diff_authority_locks(base, head)
     summary = delta.get("summary") or {}
     meaningful = bool(summary.get("meaningful_authority_change"))
+    label = growth_label(summary if isinstance(summary, dict) else {})
     owners = load_lock_owners(
         root, codeowners_path=codeowners_path, codeowners_text=codeowners_text
     )
@@ -373,89 +287,82 @@ def run_gate(
         else load_codeowners_text(root, codeowners_path=codeowners_path)
     )
     owners_present = codeowners_covers_lock(co_text) if co_text else bool(owners)
-    approvers = resolve_approvers(
-        approved_by=approved_by,
-        repository=repository,
-        pr_number=pr_number,
-        token=token,
-        head_sha=head_sha,
-    )
-    needs_approval = meaningful and bool(
-        int(summary.get("additions") or 0)
-        or int(summary.get("expansions") or 0)
-        or int(summary.get("replacements") or 0)
-        or summary.get("policy_changed")
-    )
-    approved = False
-    enforcement = "NOT_REQUIRED"
-    if needs_approval:
-        approved, enforcement = evaluate_approval(owners=owners, approvers=approvers)
-    ok = (not needs_approval) or (owners_present and approved)
+    needs_approval = label == "GROWTH"
+    ruleset_status, ruleset_detail = "UNVERIFIED", "not checked"
+    if check_ruleset and needs_approval:
+        ruleset_status, ruleset_detail = check_code_owner_ruleset(
+            repository=repository, token=token
+        )
+
+    ok = True
+    verdict = "PASS"
+    error: str | None = None
+    if needs_approval and not owners_present:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        error = (
+            "AUTHORITY.lock has no CODEOWNERS entry on the trusted ref; "
+            "cannot rely on GitHub-native review. "
+            "Run `authdiff ci init --owner @user` and protect authority paths."
+        )
+    elif needs_approval and ruleset_status == "MISSING":
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        error = (
+            "Authority grew but no code-owner-review ruleset/branch protection "
+            f"was found ({ruleset_detail}). Enable require_code_owner_review, "
+            "then merge the lock diff under CODEOWNERS."
+        )
+    elif needs_approval:
+        # CODEOWNERS present; ruleset OK or UNVERIFIED (best-effort). Growth is
+        # labeled for humans — GitHub enforces the actual review.
+        ok = True
+        verdict = "PASS"
+        if ruleset_status == "UNVERIFIED":
+            error = (
+                f"Authority growth labeled; ruleset check UNVERIFIED ({ruleset_detail}). "
+                "Confirm a code-owner-review ruleset is enabled."
+            )
+
     report: dict[str, Any] = {
         "ok": ok,
-        "verdict": "PASS" if ok else "NEEDS_APPROVAL",
+        "verdict": verdict,
         "meaningful_authority_change": meaningful,
         "needs_approval": needs_approval,
+        "label": label,
         "required_owners": owners,
         "owners_present": owners_present,
-        "approvers": approvers,
-        "approved": approved,
-        "approval_enforcement": enforcement,
-        "head_sha": resolve_head_sha(head_sha=head_sha),
+        "ruleset": ruleset_status,
+        "ruleset_detail": ruleset_detail,
         "delta": delta,
         "lines": delta.get("lines") or [],
         "authority_path_hints": list(AUTHORITY_PATH_HINTS),
     }
-    if needs_approval and not owners_present:
-        report["error"] = (
-            "AUTHORITY.lock has no CODEOWNERS entry on the trusted ref; "
-            "cannot rely on GitHub-native approval. "
-            "Run `authdiff ci init --owner @user` and protect authority paths."
-        )
-        report["ok"] = False
-        report["verdict"] = "NEEDS_APPROVAL"
-        report["approval_enforcement"] = "NO_CODEOWNERS"
-        return report, 1
-    if needs_approval and enforcement == "OWNER_MISMATCH":
-        report["error"] = (
-            "PR approvals do not include a CODEOWNERS user for AUTHORITY.lock. "
-            "Required: "
-            + (", ".join(owners) or "(none)")
-            + ". Approvers seen: "
-            + (", ".join(approvers) or "(none)")
-        )
-        report["ok"] = False
-        report["verdict"] = "NEEDS_APPROVAL"
-        return report, 1
+    if error:
+        report["error"] = error
     return report, 0 if ok else 1
 
 
 def render_gate_report(report: dict[str, Any]) -> str:
     lines = [f"authdiff gate — {report.get('verdict')}"]
+    label = str(report.get("label") or "NONE")
+    lines.append(f"Authority delta: {label}")
     if report.get("needs_approval"):
         owners = ", ".join(report.get("required_owners") or []) or "(none)"
         lines.append(f"CODEOWNERS for AUTHORITY.lock: {owners}")
-        enforcement = str(report.get("approval_enforcement") or "")
-        if enforcement == "UNVERIFIED":
-            lines.append(
-                "Approval enforcement: UNVERIFIED "
-                "(team CODEOWNERS — enable GitHub rulesets for code-owner review)."
-            )
-        elif enforcement == "OWNER_MATCHED":
-            lines.append("Approval enforcement: OWNER_MATCHED (user owner approved head).")
-        else:
-            lines.append(
-                "Approval model: GitHub-native CODEOWNERS/rulesets; "
-                "approvals must cover the PR head commit."
-            )
-        approvers = ", ".join(report.get("approvers") or []) or "(none yet)"
-        lines.append(f"Approvers seen: {approvers}")
-        if report.get("head_sha"):
-            lines.append(f"Head SHA filter: {report['head_sha'][:12]}")
+        lines.append(
+            f"Ruleset: {report.get('ruleset')} — {report.get('ruleset_detail') or ''}".rstrip(" —")
+        )
+        lines.append(
+            "Approval model: GitHub-native CODEOWNERS/rulesets "
+            "(authdiff labels growth; it does not count PR reviews)."
+        )
     for line in report.get("lines") or []:
         lines.append(f"  {line}")
     if report.get("error"):
         lines.append(str(report["error"]))
-    if report.get("ok") and not report.get("needs_approval"):
-        lines.append("No unapproved authority addition/expansion vs base lock.")
+    if report.get("ok") and label == "REDUCTION":
+        lines.append("Authority reduced vs base lock — no extra review required.")
+    elif report.get("ok") and not report.get("needs_approval"):
+        lines.append("No authority addition/expansion vs base lock.")
     return "\n".join(lines)

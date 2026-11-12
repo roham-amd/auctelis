@@ -1,4 +1,4 @@
-"""CLI surface tests for doctor / vet / init-gate / scan policy discovery."""
+"""CLI surface tests for doctor / vet / ci init / scan policy discovery."""
 
 from __future__ import annotations
 
@@ -8,8 +8,14 @@ from authdiff.cli import main
 from authdiff.cli.parser import build_parser, normalize_argv
 
 
-def test_normalize_argv_defaults_to_scan():
-    assert normalize_argv([]) == ["scan", "."]
+def test_normalize_argv_defaults_doctor_or_scan(tmp_path: Path):
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert normalize_argv([], cwd=empty) == ["doctor"]
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    (locked / "AUTHORITY.lock").write_text("{}\n", encoding="utf-8")
+    assert normalize_argv([], cwd=locked) == ["scan", "."]
     assert normalize_argv(["."]) == ["scan", "."]
     assert normalize_argv(["--locked"]) == ["scan", "--locked"]
     assert normalize_argv(["doctor"]) == ["doctor"]
@@ -55,9 +61,9 @@ def test_cli_doctor_help_and_empty_home(tmp_path: Path, capsys):
     assert "no host config" in out.lower() or "absent" in out.lower()
 
 
-def test_cli_init_gate_writes_files(tmp_path: Path, capsys):
+def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     root = tmp_path / "repo"
-    code = main(["init-gate", str(root), "--owner", "@sec-owners"])
+    code = main(["ci", "init", str(root), "--owner", "@sec-owners"])
     out = capsys.readouterr().out
     assert code == 0
     assert (root / ".authdiff.yml").is_file()
@@ -68,7 +74,7 @@ def test_cli_init_gate_writes_files(tmp_path: Path, capsys):
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "@sec-owners" in owners
 
-    code2 = main(["init-gate", str(root), "--owner", "@sec-owners"])
+    code2 = main(["ci", "init", str(root), "--owner", "@sec-owners"])
     out2 = capsys.readouterr().out
     assert code2 == 0
     assert "Exists" in out2

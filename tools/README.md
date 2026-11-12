@@ -8,7 +8,7 @@ Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `authdiff` **0.3.1** · Product: authdiff **0.3.1**
+Package: `authdiff` **0.3.2** · Product: authdiff **0.3.2**
 
 ---
 
@@ -36,11 +36,11 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools
+  git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
 authdiff demo
 authdiff doctor
-authdiff open github.com/org/some-skill
+authdiff vet github.com/org/some-skill
 authdiff scan /path/to/target-repo   # bare `authdiff` also defaults to scan .
 authdiff lock --accept-gated         # when HIGH/CRITICAL findings are present
 authdiff ci init --owner @your-team
@@ -154,7 +154,7 @@ uv run authdiff-dev lint [--fix] [--format] [--check-format]
 | `security/` | Guard engine: capabilities, rules, scan, baseline, report |
 | `security/rules.py` | Deterministic rules AUTHDIFF-RULE-001…022 (pack 1.6) |
 | `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
-| `gate.py` | Base-lock growth gate + CODEOWNERS / PR approval |
+| `gate.py` | Base-lock growth labels + CODEOWNERS / ruleset check |
 | `security/scan.py` | Artifact writer + policy fail-on + PR comment |
 | `security/decision.py` | BLOCK / REVIEW / NO-GATED-FINDINGS |
 | `harden.py` | Dry-run least-privilege patch proposals |

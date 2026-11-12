@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -27,11 +26,10 @@ from authdiff.security.authority import (
 from authdiff.security.engine import ScanResult, run_security_scan
 from authdiff.versioning import product_version
 
-# Re-export for callers that historically imported from authority_lock / broker.
+# Re-export for callers that historically imported from authority_lock.
 __all__ = [
     "LOCK_NAME",
     "LOCK_VERSION",
-    "build_approval_record",
     "build_authority_lock",
     "check_locked",
     "classify_record_change",
@@ -108,27 +106,6 @@ def url_host(url: str | None) -> str:
 
 def default_lock_path(root: Path) -> Path:
     return root.resolve() / LOCK_NAME
-
-
-def build_approval_record(
-    *,
-    owner: str,
-    lock_hash: str,
-    audited_commit: str | None,
-    policy_hash: str | None,
-    justification: str = "Authority state accepted after human review",
-    exceptions: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Bind a human decision to the exact lock / commit / policy state."""
-    return {
-        "owner": owner.strip(),
-        "approved_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "lock_hash": lock_hash,
-        "audited_commit": audited_commit,
-        "policy_hash": policy_hash,
-        "justification": justification.strip() or "Authority state accepted after human review",
-        "exceptions": list(exceptions or []),
-    }
 
 
 def identity_key(record: dict[str, Any]) -> str:
@@ -259,14 +236,14 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
     body["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
     # Non-sealed metadata for humans / tooling (ignored by normalize_lock_for_compare).
     body["audited_commit"] = scan.commit
-    # Preserve prior human approvals / accepted findings across regenerations.
+    # approvals[] is decorative / legacy — never a gate input. Preserve only
+    # approved_findings (explicit --accept-gated seal) across regenerations.
     body["approvals"] = []
     body["approved_findings"] = []
     existing_path = default_lock_path(root)
     if existing_path.is_file():
         try:
             prior = load_authority_lock(existing_path)
-            body["approvals"] = list(prior.get("approvals") or [])
             body["approved_findings"] = list(prior.get("approved_findings") or [])
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             pass
@@ -326,31 +303,23 @@ def write_authority_lock(
             lock["approved_findings"] = accepted
             # Keep prior entries that are still present only when re-locking cleanly.
             del prior  # explicit accept is the source of truth for this write
-    if approval_owner and approval_owner.strip():
-        # Approvals bind to the sealed authority hash; they are not part of it.
-        justification = "Authority state accepted after human review"
-        if accept_gated and lock.get("approved_findings"):
-            ids = sorted(
-                {
-                    str(item.get("rule_id") or "")
-                    for item in (lock.get("approved_findings") or [])
-                    if isinstance(item, dict) and item.get("rule_id")
-                }
-            )
-            if ids:
-                justification = (
-                    "Authority state accepted after human review; "
-                    f"accepted_rule_ids={','.join(ids)}"
-                )
-        record = build_approval_record(
-            owner=approval_owner,
-            lock_hash=str(lock.get("lock_hash") or ""),
-            audited_commit=lock.get("audited_commit"),
-            policy_hash=lock.get("policy_hash"),
-            justification=justification,
-            exceptions=list(lock.get("approved_findings") or []),
+    # Lock-only product: do not append self-asserted approvals[] (GitHub
+    # CODEOWNERS/rulesets enforce review). Keep the field empty for schema compat.
+    lock["approvals"] = []
+    if approval_owner and approval_owner.strip() and accept_gated and lock.get("approved_findings"):
+        # Optional audit note on accepted findings only (not a gate input).
+        ids = sorted(
+            {
+                str(item.get("rule_id") or "")
+                for item in (lock.get("approved_findings") or [])
+                if isinstance(item, dict) and item.get("rule_id")
+            }
         )
-        lock["approvals"] = [*list(lock.get("approvals") or []), record]
+        if ids:
+            note = f"accepted_by={approval_owner.strip()}; accepted_rule_ids={','.join(ids)}"
+            for item in lock["approved_findings"]:
+                if isinstance(item, dict):
+                    item["acceptance_note"] = note
     dest = path or default_lock_path(root)
     dest.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return dest, lock
@@ -677,9 +646,9 @@ def run_lock_command(
         dest.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     n = len(lock.get("records") or [])
     action = "Updated" if update or path.exists() else "Wrote"
-    approval_bit = ""
-    if approval and approval.strip():
-        approval_bit = f" · approval recorded for {approval.strip()}"
+    note_bit = ""
+    if approval and approval.strip() and accept_gated and lock.get("approved_findings"):
+        note_bit = f" · acceptance notes for {approval.strip()}"
     gated_bit = " · gated findings accepted" if accept_gated else ""
     tools_bit = f" · mcp_tools={len(lock.get('mcp_tools') or {})}" if mcp_tools else ""
-    return f"{action} {dest} ({n} authority records){approval_bit}{gated_bit}{tools_bit}.", 0
+    return f"{action} {dest} ({n} authority records){note_bit}{gated_bit}{tools_bit}.", 0

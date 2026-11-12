@@ -175,9 +175,9 @@ class ScanResult:
         return None
 
 
-def run_security_scan(target: Path) -> ScanResult:
+def run_security_scan(target: Path, *, default_excludes: bool = True) -> ScanResult:
     target = target.resolve()
-    result = collect_inventory(target)
+    result = collect_inventory(target, default_excludes=default_excludes)
     commit = resolve_git_commit(target)
     collected_at = result.collected_at_utc
     inventory = inventory_to_json(result)

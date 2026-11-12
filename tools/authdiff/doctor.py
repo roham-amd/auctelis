@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from authdiff.authority_lock import build_authority_lock, diff_authority_locks
+from authdiff.lock_io import AuthorityLockError, load_authority_lock
 from authdiff.security.gating import is_gate_finding
 from authdiff.security.scan import run_scan
 
@@ -185,13 +187,81 @@ def _render_doctor_summary(
     return "\n".join(lines)
 
 
+def _home_lock_path(*, home: Path | None = None, lock_file: Path | None = None) -> Path:
+    if lock_file is not None:
+        return lock_file.expanduser().resolve()
+    root = (home or Path.home()).expanduser().resolve() / ".authdiff"
+    return root / "AUTHORITY.lock"
+
+
+def run_doctor_since_lock(
+    *,
+    home: Path | None = None,
+    lock_file: Path | None = None,
+) -> tuple[str, int]:
+    """One-screen host authority diff vs the sealed home lock."""
+    lock_path = _home_lock_path(home=home, lock_file=lock_file)
+    if not lock_path.is_file():
+        return (
+            "authdiff doctor --since-lock\n"
+            f"No lock at {lock_path}.\n"
+            "Next: `authdiff lock --home` to seal host authority, then re-run."
+        ), 1
+    try:
+        base = load_authority_lock(lock_path)
+    except AuthorityLockError as exc:
+        return f"authdiff doctor --since-lock\nInvalid lock: {exc}", 2
+
+    with ExitStack() as stack:
+        synth, present = stage_all_host_surfaces(stack, home=home)
+        if not present:
+            return (
+                "authdiff doctor --since-lock\n"
+                "No host surfaces present to compare.\n"
+                f"Lock: {lock_path}"
+            ), 0
+        head = build_authority_lock(synth)
+        delta = diff_authority_locks(base, head)
+        summary = delta.get("summary") or {}
+        lines = [
+            "authdiff doctor --since-lock — host authority delta",
+            f"Lock: {lock_path}",
+            f"Surfaces: {', '.join(s.host_id for s in present)}",
+            (
+                f"Delta: +{summary.get('additions', 0)} "
+                f"~{summary.get('expansions', 0)} "
+                f"replace={summary.get('replacements', 0)} "
+                f"-{summary.get('reductions', summary.get('removals', 0))}"
+            ),
+            "",
+        ]
+        diff_lines = list(delta.get("lines") or [])
+        if not diff_lines:
+            lines.append("(no authority change vs lock)")
+        else:
+            lines.extend(f"  {line}" for line in diff_lines[:12])
+            if len(diff_lines) > 12:
+                lines.append(f"  … +{len(diff_lines) - 12} more")
+        lines.append("")
+        if summary.get("meaningful_authority_change"):
+            lines.append("Next: review the delta, then `authdiff lock --home` to reseal.")
+            return "\n".join(lines), 1
+        lines.append("Next: `authdiff .` on a repo, or leave the host lock as-is.")
+        return "\n".join(lines), 0
+
+
 def run_doctor(
     *,
     home: Path | None = None,
     output_dir: Path | None = None,
     fail_on: str | None = None,
+    since_lock: bool = False,
+    lock_file: Path | None = None,
 ) -> tuple[str, int]:
     """Scan discovered host configs; return (summary_text, exit_code)."""
+    if since_lock:
+        return run_doctor_since_lock(home=home, lock_file=lock_file)
+
     surfaces = discover_host_surfaces(home=home)
     present = [s for s in surfaces if s.exists]
     if not present:

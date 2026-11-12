@@ -13,16 +13,13 @@ PUBLIC_PATH = "doctor → lock → scan/gate → ci init  (demo / vet optional)"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
-review:       explain | diff lock | delta | annotate | fix/harden  (optional)
-advanced:     run | snapshot | artifact-vet
-              (omitted from brief help — see docs/CLI-REFERENCE.md)
-maintainer:   authdiff-dev only (build | lint | corpus | deps | …)
+review:       explain | diff lock | annotate | harden  (optional)
+maintainer:   authdiff-dev (build | lint | corpus | deps | run | snapshot | …)
 
-Bare `authdiff` (or a path / scan flags) defaults to `scan .`.
+Bare `authdiff` → doctor (no repo config) or scan . (AUTHORITY.lock / .authdiff.yml).
 Passive scans never execute target code.
-`run` / `snapshot --execute` are env-scrub only (NOT a sandbox).
 Target `.authdiff.yml` is ignored unless `--policy` or `--trust-target-policy` is set.
-Commit AUTHORITY.lock and protect it with CODEOWNERS for PR authority review.
+Commit AUTHORITY.lock and protect it with CODEOWNERS; authdiff labels growth only.
 Agents must set AUTHDIFF_AGENT=1 and must not run lock / ci init / policy edits.
 """
 
@@ -30,32 +27,22 @@ Agents must set AUTHDIFF_AGENT=1 and must not run lock / ci init / policy edits.
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — six jobs, not six brand names.
-CORE_PUBLIC_COMMANDS = frozenset(
-    {"demo", "doctor", "vet", "open", "scan", "check", "lock", "gate", "ci"}
-)
+CORE_PUBLIC_COMMANDS = frozenset({"demo", "doctor", "vet", "scan", "check", "lock", "gate", "ci"})
 
 _PRODUCT_COMMANDS = frozenset(
     {
         "scan",
         "check",
-        "delta",
         "ci",
         "doctor",
         "vet",
-        "open",
         "demo",
         "harden",
-        "fix",
-        "init-gate",
-        "init",
         "lock",
         "gate",
         "explain",
         "diff",
         "annotate",
-        "run",
-        "snapshot",
-        "artifact-vet",
     }
 )
 
@@ -70,18 +57,29 @@ _DEV_COMMANDS = frozenset(
         "corpus",
         "deps",
         "lint",
+        "run",
+        "snapshot",
+        "artifact-vet",
     }
 )
+
+
+def _cwd_has_repo_config(cwd: Path | None = None) -> bool:
+    root = (cwd or Path.cwd()).resolve()
+    if (root / "AUTHORITY.lock").is_file():
+        return True
+    return (root / ".authdiff.yml").is_file() or (root / ".authdiff.yaml").is_file()
 
 
 def normalize_argv(
     argv: Sequence[str] | None,
     *,
     include_dev: bool = False,
+    cwd: Path | None = None,
 ) -> list[str]:
-    """Default bare / path invocations to ``scan``.
+    """Default bare invocations: doctor (no repo config) or scan .
 
-    ``authdiff`` → ``scan .``
+    ``authdiff`` → ``doctor`` when no AUTHORITY.lock / .authdiff.yml, else ``scan .``
     ``authdiff /repo`` → ``scan /repo``
     ``authdiff --locked`` → ``scan --locked``
     Known subcommands and ``-h`` / ``--help`` are left unchanged.
@@ -91,7 +89,9 @@ def normalize_argv(
     if include_dev:
         known |= _DEV_COMMANDS
     if not raw:
-        return ["scan", "."]
+        if _cwd_has_repo_config(cwd):
+            return ["scan", "."]
+        return ["doctor"]
     head = raw[0]
     if head in ("-h", "--help", "-V", "--version") or head in known:
         return raw
@@ -123,26 +123,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     scan = sub.add_parser(
         "scan",
         aliases=["check"],
-        help="Repo authority scan (default when no subcommand; add --locked)",
+        help="Repo authority scan (default when repo config exists; add --locked)",
     )
-    delta = sub.add_parser(
-        "delta",
-        help=_ADV,
-    )
-    delta.add_argument("path", type=Path, nargs="?", default=Path("."))
-    delta.add_argument(
-        "--baseline",
-        type=Path,
-        required=True,
-        help="Prior baseline.json for authority / finding delta",
-    )
-    delta.add_argument("-o", "--output-dir", type=Path)
-    delta.add_argument("--fail-on", choices=["never", "high", "any"], default="high")
-    delta.add_argument("--policy", type=Path)
-    delta.add_argument("--trust-target-policy", action="store_true")
-    delta.add_argument("--no-policy", action="store_true")
-    delta.add_argument("--agent", action="store_true")
-    delta.set_defaults(save_baseline=None)
 
     ci = sub.add_parser("ci", help="CI helpers (init workflow + advisory policy)")
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
@@ -211,8 +193,13 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         type=Path,
         help=(
             "Approved AUTHORITY.lock (typically from the PR base ref). "
-            "Diffed against observed head authority; fails on addition/expansion."
+            "Diffed against observed head authority (advisory; gate is the verdict)."
         ),
+    )
+    scan.add_argument(
+        "--include-fixtures",
+        action="store_true",
+        help="Include tests/examples/docs/fixtures dirs (excluded by default)",
     )
     scan.add_argument(
         "--full",
@@ -247,6 +234,16 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Optional exit policy across host surfaces",
     )
     doctor.add_argument(
+        "--since-lock",
+        action="store_true",
+        help="One-screen authority diff vs ~/.authdiff/AUTHORITY.lock (or --lock-file)",
+    )
+    doctor.add_argument(
+        "--lock-file",
+        type=Path,
+        help="AUTHORITY.lock path for --since-lock (default: ~/.authdiff/AUTHORITY.lock)",
+    )
+    doctor.add_argument(
         "--agent",
         action="store_true",
         help="Emit compact agent JSON digest instead of the text map",
@@ -255,7 +252,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     vet = sub.add_parser(
         "vet",
         help="Pre-install verdict for a local path or GitHub URL (safe shallow clone)",
-        aliases=["open"],
     )
     vet.add_argument("source", help="Local path, Git URL, or owner/repo GitHub shorthand")
     vet.add_argument(
@@ -295,7 +291,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     harden = sub.add_parser(
         "harden",
         help=_ADV,
-        aliases=["fix"],
     )
     harden.add_argument(
         "--findings",
@@ -307,23 +302,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--apply",
         action="store_true",
         help="Request automatic apply (disabled; always dry-run in this release)",
-    )
-
-    init_gate = sub.add_parser(
-        "init-gate",
-        help=_ADV,
-        aliases=["init"],
-    )
-    init_gate.add_argument("path", type=Path, nargs="?", default=Path("."))
-    init_gate.add_argument(
-        "--force",
-        action="store_true",
-        help="Overwrite existing .authdiff.yml / workflow stub",
-    )
-    init_gate.add_argument(
-        "--owner",
-        metavar="@TEAM",
-        help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners); required",
     )
 
     lock_cmd = sub.add_parser(
@@ -350,8 +328,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--approval",
         metavar="OWNER",
         help=(
-            "Record a human approval binding (owner identity) on the written lock. "
-            "Required for accountable expansions; agents must not set this."
+            "Deprecated: ignored for gate enforcement. Prefer CODEOWNERS + rulesets. "
+            "Still recorded in approved_findings notes when used with --accept-gated."
         ),
     )
     lock_cmd.add_argument(
@@ -386,7 +364,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     gate_cmd = sub.add_parser(
         "gate",
-        help="Fail on unapproved authority addition/expansion vs a base AUTHORITY.lock",
+        help="Label authority growth vs base lock; require CODEOWNERS + ruleset",
     )
     gate_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
     gate_cmd.add_argument(
@@ -401,19 +379,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Head AUTHORITY.lock (default: regenerate from the scan target)",
     )
     gate_cmd.add_argument(
-        "--approved-by",
-        action="append",
-        default=[],
-        metavar="@USER",
-        help=(
-            "Harness override: record an approval identity. In CI, any APPROVED "
-            "PR review counts once CODEOWNERS covers AUTHORITY.lock (GitHub-native)."
-        ),
-    )
-    gate_cmd.add_argument(
         "--codeowners",
         type=Path,
         help="Trusted CODEOWNERS file (prefer base-ref copy in CI)",
+    )
+    gate_cmd.add_argument(
+        "--skip-ruleset-check",
+        action="store_true",
+        help="Skip best-effort GitHub ruleset/branch-protection probe",
     )
     gate_cmd.add_argument(
         "--agent",
@@ -477,62 +450,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Optional risk-delta.json for delta-first PR comments",
     )
 
-    run_cmd = sub.add_parser(
-        "run",
-        help=_ADV,
-    )
-    run_cmd.add_argument(
-        "--lock",
-        type=Path,
-        help="Optional AUTHORITY.lock / AUTHORITY.lock.json",
-    )
-    run_cmd.add_argument(
-        "command",
-        nargs=argparse.REMAINDER,
-        help="Command after -- , e.g. authdiff run -- npx -y server",
-    )
-
-    snap = sub.add_parser(
-        "snapshot",
-        help=_ADV,
-    )
-    snap.add_argument(
-        "--from-file",
-        type=Path,
-        help="Read a tools/list JSON payload from disk (no execute)",
-    )
-    snap.add_argument(
-        "--execute",
-        nargs=argparse.REMAINDER,
-        help="Opt-in: run command after -- expecting JSON tools/list on stdout",
-    )
-    snap.add_argument(
-        "--allow-network",
-        action="store_true",
-        help="Allow network in execute mode (still scrubbed env)",
-    )
-    snap.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        help="Write snapshot JSON",
-    )
-
-    art = sub.add_parser(
-        "artifact-vet",
-        help=_ADV,
-    )
-    art.add_argument(
-        "spec",
-        help="npm:name[@ver] | pypi:name[==ver] | bare name (heuristic)",
-    )
-    art.add_argument(
-        "-o",
-        "--output",
-        type=Path,
-        help="Write artifact report JSON",
-    )
-
     # argparse still registers help=SUPPRESS choices; drop them from --help listing.
     sub._choices_actions = [a for a in sub._choices_actions if a.help != _ADV]
 
@@ -593,3 +510,50 @@ def _add_dev_commands(sub: Any) -> None:
     lint.add_argument("--fix", action="store_true")
     lint.add_argument("--format", action="store_true", dest="format_code")
     lint.add_argument("--check-format", action="store_true")
+
+    run_cmd = sub.add_parser("run", help="Env-scrub launcher (NOT a sandbox)")
+    run_cmd.add_argument(
+        "--lock",
+        type=Path,
+        help="Optional AUTHORITY.lock / AUTHORITY.lock.json",
+    )
+    run_cmd.add_argument(
+        "command",
+        nargs=argparse.REMAINDER,
+        help="Command after -- , e.g. authdiff-dev run -- npx -y server",
+    )
+
+    snap = sub.add_parser("snapshot", help="tools/list snapshot helper")
+    snap.add_argument(
+        "--from-file",
+        type=Path,
+        help="Read a tools/list JSON payload from disk (no execute)",
+    )
+    snap.add_argument(
+        "--execute",
+        nargs=argparse.REMAINDER,
+        help="Opt-in: run command after -- expecting JSON tools/list on stdout",
+    )
+    snap.add_argument(
+        "--allow-network",
+        action="store_true",
+        help="Allow network in execute mode (still scrubbed env)",
+    )
+    snap.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Write snapshot JSON",
+    )
+
+    art = sub.add_parser("artifact-vet", help="Heuristic package artifact annotations")
+    art.add_argument(
+        "spec",
+        help="npm:name[@ver] | pypi:name[==ver] | bare name (heuristic)",
+    )
+    art.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="Write artifact report JSON",
+    )

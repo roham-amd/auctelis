@@ -18,7 +18,7 @@ from authdiff.inventory.types import (
     assign_component_ids,
 )
 
-INVENTORY_VERSION = "0.3.1"
+INVENTORY_VERSION = "0.3.2"
 
 
 @dataclass(slots=True)
@@ -38,6 +38,7 @@ def collect_inventory(
     *,
     limits: CollectorLimits | None = None,
     adapters: tuple[DiscoveryAdapter, ...] | None = None,
+    default_excludes: bool = True,
 ) -> InventoryResult:
     limits = limits or CollectorLimits()
     adapters = adapters or DISCOVERY_ADAPTERS
@@ -46,7 +47,9 @@ def collect_inventory(
         raise FileNotFoundError(target)
 
     events: list[ParserEvent] = []
-    tree_summary, files = iter_repo_files(target, limits=limits, events=events)
+    tree_summary, files = iter_repo_files(
+        target, limits=limits, events=events, default_excludes=default_excludes
+    )
     batches = [adapter(target, files=files, limits=limits, events=events) for adapter in adapters]
     components = assign_component_ids(batches)
 

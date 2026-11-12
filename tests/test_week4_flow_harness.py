@@ -35,7 +35,7 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
         encoding="utf-8",
     )
     out = tmp_path / "out-add"
-    # scan --base-lock is advisory; gate blocks until CODEOWNERS approve.
+    # scan --base-lock is advisory; gate labels growth when CODEOWNERS covers the lock.
     assert (
         main(
             [
@@ -51,8 +51,7 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
         )
         == 0
     )
-    assert main(["gate", str(root), "--base-lock", str(base)]) == 1
-    assert main(["gate", str(root), "--base-lock", str(base), "--approved-by", "@sec"]) == 0
+    assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
 
     assert main(["lock", str(root), "--accept-gated", "--approval", "@sec"]) == 0
     out_ok = tmp_path / "out-ok"
@@ -72,7 +71,7 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
         )
         == 0
     )
-    assert main(["gate", str(root), "--base-lock", str(fresh_base)]) == 0
+    assert main(["gate", str(root), "--base-lock", str(fresh_base), "--skip-ruleset-check"]) == 0
 
 
 def test_ci_init_policy_ignore_empty_list(tmp_path: Path):

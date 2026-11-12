@@ -3,7 +3,7 @@
 Primary command: **`authdiff`**.
 Maintainer entry: **`authdiff-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `authdiff` **0.3.1** · product **0.3.1** · rule pack **1.6** (001–022).
+Package `authdiff` **0.3.2** · product **0.3.2** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 lock semantics: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) ·
@@ -22,20 +22,18 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `demo` | First-run Authority Diff on packaged `demo-vulnerable` |
 | Core | `doctor` | Host authority map (Cursor / Claude / VS Code / …) |
-| Core | `vet` / `open` | Pre-install verdict for a local path or GitHub URL |
+| Core | `vet` | Pre-install verdict for a local path or GitHub URL |
 | Core | `scan` / `check` / bare `authdiff` | Repo findings + SARIF (add `--locked`, `--full`) |
 | Core | `lock` | Write / update / `--check` `AUTHORITY.lock` |
-| Core | `gate` | Fail on growth vs `--base-lock` until approval |
-| Core | `ci init` / `init-gate` | `.authdiff.yml` + workflow + CODEOWNERS + lock |
-| Review | `delta` | Alias of `scan` with finding risk-delta vs `--baseline` |
-| Review | `harden` / `fix` | Dry-run least-privilege patch proposals |
+| Core | `gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
+| Core | `ci init` | `.authdiff.yml` + workflow + CODEOWNERS + lock |
+| Review | `harden` | Dry-run least-privilege patch proposals |
 | Review | `explain` | Detailed explanation of a finding id |
 | Review | `annotate` | GitHub annotations or Authority Diff PR comment |
 | Review | `diff lock` | Record-level diff of two `AUTHORITY.lock` files |
-| Advanced | `run` / `snapshot` / `artifact-vet` | Opt-in (env-scrub only; not a sandbox) |
 
 Maintainer-only (`authdiff-dev`): `build`, `lint`, `deps`, `corpus`, `hosts`,
-`validate`, `inventory`, `verify`, `export`.
+`validate`, `inventory`, `verify`, `export`, `run`, `snapshot`, `artifact-vet`.
 
 ---
 
@@ -53,11 +51,10 @@ into `-o`). `$HOME` is never scanned wholesale. `--agent` needs `-o` so surface
 
 ---
 
-## `authdiff vet` / `open`
+## `authdiff vet`
 
 ```bash
 authdiff vet SOURCE [-o OUTPUT_DIR] [--keep-clone] [--agent]
-authdiff open SOURCE   # alias
 ```
 
 `SOURCE` is a local path, Git URL, or `owner/repo` GitHub shorthand. Remote
@@ -91,14 +88,14 @@ authdiff lock [PATH] [--check] [--update] [--lock-file PATH] [--approval OWNER]
 ```
 
 Writes a sorted `AUTHORITY.lock` (v1) of authority records. `--check` regenerates
-and exits `1` on drift (same as `authdiff check --locked`). `--approval OWNER`
-appends a human approval record bound to the sealed `lock_hash`, commit, and
-policy hash. `--accept-gated` is required when the tree has HIGH/CRITICAL gated
-findings. `--home` seals `~/.authdiff/AUTHORITY.lock`. `--snapshot` imports an
-MCP tools snapshot. Protect the file with CODEOWNERS; prefer this over long-term
-reliance on suppressions alone. Agents with `AUTHDIFF_AGENT=1` cannot write locks.
+and exits `1` on drift (same as `authdiff check --locked`). `--accept-gated` is
+required when the tree has HIGH/CRITICAL gated findings; optional `--approval`
+only adds an `acceptance_note` on those findings (not a gate input). `--home`
+seals `~/.authdiff/AUTHORITY.lock`. `--snapshot` imports an MCP tools snapshot.
+Protect the file with CODEOWNERS; GitHub rulesets enforce review. Agents with
+`AUTHDIFF_AGENT=1` cannot write locks.
 
-## `authdiff ci init` / `init-gate`
+## `authdiff ci init`
 
 ```bash
 authdiff ci init [PATH] --owner @TEAM [--force]
@@ -106,25 +103,28 @@ authdiff ci init [PATH] --owner @TEAM [--force]
 
 Writes `.authdiff.yml`, `.github/workflows/authdiff-gate.yml` (`locked: true`),
 `.github/CODEOWNERS` (with `--owner` for `AUTHORITY.lock`), and an
-initial `AUTHORITY.lock` (gated findings accepted for the adoption seal).
-Does not overwrite existing files unless `--force`. `--owner` is required.
+initial `AUTHORITY.lock` when the tree has **no** HIGH/CRITICAL gated findings.
+If gated findings are present, templates may still be written but the lock is
+**not** sealed — run `authdiff lock --accept-gated` (records accepted rule IDs)
+after a human review. Does not overwrite existing files unless `--force`.
+`--owner` is required.
 
 ## `authdiff gate`
 
 ```bash
-authdiff gate [PATH] --base-lock PATH [--head-lock PATH] [--approved-by @USER]...
+authdiff gate [PATH] --base-lock PATH [--head-lock PATH] [--codeowners PATH] [--skip-ruleset-check]
 ```
 
-Compares observed (or `--head-lock`) authority to an approved base lock. Exits `1`
-on addition / expansion / replacement / policy change until a CODEOWNERS identity
-for `AUTHORITY.lock` appears in `--approved-by` or as an approving GitHub PR
-review (when `GITHUB_TOKEN` + PR context are present). Reductions alone do not
-require approval. The Action invokes this after the Authority Diff scan.
+Compares observed (or `--head-lock`) authority to an approved base lock. Labels
+GROWTH vs REDUCTION. Exits `1` on growth when CODEOWNERS does not cover
+`AUTHORITY.lock`, or when a best-effort ruleset probe finds no
+code-owner-review requirement. Reductions alone pass. GitHub CODEOWNERS /
+rulesets enforce the human review — authdiff does not count PR approvals.
 `scan --base-lock` is advisory only; **gate** is the verdict.
 
 ---
 
-## `authdiff harden` / `fix`
+## `authdiff harden`
 
 ```bash
 authdiff harden [--findings PATH] [--apply]

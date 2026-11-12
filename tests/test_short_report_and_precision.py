@@ -36,22 +36,28 @@ def test_full_flag_lengthens_report(tmp_path: Path):
     assert (tmp_path / "out" / "inventory.json").is_file()
 
 
-def test_product_cli_hides_maintainer_commands():
+def test_product_cli_hides_maintainer_commands(tmp_path: Path):
     from authdiff.cli.parser import build_parser, normalize_argv
 
     product = build_parser(include_dev=False)
     assert "lock" in product.format_help()
     assert "demo" in product.format_help()
-    # Advanced surface remains callable but is omitted from listed commands.
-    args_adv = product.parse_args(["artifact-vet", "npm:left-pad"])
-    assert args_adv.command == "artifact-vet"
     listed = "\n".join(
         line for line in product.format_help().splitlines() if line.startswith("    ")
     )
     assert "artifact-vet" not in listed
-    # Bare argv normalizes to scan before parse.
-    args_scan = product.parse_args(normalize_argv([]))
-    assert args_scan.command == "scan"
+    # Advanced moved to authdiff-dev.
+    try:
+        product.parse_args(["artifact-vet", "npm:left-pad"])
+        product_has_adv = True
+    except SystemExit:
+        product_has_adv = False
+    assert product_has_adv is False
+    # Bare argv → doctor when no repo config.
+    empty = tmp_path / "no-config"
+    empty.mkdir()
+    args_bare = product.parse_args(normalize_argv([], cwd=empty))
+    assert args_bare.command == "doctor"
     try:
         product.parse_args(["build", "all"])
         ok = True
@@ -61,9 +67,11 @@ def test_product_cli_hides_maintainer_commands():
     dev = build_parser(include_dev=True)
     args = dev.parse_args(["build", "all"])
     assert args.command == "build"
+    args_adv = dev.parse_args(["artifact-vet", "npm:left-pad"])
+    assert args_adv.command == "artifact-vet"
 
 
-def test_init_gate_writes_codeowners(tmp_path: Path):
+def test_ci_init_writes_codeowners(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()
     assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0

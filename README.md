@@ -29,32 +29,33 @@ committed [`AUTHORITY.lock`](docs/AUTHORITY-LOCK.md) — not a long report.
 ## First useful minute
 
 ```bash
-# Preferred once PyPI is live:
-uvx --from authdiff authdiff doctor
+# Working install (git tag — PyPI is not published yet):
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools" authdiff doctor
 
-# Current supported path (git tag) until the package is on the index:
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools" authdiff doctor
+# Later, once the package is on the index:
+# uvx --from authdiff authdiff doctor
 ```
 
 Persistent install (if continuing):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
-# Later: uv tool install --python 3.12 authdiff
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
 
-authdiff doctor           # your host authority map (the aha)
-authdiff lock --home      # seal ~/.authdiff/AUTHORITY.lock
-authdiff                  # bare CLI → scan . (drift when AUTHORITY.lock exists)
-authdiff demo             # canned evil fixture (optional)
-authdiff open github.com/org/some-skill
-authdiff lock             # write repo AUTHORITY.lock (--accept-gated if needed)
-authdiff gate --base-lock path/to/base.lock  # fail until GitHub-native approval
-authdiff ci init --owner @you  # .authdiff.yml + workflow + CODEOWNERS
-authdiff check --locked   # fail on lock drift
+authdiff doctor                  # your host authority map (the aha)
+authdiff doctor --since-lock     # one-screen delta vs ~/.authdiff/AUTHORITY.lock
+authdiff lock --home             # seal ~/.authdiff/AUTHORITY.lock
+authdiff                         # bare CLI → doctor, or scan . when lock/policy exists
+authdiff demo                    # canned evil fixture (optional)
+authdiff vet github.com/org/some-skill
+authdiff lock                    # write repo AUTHORITY.lock (--accept-gated if needed)
+authdiff gate --base-lock path/to/base.lock  # label growth; CODEOWNERS/rulesets enforce
+authdiff ci init --owner @you    # .authdiff.yml + workflow + CODEOWNERS
+authdiff check --locked          # fail on lock drift
 ```
 
 Hook (Claude Code): `tools/authdiff/templates/claude-pretool-authority-hook.sh`
+(Python JSON parser; thin shell wrapper).
 
 Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional).
 
@@ -64,7 +65,7 @@ fenced JSON digest. Use `--full` for the long report. Agents should export
 `AUTHDIFF_AGENT=1` so mutating lock/policy paths are refused.
 
 **Install honesty:** authdiff is **not on PyPI yet**. Install from a git tag (or pin a
-commit SHA). Prefer immutable SHAs for the Action in high-assurance repos.
+commit SHA). Prefer an immutable Action commit SHA in high-assurance repos.
 
 ### Core commands
 
@@ -73,9 +74,9 @@ commit SHA). Prefer immutable SHAs for the Action in high-assurance repos.
 | `authdiff doctor` | Host authority map (lead with this) |
 | `authdiff lock` / `lock --home` | Write repo or `~/.authdiff` lock (`--snapshot`, `--accept-gated`) |
 | `authdiff` / `scan` / `check` | Repo authority scan (add `--locked`) |
-| `authdiff gate` | Fail on growth vs `--base-lock` until verified approval |
+| `authdiff gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
 | `authdiff ci init --owner @user` | `.authdiff.yml` + lock-first workflow + CODEOWNERS |
-| `authdiff open` / `vet` | Pre-install annotations (safe shallow clone; no REJECT from hints) |
+| `authdiff vet` | Pre-install annotations (safe shallow clone; no REJECT from hints) |
 | `authdiff demo` | Packaged evil fixture (optional aha) |
 
 Review / advanced / maintainer tiers: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
@@ -103,8 +104,9 @@ Single recipe (git-tag install + Action). Full example:
 # PyPI not published yet — install from the pinned kit tag, then use Action-bundled tools:
 - run: >
     pip install
-    "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
-- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.1
+    "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
+# Prefer: uses: roham-amd/authdiff/.github/actions/authdiff-gate@<commit-sha>
+- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.2
   with:
     path: .
     trusted-policy: "true"
@@ -113,8 +115,8 @@ Single recipe (git-tag install + Action). Full example:
     install-tools-from: path
 ```
 
-Prefer pinning the Action by **immutable commit SHA** in high-assurance repos
-(see [`docs/AUTHDIFF-GATE.md`](docs/AUTHDIFF-GATE.md)).
+Pin the Action by **immutable commit SHA** in high-assurance repos
+(see [`docs/AUTHDIFF-GATE.md`](docs/AUTHDIFF-GATE.md)). Tag pins are convenient but mutable.
 
 With `authority-diff=true`, the Action scans the PR **base** ref and diffs it
 against **head**. With `trusted-policy=true`, policy loads from the base ref.

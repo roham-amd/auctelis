@@ -1,0 +1,4 @@
+# 25-repo sample manifest for the labeled authority dataset (one repo per line).
+# Format: owner/name[@ref]  — clone shallow, run authdiff scan, record labels in holdout-labels.csv
+# Status: scaffold only — recruit real outside repos in week 4.
+roham-amd/authdiff@v0.3.2

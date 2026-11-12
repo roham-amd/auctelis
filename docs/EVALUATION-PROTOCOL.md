@@ -32,7 +32,7 @@ existed under `docs/pilots/` and was removed in the shrink; regenerate before ci
 ## Procedure (per repository)
 
 ```bash
-authdiff open <owner/repo> -o authdiff-out-pilot/<slug>
+authdiff vet <owner/repo> -o authdiff-out-pilot/<slug>
 # or, for a local checkout:
 authdiff scan <path> -o authdiff-out-pilot/<slug> --full
 ```

@@ -1,11 +1,11 @@
 # authdiff scan — operator guide
 
-Guard scan path for **0.3.1**: deterministic discovery plus evidence-backed
+Guard scan path for **0.3.2**: deterministic discovery plus evidence-backed
 observations via `authdiff scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./authdiff-out` (not inside the target tree).
 
-Companion commands: `authdiff doctor`, `authdiff open` / `vet`, and
+Companion commands: `authdiff doctor`, `authdiff vet`, and
 `authdiff lock` (committed authority lockfile).
 
 Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md),

@@ -1,6 +1,6 @@
 [project]
 name = "authdiff"
-version = "0.3.1"
+version = "0.3.2"
 description = "authdiff — the authority lockfile and PR security gate for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"

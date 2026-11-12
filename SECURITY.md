@@ -9,7 +9,7 @@
 | 1.0.x | No (yanked / superseded pre-1.0 line; do not use) |
 | < 0.2.0 | No |
 
-Tooling package version (`authdiff`, currently **0.3.1**) is tracked in
+Tooling package version (`authdiff`, currently **0.3.2**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
@@ -60,4 +60,4 @@ Composite GitHub Action inputs must be passed via environment variables into she
 
 - Authority growth vs the base-ref `AUTHORITY.lock` is decided by `authdiff gate`, not by `scan --base-lock` (advisory delta only).
 - Prefer GitHub-native CODEOWNERS / rulesets (including team owners and stale-review dismissal) as the approval source of truth.
-- `authdiff gate` requires an APPROVED review on the PR head commit. User CODEOWNERS must intersect approvers (`OWNER_MATCHED`); team-only CODEOWNERS are `UNVERIFIED` and need GitHub rulesets for real enforcement.
+- `authdiff gate` is lock-only: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — authdiff does not count PR approvals.

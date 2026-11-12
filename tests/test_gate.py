@@ -1,4 +1,4 @@
-"""authdiff gate — base lock + GitHub-native approval."""
+"""authdiff gate — base lock + CODEOWNERS + lock-only growth labels."""
 
 from __future__ import annotations
 
@@ -6,12 +6,7 @@ import json
 from pathlib import Path
 
 from authdiff.cli import main
-from authdiff.gate import (
-    github_native_approval_present,
-    parse_codeowners_for_path,
-    render_gate_report,
-    run_gate,
-)
+from authdiff.gate import parse_codeowners_for_path, render_gate_report, run_gate
 
 
 def _mcp(root: Path, servers: dict) -> None:
@@ -29,12 +24,8 @@ AUTHORITY.lock @sec-owners @alice
     assert parse_codeowners_for_path(text) == ["@sec-owners", "@alice"]
 
 
-def test_github_native_approval_any_reviewer():
-    assert github_native_approval_present(approvers=["@alice"])
-    assert not github_native_approval_present(approvers=[])
-
-
-def test_gate_blocks_addition_until_approved(tmp_path: Path):
+def test_gate_growth_passes_with_codeowners(tmp_path: Path):
+    """Lock-only: growth is labeled; GitHub CODEOWNERS/rulesets enforce review."""
     root = tmp_path / "repo"
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     (root / ".github").mkdir(parents=True)
@@ -50,24 +41,33 @@ def test_gate_blocks_addition_until_approved(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
-    report, code = run_gate(root, base_lock=base)
-    assert code == 1
+    report, code = run_gate(root, base_lock=base, check_ruleset=False)
+    assert code == 0
     assert report["needs_approval"] is True
-    assert report["verdict"] == "NEEDS_APPROVAL"
+    assert report["label"] == "GROWTH"
+    assert report["verdict"] == "PASS"
     assert "@sec-owners" in report["required_owners"]
-    assert "addition" in render_gate_report(report).lower() or report["lines"]
+    assert "GROWTH" in render_gate_report(report)
 
-    # Non-owner approval must not pass when CODEOWNERS lists user owners.
-    report_bad, code_bad = run_gate(root, base_lock=base, approved_by=["@alice"])
-    assert code_bad == 1
-    assert report_bad.get("approval_enforcement") == "OWNER_MISMATCH"
 
-    # Matching CODEOWNERS user approval passes.
-    report2, code2 = run_gate(root, base_lock=base, approved_by=["@sec-owners"])
-    assert code2 == 0
-    assert report2["approved"] is True
-    assert report2["verdict"] == "PASS"
-    assert report2.get("approval_enforcement") == "OWNER_MATCHED"
+def test_gate_growth_fails_without_codeowners(tmp_path: Path):
+    root = tmp_path / "repo"
+    _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    assert main(["lock", str(root)]) == 0
+    base = tmp_path / "base.lock"
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    _mcp(
+        root,
+        {
+            "a": {"command": "node", "args": ["a.js"]},
+            "b": {"command": "node", "args": ["b.js"]},
+        },
+    )
+    report, code = run_gate(root, base_lock=base, check_ruleset=False)
+    assert code == 1
+    assert report["verdict"] == "NEEDS_REVIEW"
+    assert report.get("owners_present") is False
+    assert report["label"] == "GROWTH"
 
 
 def test_gate_cli(tmp_path: Path):
@@ -85,8 +85,7 @@ def test_gate_cli(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
-    assert main(["gate", str(root), "--base-lock", str(base)]) == 1
-    assert main(["gate", str(root), "--base-lock", str(base), "--approved-by", "@owner"]) == 0
+    assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
 
 
 def test_same_name_launcher_swap_is_replacement(tmp_path: Path):
@@ -98,9 +97,10 @@ def test_same_name_launcher_swap_is_replacement(tmp_path: Path):
     base = tmp_path / "base.lock"
     base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(root, {"pkg": {"command": "npx", "args": ["-y", "pkg@9.9.9"]}})
-    report, code = run_gate(root, base_lock=base)
-    assert code == 1
+    report, code = run_gate(root, base_lock=base, check_ruleset=False)
+    assert code == 0
     assert report["needs_approval"] is True
+    assert report["label"] == "GROWTH"
     classes = [
         c.get("change_class")
         for c in (report.get("delta") or {}).get("changes", {}).get("changed", [])

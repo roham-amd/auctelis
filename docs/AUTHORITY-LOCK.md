@@ -63,47 +63,37 @@ true so digests stay honest. Reviewers should prioritize `meaningful_authority_c
 
 ---
 
-## Approval records
+## Human review (GitHub-native)
 
-Human decisions bind to the sealed authority hash via `approvals[]`:
+`approvals[]` on the lock is **legacy / empty** — authdiff does not treat
+self-asserted lock approvals as a gate input. Review is enforced by:
 
-| Field | Purpose |
-| --- | --- |
-| `owner` | Accountable reviewer identity |
-| `approved_at` | UTC timestamp |
-| `lock_hash` | Exact sealed authority hash being accepted |
-| `audited_commit` | Repository commit under review |
-| `policy_hash` | Policy version at approval time |
-| `justification` | Why the authority state is accepted |
-| `exceptions` | Optional accepted findings with expiry |
+1. CODEOWNERS coverage for `AUTHORITY.lock` (and other authority paths)
+2. A GitHub ruleset (or branch protection) requiring code-owner review
+3. `authdiff gate` labeling GROWTH vs REDUCTION vs the base-ref lock
 
-```bash
-authdiff lock --approval @security-owners
-```
-
-Approvals are append-only metadata; they are **not** part of the sealed
-`lock_hash` of the authority records. Agents must not write approvals
-(`AUTHDIFF_AGENT=1` refuses mutating `lock`).
-
-`approved_findings[]` is the rejected/accepted risk register for individual
-finding fingerprints (owner + justification + optional expiry).
+`approved_findings[]` remains the explicit `--accept-gated` register for
+HIGH/CRITICAL findings sealed into a baseline (optional `acceptance_note`
+when `--approval` is also passed). Agents must not mutate locks
+(`AUTHDIFF_AGENT=1`).
 
 ---
 
 ## Commands
 
 ```bash
-authdiff lock                 # write / update AUTHORITY.lock
-authdiff lock --approval @me  # also append a human approval record
-authdiff lock --check         # exit 1 on drift
-authdiff check --locked .     # scan + lock drift gate
+authdiff lock                              # write / update AUTHORITY.lock
+authdiff lock --accept-gated [--approval @me]  # seal gated findings (notes only)
+authdiff lock --check                      # exit 1 on drift
+authdiff check --locked .                  # scan + lock drift gate
+authdiff gate --base-lock base.lock        # growth label + CODEOWNERS/ruleset
 authdiff diff lock A.lock B.lock
 ```
 
 Protect the file:
 
 ```text
-# CODEOWNERS — prefer @user; GitHub-native rulesets enforce @org/team.
+# CODEOWNERS — prefer @user; GitHub rulesets enforce @org/team membership.
 AUTHORITY.lock  @security-owner
 ```
 

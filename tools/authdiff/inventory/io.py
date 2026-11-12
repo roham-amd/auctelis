@@ -12,6 +12,7 @@ _SKIP_DIRS = {
     "node_modules",
     ".venv",
     "venv",
+    ".venv-smoke",
     "__pycache__",
     ".tox",
     "dist",
@@ -21,6 +22,26 @@ _SKIP_DIRS = {
     "authdiff-out-smoke",
     "authdiff-out-test",
     "authdiff-out-demo",
+    "authdiff-out-doctor",
+    "authdiff-out-dogfood",
+    "authdiff-out-wheel-smoke",
+}
+
+# Default authority-noise dirs (fixtures / docs / tests / canned demos).
+# Opt out with ``default_excludes=False`` / ``scan --include-fixtures``.
+_DEFAULT_EXCLUDE_DIRS = {
+    "tests",
+    "test",
+    "examples",
+    "example",
+    "docs",
+    "doc",
+    "fixtures",
+    "fixture",
+    "testdata",
+    "__tests__",
+    "demo-vulnerable",
+    "canonical",
 }
 
 
@@ -37,6 +58,7 @@ def iter_repo_files(
     *,
     limits: CollectorLimits,
     events: list[dict[str, Any]],
+    default_excludes: bool = True,
 ) -> tuple[dict[str, Any], list[Path]]:
     """Bounded walk: respects max_depth, max_files, and max_file_bytes before any content read."""
     root = root.resolve()
@@ -45,6 +67,9 @@ def iter_repo_files(
     symlink_count = 0
     skipped: list[str] = []
     truncated = False
+    skip_dirs = set(_SKIP_DIRS)
+    if default_excludes:
+        skip_dirs |= _DEFAULT_EXCLUDE_DIRS
 
     def on_error(err: OSError) -> None:
         events.append({"type": "walk_error", "message": str(err)})
@@ -56,7 +81,19 @@ def iter_repo_files(
             dirnames[:] = []
             events.append({"type": "depth_limit", "path": str(rel_dir)})
             continue
-        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        kept: list[str] = []
+        for d in dirnames:
+            if d in skip_dirs:
+                if d in _DEFAULT_EXCLUDE_DIRS and default_excludes:
+                    events.append(
+                        {
+                            "type": "default_exclude",
+                            "path": str(rel_dir / d if str(rel_dir) != "." else Path(d)),
+                        }
+                    )
+                continue
+            kept.append(d)
+        dirnames[:] = kept
         for name in filenames:
             if file_count >= limits.max_files:
                 truncated = True

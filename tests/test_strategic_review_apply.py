@@ -15,12 +15,11 @@ from authdiff.security.scan import run_scan
 
 
 def test_core_public_commands_are_six_jobs():
-    # Aliases (open/check) are part of the public surface, not extra products.
+    # check remains a scan alias; open/init-gate aliases were removed.
     assert {
         "demo",
         "doctor",
         "vet",
-        "open",
         "scan",
         "check",
         "lock",
@@ -30,7 +29,7 @@ def test_core_public_commands_are_six_jobs():
     help_text = build_parser().format_help()
     for name in ("demo", "doctor", "vet", "scan", "lock", "gate", "ci"):
         assert name in help_text
-    # Review / advanced stay callable but are omitted from brief help.
+    # Review / advanced stay omitted from brief help.
     assert "Propose least-privilege" not in help_text
     assert "Explain a finding" not in help_text
 
@@ -50,7 +49,7 @@ def test_demo_command_runs(tmp_path: Path):
     assert (tmp_path / "out" / "pr-comment.md").is_file()
 
 
-def test_addition_class_and_approval_record(tmp_path: Path):
+def test_addition_class_and_empty_approvals(tmp_path: Path):
     root = tmp_path / "repo"
     mcp = root / ".cursor"
     mcp.mkdir(parents=True)
@@ -81,9 +80,8 @@ def test_addition_class_and_approval_record(tmp_path: Path):
     code = main(["lock", str(root), "--approval", "@security-owners", "--accept-gated"])
     assert code == 0
     sealed = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
-    assert sealed["approvals"]
-    assert sealed["approvals"][-1]["owner"] == "@security-owners"
-    assert sealed["approvals"][-1]["lock_hash"] == sealed["lock_hash"]
+    assert sealed.get("approvals") in ([], None)
+    assert sealed.get("approved_findings") or sealed.get("lock_hash")
 
 
 def test_agent_cannot_mutate_lock(tmp_path: Path, monkeypatch):

@@ -47,6 +47,9 @@ jobs:
         working-directory: .
         run: uv run --directory tools --locked authdiff-dev build all
 
+      - name: Corpus
+        run: uv run --directory tools --locked authdiff-dev corpus run
+
       - name: Pytest
         run: uv run --locked pytest -q ../tests
 

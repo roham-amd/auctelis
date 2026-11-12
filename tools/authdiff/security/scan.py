@@ -149,6 +149,7 @@ def run_scan(
     policy: AuthdiffPolicy | None = None,
     target_policy_ignored: bool = False,
     full_report: bool = False,
+    default_excludes: bool = True,
 ) -> tuple[ScanResult, dict[str, Any], int]:
     """Run scan; return (scan, payload, exit_code).
 
@@ -156,7 +157,7 @@ def run_scan(
     ``<target>/authdiff-out`` — so scanning an external repository stays read-only
     with respect to the target tree.
     """
-    scan = run_security_scan(target)
+    scan = run_security_scan(target, default_excludes=default_excludes)
     suppressed = apply_suppressions(scan, policy)
     out = (output_dir or resolve_default_output_dir()).resolve()
     out.mkdir(parents=True, exist_ok=True)

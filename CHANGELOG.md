@@ -7,6 +7,38 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-11-13
+
+### Fixed
+
+- Action: adoption bootstrap — `locked=true` with no base-ref lock passes when
+  head introduces `AUTHORITY.lock` (still fails when both are missing).
+- Docs and skill: remove dead `open` / `init-gate` / `fix` / `delta` aliases;
+  align AUTHORITY-LOCK / CLI / PRODUCT with lock-only gate.
+- Delete unused `build_approval_record`; stop claiming lock `approvals[]` as a
+  gate input.
+
+### Changed
+
+- **Lock-only gate:** authdiff labels GROWTH/REDUCTION and requires CODEOWNERS +
+  best-effort ruleset check; removed PR-approval re-implementation
+  (`--approved-by`, review pagination, lock `approvals[]` as a gate input).
+- Default scan excludes `tests` / `examples` / `docs` / `fixtures` /
+  `demo-vulnerable` (opt in with `--include-fixtures`).
+- Bare `authdiff` → `doctor` when no repo config, else `scan .`.
+- `doctor --since-lock` one-screen host delta; Claude PreToolUse hook is Python JSON.
+- Advanced `run` / `snapshot` / `artifact-vet` moved to `authdiff-dev`.
+- ROADMAP shrunk to a 10-line north star; `eval/` holdout sample scaffold added.
+- `release.yml` validate job runs corpus (mirrors `authdiff-validate.yml`).
+- `AUTHORITY_PATH_HINTS` includes workflows, actions, and CODEOWNERS.
+- Dogfood `AUTHORITY.lock` re-sealed without fixture/example noise.
+- Product / package version **0.3.2**.
+
+### Notes
+
+- Prior GitHub Releases `v0.3.0` / `v0.3.1` shipped with empty asset lists;
+  this tag should attach wheel, sdist, cosign bundles, and SBOM via `release.yml`.
+
 ## [0.3.1] — 2026-11-12
 
 ### Fixed

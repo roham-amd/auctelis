@@ -10,7 +10,7 @@ from authdiff.cli import main
 from authdiff.cli.parser import PUBLIC_PATH, build_parser, normalize_argv
 from authdiff.doctor import stage_all_host_surfaces
 from authdiff.export.pr_comment import render_authority_diff_comment
-from authdiff.gate import evaluate_approval, fetch_pr_approving_logins
+from authdiff.gate import growth_label
 from authdiff.inventory.collector import collect_inventory
 from authdiff.security.gating import is_high_gate_finding
 from authdiff.security.models import Finding
@@ -41,16 +41,9 @@ def test_approval_line_keeps_owners():
     assert "Needs approval from:" in comment
 
 
-def test_evaluate_approval_user_mismatch_and_team_unverified():
-    ok, enforcement = evaluate_approval(owners=["@sec-owners"], approvers=["@alice"])
-    assert ok is False
-    assert enforcement == "OWNER_MISMATCH"
-    ok2, enforcement2 = evaluate_approval(owners=["@org/security"], approvers=["@alice"])
-    assert ok2 is True
-    assert enforcement2 == "UNVERIFIED"
-    ok3, enforcement3 = evaluate_approval(owners=["@sec-owners"], approvers=["@sec-owners"])
-    assert ok3 is True
-    assert enforcement3 == "OWNER_MATCHED"
+def test_growth_label_replaces_approval_matching():
+    assert growth_label({"additions": 1}) == "GROWTH"
+    assert growth_label({"reductions": 1}) == "REDUCTION"
 
 
 def test_inferred_hint_high_is_not_high_gate():
@@ -117,8 +110,13 @@ def test_lock_accept_records_rule_ids(tmp_path: Path):
     assert main(["lock", str(root), "--accept-gated", "--approval", "@owner"]) == 0
     lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
     assert lock.get("approved_findings")
-    assert lock["approvals"]
-    assert "accepted_rule_ids=" in lock["approvals"][-1]["justification"]
+    assert lock.get("approvals") in ([], None)
+    notes = [
+        str(item.get("acceptance_note") or "")
+        for item in lock["approved_findings"]
+        if isinstance(item, dict)
+    ]
+    assert any("accepted_rule_ids=" in n for n in notes)
 
 
 def test_claude_commands_discovered(tmp_path: Path):
@@ -153,48 +151,3 @@ def test_stage_all_host_surfaces_merges(tmp_path: Path):
         assert len(present) >= 2
         assert (synth / ".cursor" / "mcp.json").is_file()
         assert (synth / ".claude" / "settings.json").is_file()
-
-
-def test_fetch_reviews_filters_stale_commit(monkeypatch):
-    pages = [
-        [
-            {
-                "user": {"login": "randomstranger"},
-                "state": "APPROVED",
-                "commit_id": "aaaa",
-            },
-            {
-                "user": {"login": "owner"},
-                "state": "APPROVED",
-                "commit_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            },
-        ]
-    ]
-
-    class _Resp:
-        def __init__(self, payload):
-            self._payload = payload
-            self.headers = {}
-
-        def read(self):
-            return json.dumps(self._payload).encode("utf-8")
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-    def fake_urlopen(req, timeout=20):
-        del req, timeout
-        return _Resp(pages[0])
-
-    monkeypatch.setattr("authdiff.gate.urllib.request.urlopen", fake_urlopen)
-    logins = fetch_pr_approving_logins(
-        repository="o/r",
-        pr_number=1,
-        token="t",
-        head_sha="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    )
-    assert logins == ["@owner"]
-    assert "@randomstranger" not in logins

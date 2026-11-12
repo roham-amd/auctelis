@@ -192,8 +192,7 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
     assert delta["summary"]["additions"] >= 1
     comment = (tmp_path / "out" / "pr-comment.md").read_text(encoding="utf-8")
     assert "addition" in comment.lower()
-    assert main(["gate", str(root), "--base-lock", str(base)]) == 1
-    assert main(["gate", str(root), "--base-lock", str(base), "--approved-by", "@sec-owners"]) == 0
+    assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
 
 
 def test_workflows_not_double_registered(tmp_path: Path):

@@ -6,7 +6,7 @@ from authdiff import __product_version__, __version__
 from authdiff.authority_lock import LOCK_VERSION
 from authdiff.versioning import package_version, product_version
 
-_EXPECTED = "0.3.1"
+_EXPECTED = "0.3.2"
 
 
 def test_version_surfaces_aligned():

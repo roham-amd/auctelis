@@ -1,0 +1,5 @@
+repo,commit,path,rule_id,label,tp_fp_fn,reviewer,notes
+# Seed rows for the 25-repo label sample. Replace placeholders with real reviews.
+# label: AUTHORITY_GROWTH | AUTHORITY_REDUCTION | NO_AUTHORITY | UNPARSED
+# tp_fp_fn: TP | FP | FN | TN (relative to authdiff's gated finding / lock delta)
+example/placeholder,HEAD,.cursor/mcp.json,AUTHDIFF-RULE-002,AUTHORITY_GROWTH,TP,,seed row — replace

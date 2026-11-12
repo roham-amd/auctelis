@@ -84,7 +84,9 @@ inputs:
     description: >-
       If true (default), also run AUTHORITY.lock drift check
       (`authdiff check --locked`). Commit AUTHORITY.lock and protect it with
-      CODEOWNERS. Set to false only for advisory-first adoption scans.
+      CODEOWNERS. On a PR with no base-ref lock, a head AUTHORITY.lock is treated
+      as adoption bootstrap (CODEOWNERS review of the lock itself); missing both
+      base and head locks still fails closed. Set to false only for advisory scans.
     required: false
     default: "true"
   lock-file:
@@ -380,7 +382,7 @@ runs:
           echo "::warning::authdiff scan exited ${scan_code}; continuing so gate/comment/artifact can run."
         fi
 
-    - name: Enforce base-lock gate (CODEOWNERS approval)
+    - name: Enforce base-lock gate (growth label + CODEOWNERS/ruleset)
       id: gate
       if: >-
         always() &&
@@ -395,6 +397,8 @@ runs:
         AUTHDIFF_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
         AUTHDIFF_BASE_CODEOWNERS: ${{ steps.auth_diff.outputs.codeowners }}
         AUTHDIFF_LOCK_FILE: ${{ inputs.lock-file }}
+        # pull_request GITHUB_SHA is the merge commit; reviews use PR head.
+        AUTHDIFF_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
@@ -409,7 +413,11 @@ runs:
           gate_args+=(--codeowners "$AUTHDIFF_BASE_CODEOWNERS")
           echo "Using trusted base-ref CODEOWNERS: $AUTHDIFF_BASE_CODEOWNERS"
         fi
-        # Approvals must cover PR head; user CODEOWNERS must intersect approvers.
+        # AUTHDIFF_HEAD_SHA is available for diagnostics; gate is lock-only
+        # (growth label + CODEOWNERS/ruleset) and does not count PR reviews.
+        if [[ -n "${AUTHDIFF_HEAD_SHA:-}" ]]; then
+          echo "PR head: ${AUTHDIFF_HEAD_SHA}"
+        fi
         set +e
         authdiff "${gate_args[@]}"
         gate_code=$?
@@ -582,6 +590,8 @@ runs:
         AUTHDIFF_LOCKED: ${{ inputs.locked }}
         AUTHDIFF_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
         AUTHDIFF_EVENT_NAME: ${{ github.event_name }}
+        AUTHDIFF_PATH: ${{ inputs.path }}
+        AUTHDIFF_LOCK_FILE: ${{ inputs.lock-file }}
       run: |
         set -euo pipefail
         if [[ "${AUTHDIFF_SCAN_OUTCOME}" == "skipped" ]]; then
@@ -592,14 +602,22 @@ runs:
         gate_code="${AUTHDIFF_GATE_CODE:-0}"
         [[ -z "$scan_code" ]] && scan_code=0
         [[ -z "$gate_code" ]] && gate_code=0
-        # locked=true on a PR must not silently skip the gate.
+        # locked=true on a PR must not silently skip the gate — except adoption
+        # bootstrap, where the first AUTHORITY.lock lands on head with no base lock.
+        head_lock_rel="${AUTHDIFF_LOCK_FILE:-AUTHORITY.lock}"
+        head_lock_path="${AUTHDIFF_PATH%/}/${head_lock_rel}"
+        head_lock_path="${head_lock_path#./}"
         if [[ "${AUTHDIFF_LOCKED}" == "true" && "${AUTHDIFF_EVENT_NAME}" == "pull_request" ]]; then
           if [[ -z "${AUTHDIFF_BASE_LOCK}" ]]; then
-            echo "::error::locked=true but base ref has no AUTHORITY.lock — fail closed."
-            exit 1
-          fi
-          if [[ "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]]; then
-            echo "::error::authdiff gate skipped while locked=true on a pull_request."
+            if [[ -f "$head_lock_path" ]]; then
+              echo "::notice::No base-ref AUTHORITY.lock — adoption bootstrap. Head lock is reviewed via CODEOWNERS on this PR; subsequent PRs require base-lock growth approval."
+              gate_code=0
+            else
+              echo "::error::locked=true but neither base nor head has AUTHORITY.lock — fail closed."
+              exit 1
+            fi
+          elif [[ "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]]; then
+            echo "::error::authdiff gate skipped while locked=true on a pull_request with a base lock."
             exit 1
           fi
         elif [[ "${AUTHDIFF_GATE_OUTCOME}" == "skipped" ]]; then

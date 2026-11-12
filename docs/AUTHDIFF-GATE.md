@@ -4,10 +4,10 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.3.1** |
-| Tooling package | **0.3.1** (`authdiff`) |
+| Product release | **0.3.2** |
+| Tooling package | **0.3.2** (`authdiff`) |
 | Rule pack | **1.6** (rules 001–022) |
-| Primary path | `authdiff demo` → `lock` → `ci init --owner` → `gate` / Action |
+| Primary path | `authdiff doctor` → `lock` → `scan/gate` → `ci init --owner` / Action |
 | Policy file | `.authdiff.yml` + `AUTHORITY.lock` (CODEOWNERS) |
 | Action | `.github/actions/authdiff-gate` (display name: authdiff) |
 | Verdict | `authdiff gate` (scan `--base-lock` is advisory) |
@@ -37,14 +37,14 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools" authdiff demo
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
 
 authdiff doctor                          # host authority map
-authdiff open github.com/org/some-skill  # pre-install verdict
+authdiff vet github.com/org/some-skill  # pre-install verdict
 authdiff scan .                          # bare `authdiff` also defaults to scan .
 authdiff lock                            # write AUTHORITY.lock (--accept-gated if needed)
 authdiff ci init --owner @security-owner
@@ -65,10 +65,9 @@ Treat the Action like a dependency lock gate:
    authority-bearing paths (`**/.mcp.json`, `**/.cursor/mcp.json`, hooks, skills).
 3. Enable **dismiss stale pull request approvals when new commits are pushed**.
 4. Prefer rulesets over legacy branch-protection when available; include team
-   owners there. `authdiff gate` requires an APPROVED review on the PR **head**
-   commit (paginated). User CODEOWNERS must intersect approvers; team-only
-   CODEOWNERS are marked `approval_enforcement: UNVERIFIED` — GitHub rulesets
-   must enforce team membership and dismiss stale approvals.
+   owners there. `authdiff gate` labels GROWTH vs REDUCTION and requires
+   CODEOWNERS coverage plus a best-effort ruleset check — GitHub enforces the
+   human review (authdiff does not count PR approvals).
 5. Do not allow administrators to bypass the required checks on the default branch
    in production repos.
 
@@ -81,7 +80,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
   with:
     trusted-policy: "true"
     authority-diff: "true"
-    locked: "true"   # after AUTHORITY.lock exists
+    locked: "true"   # first-lock adoption PR is allowed; later PRs need base lock
 ```
 
 Minimum workflow permissions (example recipe):

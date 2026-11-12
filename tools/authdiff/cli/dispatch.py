@@ -57,13 +57,9 @@ def _write_or_print(data: object, output: Path | None) -> int:
 
 
 def dispatch(args: argparse.Namespace) -> int:
-    # Normalize product-path aliases (open/fix/init/check) to canonical commands.
+    # Keep ``check`` as a scan alias; other legacy aliases were removed.
     command = {
-        "open": "vet",
-        "fix": "harden",
-        "init": "init-gate",
         "check": "scan",
-        "delta": "scan",
     }.get(args.command, args.command)
     if args.command == "ci":
         return _cmd_init_gate(args) if getattr(args, "ci_command", None) == "init" else 2
@@ -79,8 +75,6 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_demo(args)
         case "harden":
             return _cmd_harden(args)
-        case "init-gate":
-            return _cmd_init_gate(args)
         case "lock":
             return _cmd_lock(args)
         case "gate":
@@ -177,6 +171,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
         policy=policy,
         target_policy_ignored=target_policy_ignored,
         full_report=bool(getattr(args, "full", False)),
+        default_excludes=not bool(getattr(args, "include_fixtures", False)),
     )
     findings_doc = scan.to_findings_doc()
     findings_doc["suppressions"] = payload.get("suppressions") or []
@@ -355,13 +350,13 @@ def _cmd_lock(args: argparse.Namespace) -> int:
 
 
 def _cmd_gate(args: argparse.Namespace) -> int:
-    """Base→head lock gate with CODEOWNERS / PR-approval enforcement."""
+    """Base→head lock gate: growth label + CODEOWNERS / ruleset check."""
     report, code = run_gate(
         args.path,
         base_lock=args.base_lock,
         head_lock=getattr(args, "head_lock", None),
-        approved_by=list(getattr(args, "approved_by", None) or []),
         codeowners_path=getattr(args, "codeowners", None),
+        check_ruleset=not bool(getattr(args, "skip_ruleset_check", False)),
     )
     if getattr(args, "agent", False):
         print_json(report)
@@ -381,6 +376,8 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
         home=getattr(args, "home", None),
         output_dir=getattr(args, "output_dir", None),
         fail_on=getattr(args, "fail_on", None),
+        since_lock=bool(getattr(args, "since_lock", False)),
+        lock_file=getattr(args, "lock_file", None),
     )
     if getattr(args, "agent", False):
         out = getattr(args, "output_dir", None)

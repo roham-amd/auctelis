@@ -3,7 +3,7 @@
 ## Requirements
 
 - Python **3.12+** (uv can fetch a managed interpreter)
-- Git (for `authdiff open` / `vet` of remote URLs)
+- Git (for `authdiff vet` of remote URLs)
 - Optional: Docker for the digest-pinned image
 
 ## Canonical install (one command)
@@ -28,18 +28,18 @@ repository `examples/` tree.
 **One-shot demo** (`uvx` is ephemeral — it does not leave a persistent `authdiff` on PATH):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools" authdiff demo
+uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools" authdiff demo
 ```
 
 **Persistent tool install:**
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/authdiff.git@v0.3.2#subdirectory=tools"
 
 authdiff demo
 authdiff doctor
-authdiff open github.com/org/some-skill
+authdiff vet github.com/org/some-skill
 authdiff scan .
 authdiff lock
 authdiff ci init --owner @you
