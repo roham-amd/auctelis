@@ -6,14 +6,14 @@ import json
 from contextlib import ExitStack
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.cli.parser import PUBLIC_PATH, build_parser, normalize_argv
-from authdiff.doctor import stage_all_host_surfaces
-from authdiff.export.pr_comment import render_authority_diff_comment
-from authdiff.gate import growth_label
-from authdiff.inventory.collector import collect_inventory
-from authdiff.security.gating import is_high_gate_finding
-from authdiff.security.models import Finding
+from auctelis.cli import main
+from auctelis.cli.parser import PUBLIC_PATH, build_parser, normalize_argv
+from auctelis.doctor import stage_all_host_surfaces
+from auctelis.export.pr_comment import render_authority_diff_comment
+from auctelis.gate import growth_label
+from auctelis.inventory.collector import collect_inventory
+from auctelis.security.gating import is_high_gate_finding
+from auctelis.security.models import Finding
 
 
 def test_public_path_constant_and_version_flag():
@@ -49,7 +49,7 @@ def test_growth_label_replaces_approval_matching():
 def test_inferred_hint_high_is_not_high_gate():
     finding = Finding(
         finding_id="F-1",
-        rule_id="AUTHDIFF-RULE-001",
+        rule_id="AUCTELIS-RULE-001",
         title="Skill references executable scripts",
         severity="HIGH",
         confidence="POTENTIAL",

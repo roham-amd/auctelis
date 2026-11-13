@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://github.com/roham-amd/authdiff/blob/main/docs/DOCUMENTATION-INDEX.md
+    url: https://github.com/roham-amd/auctelis/blob/main/docs/DOCUMENTATION-INDEX.md
     about: Product contract, install, CLI, lock, and gate docs
   - name: Security advisories
-    url: https://github.com/roham-amd/authdiff/security/advisories/new
+    url: https://github.com/roham-amd/auctelis/security/advisories/new
     about: Report a vulnerability privately

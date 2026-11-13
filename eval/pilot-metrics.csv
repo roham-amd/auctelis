@@ -1,4 +1,4 @@
 repo,started_on,install_to_first_lock_minutes,pr_output_useful,false_positives,false_negatives,action_still_enabled_day30,unverified_growth_prs,total_growth_prs,reviewer,notes
-# One row per external pilot. Do not count roham-amd/authdiff dogfood.
+# One row per external pilot. Do not count roham-amd/auctelis dogfood.
 # pr_output_useful: yes | partial | no
 # action_still_enabled_day30: yes | no | pending

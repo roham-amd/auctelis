@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.policy import load_policy
+from auctelis.cli import main
+from auctelis.policy import load_policy
 
 
 def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
@@ -78,5 +78,5 @@ def test_ci_init_policy_ignore_empty_list(tmp_path: Path):
     root = tmp_path / "fresh"
     root.mkdir()
     assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0
-    policy = load_policy(root / ".authdiff.yml")
+    policy = load_policy(root / ".auctelis.yml")
     assert policy.suppressions == []

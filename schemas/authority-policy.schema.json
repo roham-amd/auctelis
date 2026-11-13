@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/roham-amd/authdiff/schemas/authority-policy.schema.json",
-  "title": ".authdiff.yml policy-as-code",
-  "description": "Canonical contract for repository policy. Must match fields consumed by authdiff.policy.load_policy (custom YAML subset; schema is the published contract).",
+  "$id": "https://github.com/roham-amd/auctelis/schemas/authority-policy.schema.json",
+  "title": ".auctelis.yml policy-as-code",
+  "description": "Canonical contract for repository policy. Must match fields consumed by auctelis.policy.load_policy (custom YAML subset; schema is the published contract).",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "policy"],
@@ -31,7 +31,7 @@
             "properties": {
               "rule": {
                 "type": "string",
-                "pattern": "^AUTHDIFF-RULE-\\d{3}$"
+                "pattern": "^AUCTELIS-RULE-\\d{3}$"
               },
               "path": { "type": "string", "default": "**" },
               "justification": { "type": "string", "minLength": 1 },

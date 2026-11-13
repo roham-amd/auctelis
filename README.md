@@ -1,10 +1,10 @@
-# authdiff
+# Auctelis
 
 **The authority lockfile and PR security gate for AI agents**
 
 > Know what authority your AI agents have, what changes when integrations are introduced, and whether those changes have been approved.
 
-`authdiff` inventories AI-agent authority (skills, MCP, hooks, plugins, subagents,
+`auctelis` inventories AI-agent authority (skills, MCP, hooks, plugins, subagents,
 CI, host configs), locks the approved state in `AUTHORITY.lock`, and fails CI when
 authority expands without review.
 
@@ -30,54 +30,54 @@ committed [`AUTHORITY.lock`](docs/AUTHORITY-LOCK.md) — not a long report.
 
 ```bash
 # Working install (git tag — PyPI is not published yet):
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools" authdiff doctor
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools" auctelis doctor
 
 # Later, once the package is on the index:
-# uvx --from authdiff authdiff doctor
+# uvx --from auctelis auctelis doctor
 ```
 
 Persistent install (if continuing):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools"
 
-authdiff doctor                  # your host authority map (the aha)
-authdiff doctor --since-lock     # one-screen delta vs ~/.authdiff/AUTHORITY.lock
-authdiff lock --home             # seal ~/.authdiff/AUTHORITY.lock
-authdiff                         # bare CLI → doctor, or scan . when lock/policy exists
-authdiff demo                    # canned evil fixture (optional)
-authdiff vet github.com/org/some-skill
-authdiff lock                    # write repo AUTHORITY.lock (--accept-gated if needed)
-authdiff gate --base-lock path/to/base.lock  # label growth; CODEOWNERS/rulesets enforce
-authdiff ci init --owner @you    # .authdiff.yml + workflow + CODEOWNERS
-authdiff check --locked          # fail on lock drift
+auctelis doctor                  # your host authority map (the aha)
+auctelis doctor --since-lock     # one-screen delta vs ~/.auctelis/AUTHORITY.lock
+auctelis lock --home             # seal ~/.auctelis/AUTHORITY.lock
+auctelis                         # bare CLI → doctor, or scan . when lock/policy exists
+auctelis demo                    # canned evil fixture (optional)
+auctelis vet github.com/org/some-skill
+auctelis lock                    # write repo AUTHORITY.lock (--accept-gated if needed)
+auctelis gate --base-lock path/to/base.lock  # label growth; CODEOWNERS/rulesets enforce
+auctelis ci init --owner @you    # .auctelis.yml + workflow + CODEOWNERS
+auctelis check --locked          # fail on lock drift
 ```
 
-Hook (Claude Code): `tools/authdiff/templates/claude-pretool-authority-hook.sh`
+Hook (Claude Code): `tools/auctelis/templates/claude-pretool-authority-hook.sh`
 (Python JSON parser; thin shell wrapper).
 
 Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional).
 
-Artifacts default to **`./authdiff-out`**. Target `.authdiff.yml` suppressions are **ignored**
+Artifacts default to **`./auctelis-out`**. Target `.auctelis.yml` suppressions are **ignored**
 unless you pass `--policy` or `--trust-target-policy`. Use `--agent` for a compact
 fenced JSON digest. Use `--full` for the long report. Agents should export
-`AUTHDIFF_AGENT=1` so mutating lock/policy paths are refused.
+`AUCTELIS_AGENT=1` so mutating lock/policy paths are refused.
 
-**Install honesty:** authdiff is **not on PyPI yet**. Install from a git tag (or pin a
+**Install honesty:** auctelis is **not on PyPI yet**. Install from a git tag (or pin a
 commit SHA). Prefer an immutable Action commit SHA in high-assurance repos.
 
 ### Core commands
 
 | Command | Purpose |
 | --- | --- |
-| `authdiff doctor` | Host authority map (lead with this) |
-| `authdiff lock` / `lock --home` | Write repo or `~/.authdiff` lock (`--snapshot`, `--accept-gated`) |
-| `authdiff` / `scan` / `check` | Repo authority scan (add `--locked`) |
-| `authdiff gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
-| `authdiff ci init --owner @user` | `.authdiff.yml` + lock-first workflow + CODEOWNERS |
-| `authdiff vet` | Pre-install annotations (safe shallow clone; no REJECT from hints) |
-| `authdiff demo` | Packaged evil fixture (optional aha) |
+| `auctelis doctor` | Host authority map (lead with this) |
+| `auctelis lock` / `lock --home` | Write repo or `~/.auctelis` lock (`--snapshot`, `--accept-gated`) |
+| `auctelis` / `scan` / `check` | Repo authority scan (add `--locked`) |
+| `auctelis gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
+| `auctelis ci init --owner @user` | `.auctelis.yml` + lock-first workflow + CODEOWNERS |
+| `auctelis vet` | Pre-install annotations (safe shallow clone; no REJECT from hints) |
+| `auctelis demo` | Packaged evil fixture (optional aha) |
 
 Review / advanced / maintainer tiers: [`docs/PRODUCT.md`](docs/PRODUCT.md) ·
 [`docs/CLI-REFERENCE.md`](docs/CLI-REFERENCE.md).
@@ -95,7 +95,7 @@ Research/archive trees were removed in 0.3.0; see [`docs/ROADMAP.md`](docs/ROADM
 ## CI gate
 
 Single recipe (git-tag install + Action). Full example:
-[`docs/authdiff-consumer-gate.example.yml`](docs/authdiff-consumer-gate.example.yml).
+[`docs/auctelis-consumer-gate.example.yml`](docs/auctelis-consumer-gate.example.yml).
 
 ```yaml
 - uses: actions/checkout@v4
@@ -104,9 +104,9 @@ Single recipe (git-tag install + Action). Full example:
 # PyPI not published yet — install from the pinned kit tag, then use Action-bundled tools:
 - run: >
     pip install
-    "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools"
-# Prefer: uses: roham-amd/authdiff/.github/actions/authdiff-gate@<commit-sha>
-- uses: roham-amd/authdiff/.github/actions/authdiff-gate@v0.3.3
+    "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools"
+# Prefer: uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
+- uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.3.3
   with:
     path: .
     trusted-policy: "true"
@@ -116,7 +116,7 @@ Single recipe (git-tag install + Action). Full example:
 ```
 
 Pin the Action by **immutable commit SHA** in high-assurance repos
-(see [`docs/AUTHDIFF-GATE.md`](docs/AUTHDIFF-GATE.md)). Tag pins are convenient but mutable.
+(see [`docs/AUCTELIS-GATE.md`](docs/AUCTELIS-GATE.md)). Tag pins are convenient but mutable.
 
 With `authority-diff=true`, the Action scans the PR **base** ref and diffs it
 against **head**. With `trusted-policy=true`, policy loads from the base ref.
@@ -124,7 +124,7 @@ against **head**. With `trusted-policy=true`, policy loads from the base ref.
 
 ---
 
-## What authdiff evaluates
+## What auctelis evaluates
 
 Skills, MCP servers, hooks, plugins, subagents, rules, automations, CI
 workflows, and host agent configuration. Finding classes: only

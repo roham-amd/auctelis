@@ -1,9 +1,9 @@
-# Sample authdiff scan artifacts
+# Sample auctelis scan artifacts
 
-Generated from `examples/demo-vulnerable` with authdiff **0.3.1** / tooling **0.3.1**:
+Generated from `examples/demo-vulnerable` with auctelis **0.3.1** / tooling **0.3.1**:
 
 ```bash
-authdiff scan examples/demo-vulnerable -o examples/guard-scan --full --fail-on never
+auctelis scan examples/demo-vulnerable -o examples/guard-scan --full --fail-on never
 ```
 
 These illustrate the findings / Authority Diff / SBOM contract shape. They are

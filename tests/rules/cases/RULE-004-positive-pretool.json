@@ -1,6 +1,6 @@
 {
   "id": "RULE-004-positive-pretool",
-  "rule_id": "AUTHDIFF-RULE-004",
+  "rule_id": "AUCTELIS-RULE-004",
   "variant": "positive",
   "fixture": "fixtures/rule-004-positive-pretool",
   "expect": {

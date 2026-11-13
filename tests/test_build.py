@@ -1,4 +1,4 @@
-from authdiff.build import build_all, check_schema_parity
+from auctelis.build import build_all, check_schema_parity
 
 
 def test_build_all_succeeds():

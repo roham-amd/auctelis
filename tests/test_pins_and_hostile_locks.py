@@ -5,15 +5,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.authority_lock import (
+from auctelis.authority_lock import (
     args_digest,
     build_authority_lock,
     diff_authority_locks,
     write_authority_lock,
 )
-from authdiff.cli import main
-from authdiff.gate import run_gate
-from authdiff.lock_io import AuthorityLockError, load_authority_lock, validate_authority_lock
+from auctelis.cli import main
+from auctelis.gate import run_gate
+from auctelis.lock_io import AuthorityLockError, load_authority_lock, validate_authority_lock
 
 
 def _mcp(root: Path, servers: dict) -> None:

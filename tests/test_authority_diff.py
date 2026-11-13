@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.inventory.adapters.mcp import _package_looks_pinned
-from authdiff.security.authority import build_authority_snapshot, diff_authority_snapshots
-from authdiff.security.baseline import diff_against_baseline, save_baseline
-from authdiff.security.decision import compute_decision
-from authdiff.security.scan import run_scan
-from authdiff.vet import resolve_vet_source
+from auctelis.inventory.adapters.mcp import _package_looks_pinned
+from auctelis.security.authority import build_authority_snapshot, diff_authority_snapshots
+from auctelis.security.baseline import diff_against_baseline, save_baseline
+from auctelis.security.decision import compute_decision
+from auctelis.security.scan import run_scan
+from auctelis.vet import resolve_vet_source
 
 
 def test_package_pin_semantics():

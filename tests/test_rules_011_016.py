@@ -1,11 +1,11 @@
-"""Direct coverage for rule pack 1.2 (AUTHDIFF-RULE-011…016) and MCP hint helpers."""
+"""Direct coverage for rule pack 1.2 (AUCTELIS-RULE-011…016) and MCP hint helpers."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.inventory.adapters.mcp import _looks_unpinned_launcher, _package_looks_pinned
-from authdiff.security.engine import run_security_scan
+from auctelis.inventory.adapters.mcp import _looks_unpinned_launcher, _package_looks_pinned
+from auctelis.security.engine import run_security_scan
 
 
 def test_package_pin_detection_scoped_vs_versioned():
@@ -27,7 +27,7 @@ def test_rule_011_unpinned_fires(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-011")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-011")
     assert hit.finding_class == "SECURITY_FINDING"
     assert hit.severity == "HIGH"
     assert hit.evidence_strength == "LITERAL_CONFIG"
@@ -43,7 +43,7 @@ def test_rule_012_literal_secret(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-012")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-012")
     assert hit.severity == "CRITICAL"
     assert hit.evidence_strength == "LITERAL_CONFIG"
 
@@ -57,7 +57,7 @@ def test_rule_012_placeholder_env_does_not_fire(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    assert not any(f.rule_id == "AUTHDIFF-RULE-012" for f in scan.findings)
+    assert not any(f.rule_id == "AUCTELIS-RULE-012" for f in scan.findings)
 
 
 def test_rule_013_http_remote(tmp_path: Path):
@@ -68,7 +68,7 @@ def test_rule_013_http_remote(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-013")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-013")
     assert hit.severity == "HIGH"
 
 
@@ -81,7 +81,7 @@ def test_rule_014_hidden_unicode(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-014")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-014")
     assert hit.finding_class == "SECURITY_FINDING"
 
 
@@ -94,7 +94,7 @@ def test_rule_015_curl_pipe(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-015")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-015")
     assert hit.severity == "CRITICAL"
 
 
@@ -109,7 +109,7 @@ def test_rule_016_pr_target_agent(tmp_path: Path):
         encoding="utf-8",
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-016")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-016")
     assert hit.severity == "HIGH"
     assert hit.evidence_strength == "LITERAL_CONFIG"
 
@@ -119,7 +119,7 @@ def test_rule_010_name_marker_strength():
         Path(__file__).resolve().parents[0] / "rules" / "fixtures" / "rule-010-positive-injection"
     )
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-010")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-010")
     assert hit.evidence_strength == "NAME_MARKER"
     assert hit.finding_class == "CAPABILITY"
     assert hit.severity == "LOW"
@@ -128,7 +128,7 @@ def test_rule_010_name_marker_strength():
 def test_rule_010_content_abuse_strength():
     root = Path(__file__).resolve().parents[0] / "rules" / "fixtures" / "rule-010-positive-content"
     scan = run_security_scan(root)
-    hit = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-010")
+    hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-010")
     # Heuristic instruction phrasing is INFERRED_HINT (not LITERAL_CONFIG), EXPOSURE/MEDIUM.
     assert hit.evidence_strength == "INFERRED_HINT"
     assert hit.finding_class == "EXPOSURE"

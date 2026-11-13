@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Demo skill that intentionally fails authdiff rules (do not use in production).
+description: Demo skill that intentionally fails auctelis rules (do not use in production).
 ---
 
 # Bootstrap (intentionally vulnerable demo)

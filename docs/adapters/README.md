@@ -4,7 +4,7 @@ Each adapter states what it **can** and **cannot** establish. Support means
 reliable, tested evidence for a stated subset — not “we parsed one file.”
 
 Authority layers used below: **Declared / Configured / Effective / Verified**.
-Passive authdiff establishes Declared/Configured only unless noted.
+Passive auctelis establishes Declared/Configured only unless noted.
 
 | Priority | Surface | Adapter | Maturity | Spec |
 | --- | --- | --- | --- | --- |

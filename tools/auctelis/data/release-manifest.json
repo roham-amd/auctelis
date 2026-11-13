@@ -1,0 +1,60 @@
+{
+  "manifest_version": "1.0",
+  "product": "auctelis",
+  "product_version": "0.3.3",
+  "package_name": "auctelis",
+  "package_version": "0.3.3",
+  "primary_command": "auctelis gate",
+  "north_star": "Know what authority your AI agents have, what changes when integrations are introduced, and whether those changes have been approved.",
+  "positioning": "The authority lockfile and PR security gate for AI agents.",
+  "release_status": "pre-1.0",
+  "contracts": {
+    "audit_procedure": "1.0",
+    "audit_report_schema": "1.0",
+    "findings_contract": "1.2",
+    "baseline_contract": "1.3",
+    "rule_pack": "1.6",
+    "rule_quality_pack": "1.2.0",
+    "host_profiles": "1.1.0",
+    "policy_contract": "1.3",
+    "authority_snapshot": "1.0",
+    "authority_lock": "1.0"
+  },
+  "interfaces": {
+    "cli": true,
+    "doctor": true,
+    "vet": true,
+    "open_alias": false,
+    "fix_alias": false,
+    "demo": true,
+    "auctelis_entrypoint": true,
+    "github_action": true,
+    "policy_file": true,
+    "host_profiles": true,
+    "host_registry_json": true,
+    "claude_settings_adapter": true,
+    "authority_snapshot": true,
+    "authority_lock": true,
+    "authority_sbom": true,
+    "require_review_gate": true,
+    "locked_action_default": true,
+    "ide": "deferred",
+    "mcp_server": "deferred",
+    "runtime_validation": "design_only",
+    "hosted_saas": "deferred",
+    "pypi": "not_published_yet_use_git_tag"
+  },
+  "assessment_model": {
+    "capability": "What a component can potentially do",
+    "exposure": "How reachable that capability is and under which identity",
+    "security_finding": "Evidenced violation of a defined security property",
+    "authority_layers": "DECLARED | CONFIGURED | EFFECTIVE | VERIFIED (passive scan = DECLARED/CONFIGURED only)",
+    "declared_vs_effective": "Host profiles declare configuration; effective permissions stay NOT VERIFIED without host/runtime evidence",
+    "evidence_strength": "LITERAL_CONFIG | INFERRED_HINT | NAME_MARKER",
+    "decision": "BLOCK | REVIEW | NO-GATED-FINDINGS (HIGH/CRITICAL BLOCK requires LITERAL_CONFIG; INFERRED_HINT never alone REJECT/BLOCK; NAME_MARKER never gates; unparsed configs fail closed as REVIEW; gated findings require evidence_ids)"
+  },
+  "compatibility": {
+    "supported_product_line": "0.x",
+    "minimum_python": "3.12"
+  }
+}

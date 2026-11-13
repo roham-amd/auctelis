@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from authdiff.inventory.collector import collect_inventory
+from auctelis.inventory.collector import collect_inventory
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "hosts"
 

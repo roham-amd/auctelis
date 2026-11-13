@@ -6,45 +6,45 @@ from pathlib import Path
 
 import pytest
 
-from authdiff.security.decision import compute_decision
-from authdiff.security.scan import run_scan
+from auctelis.security.decision import compute_decision
+from auctelis.security.scan import run_scan
 
 _REPLAY = Path(__file__).resolve().parents[1] / "examples" / "attack-replay"
 
 _CASES = [
     pytest.param(
         "01-sessionstart-curl-env",
-        {"AUTHDIFF-RULE-015", "AUTHDIFF-RULE-004"},
+        {"AUCTELIS-RULE-015", "AUCTELIS-RULE-004"},
         None,
         id="01-sessionstart-curl-env",
     ),
     pytest.param(
         "02-enable-all-project-mcp",
-        {"AUTHDIFF-RULE-018", "AUTHDIFF-RULE-017"},
+        {"AUCTELIS-RULE-018", "AUCTELIS-RULE-017"},
         None,
         id="02-enable-all-project-mcp",
     ),
     pytest.param(
         "03-base-url-hijack",
-        {"AUTHDIFF-RULE-019"},
+        {"AUCTELIS-RULE-019"},
         None,
         id="03-base-url-hijack",
     ),
     pytest.param(
         "04-mcp-bash-pipe",
-        {"AUTHDIFF-RULE-015"},
+        {"AUCTELIS-RULE-015"},
         None,
         id="04-mcp-bash-pipe",
     ),
     pytest.param(
         "05-skill-sudo-pipe",
-        {"AUTHDIFF-RULE-015"},
+        {"AUCTELIS-RULE-015"},
         None,
         id="05-skill-sudo-pipe",
     ),
     pytest.param(
         "06-hidden-html-comment",
-        {"AUTHDIFF-RULE-010"},
+        {"AUCTELIS-RULE-010"},
         None,
         id="06-hidden-html-comment",
     ),
@@ -56,19 +56,19 @@ _CASES = [
     ),
     pytest.param(
         "08-pr-target-agent",
-        {"AUTHDIFF-RULE-016"},
+        {"AUCTELIS-RULE-016"},
         None,
         id="08-pr-target-agent",
     ),
     pytest.param(
         "09-literal-mcp-secret",
-        {"AUTHDIFF-RULE-012"},
+        {"AUCTELIS-RULE-012"},
         None,
         id="09-literal-mcp-secret",
     ),
     pytest.param(
         "10-unpinned-npx",
-        {"AUTHDIFF-RULE-011"},
+        {"AUCTELIS-RULE-011"},
         None,
         id="10-unpinned-npx",
     ),
@@ -86,7 +86,7 @@ def test_attack_replay_expected_signals(
     if special == "flex_unparsed_or_rule011":
         unparsed = int(scan.coverage.get("unparsed_agent_config_count") or 0)
         assert (
-            "AUTHDIFF-RULE-011" in fired
+            "AUCTELIS-RULE-011" in fired
             or unparsed > 0
             or compute_decision(scan.findings, coverage=scan.coverage) == "REVIEW"
         ), (fired, unparsed, scan.parser_events)

@@ -1,12 +1,12 @@
-authdiff — Authority Diff for AI agents
-Product: authdiff 0.3.1  (tooling 0.3.1)
-Repository: C:\Users\rohaa\Projects\authdiff\examples\demo-vulnerable
+auctelis — Authority Diff for AI agents
+Product: auctelis 0.3.1  (tooling 0.3.1)
+Repository: C:\Users\rohaa\Projects\auctelis\examples\demo-vulnerable
 Commit: 827a4f339dee9add20a1f4b11bc63d5ba975b562
 
 DECISION: BLOCK
   BLOCK: 7 high/critical authority issue(s) require a fix or explicit risk acceptance before merge/install.
   Observed 11 gated finding(s) and 2 capability observation(s).
-  Next: `authdiff explain F-00N` for evidence, or `authdiff fix` for dry-run fix patches.
+  Next: `auctelis explain F-00N` for evidence, or `auctelis fix` for dry-run fix patches.
   Coverage: 20% SUPPORTED (1/5); PARTIAL=4 MANUAL_ONLY=0 — clean result ≠ safe.
 
 DECISION SUMMARY
@@ -133,9 +133,9 @@ NOT VERIFIED
 
 RESIDUAL RISK / NEXT ACTIONS
   1. Review AUTHORITY SURFACES above before install/merge/deploy.
-  2. `authdiff lock` then protect AUTHORITY.lock with CODEOWNERS.
-  3. `authdiff explain F-00N` for evidence, attack path, and remediation.
-  4. Optional AI deep review: skills/authdiff-auditor (consumes this evidence).
+  2. `auctelis lock` then protect AUTHORITY.lock with CODEOWNERS.
+  3. `auctelis explain F-00N` for evidence, attack path, and remediation.
+  4. Optional AI deep review: skills/auctelis-auditor (consumes this evidence).
 
 IMPORTANT
   Capability ≠ vulnerability. Exposure ≠ confirmed exploit.

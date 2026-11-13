@@ -1,6 +1,6 @@
 {
   "id": "RULE-014-negative-clean",
-  "rule_id": "AUTHDIFF-RULE-014",
+  "rule_id": "AUCTELIS-RULE-014",
   "variant": "negative",
   "fixture": "fixtures/rule-014-negative-clean",
   "expect": {

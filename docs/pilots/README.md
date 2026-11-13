@@ -1,6 +1,6 @@
 # External pilots
 
-Track whether independent repositories keep the authdiff check enabled.
+Track whether independent repositories keep the auctelis check enabled.
 
 Normative procedure: [`../EVALUATION-PROTOCOL.md`](../EVALUATION-PROTOCOL.md).  
 Live tracker: [`TRACKER.md`](TRACKER.md).  
@@ -11,7 +11,7 @@ Metrics log: [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv).
 
 A slot is **active** only when:
 
-1. An outside repository (not `roham-amd/authdiff`) installs the Action or equivalent `authdiff gate` CI check.
+1. An outside repository (not `roham-amd/auctelis`) installs the Action or equivalent `auctelis gate` CI check.
 2. `AUTHORITY.lock` is committed and CODEOWNERS-protected.
 3. The check remains required on the default branch for **30 consecutive days**.
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from authdiff.hosts.profiles import get_host_profile, list_host_profiles
-from authdiff.inventory.collector import collect_inventory
+from auctelis.hosts.profiles import get_host_profile, list_host_profiles
+from auctelis.inventory.collector import collect_inventory
 
 
 def test_host_profiles_include_cursor_and_claude():

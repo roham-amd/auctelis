@@ -5,16 +5,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.inventory.jsonc import loads_json_tolerant
-from authdiff.security.decision import compute_decision
-from authdiff.security.scan import run_scan
-from authdiff.versioning import product_version
+from auctelis.inventory.jsonc import loads_json_tolerant
+from auctelis.security.decision import compute_decision
+from auctelis.security.scan import run_scan
+from auctelis.versioning import product_version
 
 
 def test_product_version_resolves_without_checkout(monkeypatch, tmp_path: Path):
     """Installed wheels must not require repo-root VERSION."""
-    import authdiff.paths as paths
-    import authdiff.versioning as versioning
+    import auctelis.paths as paths
+    import auctelis.versioning as versioning
 
     missing = tmp_path / "nope" / "VERSION"
     monkeypatch.setattr(paths, "version_file_path", lambda: missing)
@@ -43,7 +43,7 @@ def test_benign_mcp_env_is_not_critical(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    rule002 = [f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-002"]
+    rule002 = [f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-002"]
     assert rule002
     assert all(f.severity == "INFORMATIONAL" for f in rule002)
     assert all(f.finding_class == "CAPABILITY" for f in rule002)
@@ -71,7 +71,7 @@ def test_project_abs_path_is_not_broad(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert not any(f.rule_id == "AUTHDIFF-RULE-002" and f.severity == "HIGH" for f in scan.findings)
+    assert not any(f.rule_id == "AUCTELIS-RULE-002" and f.severity == "HIGH" for f in scan.findings)
 
 
 def test_root_path_still_high(tmp_path: Path):
@@ -92,7 +92,7 @@ def test_root_path_still_high(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert any(f.rule_id == "AUTHDIFF-RULE-002" and f.severity == "HIGH" for f in scan.findings)
+    assert any(f.rule_id == "AUCTELIS-RULE-002" and f.severity == "HIGH" for f in scan.findings)
 
 
 def test_design_token_skill_not_gated(tmp_path: Path):
@@ -106,7 +106,7 @@ def test_design_token_skill_not_gated(tmp_path: Path):
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
     gated = [f for f in scan.findings if f.finding_class in {"SECURITY_FINDING", "EXPOSURE"}]
     assert not any(
-        f.rule_id == "AUTHDIFF-RULE-006" and f.finding_class == "SECURITY_FINDING" for f in gated
+        f.rule_id == "AUCTELIS-RULE-006" and f.finding_class == "SECURITY_FINDING" for f in gated
     )
 
 
@@ -119,7 +119,7 @@ def test_curl_sudo_bash_is_download_exec(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert any(f.rule_id == "AUTHDIFF-RULE-015" for f in scan.findings)
+    assert any(f.rule_id == "AUCTELIS-RULE-015" for f in scan.findings)
 
 
 def test_jsonc_mcp_parses(tmp_path: Path):
@@ -167,10 +167,10 @@ def test_claude_settings_auto_approve_and_base_url(tmp_path: Path):
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
     fired = {f.rule_id for f in scan.findings}
-    assert "AUTHDIFF-RULE-018" in fired
-    assert "AUTHDIFF-RULE-019" in fired
-    assert "AUTHDIFF-RULE-017" in fired
-    assert "AUTHDIFF-RULE-015" in fired
+    assert "AUCTELIS-RULE-018" in fired
+    assert "AUCTELIS-RULE-019" in fired
+    assert "AUCTELIS-RULE-017" in fired
+    assert "AUCTELIS-RULE-015" in fired
 
 
 def test_decision_label_is_no_gated_findings(tmp_path: Path):

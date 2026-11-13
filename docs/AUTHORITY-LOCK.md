@@ -4,7 +4,7 @@
 state** for a repository. It is more important than a long audit report.
 
 Schema: [`../schemas/authority-lock.schema.json`](../schemas/authority-lock.schema.json)  
-Implementation: `tools/authdiff/authority_lock.py`  
+Implementation: `tools/auctelis/authority_lock.py`  
 Version field: `version: 1` (record-level identity; sealed hash excludes volatile path/commit metadata)
 
 ---
@@ -16,7 +16,7 @@ Version field: `version: 1` (record-level identity; sealed hash excludes volatil
 | Observed authority-bearing components at lock time | Proof of effective runtime permissions |
 | Capabilities, destinations, env keys, pin/approval posture | That a component is “safe” |
 | Content digests / fingerprints for drift detection | Publisher trust or SBOM attestation (unless separately evidenced) |
-| Policy file hash when `.authdiff.yml` is present | Automatic approval of future expansions |
+| Policy file hash when `.auctelis.yml` is present | Automatic approval of future expansions |
 
 Updating the lock **is** the approval workflow: commit + CODEOWNERS review.
 
@@ -62,36 +62,36 @@ Rendered lock / PR lines include **field-level old → new** for capabilities,
 destinations, env keys, pin/approval posture, launcher, and digests, plus the
 evidence path (`@ path`). Representation-only moves surface `path: old → new`.
 
-`authdiff lock --check` and `check --locked` fail when `authority_changed` is
+`auctelis lock --check` and `check --locked` fail when `authority_changed` is
 true so digests stay honest. Reviewers should prioritize `meaningful_authority_change`.
 
 ---
 
 ## Human review (GitHub-native)
 
-`approvals[]` on the lock is **legacy / empty** — authdiff does not treat
+`approvals[]` on the lock is **legacy / empty** — auctelis does not treat
 self-asserted lock approvals as a gate input. Review is enforced by:
 
 1. CODEOWNERS coverage for `AUTHORITY.lock` (and other authority paths)
 2. A GitHub ruleset (or branch protection) requiring code-owner review
-3. `authdiff gate` labeling GROWTH vs REDUCTION vs the base-ref lock
+3. `auctelis gate` labeling GROWTH vs REDUCTION vs the base-ref lock
 
 `approved_findings[]` remains the explicit `--accept-gated` register for
 HIGH/CRITICAL findings sealed into a baseline (optional `acceptance_note`
 when `--approval` is also passed). Agents must not mutate locks
-(`AUTHDIFF_AGENT=1`).
+(`AUCTELIS_AGENT=1`).
 
 ---
 
 ## Commands
 
 ```bash
-authdiff lock                              # write / update AUTHORITY.lock
-authdiff lock --accept-gated [--approval @me]  # seal gated findings (notes only)
-authdiff lock --check                      # exit 1 on drift
-authdiff check --locked .                  # scan + lock drift gate
-authdiff gate --base-lock base.lock        # growth label + CODEOWNERS/ruleset
-authdiff diff lock A.lock B.lock
+auctelis lock                              # write / update AUTHORITY.lock
+auctelis lock --accept-gated [--approval @me]  # seal gated findings (notes only)
+auctelis lock --check                      # exit 1 on drift
+auctelis check --locked .                  # scan + lock drift gate
+auctelis gate --base-lock base.lock        # growth label + CODEOWNERS/ruleset
+auctelis diff lock A.lock B.lock
 ```
 
 Protect the file:
@@ -101,7 +101,7 @@ Protect the file:
 AUTHORITY.lock  @security-owner
 ```
 
-`authdiff ci init --owner @you` writes a CODEOWNERS stub for this path.
+`auctelis ci init --owner @you` writes a CODEOWNERS stub for this path.
 
 ### Pinned facts (0.3.0)
 
@@ -115,8 +115,8 @@ Each record may also seal:
 | `script_digest` | Content digest for hooks / skill trees |
 
 Same identity with a different launcher/args/host is a **`replacement`** (needs approval).
-Opt-in: `authdiff lock --snapshot tools.json` merges `mcp_tools` description pins;
-`authdiff lock --home` seals `~/.authdiff/AUTHORITY.lock`.
+Opt-in: `auctelis lock --snapshot tools.json` merges `mcp_tools` description pins;
+`auctelis lock --home` seals `~/.auctelis/AUTHORITY.lock`.
 
 ---
 
@@ -133,7 +133,7 @@ See [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md).
 
 ## Migration
 
-- **v1 → v2:** regenerate with `authdiff lock` (record-level format).
+- **v1 → v2:** regenerate with `auctelis lock` (record-level format).
 - Adding `identity_key` is backward compatible: older locks without the field
   are keyed via computed `host|kind|name` at diff time.
 - Do not hand-edit `lock_hash`; it is recomputed on write.
@@ -144,5 +144,5 @@ See [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md).
 
 - Rubber-stamping lock updates without reading expansion lines
 - Treating representation churn as a security regression
-- Using suppressions in `.authdiff.yml` instead of reviewing lock expansions
+- Using suppressions in `.auctelis.yml` instead of reviewing lock expansions
 - Letting a PR edit policy on the head ref without `trusted-policy` from base

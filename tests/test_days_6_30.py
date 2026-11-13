@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from authdiff.authority_lock import (
+from auctelis.authority_lock import (
     diff_authority_locks,
     field_level_change_bits,
     render_lock_diff_lines,
 )
-from authdiff.cli import main
-from authdiff.export.pr_comment import render_authority_diff_comment
-from authdiff.gate import (
+from auctelis.cli import main
+from auctelis.export.pr_comment import render_authority_diff_comment
+from auctelis.gate import (
     adoption_bootstrap_verdict,
     protection_status,
     render_gate_report,
@@ -131,7 +131,7 @@ def test_ruleset_missing_fails_growth(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
-    with patch("authdiff.gate.check_code_owner_ruleset", return_value=("MISSING", "no ruleset")):
+    with patch("auctelis.gate.check_code_owner_ruleset", return_value=("MISSING", "no ruleset")):
         report, code = run_gate(root, base_lock=base)
     assert code == 1
     assert report["verdict"] == "NEEDS_REVIEW"
@@ -153,7 +153,7 @@ def test_ruleset_ok_marks_protection_verified(tmp_path: Path):
         },
     )
     with patch(
-        "authdiff.gate.check_code_owner_ruleset",
+        "auctelis.gate.check_code_owner_ruleset",
         return_value=("OK", "ruleset requires code-owner review"),
     ):
         report, code = run_gate(root, base_lock=base)

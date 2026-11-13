@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.cli.parser import build_parser, normalize_argv
+from auctelis.cli import main
+from auctelis.cli.parser import build_parser, normalize_argv
 
 
 def test_normalize_argv_defaults_doctor_or_scan(tmp_path: Path):
@@ -23,7 +23,7 @@ def test_normalize_argv_defaults_doctor_or_scan(tmp_path: Path):
     assert normalize_argv(["check", "--locked", "."]) == ["check", "--locked", "."]
 
 
-def test_bare_authdiff_runs_scan(tmp_path: Path, capsys):
+def test_bare_auctelis_runs_scan(tmp_path: Path, capsys):
     root = tmp_path / "repo"
     root.mkdir()
     (root / "README.md").write_text("x\n", encoding="utf-8")
@@ -57,7 +57,7 @@ def test_cli_doctor_help_and_empty_home(tmp_path: Path, capsys):
     code = main(["doctor", "--home", str(home)])
     out = capsys.readouterr().out
     assert code == 0
-    assert "authdiff doctor" in out or "authdiff doctor" in out
+    assert "auctelis doctor" in out or "auctelis doctor" in out
     assert "no host config" in out.lower() or "absent" in out.lower()
 
 
@@ -66,9 +66,9 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     code = main(["ci", "init", str(root), "--owner", "@sec-owners"])
     out = capsys.readouterr().out
     assert code == 0
-    assert (root / ".authdiff.yml").is_file()
-    assert (root / ".github" / "workflows" / "authdiff-gate.yml").is_file()
-    workflow = (root / ".github" / "workflows" / "authdiff-gate.yml").read_text(encoding="utf-8")
+    assert (root / ".auctelis.yml").is_file()
+    assert (root / ".github" / "workflows" / "auctelis-gate.yml").is_file()
+    workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     assert "trusted-policy" in workflow
     assert "Wrote" in out
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
@@ -87,7 +87,7 @@ def test_cli_vet_local(tmp_path: Path, capsys):
     (skill / "SKILL.md").write_text("---\nname: ok\n---\nRead-only helper.\n", encoding="utf-8")
     code = main(["vet", str(root), "-o", str(tmp_path / "out")])
     out = capsys.readouterr().out
-    assert "authdiff vet" in out or "authdiff vet" in out
+    assert "auctelis vet" in out or "auctelis vet" in out
     assert "verdict:" in out
     assert code in {0, 1}
 
@@ -96,7 +96,7 @@ def test_cli_scan_ignores_parent_policy(tmp_path: Path, capsys):
     parent = tmp_path / "parent"
     child = parent / "repo"
     child.mkdir(parents=True)
-    (parent / ".authdiff.yml").write_text(
+    (parent / ".auctelis.yml").write_text(
         "version: 1\npolicy:\n  mode: enforce\n  fail_on: high\n",
         encoding="utf-8",
     )

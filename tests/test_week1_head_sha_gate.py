@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from authdiff.gate import adoption_bootstrap_verdict, check_code_owner_ruleset, growth_label
+from auctelis.gate import adoption_bootstrap_verdict, check_code_owner_ruleset, growth_label
 
 
 def test_growth_label_matrix():

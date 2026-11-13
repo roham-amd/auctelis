@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.authority_lock import write_authority_lock
-from authdiff.cli import main
-from authdiff.cli.parser import build_parser
+from auctelis.authority_lock import write_authority_lock
+from auctelis.cli import main
+from auctelis.cli.parser import build_parser
 
 
 def test_diff_lock_cli(tmp_path: Path, capsys):

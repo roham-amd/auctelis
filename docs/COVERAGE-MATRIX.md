@@ -1,6 +1,6 @@
-# authdiff coverage matrix
+# auctelis coverage matrix
 
-Authoritative runtime source: `tools/authdiff/inventory/coverage.py` → `ADAPTER_COVERAGE`  
+Authoritative runtime source: `tools/auctelis/inventory/coverage.py` → `ADAPTER_COVERAGE`  
 Emitted on every scan as `inventory.json` / `findings.json` → `coverage.adapter_matrix`.
 
 A clean scan means **nothing risky was detected in the supported subset**, not
@@ -8,7 +8,7 @@ that the ecosystem was comprehensively examined. Coverage is a first-class
 product output.
 
 **Authority layers:** Declared → Configured → Effective → Verified. Passive
-authdiff establishes Declared/Configured only. See [`adapters/`](adapters/) for
+auctelis establishes Declared/Configured only. See [`adapters/`](adapters/) for
 per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 
 ## Maturity labels
@@ -19,7 +19,7 @@ per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 | `PARTIAL` | Discovery exists; format gaps or host binding remain |
 | `EXPERIMENTAL` | Best-effort; expect misses |
 | `MANUAL_ONLY` | Checklist / module only — no dedicated adapter |
-| `UNSUPPORTED` | Out of scope for passive authdiff |
+| `UNSUPPORTED` | Out of scope for passive auctelis |
 
 ## Surface coverage
 

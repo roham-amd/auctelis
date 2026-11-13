@@ -1,6 +1,6 @@
 # External evaluation protocol
 
-How to judge authdiff quality without mistaking one demo scan for proof.
+How to judge auctelis quality without mistaking one demo scan for proof.
 
 Related: [`ROADMAP.md`](ROADMAP.md), [`tests/rules/`](../tests/rules/),
 [`tests/atlas/`](../tests/atlas/) (fixture corpus).
@@ -27,15 +27,15 @@ Live tracker: [`pilots/TRACKER.md`](pilots/TRACKER.md). Metrics: [`../eval/pilot
 | 4 | Plugin / connector permissions |
 | 5 | CI workflows with agent/MCP steps |
 
-Self-dogfood of `roham-amd/authdiff` does **not** count. Historical pre-0.3.0
+Self-dogfood of `roham-amd/auctelis` does **not** count. Historical pre-0.3.0
 pilot notes were removed in the shrink; cite only rows with day-30 retention evidence.
 
 ## Procedure (per repository)
 
 ```bash
-authdiff vet <owner/repo> -o authdiff-out-pilot/<slug>
+auctelis vet <owner/repo> -o auctelis-out-pilot/<slug>
 # or, for a local checkout:
-authdiff scan <path> -o authdiff-out-pilot/<slug> --full
+auctelis scan <path> -o auctelis-out-pilot/<slug> --full
 ```
 
 Capture:

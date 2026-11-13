@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.authority_lock import (
+from auctelis.authority_lock import (
     build_authority_lock,
     check_locked,
     classify_record_change,
@@ -13,8 +13,8 @@ from authdiff.authority_lock import (
     identity_key,
     write_authority_lock,
 )
-from authdiff.cli import main
-from authdiff.lock_io import load_authority_lock
+from auctelis.cli import main
+from auctelis.lock_io import load_authority_lock
 
 
 def _repo_with_mcp(root: Path, servers: dict) -> None:
@@ -157,7 +157,7 @@ def test_load_authority_lock_roundtrip(tmp_path: Path):
 
 def test_build_authority_lock_reuses_scan(tmp_path: Path, monkeypatch):
     """``scan --locked`` must not pay for a second full security scan."""
-    from authdiff.security import engine as engine_mod
+    from auctelis.security import engine as engine_mod
 
     root = tmp_path / "repo"
     _repo_with_mcp(root, {"x": {"command": "node", "args": ["x.js"]}})
@@ -170,7 +170,7 @@ def test_build_authority_lock_reuses_scan(tmp_path: Path, monkeypatch):
 
     monkeypatch.setattr(engine_mod, "run_security_scan", counted)
     # Import after patch so authority_lock sees the same module attribute.
-    from authdiff import authority_lock as lock_mod
+    from auctelis import authority_lock as lock_mod
 
     monkeypatch.setattr(lock_mod, "run_security_scan", counted)
     scan = lock_mod.run_security_scan(root)

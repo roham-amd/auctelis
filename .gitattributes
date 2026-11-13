@@ -1,7 +1,7 @@
 # Keep corpus / fixture digests stable across Windows checkouts.
 tests/corpus/** text eol=lf
 examples/demo-vulnerable/** text eol=lf
-tools/authdiff/data/demo-vulnerable/** text eol=lf
+tools/auctelis/data/demo-vulnerable/** text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 *.json text eol=lf

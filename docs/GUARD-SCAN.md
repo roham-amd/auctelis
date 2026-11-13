@@ -1,23 +1,23 @@
-# authdiff scan — operator guide
+# auctelis scan — operator guide
 
 Guard scan path for **0.3.3**: deterministic discovery plus evidence-backed
-observations via `authdiff scan` / `check`, with capability / exposure / finding
+observations via `auctelis scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
-Artifacts land in cwd `./authdiff-out` (not inside the target tree).
+Artifacts land in cwd `./auctelis-out` (not inside the target tree).
 
-Companion commands: `authdiff doctor`, `authdiff vet`, and
-`authdiff lock` (committed authority lockfile).
+Companion commands: `auctelis doctor`, `auctelis vet`, and
+`auctelis lock` (committed authority lockfile).
 
 Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md),
 [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md), [`CLI-REFERENCE.md`](CLI-REFERENCE.md),
 [`SECURITY-RULES.md`](SECURITY-RULES.md), [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md),
-[`POLICY.md`](POLICY.md), [`AUTHDIFF-GATE.md`](AUTHDIFF-GATE.md).
+[`POLICY.md`](POLICY.md), [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md).
 
 ---
 
 ## What Guard scan is
 
-`authdiff scan` answers, for a local repository tree:
+`auctelis scan` answers, for a local repository tree:
 
 1. What agent-ecosystem components exist?
 2. What security-relevant **capabilities** do they appear to have?
@@ -49,10 +49,10 @@ Repository (untrusted data)
         │
         ▼
 ┌───────────────────┐
-│  authdiff scan    │  Deterministic facts + OBSERVED/POTENTIAL findings
+│  auctelis scan    │  Deterministic facts + OBSERVED/POTENTIAL findings
 │  (core engine)    │
 └─────────┬─────────┘
-          │ authdiff-out/
+          │ auctelis-out/
           ▼
 ┌───────────────────┐
 │  Optional AI      │  Explain evidence; never source of truth
@@ -72,28 +72,28 @@ Principle: never ask an LLM to establish a fact the CLI can establish; never let
 
 ```bash
 # Recommended first command (git-tag uvx or uv tool install — see INSTALL.md):
-authdiff doctor
+auctelis doctor
 
-# Against a real tree (bare `authdiff` → doctor, or scan . when lock/policy exists):
-authdiff /path/to/target-repo
-authdiff lock /path/to/target-repo
-authdiff explain F-001 -o ./authdiff-out   # if findings exist
+# Against a real tree (bare `auctelis` → doctor, or scan . when lock/policy exists):
+auctelis /path/to/target-repo
+auctelis lock /path/to/target-repo
+auctelis explain F-001 -o ./auctelis-out   # if findings exist
 ```
 
 From a checkout:
 
 ```bash
 cd tools && uv sync --locked
-uv run authdiff demo
-uv run authdiff scan /path/to/target-repo
+uv run auctelis demo
+uv run auctelis scan /path/to/target-repo
 ```
 
 Docker:
 
 ```bash
 docker compose build
-TARGET=/path/to/target-repo docker compose run --rm authdiff \
-  scan /work -o /tmp/authdiff-out
+TARGET=/path/to/target-repo docker compose run --rm auctelis \
+  scan /work -o /tmp/auctelis-out
 ```
 
 ---
@@ -102,9 +102,9 @@ TARGET=/path/to/target-repo docker compose run --rm authdiff \
 
 1. **Bounded inventory** — adapters walk the tree with file/depth/byte limits; refuse symlink escape; emit `inventory.json` + coverage matrix; attach content digests and fingerprints.
 2. **Capability extraction** — map hints/types to capability kinds with explicit `origin` (`DECLARED` / `POTENTIAL` / `TYPE_DEFAULT`; never claim effective host permissions from type defaults alone).
-3. **Rule engine** — apply versioned rules `AUTHDIFF-RULE-001`…`022` (pack **1.6**) classifying each hit as `CAPABILITY`, `EXPOSURE`, or `SECURITY_FINDING` (see [`SECURITY-RULES.md`](SECURITY-RULES.md)).
+3. **Rule engine** — apply versioned rules `AUCTELIS-RULE-001`…`022` (pack **1.6**) classifying each hit as `CAPABILITY`, `EXPOSURE`, or `SECURITY_FINDING` (see [`SECURITY-RULES.md`](SECURITY-RULES.md)).
 4. **Evidence registry** — each finding references evidence with path, optional line span, content digest, and audited commit when known.
-5. **Reporting** — authority snapshot + Markdown + JSON + SARIF; `authdiff explain` for one finding.
+5. **Reporting** — authority snapshot + Markdown + JSON + SARIF; `auctelis explain` for one finding.
 6. **Optional baseline delta** — fingerprint-aware comparison; CI `--fail-on` ignores pure capability observations.
 
 ---
@@ -112,7 +112,7 @@ TARGET=/path/to/target-repo docker compose run --rm authdiff \
 ## Output directory layout
 
 ```text
-authdiff-out/
+auctelis-out/
 ├── inventory.json           # components + coverage.adapter_matrix
 ├── ecosystem-graph.json     # structural seed (not attack-path proof)
 ├── findings.json            # findings, evidence_registry, capabilities, summary
@@ -121,7 +121,7 @@ authdiff-out/
 ├── scan-summary.txt         # human terminal report
 ├── scan-report.md           # Markdown wrapper + executive questions
 ├── profile.json             # product/version/rules/limitations
-├── baseline.json            # after `authdiff baseline save` or `--save-baseline`
+├── baseline.json            # after `auctelis baseline save` or `--save-baseline`
 └── risk-delta.json          # when `--baseline` supplied
 ```
 
@@ -138,7 +138,7 @@ authdiff-out/
 | Field | Meaning |
 | --- | --- |
 | `findings_version` | Guard findings document version (`1.0`) |
-| `product` / `product_version` / `package_version` | authdiff identity |
+| `product` / `product_version` / `package_version` | auctelis identity |
 | `repository` / `audited_commit` | Exact assessed tree |
 | `rules_applied` | Rule ids executed |
 | `summary` | Counts and severity histogram |
@@ -152,24 +152,24 @@ authdiff-out/
 
 ## Scan vs inventory
 
-| Concern | `authdiff scan` | `authdiff-dev inventory` |
+| Concern | `auctelis scan` | `auctelis-dev inventory` |
 | --- | --- | --- |
 | Deterministic findings | Yes | No (components only) |
 | SARIF | Yes | No |
 | Default artifacts | PR comment, findings, inventory, SARIF | Inventory JSON |
 | `--full` extras | Graph, capabilities, long reports | — |
-| Recommended first command | **Yes** (`authdiff demo` then `scan`) | Maintainer discovery only |
+| Recommended first command | **Yes** (`auctelis demo` then `scan`) | Maintainer discovery only |
 
-Prefer `authdiff lock` + `authdiff gate` + CI Authority Diff for product workflows.
+Prefer `auctelis lock` + `auctelis gate` + CI Authority Diff for product workflows.
 
 ---
 
 ## Baselines and continuous assessment
 
-1. First assessment: `authdiff scan .` then `authdiff lock`.
-2. After changes: `authdiff check --locked .` (or `scan --baseline authdiff-out/baseline.json`).
+1. First assessment: `auctelis scan .` then `auctelis lock`.
+2. After changes: `auctelis check --locked .` (or `scan --baseline auctelis-out/baseline.json`).
 3. Inspect `pr-comment.md` / lock delta for authority expansions.
-4. CI: Action with `authority-diff: true` and `locked: true` (see [`authdiff-consumer-gate.example.yml`](authdiff-consumer-gate.example.yml)).
+4. CI: Action with `authority-diff: true` and `locked: true` (see [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)).
 
 Baseline identity is **fingerprint-first** (content digest of authority-bearing
 evidence), with path/name as a secondary signal. Renames of unchanged content
@@ -178,9 +178,9 @@ absolute truth.
 
 ---
 
-## CI integration (authdiff Action)
+## CI integration (auctelis Action)
 
-Composite action: [`.github/actions/authdiff-gate`](../.github/actions/authdiff-gate) (display name: authdiff).
+Composite action: [`.github/actions/auctelis-gate`](../.github/actions/auctelis-gate) (display name: auctelis).
 
 | Input | Default | Notes |
 | --- | --- | --- |
@@ -190,8 +190,8 @@ Composite action: [`.github/actions/authdiff-gate`](../.github/actions/authdiff-
 | `baseline` | — | Guard `baseline.json` |
 | `baseline-inventory` | — | Optional inventory path diff |
 | `fail-on` | empty → policy / never | `never` \| `high` \| `any` |
-| `trusted-policy` | `true` | Load `.authdiff.yml` from PR base ref; fail on policy edits |
-| `output-dir` | `authdiff-out` | Artifact dir |
+| `trusted-policy` | `true` | Load `.auctelis.yml` from PR base ref; fail on policy edits |
+| `output-dir` | `auctelis-out` | Artifact dir |
 | `install-tools-from` | empty → Action-bundled tools | Prefer pinned kit; refuse accidental PR `./tools` |
 | `upload-sarif` | `true` | Prints SARIF path for optional upload |
 
@@ -202,10 +202,10 @@ Never `uv sync` a PR-controlled `tools/` directory as the scanner.
 
 ## Optional AI explanation after scan
 
-1. Attach [`../skills/authdiff-auditor/SKILL.md`](../skills/authdiff-auditor/SKILL.md).
-2. Run `authdiff scan <target> --agent -o <OUT>/authdiff-out`.
+1. Attach [`../skills/auctelis-auditor/SKILL.md`](../skills/auctelis-auditor/SKILL.md).
+2. Run `auctelis scan <target> --agent -o <OUT>/auctelis-out`.
 3. Point the agent at `agent-digest.json` first, then `findings.json`.
-4. Agent may run `authdiff explain` / dry-run `harden` only — never approve locks or edit policy.
+4. Agent may run `auctelis explain` / dry-run `harden` only — never approve locks or edit policy.
 5. Research/archive trees were removed in 0.3.0 — product path is lock + gate + doctor.
 
 ---

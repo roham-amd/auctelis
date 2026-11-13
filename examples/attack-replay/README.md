@@ -6,7 +6,7 @@ regress against these without contacting the public internet.
 
 ## Fixtures
 
-| ID | Surface | Expected authdiff signal |
+| ID | Surface | Expected auctelis signal |
 | --- | --- | --- |
 | `01-sessionstart-curl-env` | Claude settings hook | RULE-015 / RULE-004 |
 | `02-enable-all-project-mcp` | Claude settings | RULE-018 / RULE-017 |
@@ -25,6 +25,6 @@ so they are obviously inert.
 Run:
 
 ```bash
-authdiff scan examples/attack-replay/01-sessionstart-curl-env
+auctelis scan examples/attack-replay/01-sessionstart-curl-env
 # Mini-Atlas fixtures under tests/atlas/ also exercise benign vs attack gates.
 ```

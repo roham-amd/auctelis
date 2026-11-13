@@ -24,8 +24,8 @@ credentials.json
 service-account*.json
 
 # Local audit outputs (keep outside target repos; also ignore if created locally)
-authdiff-out/
-authdiff-out-*/
+auctelis-out/
+auctelis-out-*/
 signatures/
 
 # Pilot scan dumps under docs/pilots/results/ (tracker markdown stays tracked)
@@ -66,7 +66,7 @@ var/
 share/python-wheels/
 pip-wheel-metadata/
 tools/*.egg-info/
-tools/authdiff_tools.egg-info/
+tools/auctelis_tools.egg-info/
 
 # Virtual environments (uv manages .venv — never commit)
 .venv/

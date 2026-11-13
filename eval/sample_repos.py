@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Shallow-sample repos from eval/repos-25.txt and emit scan stubs for labeling.
 
-Usage (from repo root, with authdiff on PATH):
+Usage (from repo root, with auctelis on PATH):
   python eval/sample_repos.py [--limit 5] [--out eval/out]
 
 Does not claim benchmark status — see docs/EVALUATION-PROTOCOL.md.
@@ -52,9 +52,9 @@ def main() -> int:
         if not dest.is_dir():
             print(f"skip (clone failed): {spec}", file=sys.stderr)
             continue
-        out = args.out / f"{name.replace('/', '__')}-authdiff-out"
+        out = args.out / f"{name.replace('/', '__')}-auctelis-out"
         proc = subprocess.run(
-            ["authdiff", "scan", str(dest), "-o", str(out), "--fail-on", "never"],
+            ["auctelis", "scan", str(dest), "-o", str(out), "--fail-on", "never"],
             check=False,
         )
         print(f"scan exit={proc.returncode} → {out}")

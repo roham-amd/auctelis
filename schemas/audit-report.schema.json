@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/authdiff-project/authdiff/schemas/audit-report.schema.json",
-  "title": "authdiff Audit Report Summary",
-  "description": "Machine-readable summary contract for authdiff v1.0. Structural validation only; not proof that findings are true.",
+  "$id": "https://github.com/auctelis-project/auctelis/schemas/audit-report.schema.json",
+  "title": "auctelis Audit Report Summary",
+  "description": "Machine-readable summary contract for auctelis v1.0. Structural validation only; not proof that findings are true.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -252,7 +252,7 @@
     },
     "score": {
       "type": "null",
-      "description": "authdiff v1.0 forbids default numeric scores; must remain null."
+      "description": "auctelis v1.0 forbids default numeric scores; must remain null."
     },
     "recommend_production_use": { "type": "boolean" }
   },

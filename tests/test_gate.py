@@ -1,12 +1,12 @@
-"""authdiff gate — base lock + CODEOWNERS + lock-only growth labels."""
+"""auctelis gate — base lock + CODEOWNERS + lock-only growth labels."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.gate import parse_codeowners_for_path, render_gate_report, run_gate
+from auctelis.cli import main
+from auctelis.gate import parse_codeowners_for_path, render_gate_report, run_gate
 
 
 def _mcp(root: Path, servers: dict) -> None:
@@ -19,7 +19,7 @@ def test_parse_codeowners_last_match_wins():
     text = """
 * @everyone
 AUTHORITY.lock @sec-owners @alice
-.authdiff.yml @sec-owners
+.auctelis.yml @sec-owners
 """
     assert parse_codeowners_for_path(text) == ["@sec-owners", "@alice"]
 

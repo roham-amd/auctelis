@@ -1,6 +1,6 @@
 {
   "id": "RULE-019-positive-baseurl",
-  "rule_id": "AUTHDIFF-RULE-019",
+  "rule_id": "AUCTELIS-RULE-019",
   "variant": "positive",
   "fixture": "fixtures/rule-019-positive-baseurl",
   "expect": {

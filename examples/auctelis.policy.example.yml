@@ -1,0 +1,23 @@
+# Example auctelis policy — copy to the repository root as `.auctelis.yml`.
+# See docs/POLICY.md for semantics.
+
+version: 1
+
+policy:
+  mode: enforce
+  fail_on: high
+  output_dir: auctelis-out
+  baseline: .auctelis/baseline.json
+
+  require_review:
+    - remote_mcp_endpoint
+    - privileged_hook
+    - credential_access
+    - unattended_execution
+
+  ignore:
+    - rule: AUCTELIS-RULE-003
+      path: examples/**
+      justification: "Non-production fixture used for documentation"
+      owner: security-team
+      expires: "2027-06-01"

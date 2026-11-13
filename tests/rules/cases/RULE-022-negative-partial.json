@@ -1,6 +1,6 @@
 {
   "id": "RULE-022-negative-partial",
-  "rule_id": "AUTHDIFF-RULE-022",
+  "rule_id": "AUCTELIS-RULE-022",
   "variant": "negative",
   "fixture": "fixtures/rule-018-positive-auto",
   "expect": {

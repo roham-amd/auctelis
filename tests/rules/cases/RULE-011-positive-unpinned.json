@@ -1,6 +1,6 @@
 {
   "id": "RULE-011-positive-unpinned",
-  "rule_id": "AUTHDIFF-RULE-011",
+  "rule_id": "AUCTELIS-RULE-011",
   "variant": "positive",
   "fixture": "fixtures/rule-011-positive-unpinned",
   "expect": {

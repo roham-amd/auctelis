@@ -1,17 +1,17 @@
-"""authdiff version/doc contract surfaces (product + package alignment)."""
+"""auctelis version/doc contract surfaces (product + package alignment)."""
 
 import json
 from pathlib import Path
 
-from authdiff import __product_version__, __version__
-from authdiff.authority_lock import LOCK_VERSION
-from authdiff.build import (
+from auctelis import __product_version__, __version__
+from auctelis.authority_lock import LOCK_VERSION
+from auctelis.build import (
     check_bare_command_docs,
     check_install_doc_versions,
     check_policy_schema_contract,
     check_version_metadata,
 )
-from authdiff.versioning import package_version, product_version
+from auctelis.versioning import package_version, product_version
 
 _EXPECTED = "0.3.3"
 _ROOT = Path(__file__).resolve().parents[1]

@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from authdiff.export.agent_digest import fence_untrusted, render_agent_digest
-from authdiff.export.pr_comment import escape_markdown, render_authority_diff_comment
-from authdiff.harden import propose_patches, run_harden
-from authdiff.security.decision import compute_decision
-from authdiff.security.scan import run_scan
+from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
+from auctelis.export.pr_comment import escape_markdown, render_authority_diff_comment
+from auctelis.harden import propose_patches, run_harden
+from auctelis.security.decision import compute_decision
+from auctelis.security.scan import run_scan
 
 
 def test_escape_markdown_strips_links_and_mentions():
@@ -90,14 +90,14 @@ def test_harden_proposes_for_demo(tmp_path: Path):
     assert proposals
     text, code = run_harden(findings_path=Path(payload["output_dir"]) / "findings.json")
     assert code == 0
-    assert "authdiff harden" in text
+    assert "auctelis harden" in text
 
 
 def test_rule_017_permission_bypass(tmp_path: Path):
     root = Path(__file__).resolve().parents[0] / "rules" / "fixtures"
     fixture = root / "rule-017-positive-bypass"
     scan, _payload, _code = run_scan(fixture, output_dir=tmp_path / "pos")
-    assert any(f.rule_id == "AUTHDIFF-RULE-017" for f in scan.findings)
+    assert any(f.rule_id == "AUCTELIS-RULE-017" for f in scan.findings)
     neg = root / "rule-017-negative-safe"
     scan_n, _p, _c = run_scan(neg, output_dir=tmp_path / "neg")
-    assert not any(f.rule_id == "AUTHDIFF-RULE-017" for f in scan_n.findings)
+    assert not any(f.rule_id == "AUCTELIS-RULE-017" for f in scan_n.findings)

@@ -1,12 +1,12 @@
 name: External pilot
-description: Track an outside repository adopting the authdiff PR authority gate
+description: Track an outside repository adopting the auctelis PR authority gate
 title: "[pilot] "
 labels: ["pilot"]
 body:
   - type: markdown
     attributes:
       value: |
-        Use one issue per outside repository. Self-dogfood of authdiff does not count.
+        Use one issue per outside repository. Self-dogfood of auctelis does not count.
         Update [`docs/pilots/TRACKER.md`](../docs/pilots/TRACKER.md) when status changes.
   - type: input
     id: repo

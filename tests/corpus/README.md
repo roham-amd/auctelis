@@ -1,4 +1,4 @@
-# authdiff security regression corpus (v0.3)
+# auctelis security regression corpus (v0.3)
 
 Pilot ground-truth cases for **deterministic tooling** (inventory adapters, validators, graph helpers, digest/SARIF pilots). LLM procedure effectiveness is **not** fully benchmarked by this harness yet — do not cite corpus pass rates as detection quality for model-led audits.
 
@@ -12,7 +12,7 @@ Pilot ground-truth cases for **deterministic tooling** (inventory adapters, vali
 
 ```bash
 cd tools && uv sync --locked
-authdiff corpus run
+auctelis corpus run
 ```
 
 ## Ground-truth rules

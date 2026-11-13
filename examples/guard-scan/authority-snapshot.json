@@ -1,8 +1,8 @@
 {
   "snapshot_version": "1.0",
-  "product": "authdiff",
+  "product": "auctelis",
   "product_version": "0.3.1",
-  "repository": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
   "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
   "collected_at_utc": "2026-11-12T13:22:39Z",
   "components": [

@@ -5,9 +5,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from authdiff.security.baseline import diff_against_baseline, save_baseline
-from authdiff.security.engine import run_security_scan
-from authdiff.security.fingerprint import component_fingerprint, finding_key, paths_by_fingerprint
+from auctelis.security.baseline import diff_against_baseline, save_baseline
+from auctelis.security.engine import run_security_scan
+from auctelis.security.fingerprint import component_fingerprint, finding_key, paths_by_fingerprint
 
 
 def _write_skill(root: Path, folder: str, body: str, *, name: str | None = None) -> Path:
@@ -213,8 +213,8 @@ def test_baseline_clone_preserves_fingerprint_identity(tmp_path: Path):
 
 def test_finding_key_ignores_component_id_reshuffle():
     assert finding_key(
-        "AUTHDIFF-RULE-002", fingerprint="abcd1234abcd1234", component_ids=["C-001"]
-    ) == (finding_key("AUTHDIFF-RULE-002", fingerprint="abcd1234abcd1234", component_ids=["C-099"]))
+        "AUCTELIS-RULE-002", fingerprint="abcd1234abcd1234", component_ids=["C-001"]
+    ) == (finding_key("AUCTELIS-RULE-002", fingerprint="abcd1234abcd1234", component_ids=["C-099"]))
 
 
 def test_digest_backed_fingerprint_ignores_path():

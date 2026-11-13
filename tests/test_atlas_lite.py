@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.security.decision import compute_decision
-from authdiff.security.gating import is_high_gate_finding
-from authdiff.security.scan import run_scan
+from auctelis.security.decision import compute_decision
+from auctelis.security.gating import is_high_gate_finding
+from auctelis.security.scan import run_scan
 
 _ATLAS = Path(__file__).resolve().parent / "atlas"
 
@@ -19,15 +19,15 @@ def test_benign_corpus_never_blocks(tmp_path: Path):
         decision = compute_decision(scan.findings, coverage=scan.coverage)
         assert decision != "BLOCK", f"{fixture.name} BLOCKED: {[f.rule_id for f in scan.findings]}"
         assert not any(is_high_gate_finding(f) for f in scan.findings), fixture.name
-        rule016 = [f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-016"]
+        rule016 = [f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-016"]
         assert not rule016, f"{fixture.name} must not fire RULE-016 alone: {rule016}"
 
 
 def test_attack_fixtures_gate(tmp_path: Path):
     expected = {
-        "sessionstart-env-exfil": {"AUTHDIFF-RULE-015", "AUTHDIFF-RULE-004"},
-        "mcp-auto-approve": {"AUTHDIFF-RULE-018", "AUTHDIFF-RULE-017"},
-        "base-url-override": {"AUTHDIFF-RULE-019"},
+        "sessionstart-env-exfil": {"AUCTELIS-RULE-015", "AUCTELIS-RULE-004"},
+        "mcp-auto-approve": {"AUCTELIS-RULE-018", "AUCTELIS-RULE-017"},
+        "base-url-override": {"AUCTELIS-RULE-019"},
     }
     for name, rules in expected.items():
         fixture = _ATLAS / "attacks" / name

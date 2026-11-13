@@ -1,6 +1,6 @@
 {
   "id": "RULE-016-positive-pr-target",
-  "rule_id": "AUTHDIFF-RULE-016",
+  "rule_id": "AUCTELIS-RULE-016",
   "variant": "positive",
   "fixture": "fixtures/rule-016-positive-pr-target",
   "expect": {

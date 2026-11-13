@@ -14,12 +14,12 @@
 **/.ruff_cache
 **/*.egg-info
 tools/.venv
-tools/authdiff_tools.egg-info
+tools/auctelis_tools.egg-info
 .pytest_cache
 
 # Local audit outputs
-authdiff-out/
-authdiff-out-*/
+auctelis-out/
+auctelis-out-*/
 
 # Not required for the runtime CLI image (kit procedure + tools remain)
 docs/

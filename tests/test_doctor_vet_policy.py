@@ -1,26 +1,26 @@
 from pathlib import Path
 
-from authdiff.doctor import discover_host_surfaces, run_doctor
-from authdiff.policy import discover_policy_file
-from authdiff.vet import resolve_vet_source, run_vet
+from auctelis.doctor import discover_host_surfaces, run_doctor
+from auctelis.policy import discover_policy_file
+from auctelis.vet import resolve_vet_source, run_vet
 
 
 def test_discover_policy_does_not_escape_stop_at(tmp_path: Path):
     parent = tmp_path / "parent"
     child = parent / "repo"
     child.mkdir(parents=True)
-    (parent / ".authdiff.yml").write_text(
+    (parent / ".auctelis.yml").write_text(
         "version: 1\npolicy:\n  mode: advisory\n  fail_on: never\n",
         encoding="utf-8",
     )
     assert discover_policy_file(child, stop_at=child) is None
-    (child / ".authdiff.yml").write_text(
+    (child / ".auctelis.yml").write_text(
         "version: 1\npolicy:\n  mode: enforce\n  fail_on: high\n",
         encoding="utf-8",
     )
     found = discover_policy_file(child, stop_at=child)
     assert found is not None
-    assert found == child / ".authdiff.yml"
+    assert found == child / ".auctelis.yml"
 
 
 def test_doctor_scans_synthetic_home(tmp_path: Path):
@@ -34,7 +34,7 @@ def test_doctor_scans_synthetic_home(tmp_path: Path):
     surfaces = discover_host_surfaces(home=home)
     assert any(s.host_id == "cursor" and s.exists for s in surfaces)
     text, code = run_doctor(home=home, output_dir=tmp_path / "out")
-    assert "authdiff doctor" in text or "authdiff doctor" in text
+    assert "auctelis doctor" in text or "auctelis doctor" in text
     assert "cursor" in text
     assert code in {0, 1}
 
@@ -50,16 +50,16 @@ def test_vet_local_path_verdict(tmp_path: Path):
     kind, resolved = resolve_vet_source(str(root))
     assert kind == "path"
     text, code = run_vet(str(root), output_dir=tmp_path / "vet-out")
-    assert "authdiff vet" in text or "authdiff vet" in text
+    assert "auctelis vet" in text or "auctelis vet" in text
     assert "verdict:" in text
     assert code in {0, 1}
     assert resolved == str(root.resolve())
 
 
 def test_vet_github_shorthand_normalizes():
-    kind, url = resolve_vet_source("roham-amd/authdiff")
+    kind, url = resolve_vet_source("roham-amd/auctelis")
     assert kind == "git"
-    assert url.endswith("authdiff.git")
+    assert url.endswith("auctelis.git")
 
 
 def test_vet_github_com_prefix_parses_owner_repo():

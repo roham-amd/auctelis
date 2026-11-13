@@ -1,7 +1,7 @@
 # Agent authority review playbook
 
 One page for humans reviewing agent-config diffs. Graduate to
-`authdiff lock` + CODEOWNERS when ready. Distilled from archived modules —
+`auctelis lock` + CODEOWNERS when ready. Distilled from archived modules —
 not a substitute for the scanner.
 
 ## Report questions (every Authority Diff)
@@ -52,12 +52,12 @@ scanner finding on `MANUAL_ONLY` surfaces as safety.
 ## CODEOWNERS
 
 Prefer CODEOWNERS coverage for `AUTHORITY.lock` plus a GitHub ruleset that
-requires code-owner review (and dismisses stale approvals). `authdiff gate`
+requires code-owner review (and dismisses stale approvals). `auctelis gate`
 labels growth and checks that protection exists — it does not count PR reviews.
 
 ```text
 AUTHORITY.lock  @security-owner
-.authdiff.yml       @security-owner
+.auctelis.yml       @security-owner
 **/.mcp.json    @security-owner
 **/.cursor/mcp.json @security-owner
 **/.claude/settings.json @security-owner
@@ -67,10 +67,10 @@ AUTHORITY.lock  @security-owner
 
 ```bash
 # Git install only today — PyPI not published yet
-uvx --from "git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools" authdiff doctor
-authdiff vet <url-or-path>
-authdiff ci init --owner @you && authdiff lock --accept-gated
-authdiff demo   # canned bad fixture + PR comment (exits 0)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools" auctelis doctor
+auctelis vet <url-or-path>
+auctelis ci init --owner @you && auctelis lock --accept-gated
+auctelis demo   # canned bad fixture + PR comment (exits 0)
 # scan --base-lock is advisory; gate is the authority-growth verdict:
-authdiff gate --base-lock AUTHORITY.lock
+auctelis gate --base-lock AUTHORITY.lock
 ```

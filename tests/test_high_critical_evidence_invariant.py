@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from authdiff.security.gating import is_high_gate_finding
-from authdiff.security.scan import run_scan
+from auctelis.security.gating import is_high_gate_finding
+from auctelis.security.scan import run_scan
 
 _REPLAY = Path(__file__).resolve().parents[1] / "examples" / "attack-replay"
 _DEMO = Path(__file__).resolve().parents[1] / "examples" / "demo-vulnerable"

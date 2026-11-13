@@ -1,6 +1,6 @@
 {
   "id": "RULE-008-positive-subagent",
-  "rule_id": "AUTHDIFF-RULE-008",
+  "rule_id": "AUCTELIS-RULE-008",
   "variant": "positive",
   "fixture": "fixtures/rule-008-positive-subagent",
   "expect": {

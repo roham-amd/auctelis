@@ -1,15 +1,15 @@
 [project]
-name = "authdiff"
+name = "auctelis"
 version = "0.3.3"
-description = "authdiff — the authority lockfile and PR security gate for AI agents"
+description = "Auctelis — the authority lockfile and PR security gate for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
 authors = [
-  { name = "authdiff contributors", email = "security@users.noreply.github.com" },
+  { name = "Auctelis contributors", email = "security@users.noreply.github.com" },
 ]
 keywords = [
-  "authdiff",
+  "auctelis",
   "agent-security",
   "mcp",
   "skills",
@@ -34,15 +34,15 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/roham-amd/authdiff"
-Documentation = "https://github.com/roham-amd/authdiff/blob/main/docs/DOCUMENTATION-INDEX.md"
-Repository = "https://github.com/roham-amd/authdiff"
-Issues = "https://github.com/roham-amd/authdiff/issues"
-Changelog = "https://github.com/roham-amd/authdiff/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/roham-amd/auctelis"
+Documentation = "https://github.com/roham-amd/auctelis/blob/main/docs/DOCUMENTATION-INDEX.md"
+Repository = "https://github.com/roham-amd/auctelis"
+Issues = "https://github.com/roham-amd/auctelis/issues"
+Changelog = "https://github.com/roham-amd/auctelis/blob/main/CHANGELOG.md"
 
 [project.scripts]
-authdiff = "authdiff.cli:main"
-authdiff-dev = "authdiff.cli:main_dev"
+auctelis = "auctelis.cli:main"
+auctelis-dev = "auctelis.cli:main_dev"
 
 [dependency-groups]
 dev = [
@@ -58,21 +58,21 @@ dev = [
 testpaths = ["../tests"]
 pythonpath = ["."]
 addopts = [
-  "--cov=authdiff",
+  "--cov=auctelis",
   "--cov-report=term-missing",
   "--cov-fail-under=0",
 ]
 
 [tool.coverage.run]
 branch = true
-source = ["authdiff"]
+source = ["auctelis"]
 
 [tool.coverage.report]
 omit = ["*/__main__.py"]
 
 [tool.mypy]
 python_version = "3.12"
-packages = ["authdiff"]
+packages = ["auctelis"]
 warn_unused_configs = true
 warn_return_any = true
 warn_unreachable = true
@@ -90,7 +90,7 @@ ignore_missing_imports = true
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["authdiff", "../tests"]
+src = ["auctelis", "../tests"]
 extend-exclude = [
   ".venv",
   "venv",
@@ -113,7 +113,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["authdiff"]
+known-first-party = ["auctelis"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -127,10 +127,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["authdiff*"]
+include = ["auctelis*"]
 
 [tool.setuptools.package-data]
-authdiff = [
+auctelis = [
   "templates/*",
   "data/*",
   "data/hosts/*",

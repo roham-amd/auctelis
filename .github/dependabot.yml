@@ -1,4 +1,4 @@
-# Dependabot — authdiff toolchain (uv) + Docker base images + CI Actions
+# Dependabot — auctelis toolchain (uv) + Docker base images + CI Actions
 # Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
 # uv guide: https://docs.astral.sh/uv/guides/integration/dependabot/
 #
@@ -11,14 +11,14 @@
 # After merging Dependabot PRs, prefer:
 #   uv add <pkg> / uv lock --upgrade
 #   uv sync --locked
-#   authdiff-dev build all
+#   auctelis-dev build all
 #   docker compose build   # after Docker base bumps
 # Security updates ignore cooldown and open independently of the version schedule.
 
 version: 2
 
 updates:
-  # --- uv / PyPI (authdiff under tools/) ---
+  # --- uv / PyPI (auctelis under tools/) ---
   - package-ecosystem: uv
     directory: /tools
     schedule:

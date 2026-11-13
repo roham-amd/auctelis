@@ -1,5 +1,5 @@
-<!-- authdiff-authority-diff -->
-### authdiff Authority Diff
+<!-- auctelis-authority-diff -->
+### auctelis Authority Diff
 **Decision:** `BLOCK`
 **Changed:** authority could not be fully established
 **Authority delta:**

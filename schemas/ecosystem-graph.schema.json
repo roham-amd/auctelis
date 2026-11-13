@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/authdiff-project/authdiff/schemas/ecosystem-graph.schema.json",
-  "title": "authdiff Ecosystem Graph",
+  "$id": "https://github.com/auctelis-project/auctelis/schemas/ecosystem-graph.schema.json",
+  "title": "auctelis Ecosystem Graph",
   "description": "Typed interaction graph for cross-component path analysis (R-004). Edges must cite evidence; inferred edges require explicit verification_state.",
   "type": "object",
   "additionalProperties": false,

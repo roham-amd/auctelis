@@ -1,23 +1,23 @@
-# Local authdiff container — kit baked into the image; mount a target repo at /work.
+# Local auctelis container — kit baked into the image; mount a target repo at /work.
 #
 #   docker compose build
-#   TARGET=/path/to/repo docker compose run --rm authdiff scan /work -o /tmp/authdiff-out
-#   docker compose run --rm authdiff doctor --home /work
+#   TARGET=/path/to/repo docker compose run --rm auctelis scan /work -o /tmp/auctelis-out
+#   docker compose run --rm auctelis doctor --home /work
 #
-# Prefer writing artifacts outside the mounted target (e.g. /tmp/authdiff-out).
+# Prefer writing artifacts outside the mounted target (e.g. /tmp/auctelis-out).
 
 services:
-  authdiff:
+  auctelis:
     build:
       context: .
       dockerfile: Dockerfile
-    image: authdiff:local
+    image: auctelis:local
     working_dir: /work
     volumes:
       - ${TARGET:-.}:/work
     # Drop privileges already handled by USER in the Dockerfile.
   # Compat alias
-  authdiff:
+  auctelis:
     extends:
-      service: authdiff
-    image: authdiff:local
+      service: auctelis
+    image: auctelis:local

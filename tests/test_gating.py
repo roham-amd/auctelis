@@ -1,15 +1,15 @@
 from datetime import date
 from pathlib import Path
 
-from authdiff.policy import Suppression, load_policy
-from authdiff.security.gating import compute_exit_code, is_gate_finding, is_high_gate_finding
-from authdiff.security.models import Finding
+from auctelis.policy import Suppression, load_policy
+from auctelis.security.gating import compute_exit_code, is_gate_finding, is_high_gate_finding
+from auctelis.security.models import Finding
 
 
 def _finding(*, fclass: str, severity: str, evidence_ids: list[str] | None = None) -> Finding:
     return Finding(
         finding_id="F-001",
-        rule_id="AUTHDIFF-RULE-001",
+        rule_id="AUCTELIS-RULE-001",
         title="t",
         severity=severity,  # type: ignore[arg-type]
         confidence="POTENTIAL",
@@ -83,14 +83,14 @@ def test_baseline_mode_no_fallthrough_to_legacy_findings():
 
 
 def test_suppression_expires(tmp_path: Path):
-    path = tmp_path / ".authdiff.yml"
+    path = tmp_path / ".auctelis.yml"
     path.write_text(
         """
 version: 1
 policy:
   mode: advisory
   ignore:
-    - rule: AUTHDIFF-RULE-002
+    - rule: AUCTELIS-RULE-002
       path: "**/*"
       justification: "expired fixture"
       owner: tests
@@ -102,7 +102,7 @@ policy:
     assert policy.suppressions[0].is_expired(today=date(2026, 1, 1))
     assert (
         policy.applies_to_finding(
-            rule_id="AUTHDIFF-RULE-002",
+            rule_id="AUCTELIS-RULE-002",
             evidence_paths=["x.json"],
             today=date(2026, 1, 1),
         )
@@ -110,7 +110,7 @@ policy:
     )
     assert (
         policy.applies_to_finding(
-            rule_id="AUTHDIFF-RULE-002",
+            rule_id="AUCTELIS-RULE-002",
             evidence_paths=["x.json"],
             today=date(2019, 1, 1),
         )
@@ -120,7 +120,7 @@ policy:
 
 def test_example_policy_loads():
     root = Path(__file__).resolve().parents[1]
-    policy = load_policy(root / "examples" / "authdiff.policy.example.yml")
+    policy = load_policy(root / "examples" / "auctelis.policy.example.yml")
     assert policy.mode == "enforce"
     assert policy.fail_on == "high"
     assert policy.suppressions

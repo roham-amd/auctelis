@@ -1,7 +1,7 @@
 """Six scenario harness: add / expand / reduce / growth+owners / policy / hollow.
 
 Simulates the Action contract without GitHub: scan --base-lock stays advisory,
-`authdiff gate` labels growth and requires CODEOWNERS (rulesets enforce review).
+`auctelis gate` labels growth and requires CODEOWNERS (rulesets enforce review).
 """
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.gate import run_gate
+from auctelis.cli import main
+from auctelis.gate import run_gate
 
 
 def _mcp(root: Path, servers: dict) -> None:
@@ -23,7 +23,7 @@ def _owners(root: Path, owner: str = "@sec-owners") -> None:
     gh = root / ".github"
     gh.mkdir(parents=True, exist_ok=True)
     (gh / "CODEOWNERS").write_text(
-        f"AUTHORITY.lock {owner}\n.authdiff.yml {owner}\n", encoding="utf-8"
+        f"AUTHORITY.lock {owner}\n.auctelis.yml {owner}\n", encoding="utf-8"
     )
 
 

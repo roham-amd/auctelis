@@ -1,22 +1,22 @@
 from pathlib import Path
 
-from authdiff.security.scan import run_scan
+from auctelis.security.scan import run_scan
 
 
 def test_scan_emits_findings_and_sarif(tmp_path: Path):
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
-    out = tmp_path / "authdiff-out"
+    out = tmp_path / "auctelis-out"
     scan, payload, code = run_scan(root, output_dir=out)
     assert code == 0
     assert scan.findings
-    assert any(f.rule_id == "AUTHDIFF-RULE-002" for f in scan.findings)
+    assert any(f.rule_id == "AUCTELIS-RULE-002" for f in scan.findings)
     assert (out / "findings.json").is_file()
     assert (out / "findings.sarif.json").is_file()
     assert (out / "scan-summary.txt").is_file()
     assert (out / "pr-comment.md").is_file()
-    assert "authdiff" in payload["summary"]
+    assert "auctelis" in payload["summary"]
     assert "DECISION:" in payload["summary"]
     # Product path stays slim; graph/capabilities/full summary require --full.
     assert (out / "inventory.json").is_file()
@@ -36,9 +36,9 @@ def test_scan_mcp_broad_args_is_security_finding(tmp_path: Path):
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
-    out = tmp_path / "authdiff-out"
+    out = tmp_path / "auctelis-out"
     scan, _payload, _code = run_scan(root, output_dir=out)
-    mcp = next(f for f in scan.findings if f.rule_id == "AUTHDIFF-RULE-002")
+    mcp = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-002")
     assert mcp.finding_class == "SECURITY_FINDING"
     assert mcp.severity == "HIGH"
     # Evidence should carry content digest when the source file is readable.
@@ -51,19 +51,19 @@ def test_scan_benign_skill_no_mcp_rules(tmp_path: Path):
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-only"
     )
-    out = tmp_path / "authdiff-out"
+    out = tmp_path / "auctelis-out"
     scan, _payload, code = run_scan(root, output_dir=out)
     assert code == 0
     fired = {f.rule_id for f in scan.findings}
-    assert "AUTHDIFF-RULE-002" not in fired
-    assert "AUTHDIFF-RULE-003" not in fired
+    assert "AUCTELIS-RULE-002" not in fired
+    assert "AUCTELIS-RULE-003" not in fired
 
 
 def test_scan_fail_on_high(tmp_path: Path):
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
-    out = tmp_path / "authdiff-out"
+    out = tmp_path / "auctelis-out"
     _scan, _payload, code = run_scan(root, output_dir=out, fail_on="high")
     assert code == 1
 
@@ -72,7 +72,7 @@ def test_capability_origin_on_type_defaults(tmp_path: Path):
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-only"
     )
-    out = tmp_path / "authdiff-out"
+    out = tmp_path / "auctelis-out"
     scan, _payload, _code = run_scan(root, output_dir=out)
     skill_caps = [c for c in scan.capabilities if c.kind == "modify_agent_instructions"]
     assert skill_caps
@@ -80,12 +80,12 @@ def test_capability_origin_on_type_defaults(tmp_path: Path):
 
 
 def test_baseline_fingerprints(tmp_path: Path):
-    from authdiff.security.baseline import diff_against_baseline, save_baseline
+    from auctelis.security.baseline import diff_against_baseline, save_baseline
 
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
-    out = tmp_path / "authdiff-out"
+    out = tmp_path / "auctelis-out"
     scan, _payload, _code = run_scan(root, output_dir=out)
     comps = scan.inventory.get("components") or []
     assert comps
@@ -101,8 +101,8 @@ def test_baseline_fingerprints(tmp_path: Path):
 def test_validate_report_rejects_non_report_doc(tmp_path: Path):
     import pytest
 
-    from authdiff.jsonio import write_json
-    from authdiff.validate_report import validate_report_file
+    from auctelis.jsonio import write_json
+    from auctelis.validate_report import validate_report_file
 
     path = tmp_path / "findings.json"
     write_json(path, {"findings": "not-a-list"})

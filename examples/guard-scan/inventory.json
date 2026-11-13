@@ -1,7 +1,7 @@
 {
-  "authdiff_inventory_version": "0.3.1",
+  "auctelis_inventory_version": "0.3.1",
   "mode": "passive_read_only",
-  "repository_path": "C:\\Users\\rohaa\\Projects\\authdiff\\examples\\demo-vulnerable",
+  "repository_path": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
   "collected_at_utc": "2026-11-12T13:22:39Z",
   "limits": {
     "max_files": 5000,
@@ -227,7 +227,7 @@
       "adapter_maturity": "SUPPORTED",
       "discovery_status": "IDENTIFIED",
       "instruction_content_present": true,
-      "declared_description": "Demo skill that intentionally fails authdiff rules (do not use in production).",
+      "declared_description": "Demo skill that intentionally fails auctelis rules (do not use in production).",
       "priority_hints": [
         "external_url_reference",
         "script_reference",

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.inventory.adapters.hooks import _lifecycle_hints, discover_hooks
-from authdiff.inventory.limits import CollectorLimits
+from auctelis.inventory.adapters.hooks import _lifecycle_hints, discover_hooks
+from auctelis.inventory.limits import CollectorLimits
 
 
 def test_lifecycle_hints_pretool_execution() -> None:

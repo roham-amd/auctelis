@@ -1,17 +1,17 @@
-"""Regression coverage for strategic review application (authdiff north-star)."""
+"""Regression coverage for strategic review application (auctelis north-star)."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from authdiff.authority_lock import build_authority_lock, diff_authority_locks, write_authority_lock
-from authdiff.cli import main
-from authdiff.cli.dispatch import _demo_target
-from authdiff.cli.parser import CORE_PUBLIC_COMMANDS, build_parser
-from authdiff.security.decision import authority_establishment, compute_decision
-from authdiff.security.relationships import emit_relationships
-from authdiff.security.scan import run_scan
+from auctelis.authority_lock import build_authority_lock, diff_authority_locks, write_authority_lock
+from auctelis.cli import main
+from auctelis.cli.dispatch import _demo_target
+from auctelis.cli.parser import CORE_PUBLIC_COMMANDS, build_parser
+from auctelis.security.decision import authority_establishment, compute_decision
+from auctelis.security.relationships import emit_relationships
+from auctelis.security.scan import run_scan
 
 
 def test_core_public_commands_are_six_jobs():
@@ -87,7 +87,7 @@ def test_addition_class_and_empty_approvals(tmp_path: Path):
 def test_agent_cannot_mutate_lock(tmp_path: Path, monkeypatch):
     root = tmp_path / "repo"
     root.mkdir()
-    monkeypatch.setenv("AUTHDIFF_AGENT", "1")
+    monkeypatch.setenv("AUCTELIS_AGENT", "1")
     code = main(["lock", str(root)])
     assert code == 2
     assert not (root / "AUTHORITY.lock").exists()
@@ -145,16 +145,16 @@ def test_relationships_emitted_for_demo(tmp_path: Path):
 
 
 def test_suppression_requires_owner_and_expires(tmp_path: Path):
-    from authdiff.policy import load_policy
+    from auctelis.policy import load_policy
 
-    path = tmp_path / ".authdiff.yml"
+    path = tmp_path / ".auctelis.yml"
     path.write_text(
         """
 version: 1
 policy:
   mode: advisory
   ignore:
-    - rule: AUTHDIFF-RULE-002
+    - rule: AUCTELIS-RULE-002
       path: "**"
       justification: "missing owner and expiry"
 """,

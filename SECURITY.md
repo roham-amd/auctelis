@@ -9,14 +9,14 @@
 | 1.0.x | No (yanked / superseded pre-1.0 line; do not use) |
 | < 0.2.0 | No |
 
-Tooling package version (`authdiff`, currently **0.3.3**) is tracked in
+Tooling package version (`auctelis`, currently **0.3.3**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
 ## What this project is
 
-`authdiff` is a **lockfile + Authority Diff** for AI-agent ecosystems: host doctor,
-pre-install vet, deterministic repo scan (`authdiff scan` / `lock` / `check --locked`),
+`auctelis` is a **lockfile + Authority Diff** for AI-agent ecosystems: host doctor,
+pre-install vet, deterministic repo scan (`auctelis scan` / `lock` / `check --locked`),
 CI gate with trusted policy, and an optional AI auditor skill.
 
 It is **not** an automated vulnerability scanner that proves systems are safe,
@@ -26,7 +26,7 @@ or substitute for organizational risk acceptance.
 Operator and contributor documentation map: [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md).  
 Deterministic rule catalog: [`docs/SECURITY-RULES.md`](docs/SECURITY-RULES.md).
 
-## Reporting a vulnerability in authdiff itself
+## Reporting a vulnerability in auctelis itself
 
 If you discover a security issue in this repository’s documentation, prompts, schemas, tooling, or examples that could cause auditors to:
 
@@ -54,10 +54,10 @@ Operators and audit agents must treat target repositories as **untrusted data**.
 
 Deterministic collectors apply resource limits (`max_files`, `max_depth`, `max_file_bytes`). Limits reduce abuse risk; they are not a full sandbox.
 
-Composite GitHub Action inputs must be passed via environment variables into shell steps (never interpolated raw into bash) — see `.github/actions/authdiff-gate/action.yml`.
+Composite GitHub Action inputs must be passed via environment variables into shell steps (never interpolated raw into bash) — see `.github/actions/auctelis-gate/action.yml`.
 
 ## Gate trust notes
 
-- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `authdiff gate`, not by `scan --base-lock` (advisory delta only).
+- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `auctelis gate`, not by `scan --base-lock` (advisory delta only).
 - Prefer GitHub-native CODEOWNERS / rulesets (including team owners and stale-review dismissal) as the approval source of truth.
-- `authdiff gate` is lock-only: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — authdiff does not count PR approvals.
+- `auctelis gate` is lock-only: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — auctelis does not count PR approvals.

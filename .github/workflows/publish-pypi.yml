@@ -1,14 +1,14 @@
-# Publish authdiff to PyPI via Trusted Publishing (OIDC).
-# Prerequisites on https://pypi.org/manage/project/authdiff/settings/publishing/:
+# Publish auctelis to PyPI via Trusted Publishing (OIDC).
+# Prerequisites on https://pypi.org/manage/project/auctelis/settings/publishing/:
 #   Owner: roham-amd
-#   Repository: authdiff
+#   Repository: auctelis
 #   Workflow: publish-pypi.yml
 #   Environment: pypi
 #
 # Trigger: workflow_dispatch after Trusted Publishing is configured on PyPI.
 # GitHub Release + GitHub Packages publish on tag via release.yml.
 
-name: Publish authdiff to PyPI
+name: Publish auctelis to PyPI
 
 on:
   workflow_dispatch:
@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12.16"
 
       - name: Verify version metadata
-        run: uv run --directory tools --locked authdiff-dev build all
+        run: uv run --directory tools --locked auctelis-dev build all
 
       - name: Build package
         working-directory: tools

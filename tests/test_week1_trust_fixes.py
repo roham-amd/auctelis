@@ -5,15 +5,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.doctor import run_doctor
-from authdiff.export.agent_digest import render_agent_digest
-from authdiff.security.authority import build_authority_snapshot, diff_authority_snapshots
-from authdiff.security.baseline import diff_against_baseline, save_baseline
-from authdiff.security.decision import compute_decision
-from authdiff.security.engine import run_security_scan
-from authdiff.security.gating import compute_exit_code
-from authdiff.vet import _verdict
+from auctelis.cli import main
+from auctelis.doctor import run_doctor
+from auctelis.export.agent_digest import render_agent_digest
+from auctelis.security.authority import build_authority_snapshot, diff_authority_snapshots
+from auctelis.security.baseline import diff_against_baseline, save_baseline
+from auctelis.security.decision import compute_decision
+from auctelis.security.engine import run_security_scan
+from auctelis.security.gating import compute_exit_code
+from auctelis.vet import _verdict
 
 
 def _write_multi_mcp(root: Path, servers: dict) -> Path:
@@ -175,7 +175,7 @@ def test_doctor_output_has_no_secret_literals(tmp_path: Path):
     )
     out = tmp_path / "doctor-out"
     text, _code = run_doctor(home=home, output_dir=out)
-    assert "authdiff doctor" in text or "doctor" in text.lower()
+    assert "auctelis doctor" in text or "doctor" in text.lower()
     # Durable -o tree must not contain the raw secret or a raw .claude.json copy.
     assert not (out / "_surface_claude-code" / ".claude.json").exists()
     blob = ""
@@ -190,7 +190,7 @@ def test_render_digest_fences_suppression_justification():
         "findings": [
             {
                 "finding_id": "F-001",
-                "rule_id": "AUTHDIFF-RULE-011",
+                "rule_id": "AUCTELIS-RULE-011",
                 "finding_class": "SECURITY_FINDING",
                 "severity": "HIGH",
                 "title": "t",

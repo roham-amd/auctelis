@@ -10,8 +10,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: authdiff version
-      description: Output of `authdiff --version` (or package version)
+      label: auctelis version
+      description: Output of `auctelis --version` (or package version)
       placeholder: 0.3.3
     validations:
       required: true
@@ -20,7 +20,7 @@ body:
     attributes:
       label: Command / workflow
       description: Exact CLI or GitHub Action invocation
-      placeholder: authdiff scan . --fail-on high
+      placeholder: auctelis scan . --fail-on high
     validations:
       required: true
   - type: textarea

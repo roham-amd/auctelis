@@ -1,7 +1,7 @@
 # Guard rule fixtures
 
 Positive, negative, and ambiguous fixtures for deterministic security rules
-in pack **1.6** (`AUTHDIFF-RULE-001` … `AUTHDIFF-RULE-022`).
+in pack **1.6** (`AUCTELIS-RULE-001` … `AUCTELIS-RULE-022`).
 
 ```bash
 cd tools && uv run pytest ../tests/test_rules_011_016.py ../tests/test_workflow_rule_calibration.py -q

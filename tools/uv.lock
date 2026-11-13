@@ -80,7 +80,7 @@ wheels = [
 ]
 
 [[package]]
-name = "authdiff"
+name = "auctelis"
 version = "0.3.3"
 source = { editable = "." }
 dependencies = [

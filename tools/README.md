@@ -1,4 +1,4 @@
-# authdiff tooling (`authdiff`)
+# auctelis tooling (`auctelis`)
 
 Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
 `AUTHORITY.lock`, and CI gate helpers.
@@ -8,7 +8,7 @@ Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `authdiff` **0.3.3** · Product: authdiff **0.3.3**
+Package: `auctelis` **0.3.3** · Product: auctelis **0.3.3**
 
 ---
 
@@ -36,14 +36,14 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/authdiff.git@v0.3.3#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
-authdiff demo
-authdiff doctor
-authdiff vet github.com/org/some-skill
-authdiff scan /path/to/target-repo   # bare `authdiff` → doctor, or scan . when lock/policy exists
-authdiff lock --accept-gated         # when HIGH/CRITICAL findings are present
-authdiff ci init --owner @your-team
+auctelis demo
+auctelis doctor
+auctelis vet github.com/org/some-skill
+auctelis scan /path/to/target-repo   # bare `auctelis` → doctor, or scan . when lock/policy exists
+auctelis lock --accept-gated         # when HIGH/CRITICAL findings are present
+auctelis ci init --owner @your-team
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -54,9 +54,9 @@ Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 # https://docs.astral.sh/uv/getting-started/installation/
 cd tools
 uv sync --locked          # creates .venv from uv.lock
-uv run authdiff --help
-uv run authdiff doctor
-uv run authdiff scan /path/to/target-repo
+uv run auctelis --help
+uv run auctelis doctor
+uv run auctelis scan /path/to/target-repo
 ```
 
 Primary path: **`doctor` / `lock` / `scan` / `gate` / `ci`**.
@@ -71,7 +71,7 @@ Primary path: **`doctor` / `lock` / `scan` / `gate` / `ci`**.
 | Dev deps | `pyproject.toml` `[dependency-groups] dev` (`uv add --dev …`) |
 | Exact versions + hashes | `uv.lock` (commit it) |
 | Install | `uv sync --locked` |
-| Updates | `uv add` / `uv lock --upgrade` / `authdiff-dev deps upgrade` |
+| Updates | `uv add` / `uv lock --upgrade` / `auctelis-dev deps upgrade` |
 | Git | Commit `pyproject.toml`, `uv.lock`, `.python-version` — ignore `.venv/` |
 
 ```bash
@@ -80,7 +80,7 @@ uv add --dev ruff
 uv lock --upgrade
 uv sync --locked
 uv tree
-authdiff-dev deps outdated
+auctelis-dev deps outdated
 ```
 
 ### Docker
@@ -89,8 +89,8 @@ Root [`Dockerfile`](../Dockerfile) uses digest-pinned `python:3.12.16-slim-trixi
 
 ```bash
 docker compose build
-TARGET=/path/to/repo docker compose run --rm authdiff \
-  scan /work -o /work/authdiff-out
+TARGET=/path/to/repo docker compose run --rm auctelis \
+  scan /work -o /work/auctelis-out
 ```
 
 Operator guide: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -107,12 +107,12 @@ Config: [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 ### Quality gates
 
 ```bash
-uv run --locked authdiff-dev lint --check-format
-uv run --locked mypy authdiff
+uv run --locked auctelis-dev lint --check-format
+uv run --locked mypy auctelis
 uv run --locked pip-audit
 uv run --locked pytest -q ../tests
-uv run --locked authdiff-dev build all
-uv run --locked authdiff-dev corpus run
+uv run --locked auctelis-dev build all
+uv run --locked auctelis-dev corpus run
 ```
 
 **Dependabot** (`.github/dependabot.yml`): weekly `uv`, `docker` (tag@digest), and SHA-pinned `github-actions`.
@@ -123,36 +123,36 @@ uv run --locked authdiff-dev corpus run
 
 ```bash
 # Primary product surface
-uv run authdiff doctor [--home DIR] [-o DIR] [--agent]
-uv run authdiff vet SOURCE [-o DIR] [--agent]
-uv run authdiff ci init --owner @TEAM [PATH] [--force]
-uv run authdiff scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
-uv run authdiff lock [PATH] [--check] [--accept-gated] [--home]
-uv run authdiff gate [PATH] --base-lock PATH
-uv run authdiff harden [--findings PATH]
-uv run authdiff explain F-001 -o DIR [--agent]
-uv run authdiff annotate FINDINGS.json --format github|text|pr-comment
+uv run auctelis doctor [--home DIR] [-o DIR] [--agent]
+uv run auctelis vet SOURCE [-o DIR] [--agent]
+uv run auctelis ci init --owner @TEAM [PATH] [--force]
+uv run auctelis scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
+uv run auctelis lock [PATH] [--check] [--accept-gated] [--home]
+uv run auctelis gate [PATH] --base-lock PATH
+uv run auctelis harden [--findings PATH]
+uv run auctelis explain F-001 -o DIR [--agent]
+uv run auctelis annotate FINDINGS.json --format github|text|pr-comment
 
-# Maintainer (authdiff-dev)
-uv run authdiff-dev validate report PATH
-uv run authdiff-dev inventory PATH
-uv run authdiff-dev export sarif REPORT.json
-uv run authdiff-dev verify digest PATH
-uv run authdiff-dev build all|schemas
-uv run authdiff-dev corpus run
-uv run authdiff-dev deps outdated|upgrade
-uv run authdiff-dev lint [--fix] [--format] [--check-format]
+# Maintainer (auctelis-dev)
+uv run auctelis-dev validate report PATH
+uv run auctelis-dev inventory PATH
+uv run auctelis-dev export sarif REPORT.json
+uv run auctelis-dev verify digest PATH
+uv run auctelis-dev build all|schemas
+uv run auctelis-dev corpus run
+uv run auctelis-dev deps outdated|upgrade
+uv run auctelis-dev lint [--fix] [--format] [--check-format]
 ```
 
 ---
 
-## Code layout (`tools/authdiff`)
+## Code layout (`tools/auctelis`)
 
 | Module / package | Responsibility |
 | --- | --- |
 | `cli/` | argparse construction + command dispatch |
 | `security/` | Guard engine: capabilities, rules, scan, baseline, report |
-| `security/rules.py` | Deterministic rules AUTHDIFF-RULE-001…022 (pack 1.6) |
+| `security/rules.py` | Deterministic rules AUCTELIS-RULE-001…022 (pack 1.6) |
 | `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
 | `gate.py` | Base-lock growth labels + CODEOWNERS / ruleset check |
 | `security/scan.py` | Artifact writer + policy fail-on + PR comment |
@@ -200,6 +200,6 @@ Incomplete coverage must never be treated as a clean security result.
 
 ## Related product docs
 
-- [`../docs/AUTHDIFF-GATE.md`](../docs/AUTHDIFF-GATE.md)
+- [`../docs/AUCTELIS-GATE.md`](../docs/AUCTELIS-GATE.md)
 - [`../docs/EVIDENCE-MODEL.md`](../docs/EVIDENCE-MODEL.md)
 - [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)

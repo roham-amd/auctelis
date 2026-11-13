@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.doctor import run_doctor_since_lock
-from authdiff.inventory.collector import collect_inventory
+from auctelis.cli import main
+from auctelis.doctor import run_doctor_since_lock
+from auctelis.inventory.collector import collect_inventory
 
 
 def test_default_excludes_skip_tests_dir(tmp_path: Path):

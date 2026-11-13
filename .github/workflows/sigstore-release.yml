@@ -24,7 +24,7 @@ jobs:
       - name: Build wheel + sdist
         working-directory: tools
         run: |
-          mkdir -p ../authdiff-out-sbom ../signatures
+          mkdir -p ../auctelis-out-sbom ../signatures
           uv build
 
       - name: Generate SBOM
@@ -32,8 +32,8 @@ jobs:
         run: |
           uv sync --locked
           # Prefer CycloneDX; fall back to JSON audit report.
-          uv run --locked pip-audit -f cyclonedx-json -o ../authdiff-out-sbom/sbom.cdx.json \
-            || uv run --locked pip-audit -f json -o ../authdiff-out-sbom/sbom.json
+          uv run --locked pip-audit -f cyclonedx-json -o ../auctelis-out-sbom/sbom.cdx.json \
+            || uv run --locked pip-audit -f json -o ../auctelis-out-sbom/sbom.json
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3.10.0
@@ -45,16 +45,16 @@ jobs:
           for f in dist/*; do
             cosign sign-blob --yes --bundle "../signatures/$(basename "$f").cosign.bundle" "$f"
           done
-          if [[ -f ../authdiff-out-sbom/sbom.cdx.json ]]; then
+          if [[ -f ../auctelis-out-sbom/sbom.cdx.json ]]; then
             cosign sign-blob --yes --bundle ../signatures/sbom.cdx.json.cosign.bundle \
-              ../authdiff-out-sbom/sbom.cdx.json
+              ../auctelis-out-sbom/sbom.cdx.json
           fi
 
       - name: Upload signatures
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
-          name: authdiff-signatures
+          name: auctelis-signatures
           path: |
             tools/dist/
             signatures/
-            authdiff-out-sbom/
+            auctelis-out-sbom/

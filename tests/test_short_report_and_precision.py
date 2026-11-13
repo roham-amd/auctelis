@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.security.report import render_short_terminal_report, render_terminal_report
-from authdiff.security.scan import run_scan
+from auctelis.cli import main
+from auctelis.security.report import render_short_terminal_report, render_terminal_report
+from auctelis.security.scan import run_scan
 
 
 def _demo() -> Path:
@@ -37,7 +37,7 @@ def test_full_flag_lengthens_report(tmp_path: Path):
 
 
 def test_product_cli_hides_maintainer_commands(tmp_path: Path):
-    from authdiff.cli.parser import build_parser, normalize_argv
+    from auctelis.cli.parser import build_parser, normalize_argv
 
     product = build_parser(include_dev=False)
     assert "lock" in product.format_help()
@@ -46,7 +46,7 @@ def test_product_cli_hides_maintainer_commands(tmp_path: Path):
         line for line in product.format_help().splitlines() if line.startswith("    ")
     )
     assert "artifact-vet" not in listed
-    # Advanced moved to authdiff-dev.
+    # Advanced moved to auctelis-dev.
     try:
         product.parse_args(["artifact-vet", "npm:left-pad"])
         product_has_adv = True
@@ -75,8 +75,8 @@ def test_ci_init_writes_codeowners(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()
     assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0
-    assert (root / ".authdiff.yml").is_file()
-    assert (root / ".github" / "workflows" / "authdiff-gate.yml").is_file()
+    assert (root / ".auctelis.yml").is_file()
+    assert (root / ".github" / "workflows" / "auctelis-gate.yml").is_file()
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "AUTHORITY.lock" in owners
     assert "@sec-owners" in owners

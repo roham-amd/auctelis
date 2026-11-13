@@ -1,6 +1,6 @@
 # 25-repo sample manifest for the labeled authority dataset (one repo per line).
-# Format: owner/name[@ref]  — clone shallow, run authdiff scan, record labels in holdout-labels.csv
+# Format: owner/name[@ref]  — clone shallow, run auctelis scan, record labels in holdout-labels.csv
 # Status: scaffold — replace with real outside repos for the pilot matrix (docs/pilots/TRACKER.md).
 # Dogfood of this product does not count toward the five-repo × 30-day kill criterion.
 # Slot hints: MCP | skills | hooks | plugins | CI — see docs/EVALUATION-PROTOCOL.md
-roham-amd/authdiff@v0.3.3
+roham-amd/auctelis@v0.3.3

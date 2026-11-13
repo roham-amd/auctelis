@@ -1,4 +1,4 @@
-# Sample authdiff v1.0 audit context (illustrative only)
+# Sample auctelis v1.0 audit context (illustrative only)
 # Replace every value before use. User-supplied values remain claims until verified.
 
 REPOSITORY_URL: "https://github.com/example-org/example-agent-catalog"

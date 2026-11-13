@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from authdiff.export.annotate import (
+from auctelis.export.annotate import (
     iter_annotation_targets,
     render_github_annotations,
     render_text_annotations,
 )
-from authdiff.jsonio import read_json
-from authdiff.security.scan import run_scan
+from auctelis.jsonio import read_json
+from auctelis.security.scan import run_scan
 
 
 def test_github_annotations_from_live_scan(tmp_path: Path) -> None:
@@ -42,7 +42,7 @@ def test_annotations_skip_findings_without_evidence_ids() -> None:
         "findings": [
             {
                 "finding_id": "F-NOEV",
-                "rule_id": "AUTHDIFF-RULE-003",
+                "rule_id": "AUCTELIS-RULE-003",
                 "title": "no evidence",
                 "severity": "HIGH",
                 "finding_class": "EXPOSURE",

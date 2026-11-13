@@ -1,0 +1,43 @@
+# Single install recipe for consumers.
+# Prefer an immutable Action commit SHA in high-assurance repos.
+# PyPI is not published yet — do not pip install auctelis from the index.
+name: auctelis
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+jobs:
+  auctelis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Install auctelis (git tag; PyPI not published yet)
+        run: >
+          pip install
+          "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools"
+
+      - name: auctelis Authority Diff
+        # High-assurance pin (recommended):
+        #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
+        # Tag pin (convenient; mutable if the tag moves):
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.3.3
+        with:
+          path: .
+          mode: scan
+          trusted-policy: "true"
+          authority-diff: "true"
+          # Default is true; set explicitly so the recipe cannot silently weaken.
+          locked: "true"
+          # First-lock PR → BASELINE_ADOPTED ceremony (not a growth PASS).
+          # Optional: fail growth when ruleset probe is UNVERIFIED:
+          # strict-ruleset: "true"
+          install-tools-from: path
+          annotate: true
+          output-dir: auctelis-out

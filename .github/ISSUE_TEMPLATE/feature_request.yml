@@ -1,5 +1,5 @@
 name: Feature request
-description: Propose coverage, UX, or gate improvements for authdiff
+description: Propose coverage, UX, or gate improvements for auctelis
 title: "[feature] "
 labels: ["enhancement"]
 body:

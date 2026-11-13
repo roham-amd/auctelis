@@ -1,6 +1,6 @@
 # Evidence, capabilities, findings, and claims
 
-authdiff’s intellectual core is an **evidence-first** model. This document is normative for how deterministic tooling and AI auditors must treat facts.
+auctelis’s intellectual core is an **evidence-first** model. This document is normative for how deterministic tooling and AI auditors must treat facts.
 
 Related: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`SECURITY-RULES.md`](SECURITY-RULES.md).
 
@@ -67,7 +67,7 @@ Do **not** treat detection of a security-relevant capability as a vulnerability.
 | **Exposure** | How reachable is that capability, and under which identity? | Remote endpoint; broad filesystem args |
 | **Security finding** | Is there an evidenced violation of a security property? | Local MCP inherits unrestricted production credentials |
 
-Capability origins (authdiff / findings contract 1.2+):
+Capability origins (auctelis / findings contract 1.2+):
 
 | Origin | Meaning |
 | --- | --- |
@@ -132,13 +132,13 @@ Never upgrade one class into another without new evidence.
 | `NOT ASSESSED` | Out of scope for this engagement |
 | `NOT APPLICABLE` | Not relevant (with reason) |
 
-Guard rules emit `OBSERVED` or `POTENTIAL` only. AI auditors must not promote to `CONFIRMED` without cited evidence (`authdiff validate claim` enforces non-empty `evidence_ids` for `CONFIRMED`).
+Guard rules emit `OBSERVED` or `POTENTIAL` only. AI auditors must not promote to `CONFIRMED` without cited evidence (`auctelis validate claim` enforces non-empty `evidence_ids` for `CONFIRMED`).
 
 ---
 
 ## Capability kinds
 
-Extracted by `tools/authdiff/security/capabilities.py` and refined during deep review:
+Extracted by `tools/auctelis/security/capabilities.py` and refined during deep review:
 
 | Kind | Question |
 | --- | --- |
@@ -210,7 +210,7 @@ exact lock hash, for *this* commit, under *this* policy?
 | `justification` | Why the authority state is accepted |
 | `exceptions` | Accepted finding fingerprints with optional expiry |
 
-Write with `authdiff lock --approval <owner>`. Approvals are metadata bound to
+Write with `auctelis lock --approval <owner>`. Approvals are metadata bound to
 the sealed authority hash — they are not a substitute for CODEOWNERS review.
 
 ### Freshness vs strength
@@ -291,7 +291,7 @@ Before writing the full narrative report, emit intermediate claims:
 Validate:
 
 ```bash
-authdiff validate claim claim.json
+auctelis validate claim claim.json
 ```
 
 Schema: `../schemas/structured-claim.schema.json`.
@@ -306,7 +306,7 @@ NEW → TRIAGED → INVESTIGATING
         → REMEDIATED → REVALIDATED
 ```
 
-Preserve rejected findings and reasons. Revalidate after changes. Prefer baselines + `authdiff diff risk` for recurring work ([`GUARD-SCAN.md`](GUARD-SCAN.md)).
+Preserve rejected findings and reasons. Revalidate after changes. Prefer baselines + `auctelis diff risk` for recurring work ([`GUARD-SCAN.md`](GUARD-SCAN.md)).
 
 ---
 

@@ -5,15 +5,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from authdiff.authority_lock import build_authority_lock, write_authority_lock
-from authdiff.cli import main
-from authdiff.cli.dispatch import _init_gate_templates
-from authdiff.export.pr_comment import escape_markdown, render_authority_diff_comment
-from authdiff.policy import load_policy
+from auctelis.authority_lock import build_authority_lock, write_authority_lock
+from auctelis.cli import main
+from auctelis.cli.dispatch import _init_gate_templates
+from auctelis.export.pr_comment import escape_markdown, render_authority_diff_comment
+from auctelis.policy import load_policy
 
 
 def test_policy_parser_empty_flow_list_and_comments(tmp_path: Path):
-    path = tmp_path / ".authdiff.yml"
+    path = tmp_path / ".auctelis.yml"
     path.write_text(
         """
 version: 1
@@ -34,7 +34,7 @@ policy:
 
 def test_ci_init_template_loads_and_round_trips(tmp_path: Path):
     policy_body, _workflow, _owners = _init_gate_templates()
-    path = tmp_path / ".authdiff.yml"
+    path = tmp_path / ".auctelis.yml"
     path.write_text(policy_body, encoding="utf-8")
     policy = load_policy(path)
     assert policy.mode == "advisory"
@@ -47,7 +47,7 @@ def test_ci_init_requires_owner_and_writes_loadable_policy(tmp_path: Path):
     assert main(["ci", "init", str(root)]) == 2  # missing --owner
     assert main(["ci", "init", str(root), "--owner", "@YOUR_TEAM"]) == 2
     assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0
-    policy = load_policy(root / ".authdiff.yml")
+    policy = load_policy(root / ".auctelis.yml")
     assert policy.mode == "advisory"
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "@sec-owners" in owners
@@ -91,7 +91,7 @@ def test_lock_hash_stable_across_path_and_commit(tmp_path: Path, monkeypatch):
     _, lock_a = write_authority_lock(root)
     assert "repository" not in lock_a
     # Re-lock with a fake commit change must keep the sealed hash.
-    from authdiff.security import engine as engine_mod
+    from auctelis.security import engine as engine_mod
 
     real = engine_mod.run_security_scan
 
@@ -101,7 +101,7 @@ def test_lock_hash_stable_across_path_and_commit(tmp_path: Path, monkeypatch):
         return scan
 
     monkeypatch.setattr(engine_mod, "run_security_scan", with_commit)
-    from authdiff import authority_lock as lock_mod
+    from auctelis import authority_lock as lock_mod
 
     monkeypatch.setattr(lock_mod, "run_security_scan", with_commit)
     lock_b = build_authority_lock(root)
@@ -114,7 +114,7 @@ def test_pr_comment_advisory_and_url_host(tmp_path: Path):
         "findings": [
             {
                 "finding_id": "F-001",
-                "rule_id": "AUTHDIFF-RULE-012",
+                "rule_id": "AUCTELIS-RULE-012",
                 "severity": "CRITICAL",
                 "title": "Literal secret",
                 "finding_class": "SECURITY_FINDING",
@@ -124,7 +124,7 @@ def test_pr_comment_advisory_and_url_host(tmp_path: Path):
             },
             {
                 "finding_id": "F-002",
-                "rule_id": "AUTHDIFF-RULE-011",
+                "rule_id": "AUCTELIS-RULE-011",
                 "severity": "HIGH",
                 "title": "Floating launcher",
                 "finding_class": "SECURITY_FINDING",
@@ -196,7 +196,7 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
 
 
 def test_workflows_not_double_registered(tmp_path: Path):
-    from authdiff.inventory.collector import collect_inventory
+    from auctelis.inventory.collector import collect_inventory
 
     root = tmp_path / "repo"
     wf = root / ".github" / "workflows"

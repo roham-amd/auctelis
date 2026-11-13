@@ -1,11 +1,18 @@
 # Changelog
 
-All notable changes to **authdiff** are documented in this file.
+All notable changes to **Auctelis** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
 ## [Unreleased]
+
+### Changed
+
+- Rebrand from **authdiff** to **Auctelis**: package/CLI `auctelis`,
+  policy `.auctelis.yml`, rules `AUCTELIS-RULE-*`, Action
+  `.github/actions/auctelis-gate`, env `AUCTELIS_*`, and GitHub repo
+  `roham-amd/auctelis`.
 
 ## [0.3.3] — 2026-11-13
 
@@ -22,7 +29,7 @@ and this project uses semantic versioning.
 
 ### Changed
 
-- Inventory skips all `authdiff-out-*` artifact directories (not only a fixed list).
+- Inventory skips all `auctelis-out-*` artifact directories (not only a fixed list).
 - Remove unused `AesaPolicy` alias; consolidate home-lock path helper.
 - Demo CLI help / PRODUCT command table: doctor-first, demo optional.
 - Product / package version **0.3.3**.
@@ -38,8 +45,8 @@ and this project uses semantic versioning.
   reject re-enabling them and catch install/doc/schema drift.
 - Gate reports distinguish `PASS / protection verified` vs
   `PASS / protection unverified`.
-- Remove stale `authdiff open` residue from rules, vet docs, and issue templates.
-- Markdown link checker ignores local `authdiff-out-*` / `.pytest_cache` trees.
+- Remove stale `auctelis open` residue from rules, vet docs, and issue templates.
+- Markdown link checker ignores local `auctelis-out-*` / `.pytest_cache` trees.
 
 ## [0.3.2] — 2026-11-13
 
@@ -54,16 +61,16 @@ and this project uses semantic versioning.
 
 ### Changed
 
-- **Lock-only gate:** authdiff labels GROWTH/REDUCTION and requires CODEOWNERS +
+- **Lock-only gate:** auctelis labels GROWTH/REDUCTION and requires CODEOWNERS +
   best-effort ruleset check; removed PR-approval re-implementation
   (`--approved-by`, review pagination, lock `approvals[]` as a gate input).
 - Default scan excludes `tests` / `examples` / `docs` / `fixtures` /
   `demo-vulnerable` (opt in with `--include-fixtures`).
-- Bare `authdiff` → `doctor` when no repo config, else `scan .`.
+- Bare `auctelis` → `doctor` when no repo config, else `scan .`.
 - `doctor --since-lock` one-screen host delta; Claude PreToolUse hook is Python JSON.
-- Advanced `run` / `snapshot` / `artifact-vet` moved to `authdiff-dev`.
+- Advanced `run` / `snapshot` / `artifact-vet` moved to `auctelis-dev`.
 - ROADMAP shrunk to a 10-line north star; `eval/` holdout sample scaffold added.
-- `release.yml` validate job runs corpus (mirrors `authdiff-validate.yml`).
+- `release.yml` validate job runs corpus (mirrors `auctelis-validate.yml`).
 - `AUTHORITY_PATH_HINTS` includes workflows, actions, and CODEOWNERS.
 - Dogfood `AUTHORITY.lock` re-sealed without fixture/example noise.
 - Product / package version **0.3.2**.
@@ -99,7 +106,7 @@ and this project uses semantic versioning.
 - Product / package version **0.3.1**.
 - Runtime dependency surface is `jsonschema` only; `packaging` moved to the
   maintainer `dev` group.
-- Prefer `AuthdiffPolicy` type name in the scan path (`AesaPolicy` alias retained).
+- Prefer `AuctelisPolicy` type name in the scan path (`AesaPolicy` alias retained).
 - Docs and schemas aligned to lock + gate + SBOM (no Agent Authority Manifest CLI).
 
 ### Removed
@@ -136,7 +143,7 @@ and this project uses semantic versioning.
 ### Fixed
 
 - `SECURITY.md` / `supported_product_line: 0.x`; `v1.0.0` Release marked superseded.
-- Branch-protection / ruleset guidance in `AUTHDIFF-GATE.md`.
+- Branch-protection / ruleset guidance in `AUCTELIS-GATE.md`.
 - Rebrand debris in the Action PATH check.
 - Preflight no longer depends on removed `audit` module; dispatch helpers restored after shrink.
 
@@ -144,7 +151,7 @@ and this project uses semantic versioning.
 
 ### Added
 
-- `authdiff gate --base-lock` — fail on unapproved addition/expansion until a
+- `auctelis gate --base-lock` — fail on unapproved addition/expansion until a
   CODEOWNERS identity (or GitHub PR approval) is present.
 - Action step runs the base-lock gate after the Authority Diff scan.
 - `--base-lock` on `scan` / `check` for head-vs-approved-lock deltas.
@@ -158,7 +165,7 @@ and this project uses semantic versioning.
 - `ci init` requires `--owner`; `lock` requires `--accept-gated` for HIGH/CRITICAL trees.
 - Demo always exits 0 and leads with `+/-` lock lines.
 - Docs and install recipes pin `@v0.2.0`; wheel-smoke expects demo exit 0.
-- Policy type preferred name is `AuthdiffPolicy` (`AesaPolicy` kept as alias).
+- Policy type preferred name is `AuctelisPolicy` (`AesaPolicy` kept as alias).
 
 ### Fixed
 
@@ -168,21 +175,21 @@ and this project uses semantic versioning.
   `--base-lock` (real authority delta, not head-vs-own-lock).
 - PR comment keeps full risk-delta evidence, sorts by severity, shows destination
   hosts, and labels advisory decisions as `ADVISORY (would BLOCK)`.
-- `authdiff lock` refuses HIGH/CRITICAL gated trees without `--accept-gated`.
-- `authdiff ci init` requires `--owner` (no `@YOUR_TEAM` placeholder).
+- `auctelis lock` refuses HIGH/CRITICAL gated trees without `--accept-gated`.
+- `auctelis ci init` requires `--owner` (no `@YOUR_TEAM` placeholder).
 - Workflow files are no longer double-registered as Automation + CI Workflow.
 - Lock seal excludes volatile `repository` path / `audited_commit` (stable hash).
-- `authdiff demo` leads with `+/-` lock lines and always exits 0.
-- `authdiff doctor` stages `~/.claude` so settings/hooks resolve; parses
+- `auctelis demo` leads with `+/-` lock lines and always exits 0.
+- `auctelis doctor` stages `~/.claude` so settings/hooks resolve; parses
   `.claude.json` as MCP config.
 
 ## [1.0.0] — 2026-11-09
 
 ### Added
 
-- Initial **authdiff 1.0.0** release as a clean product line:
+- Initial **auctelis 1.0.0** release as a clean product line:
   authority lockfile + PR security gate for AI agents.
-- Public CLI: `authdiff` / `authdiff-dev` (package name `authdiff`).
+- Public CLI: `auctelis` / `auctelis-dev` (package name `auctelis`).
 - Core path: `demo` → `doctor` → `vet` → `scan` → `lock` → `ci`.
 - `AUTHORITY.lock`, Authority Diff PR comments, GitHub Action gate,
   deterministic rules, and optional coding-agent skill.
@@ -190,6 +197,6 @@ and this project uses semantic versioning.
 ### Changed
 
 - Rebranded from the prior AESA / `aesa-tools` product line.
-- Policy file: `.authdiff.yml` · artifacts: `authdiff-out/` ·
-  Action: `authdiff-gate` · rules: `AUTHDIFF-RULE-NNN`.
+- Policy file: `.auctelis.yml` · artifacts: `auctelis-out/` ·
+  Action: `auctelis-gate` · rules: `AUCTELIS-RULE-NNN`.
 - All first-party version surfaces reset to **1.0.0**.

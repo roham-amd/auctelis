@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from authdiff.cli import main
-from authdiff.export.pr_comment import AUTHDIFF_COMMENT_MARKER, render_authority_diff_comment
-from authdiff.inventory.adapters.toml_config import _parse_simple_toml, discover_toml_mcp_configs
-from authdiff.inventory.limits import CollectorLimits
-from authdiff.security.decision import compute_decision
-from authdiff.security.models import Finding
-from authdiff.security.scan import run_scan
+from auctelis.cli import main
+from auctelis.export.pr_comment import AUCTELIS_COMMENT_MARKER, render_authority_diff_comment
+from auctelis.inventory.adapters.toml_config import _parse_simple_toml, discover_toml_mcp_configs
+from auctelis.inventory.limits import CollectorLimits
+from auctelis.security.decision import compute_decision
+from auctelis.security.models import Finding
+from auctelis.security.scan import run_scan
 
 
 def _high_gate() -> Finding:
     return Finding(
         finding_id="F-001",
-        rule_id="AUTHDIFF-RULE-011",
+        rule_id="AUCTELIS-RULE-011",
         title="unpinned",
         severity="HIGH",
         confidence="OBSERVED",
@@ -40,11 +40,11 @@ def test_sticky_comment_marker_is_first_line(tmp_path: Path):
     demo = Path(__file__).resolve().parents[1] / "examples" / "demo-vulnerable"
     scan, payload, _ = run_scan(demo, output_dir=tmp_path / "out")
     comment = payload.get("pr_comment") or render_authority_diff_comment(scan.to_findings_doc())
-    assert comment.startswith(AUTHDIFF_COMMENT_MARKER)
+    assert comment.startswith(AUCTELIS_COMMENT_MARKER)
     assert (
         (tmp_path / "out" / "pr-comment.md")
         .read_text(encoding="utf-8")
-        .startswith(AUTHDIFF_COMMENT_MARKER)
+        .startswith(AUCTELIS_COMMENT_MARKER)
     )
 
 
@@ -92,14 +92,14 @@ def test_target_policy_ignored_by_default(tmp_path: Path, capsys):
         '{"mcpServers":{"x":{"command":"npx","args":["-y","demo-pkg"]}}}',
         encoding="utf-8",
     )
-    (root / ".authdiff.yml").write_text(
+    (root / ".auctelis.yml").write_text(
         """
 version: 1
 policy:
   mode: enforce
   fail_on: never
   ignore:
-    - rule: AUTHDIFF-RULE-011
+    - rule: AUCTELIS-RULE-011
       path: "**"
       justification: "blind the auditor"
 """,
@@ -109,7 +109,7 @@ policy:
     code = main(["scan", str(root), "-o", str(out), "--fail-on", "high"])
     printed = capsys.readouterr().out
     assert (
-        "Target .authdiff.yml ignored" in printed
+        "Target .auctelis.yml ignored" in printed
         or "target_policy_ignored" in printed.lower()
         or code
         in {
@@ -119,7 +119,7 @@ policy:
     )
     findings = (out / "findings.json").read_text(encoding="utf-8")
     # Default path must not apply the broad suppression — RULE-011 should remain active.
-    assert '"suppressed": true' not in findings or "AUTHDIFF-RULE-011" in findings
+    assert '"suppressed": true' not in findings or "AUCTELIS-RULE-011" in findings
     # More precise: with ignored policy, no suppressions applied.
     assert (
         '"suppression_count": 0' in findings
@@ -136,14 +136,14 @@ def test_trust_target_policy_applies_suppressions(tmp_path: Path):
         '{"mcpServers":{"x":{"command":"npx","args":["-y","demo-pkg"]}}}',
         encoding="utf-8",
     )
-    (root / ".authdiff.yml").write_text(
+    (root / ".auctelis.yml").write_text(
         """
 version: 1
 policy:
   mode: advisory
   fail_on: never
   ignore:
-    - rule: AUTHDIFF-RULE-011
+    - rule: AUCTELIS-RULE-011
       path: "**"
       justification: "accepted risk for fixture"
       owner: tests

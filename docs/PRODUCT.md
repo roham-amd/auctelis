@@ -1,8 +1,8 @@
-# authdiff product contract
+# Auctelis product contract
 
-**Product:** `authdiff` — the authority lockfile and PR security gate for AI agents  
+**Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR security gate for AI agents  
 **Also known as:** Agent Authority Change Control  
-**Release:** 0.3.3 · **Package:** `authdiff` 0.3.3 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Release:** 0.3.3 · **Package:** `auctelis` 0.3.3 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Research/archive trees were removed in 0.3.0.
@@ -31,12 +31,12 @@ One question drives the workflow:
 
 | Name | Role |
 | --- | --- |
-| **authdiff** | Product name and primary CLI |
-| `authdiff` | PyPI / import package name |
-| `.authdiff.yml` | Policy file |
-| `authdiff-out/` | Default artifact directory |
-| `.github/actions/authdiff-gate` | GitHub Action |
-| `skills/authdiff-auditor` | Thin agent skill that **explains** CLI evidence |
+| **Auctelis** | Product name and primary CLI |
+| `auctelis` | PyPI / import package name |
+| `.auctelis.yml` | Policy file |
+| `auctelis-out/` | Default artifact directory |
+| `.github/actions/auctelis-gate` | GitHub Action |
+| `skills/auctelis-auditor` | Thin agent skill that **explains** CLI evidence |
 
 ---
 
@@ -46,15 +46,15 @@ Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional)
 
 | Command | Job |
 | --- | --- |
-| `authdiff doctor` | Local host authority map (front door) |
-| `authdiff demo` | Optional packaged fixture (always exits 0; prints `+/-` lock lines) |
-| `authdiff vet` | Pre-install scan of a URL or path |
-| `authdiff scan` / `check` | Repo Authority Diff (`--locked`, `--base-lock`) |
-| `authdiff lock` | Write `AUTHORITY.lock` (`--accept-gated`, `--approval`) |
-| `authdiff gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
-| `authdiff ci init --owner @team` | Policy + workflow + CODEOWNERS + initial lock |
+| `auctelis doctor` | Local host authority map (front door) |
+| `auctelis demo` | Optional packaged fixture (always exits 0; prints `+/-` lock lines) |
+| `auctelis vet` | Pre-install scan of a URL or path |
+| `auctelis scan` / `check` | Repo Authority Diff (`--locked`, `--base-lock`) |
+| `auctelis lock` | Write `AUTHORITY.lock` (`--accept-gated`, `--approval`) |
+| `auctelis gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
+| `auctelis ci init --owner @team` | Policy + workflow + CODEOWNERS + initial lock |
 
-Maintainer surfaces (`authdiff-dev` build / lint / corpus / deps) are secondary
+Maintainer surfaces (`auctelis-dev` build / lint / corpus / deps) are secondary
 and must not block the product loop.
 
 ---
@@ -76,4 +76,4 @@ must stay honest (`SUPPORTED` / `PARTIAL` / `MANUAL_ONLY` / `NOT VERIFIED`).
 | Policy | [`POLICY.md`](POLICY.md) |
 | Rules | [`SECURITY-RULES.md`](SECURITY-RULES.md) |
 | Evidence | [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) |
-| PR gate | [`AUTHDIFF-GATE.md`](AUTHDIFF-GATE.md) |
+| PR gate | [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) |

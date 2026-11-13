@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from authdiff.corpus.runner import run_corpus
-from authdiff.inventory.collector import collect_inventory, inventory_to_json
-from authdiff.inventory.limits import CollectorLimits
-from authdiff.validate_report import analyze_graph_paths
+from auctelis.corpus.runner import run_corpus
+from auctelis.inventory.collector import collect_inventory, inventory_to_json
+from auctelis.inventory.limits import CollectorLimits
+from auctelis.validate_report import analyze_graph_paths
 
 
 def test_dependency_pins_consistent():
-    from authdiff.build import check_dependency_pins, check_requires_python
+    from auctelis.build import check_dependency_pins, check_requires_python
 
     check_requires_python()
     actions = check_dependency_pins()
@@ -16,7 +16,7 @@ def test_dependency_pins_consistent():
 
 
 def test_deps_outdated_report_structure(monkeypatch):
-    from authdiff import deps
+    from auctelis import deps
 
     pins = deps.parse_lock_pins()
     assert "jsonschema" in pins
@@ -64,9 +64,9 @@ def test_inventory_finds_skill_and_mcp():
 
 
 def test_preflight_graph_helpers(tmp_path: Path):
-    from authdiff.jsonio import write_json
-    from authdiff.preflight import build_audit_context_md, inventory_to_graph, run_preflight
-    from authdiff.validate_report import validate_graph_file
+    from auctelis.jsonio import write_json
+    from auctelis.preflight import build_audit_context_md, inventory_to_graph, run_preflight
+    from auctelis.validate_report import validate_graph_file
 
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# authdiff tooling image — Python 3.12.16 slim (Debian trixie) + uv, locked deps.
+# auctelis tooling image — Python 3.12.16 slim (Debian trixie) + uv, locked deps.
 # Base and uv pins use tag@digest so Dependabot can bump both.
 
 FROM python:3.12.16-slim-trixie@sha256:05a994d2344eb364cc186910f4fc8786a38215f39f00d0acc25bff33a08f4177
@@ -29,10 +29,10 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-dev --directory tools
 
-RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin authdiff \
-    && chown -R authdiff:authdiff /app
-USER authdiff
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin auctelis \
+    && chown -R auctelis:auctelis /app
+USER auctelis
 
 WORKDIR /work
-ENTRYPOINT ["authdiff"]
+ENTRYPOINT ["auctelis"]
 CMD ["--help"]
