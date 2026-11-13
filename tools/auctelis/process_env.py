@@ -1,6 +1,6 @@
 """Shared child-process environment scrubbing for opt-in execute paths.
 
-Used by ``auctelis run`` (broker) and ``auctelis snapshot --execute``.
+Used by ``auctelis-dev run`` (broker) and ``auctelis-dev snapshot --execute``.
 Passive scans never call this module.
 """
 

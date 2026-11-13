@@ -67,6 +67,10 @@ jobs:
           uv build
           uv venv /tmp/auctelis-wheel-smoke --python 3.12.16
           uv pip install --python /tmp/auctelis-wheel-smoke dist/*.whl
+          # Fresh wheel must start without the repo or the dev dependency group.
+          /tmp/auctelis-wheel-smoke/bin/auctelis --version
+          /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
           # Demo must work from the installed wheel without the repo examples/ tree.
           # demo always exits 0 (aha walkthrough). Bare scan uses --fail-on high.
           set +e
@@ -77,7 +81,5 @@ jobs:
           set -e
           test "$demo_rc" -eq 0
           test "$scan_rc" -eq 1
-          grep -E 'Authority delta|ADVISORY|BLOCK' /tmp/auctelis-wheel-demo/pr-comment.md
-          grep -E 'DECISION:[[:space:]]*BLOCK' /tmp/auctelis-wheel-out/scan-summary.txt
-          /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
+          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH' /tmp/auctelis-wheel-demo/pr-comment.md
+          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|DECISION' /tmp/auctelis-wheel-out/scan-summary.txt

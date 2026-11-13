@@ -1,6 +1,6 @@
 # auctelis scan — operator guide
 
-Guard scan path for **0.3.3**: deterministic discovery plus evidence-backed
+Guard scan path for **0.3.4**: deterministic discovery plus evidence-backed
 observations via `auctelis scan` / `check`, with capability / exposure / finding
 separation. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./auctelis-out` (not inside the target tree).
@@ -169,7 +169,9 @@ Prefer `auctelis lock` + `auctelis gate` + CI Authority Diff for product workflo
 1. First assessment: `auctelis scan .` then `auctelis lock`.
 2. After changes: `auctelis check --locked .` (or `scan --baseline auctelis-out/baseline.json`).
 3. Inspect `pr-comment.md` / lock delta for authority expansions.
-4. CI: Action with `authority-diff: true` and `locked: true` (see [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)).
+4. CI: Action with `authority-diff: true` and `locked: false` (lockless-first);
+   set `locked: true` after sealing `AUTHORITY.lock` (see
+   [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)).
 
 Baseline identity is **fingerprint-first** (content digest of authority-bearing
 evidence), with path/name as a secondary signal. Renames of unchanged content

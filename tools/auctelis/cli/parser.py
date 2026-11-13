@@ -9,17 +9,18 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "doctor → lock → scan/gate → ci init  (demo / vet optional)"
+PUBLIC_PATH = "doctor → lock --home → hook install → (team) gate / ci init"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
-review:       explain | diff lock | annotate | harden  (optional)
-maintainer:   auctelis-dev (build | lint | corpus | deps | run | snapshot | …)
+review:       vet | explain | diff lock | annotate | harden  (optional)
+maintainer:   auctelis-dev (build | lint | corpus | deps)
 
 Bare `auctelis` → doctor (no repo config) or scan . (AUTHORITY.lock / .auctelis.yml).
 Passive scans never execute target code.
+One verdict language (gate): PASS | GROWTH | NEEDS_REVIEW | BASELINE_ADOPTED.
+Scan severities annotate the diff; they are not a second public BLOCK gate.
 Target `.auctelis.yml` is ignored unless `--policy` or `--trust-target-policy` is set.
-Commit AUTHORITY.lock and protect it with CODEOWNERS; auctelis labels growth only.
 Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init / policy edits.
 """
 
@@ -27,7 +28,9 @@ Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init / policy edits.
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — six jobs, not six brand names.
-CORE_PUBLIC_COMMANDS = frozenset({"demo", "doctor", "vet", "scan", "check", "lock", "gate", "ci"})
+CORE_PUBLIC_COMMANDS = frozenset(
+    {"demo", "doctor", "vet", "scan", "check", "lock", "gate", "ci", "hook"}
+)
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -40,6 +43,7 @@ _PRODUCT_COMMANDS = frozenset(
         "harden",
         "lock",
         "gate",
+        "hook",
         "explain",
         "diff",
         "annotate",
@@ -57,6 +61,7 @@ _DEV_COMMANDS = frozenset(
         "corpus",
         "deps",
         "lint",
+        # Kill-list: kept callable on auctelis-dev only; not product front door.
         "run",
         "snapshot",
         "artifact-vet",
@@ -105,8 +110,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog,
         description=(
-            "Auctelis — the authority lockfile and PR security gate for AI agents. "
-            "Discover, lock, diff, and require review when agent authority expands. "
+            "Auctelis — package-lock for agent authority. "
+            "See what your agents can do, and what changed since you last said OK. "
             "(Maintainer cmds: `auctelis-dev`)"
         ),
         epilog=_EPILOG,
@@ -357,7 +362,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--resolve",
         action="store_true",
         help=(
-            "Opt-in: after locking, remind to run `auctelis snapshot --execute` "
+            "Opt-in: after locking, remind to run `auctelis-dev snapshot --execute` "
             "for live tools/list pins (no network from lock itself)."
         ),
     )
@@ -390,16 +395,52 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     )
     gate_cmd.add_argument(
         "--strict-ruleset",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help=(
             "Fail growth when ruleset status is UNVERIFIED "
-            "(default: PASS with prominent unverified warning)"
+            "(default: on; use --no-strict-ruleset for best-effort)"
         ),
     )
     gate_cmd.add_argument(
         "--agent",
         action="store_true",
         help="Emit JSON gate report",
+    )
+
+    hook_cmd = sub.add_parser(
+        "hook",
+        help="Install session-start delta + PreToolUse lock hooks (Authority Watch)",
+    )
+    hook_sub = hook_cmd.add_subparsers(dest="hook_command", required=True)
+    hook_install = hook_sub.add_parser(
+        "install",
+        help="Copy hooks to ~/.auctelis/hooks and wire Claude Code settings.json",
+    )
+    hook_install.add_argument(
+        "--home",
+        type=Path,
+        help="Override home directory (default: user home)",
+    )
+    hook_install.add_argument(
+        "--hooks-dir",
+        type=Path,
+        help="Where to write hook scripts (default: ~/.auctelis/hooks)",
+    )
+    hook_install.add_argument(
+        "--session-only",
+        action="store_true",
+        help="Install only the session-start delta hook",
+    )
+    hook_install.add_argument(
+        "--pretool-only",
+        action="store_true",
+        help="Install only the PreToolUse lock-enforcing hook",
+    )
+    hook_install.add_argument(
+        "--no-wire",
+        action="store_true",
+        help="Copy scripts only; do not edit ~/.claude/settings.json",
     )
 
     explain = sub.add_parser("explain", help=_ADV)

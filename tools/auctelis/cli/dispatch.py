@@ -13,9 +13,6 @@ from auctelis.authority_lock import (
     diff_authority_locks,
     run_lock_command,
 )
-from auctelis.build import build_all, sync_schemas
-from auctelis.corpus.runner import run_corpus
-from auctelis.deps import outdated_report, upgrade_pins
 from auctelis.doctor import run_doctor
 from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
 from auctelis.export.annotate import render_github_annotations, render_text_annotations
@@ -26,7 +23,6 @@ from auctelis.harden import run_harden
 from auctelis.hosts.profiles import get_host_profile, list_host_profiles
 from auctelis.inventory.collector import collect_inventory, inventory_to_json
 from auctelis.jsonio import print_json, read_json, write_json, write_text
-from auctelis.lint import run_ruff
 from auctelis.lock_io import load_authority_lock
 from auctelis.policy import apply_policy_defaults, discover_policy_file, load_policy
 from auctelis.security.engine import ScanResult
@@ -35,6 +31,9 @@ from auctelis.security.scan import run_scan
 from auctelis.supply_chain.digest import sha256_file, verify_file_digest
 from auctelis.validate_report import validate_report_file
 from auctelis.vet import run_vet
+
+# Maintainer modules (build/deps/corpus/lint) import packaging and other
+# dev-only deps. Keep them lazy so the product wheel starts with jsonschema alone.
 
 
 def _print_validation(path: Path, *, ok: bool, issues: list) -> int:
@@ -63,6 +62,8 @@ def dispatch(args: argparse.Namespace) -> int:
     }.get(args.command, args.command)
     if args.command == "ci":
         return _cmd_init_gate(args) if getattr(args, "ci_command", None) == "init" else 2
+    if args.command == "hook":
+        return _cmd_hook(args)
 
     match command:
         case "scan":
@@ -79,6 +80,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_lock(args)
         case "gate":
             return _cmd_gate(args)
+        case "hook":
+            return _cmd_hook(args)
         case "explain":
             return _cmd_explain(args)
         case "build":
@@ -343,10 +346,30 @@ def _cmd_lock(args: argparse.Namespace) -> int:
     print(text)
     if code == 0 and bool(getattr(args, "resolve", False)):
         print(
-            "Next (opt-in network): auctelis snapshot --execute -- <mcp-launcher…> "
+            "Next (opt-in network): auctelis-dev snapshot --execute -- <mcp-launcher…> "
             "then auctelis lock --snapshot tools.json"
         )
     return code
+
+
+def _cmd_hook(args: argparse.Namespace) -> int:
+    """Install Authority Watch session + PreToolUse hooks."""
+    if getattr(args, "hook_command", None) != "install":
+        return 2
+    from auctelis.hooks import install_hooks
+
+    session_only = bool(getattr(args, "session_only", False))
+    pretool_only = bool(getattr(args, "pretool_only", False))
+    result = install_hooks(
+        home=getattr(args, "home", None),
+        hooks_dir=getattr(args, "hooks_dir", None),
+        session=not pretool_only,
+        pretool=not session_only,
+        wire_claude=not bool(getattr(args, "no_wire", False)),
+    )
+    for msg in result.get("messages") or []:
+        print(msg)
+    return 0
 
 
 def _cmd_gate(args: argparse.Namespace) -> int:
@@ -357,7 +380,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         head_lock=getattr(args, "head_lock", None),
         codeowners_path=getattr(args, "codeowners", None),
         check_ruleset=not bool(getattr(args, "skip_ruleset_check", False)),
-        strict_ruleset=bool(getattr(args, "strict_ruleset", False)),
+        strict_ruleset=bool(getattr(args, "strict_ruleset", True)),
     )
     if getattr(args, "agent", False):
         print_json(report)
@@ -665,9 +688,12 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         for path in wrote:
             print(f"  {path}")
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
-    print(f"CODEOWNERS owner: {owner} (workflow already uses locked: true).")
+    print(
+        f"CODEOWNERS owner: {owner}. Workflow starts lockless (locked: false); "
+        "set locked: true after AUTHORITY.lock is sealed and protected."
+    )
     print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
-    print("Pin the Action + tools install to an immutable git tag/SHA (PyPI is not published yet).")
+    print("Pin the Action + tools install to an immutable git tag/SHA (or PyPI once published).")
     return 0
 
 
@@ -704,6 +730,8 @@ def _cmd_explain(args: argparse.Namespace) -> int:
 
 
 def _cmd_build(args: argparse.Namespace) -> int:
+    from auctelis.build import build_all, sync_schemas
+
     match args.target:
         case "schemas":
             for line in sync_schemas():
@@ -809,12 +837,16 @@ def _cmd_hosts(args: argparse.Namespace) -> int:
 
 
 def _cmd_corpus() -> int:
+    from auctelis.corpus.runner import run_corpus
+
     summary = run_corpus()
     print_json(summary)
     return 0 if summary.get("failed", 0) == 0 else 1
 
 
 def _cmd_deps(args: argparse.Namespace) -> int:
+    from auctelis.deps import outdated_report, upgrade_pins
+
     match args.deps_cmd:
         case "outdated":
             report = outdated_report()
@@ -829,6 +861,8 @@ def _cmd_deps(args: argparse.Namespace) -> int:
 
 
 def _cmd_lint(args: argparse.Namespace) -> int:
+    from auctelis.lint import run_ruff
+
     summary = run_ruff(
         fix=args.fix,
         format_code=args.format_code,
@@ -860,11 +894,11 @@ def _cmd_snapshot(args: argparse.Namespace) -> int:
         if cmd and cmd[0] == "--":
             cmd = cmd[1:]
         if not cmd:
-            print("usage: auctelis snapshot --execute -- <command…>")
+            print("usage: auctelis-dev snapshot --execute -- <command…>")
             return 2
         doc = snapshot_execute(cmd, allow_network=bool(args.allow_network))
     else:
-        print("usage: auctelis snapshot --from-file tools.json | --execute -- <cmd>")
+        print("usage: auctelis-dev snapshot --from-file tools.json | --execute -- <cmd>")
         return 2
     if args.output:
         write_json(args.output, doc)

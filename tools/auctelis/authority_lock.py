@@ -17,6 +17,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlparse
 
 from auctelis.lock_io import load_authority_lock
 from auctelis.security.authority import (
@@ -588,14 +589,35 @@ def render_lock_diff_lines(
     for rec in added[:limit]:
         pin = rec.get("pin_state") or "unknown"
         caps = ", ".join(rec.get("capabilities") or []) or "authority"
-        # Lead with destination host so PR comments keep "who receives it"
-        # even when the line is truncated later.
-        dest = ", ".join((rec.get("destinations") or [])[:2])
-        dest_bit = f" reaches {dest};" if dest else ""
-        env = ", ".join((rec.get("env_keys") or [])[:3])
+        # Destination hosts (deduped). Skip hosts already visible in the path
+        # so PR comments do not print the same host twice.
+        path = str(rec.get("path") or "")
+        path_l = path.lower()
+        dests: list[str] = []
+        seen_hosts: set[str] = set()
+        for d in rec.get("destinations") or []:
+            raw = str(d).strip()
+            if not raw:
+                continue
+            # Normalize URL → host so http://x/sse and x are not printed twice.
+            host = raw
+            if "://" in raw:
+                parsed = urlparse(raw)
+                host = parsed.hostname or raw
+            key = host.lower()
+            if key in seen_hosts:
+                continue
+            if key in path_l or path_l in key:
+                continue
+            seen_hosts.add(key)
+            dests.append(host)
+            if len(dests) >= 2:
+                break
+        dest_bit = f" reaches {', '.join(dests)};" if dests else ""
+        env_keys = list(dict.fromkeys(str(e) for e in (rec.get("env_keys") or []) if e))[:3]
+        env = ", ".join(env_keys)
         env_bit = f" passes {env};" if env else ""
         label = rec.get("name") or rec.get("id")
-        path = rec.get("path")
         path_bit = f" @ {path}" if path else ""
         lines.append(
             f"+ addition {rec.get('kind')} `{label}`{path_bit}:{dest_bit}{env_bit} "
@@ -603,16 +625,16 @@ def render_lock_diff_lines(
         )
     for rec in removed[: max(0, limit - len(lines))]:
         label = rec.get("name") or rec.get("id")
-        path = rec.get("path")
-        path_bit = f" @ {path}" if path else ""
+        rem_path = str(rec.get("path") or "")
+        path_bit = f" @ {rem_path}" if rem_path else ""
         lines.append(f"- reduction {rec.get('kind')} `{label}`{path_bit}")
     for item in changed[: max(0, limit - len(lines))]:
         before = item.get("before") or {}
         after = item.get("after") or {}
         label = after.get("name") or before.get("name") or item.get("id")
         klass = item.get("change_class") or "changed"
-        path = after.get("path") or before.get("path")
-        path_bit = f" @ {path}" if path else ""
+        chg_path = str(after.get("path") or before.get("path") or "")
+        path_bit = f" @ {chg_path}" if chg_path else ""
         detail_bits = field_level_change_bits(before, after)
         detail = "; ".join(detail_bits) if detail_bits else "fields changed"
         lines.append(

@@ -1,5 +1,5 @@
 # Build, sign, attach assets to the GitHub Release, and publish to GitHub Packages.
-# Trigger: push a version tag matching v* (e.g. v0.3.3).
+# Trigger: push a version tag matching v* (e.g. v0.3.4).
 # PyPI remains a separate trusted-publishing workflow (publish-pypi.yml).
 
 name: Release
@@ -15,8 +15,8 @@ permissions:
   packages: write
 
 jobs:
-  # Releases must not ship from a red tree. Run the same gates as validate
-  # before attaching assets (tags alone are not sufficient).
+  # Releases must not ship from a red tree. Mirror auctelis-validate.yml
+  # (including pip-audit + wheel-smoke) before attaching assets.
   validate:
     runs-on: ubuntu-latest
     defaults:
@@ -43,6 +43,9 @@ jobs:
       - name: Type check (mypy)
         run: uv run --locked mypy auctelis
 
+      - name: Dependency audit
+        run: uv run --locked pip-audit
+
       - name: Build and consistency checks
         working-directory: .
         run: uv run --directory tools --locked auctelis-dev build all
@@ -54,8 +57,43 @@ jobs:
       - name: Pytest
         run: uv run --locked pytest -q ../tests
 
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Build wheel and smoke-test installed CLI
+        working-directory: tools
+        run: |
+          uv build
+          uv venv /tmp/auctelis-wheel-smoke --python 3.12.16
+          uv pip install --python /tmp/auctelis-wheel-smoke dist/*.whl
+          # Fresh wheel must start without the repo or the dev dependency group.
+          /tmp/auctelis-wheel-smoke/bin/auctelis --version
+          /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
+          set +e
+          /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
+          demo_rc=$?
+          /tmp/auctelis-wheel-smoke/bin/auctelis scan ../examples/demo-vulnerable -o /tmp/auctelis-wheel-out --fail-on high
+          scan_rc=$?
+          set -e
+          test "$demo_rc" -eq 0
+          test "$scan_rc" -eq 1
+          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH' /tmp/auctelis-wheel-demo/pr-comment.md
+          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|DECISION' /tmp/auctelis-wheel-out/scan-summary.txt
+
   release:
-    needs: validate
+    needs: [validate, wheel-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -127,12 +165,11 @@ jobs:
             gh release upload "$TAG" "${assets[@]}" --clobber
           else
             gh release create "$TAG" "${assets[@]}" \
-              --title "auctelis ${TAG#v}" \
+              --title "Auctelis ${TAG#v}" \
               --notes "$NOTES"
           fi
 
-      # GitHub Packages (PyPI-compatible) is optional; public distribution is the
-      # GitHub Release assets + PyPI trusted publishing (publish-pypi.yml).
+      # Optional; public distribution is GitHub Release assets + PyPI (publish-pypi.yml).
       - name: Publish to GitHub Packages
         continue-on-error: true
         working-directory: tools

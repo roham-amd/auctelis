@@ -18,7 +18,7 @@ from auctelis.inventory.types import (
     assign_component_ids,
 )
 
-INVENTORY_VERSION = "0.3.3"
+INVENTORY_VERSION = "0.3.4"
 
 
 @dataclass(slots=True)

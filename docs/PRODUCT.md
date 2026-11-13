@@ -1,8 +1,8 @@
 # Auctelis product contract
 
-**Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR security gate for AI agents  
-**Also known as:** Agent Authority Change Control  
-**Release:** 0.3.3 · **Package:** `auctelis` 0.3.3 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Product:** **Auctelis** (`auctelis`) — package-lock for agent authority  
+**Also known as:** Authority Watch · Agent Authority Change Control  
+**Release:** 0.3.4 · **Package:** `auctelis` 0.3.4 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Research/archive trees were removed in 0.3.0.
@@ -12,18 +12,17 @@ Execution plan: [`ROADMAP.md`](ROADMAP.md).
 
 ## North star
 
-> Know what authority your AI agents have, what changes when integrations are
-> introduced, and whether those changes have been approved.
+> See what your agents can do, and what changed since you last said OK.
 
-The real product is an **authority-change management and approval system** for
-AI-agent integrations — not an audit framework, not a prompt library, and not a
-generic vulnerability scanner.
+The real product is **Authority Watch**: host inventory + lock + session delta,
+with the PR Authority Diff as the team upsell — not an audit framework, not a
+prompt library, and not a generic vulnerability scanner.
 
 One question drives the workflow:
 
-> What new permissions, execution capabilities, destinations and delegation
-> relationships are being introduced into our AI-agent environment, and who
-> authorized them?
+> What new permissions, execution capabilities, and destinations are being
+> introduced (destination hosts — publisher identity stays NOT VERIFIED unless
+> separately attested), and has a human approved that change?
 
 ---
 
@@ -42,20 +41,25 @@ One question drives the workflow:
 
 ## Primary commands
 
-Public path: **doctor → lock → scan/gate → ci init** (demo / vet optional)
+Public path: **doctor → lock --home → hook install → (team) gate / ci init**
 
 | Command | Job |
 | --- | --- |
 | `auctelis doctor` | Local host authority map (front door) |
-| `auctelis demo` | Optional packaged fixture (always exits 0; prints `+/-` lock lines) |
+| `auctelis lock --home` / `lock` | Seal host or repo `AUTHORITY.lock` |
+| `auctelis hook install` | Session-start delta + PreToolUse lock enforce |
 | `auctelis vet` | Pre-install scan of a URL or path |
-| `auctelis scan` / `check` | Repo Authority Diff (`--locked`, `--base-lock`) |
-| `auctelis lock` | Write `AUTHORITY.lock` (`--accept-gated`, `--approval`) |
-| `auctelis gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
-| `auctelis ci init --owner @team` | Policy + workflow + CODEOWNERS + initial lock |
+| `auctelis gate` | Label growth vs `--base-lock` (`--strict-ruleset` default on) |
+| `auctelis ci init --owner @team` | Policy + lockless workflow + CODEOWNERS; set `locked: true` after seal |
+| `auctelis demo` | Optional packaged fixture |
+| `auctelis scan` / `check` | Repo annotations / lock drift (`--locked`) |
+
+**One verdict vocabulary:** `PASS` | `GROWTH` | `NEEDS_REVIEW` | `BASELINE_ADOPTED`.
+Scan severities annotate; they are not a second public `BLOCK` gate.
 
 Maintainer surfaces (`auctelis-dev` build / lint / corpus / deps) are secondary
-and must not block the product loop.
+and must not block the product loop. `run` / `snapshot` / `artifact-vet` stay on
+`auctelis-dev` only (kill-list demotion).
 
 ---
 

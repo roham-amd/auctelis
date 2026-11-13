@@ -28,21 +28,21 @@ repository `examples/` tree.
 **One-shot doctor** (`uvx` is ephemeral — it does not leave a persistent `auctelis` on PATH):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools" auctelis doctor
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools" auctelis doctor
 ```
 
 **Persistent tool install:**
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools"
 
 auctelis doctor
 auctelis lock --home
+auctelis hook install                      # session delta + PreToolUse lock
+auctelis doctor --since-lock
 auctelis vet github.com/org/some-skill
-auctelis lock
-auctelis gate --base-lock AUTHORITY.lock   # after a base lock exists
-auctelis ci init --owner @you
+auctelis ci init --owner @you              # team upsell (lockless Action first)
 auctelis demo                              # optional canned fixture
 ```
 
@@ -52,7 +52,7 @@ still run `scan`.
 
 Package and CLI name: **`auctelis`**. Maintainer commands: **`auctelis-dev`**.
 
-Public mental model: **doctor → lock → scan/gate → ci init** (demo / vet optional).
+Public mental model: **doctor → lock --home → hook install → (team) gate / ci init**.
 
 ## From a checkout
 
@@ -73,15 +73,17 @@ Image base: `python:3.12.16-slim-trixie` (digest-pinned in `Dockerfile`).
 
 ## GitHub Action
 
-See [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) and `auctelis ci init` (writes a
-**lock-first** workflow with `locked: true`).
+See [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md). Quickstart is **lockless-first**
+(`locked: false`, `strict-ruleset: true`). `auctelis ci init --owner @team`
+writes that lockless workflow plus CODEOWNERS; after sealing `AUTHORITY.lock`,
+set `locked: true` on the Action step for the approved-state upgrade.
 Consumer recipe: [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml).
 
 ## Version alignment
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.3.3 |
-| Package `auctelis` | 0.3.3 |
+| Product (`VERSION`) | 0.3.4 |
+| Package `auctelis` | 0.3.4 |
 | `AUTHORITY.lock` schema | 1 |
 | Rule pack | 1.6 |

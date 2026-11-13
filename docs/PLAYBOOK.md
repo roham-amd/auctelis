@@ -67,7 +67,7 @@ AUTHORITY.lock  @security-owner
 
 ```bash
 # Git install only today — PyPI not published yet
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools" auctelis doctor
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools" auctelis doctor
 auctelis vet <url-or-path>
 auctelis ci init --owner @you && auctelis lock --accept-gated
 auctelis demo   # canned bad fixture + PR comment (exits 0)

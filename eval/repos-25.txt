@@ -3,4 +3,4 @@
 # Status: scaffold — replace with real outside repos for the pilot matrix (docs/pilots/TRACKER.md).
 # Dogfood of this product does not count toward the five-repo × 30-day kill criterion.
 # Slot hints: MCP | skills | hooks | plugins | CI — see docs/EVALUATION-PROTOCOL.md
-roham-amd/auctelis@v0.3.3
+roham-amd/auctelis@v0.3.4

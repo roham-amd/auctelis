@@ -70,6 +70,8 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     assert (root / ".github" / "workflows" / "auctelis-gate.yml").is_file()
     workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     assert "trusted-policy" in workflow
+    assert 'locked: "false"' in workflow
+    assert 'strict-ruleset: "true"' in workflow
     assert "Wrote" in out
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "@sec-owners" in owners

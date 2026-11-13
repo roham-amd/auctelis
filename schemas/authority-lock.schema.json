@@ -80,7 +80,7 @@
     },
     "approved_findings": {
       "type": "array",
-      "description": "Accepted finding fingerprints with accountable justification (risk register).",
+      "description": "LEGACY / decorative. Gate ignores this array. Prefer CODEOWNERS review of lock diffs. Emit empty unless a future gate input is added.",
       "items": {
         "type": "object",
         "required": ["fingerprint", "justification", "owner"],
@@ -94,7 +94,7 @@
     },
     "approvals": {
       "type": "array",
-      "description": "Human approval records bound to lock_hash + commit + policy_hash.",
+      "description": "LEGACY / decorative. Always empty on regenerate. Not a gate input — GitHub CODEOWNERS/rulesets enforce review.",
       "items": {
         "type": "object",
         "required": ["owner", "approved_at", "lock_hash", "justification"],

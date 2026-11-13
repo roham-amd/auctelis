@@ -2,7 +2,7 @@
 
 Scrubs inherited secrets from the child environment and optionally records a
 pinned ``AUTHORITY.lock`` path for the child. This is **not** a full MCP
-stdio proxy; pair with ``auctelis snapshot`` to pin tool description hashes.
+stdio proxy; pair with ``auctelis-dev snapshot`` to pin tool description hashes.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def run_brokered(
                 "limitations": [
                     "Environment scrubbed; network/filesystem are NOT sandboxed.",
                     "AUTHORITY.lock is advisory to the child until a full MCP proxy ships.",
-                    "Pair with `auctelis snapshot` to pin tool description hashes.",
+                    "Pair with `auctelis-dev snapshot` to pin tool description hashes.",
                 ],
             },
             indent=2,

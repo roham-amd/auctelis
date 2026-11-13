@@ -4,13 +4,13 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.3.3** |
-| Tooling package | **0.3.3** (`auctelis`) |
+| Product release | **0.3.4** |
+| Tooling package | **0.3.4** (`auctelis`) |
 | Rule pack | **1.6** (rules 001–022) |
-| Primary path | `auctelis doctor` → `lock` → `scan/gate` → `ci init --owner` / Action |
-| Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) |
-| Action | `.github/actions/auctelis-gate` (display name: auctelis) |
-| Verdict | `auctelis gate` (scan `--base-lock` is advisory) |
+| Primary path | `doctor` → `lock --home` → `hook install` → (team) Action / `gate` |
+| Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) on locked upgrade |
+| Action | `.github/actions/auctelis-gate` — lockless default; `strict-ruleset` on |
+| Verdict | `PASS` / `GROWTH` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` |
 
 Normative depth: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`GUARD-SCAN.md`](GUARD-SCAN.md),
 [`POLICY.md`](POLICY.md), [`DOCUMENTATION-INDEX.md`](DOCUMENTATION-INDEX.md).
@@ -37,21 +37,20 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answer
 
 ```bash
 # One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools" auctelis doctor
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools" auctelis doctor
 
 # Persistent install, then the gate path:
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools"
 
 auctelis doctor                          # host authority map
-auctelis vet github.com/org/some-skill  # pre-install verdict
-auctelis scan .                          # bare `auctelis` → doctor, or scan . when lock/policy exists
-auctelis lock                            # write AUTHORITY.lock (--accept-gated if needed)
-auctelis ci init --owner @security-owner
-auctelis check --locked .
-# First lock PR → BASELINE_ADOPTED ceremony (CODEOWNERS review of the baseline).
-# Later PRs: auctelis gate --base-lock <base-AUTHORITY.lock> [--strict-ruleset]
-# scan --base-lock only writes the delta; gate is the merge verdict.
+auctelis lock --home                     # seal host lock
+auctelis hook install                    # session delta + PreToolUse
+auctelis vet github.com/org/some-skill   # pre-install annotations
+# Team: add the lockless Action (locked=false). Upgrade later:
+auctelis lock                            # write repo AUTHORITY.lock
+auctelis ci init --owner @security-owner # lockless workflow + CODEOWNERS; then locked=true
+# auctelis gate --base-lock <base.lock>  # strict-ruleset default on
 ```
 
 Single CI recipe: [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml).
@@ -80,8 +79,8 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
   with:
     trusted-policy: "true"
     authority-diff: "true"
-    locked: "true"          # first-lock → BASELINE_ADOPTED ceremony; later PRs need base lock
-    # strict-ruleset: "true"  # optional: fail growth when ruleset status is UNVERIFIED
+    locked: "false"         # lockless-first; set true after AUTHORITY.lock is sealed
+    strict-ruleset: "true"  # default: fail growth when ruleset status is UNVERIFIED
 ```
 
 ### Adoption vs growth (do not conflate)
@@ -91,7 +90,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 | PR adds first `AUTHORITY.lock`; base has none | `BASELINE_ADOPTED` | Trust ceremony — CODEOWNERS must review the baseline itself |
 | Base lock exists; head grows authority | Growth gate `PASS` / `NEEDS_REVIEW` | Compare locks; GitHub enforces owner review |
 | Growth + ruleset `OK` | `PASS / protection verified` | Probe confirmed code-owner review requirement |
-| Growth + ruleset `UNVERIFIED` | `PASS / protection unverified` (default) or fail with `strict-ruleset` | Missing token/API access — not green assurance |
+| Growth + ruleset `UNVERIFIED` | `NEEDS_REVIEW` (default `strict-ruleset`); soft PASS only with `--no-strict-ruleset` | Missing token/API access — not green assurance |
 | Growth + ruleset `MISSING` | `NEEDS_REVIEW` | Confirmed absence of code-owner review requirement |
 
 Minimum workflow permissions (example recipe):
@@ -111,7 +110,7 @@ permissions:
 | --- | --- |
 | Trusted policy | On PRs, load `.auctelis.yml` from **base** ref when `trusted-policy: true` |
 | First-time policy add | Adding `.auctelis.yml` is allowed; weakening base policy on head fails |
-| Lock drift | Action `locked` defaults to **true**; fails when observed authority ≠ `AUTHORITY.lock` |
+| Lock drift | Action `locked` defaults to **false** (lockless-first); set `true` after sealing `AUTHORITY.lock` |
 | Suppressions | Retained in findings (`suppressed: true`), never deleted from evidence |
 | Target policy default | Target `.auctelis.yml` ignored unless `--policy` / `--trust-target-policy` |
 

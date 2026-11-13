@@ -7,12 +7,57 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.3.4] — 2026-11-13
+
+### Fixed
+
+- Wheel / clean-venv start: product CLI no longer imports maintainer
+  `build` / `deps` / `corpus` / `lint` at startup (`packaging` stays
+  `[dependency-groups].dev`). `auctelis --version` works from the built wheel.
+- `release.yml` now `needs: [validate, wheel-smoke]` and mirrors
+  `pip-audit` + clean-venv smoke (including `--version`) before attaching assets.
+
+### Added
+
+- Authority Watch front door: `auctelis hook install` (session-start delta +
+  PreToolUse lock-enforcing hook templates under `~/.auctelis/hooks`).
+- Lock-enforcing PreToolUse: refuses MCP server names absent from
+  `AUTHORITY.lock`, and continues to block authority-file edits.
+- Eval scaffold under `eval/configs/` for labeled FP/FN work.
+
 ### Changed
 
-- Rebrand from **authdiff** to **Auctelis**: package/CLI `auctelis`,
-  policy `.auctelis.yml`, rules `AUCTELIS-RULE-*`, Action
-  `.github/actions/auctelis-gate`, env `AUCTELIS_*`, and GitHub repo
-  `roham-amd/auctelis`.
+- North star: host-first Authority Watch; PR gate is the team upsell.
+- Action quickstart is **lockless-first** (`locked` default `false`);
+  `strict-ruleset` default **`true`** (UNVERIFIED protection fails growth).
+- Gate CLI `--strict-ruleset` defaults on; use `--no-strict-ruleset` for
+  best-effort.
+- One public verdict vocabulary: `PASS` / `GROWTH` / `NEEDS_REVIEW` /
+  `BASELINE_ADOPTED`. Scan short summary leads with `Authority delta:`;
+  legacy `DECISION: BLOCK` is annotations-only.
+- PR comment: less path escaping, deduped destinations, skip representation
+  noise, one Risk line per addition tagged `LITERAL_CONFIG` /
+  `INFERRED_HINT`, coverage % removed from comment body, `explain` follow-up.
+- `approvals[]` / `approved_findings[]` remain empty decorative fields
+  (not gate inputs); schema docs mark them legacy.
+- Product / package version **0.3.4**. Pins in README / INSTALL / Action
+  templates repointed to `@v0.3.4`.
+
+### Removed (kill list / demoted)
+
+- Scanner `BLOCK` / SARIF as a public gate language (kept as annotations +
+  optional export).
+- `auctelis-dev run` / `snapshot` / `artifact-vet` demoted off the product
+  front door (still on `auctelis-dev` only).
+
+### Fixed (cleanup / honesty)
+
+- Docs and `ci init` messaging now match lockless-first (`locked: false`) and
+  `strict-ruleset` default on; no longer claim the generated workflow is already
+  `locked: true`.
+- Product strings point at `auctelis-dev snapshot` / `run` (not the product CLI).
+- PreToolUse lock hook fail-closed when the lock has zero MCP allowlist entries.
+- Lock diff destination lines dedupe URL host vs bare host.
 
 ## [0.3.3] — 2026-11-13
 

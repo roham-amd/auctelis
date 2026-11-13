@@ -1,14 +1,14 @@
 # auctelis tooling (`auctelis`)
 
-Agent Authority Change Control CLI: demo, doctor, pre-install vet, repo scan,
-`AUTHORITY.lock`, and CI gate helpers.
+Authority Watch CLI: `doctor` → `lock --home` → `hook install`, plus repo
+`AUTHORITY.lock`, lockless PR Action, and `gate` for the team upsell.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
 **Scan guide:** [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md)  
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.3.3** · Product: auctelis **0.3.3**
+Package: `auctelis` **0.3.4** · Product: auctelis **0.3.4**
 
 ---
 
@@ -36,14 +36,14 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.3.3#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
-auctelis demo
 auctelis doctor
+auctelis lock --home
+auctelis hook install
 auctelis vet github.com/org/some-skill
-auctelis scan /path/to/target-repo   # bare `auctelis` → doctor, or scan . when lock/policy exists
-auctelis lock --accept-gated         # when HIGH/CRITICAL findings are present
-auctelis ci init --owner @your-team
+auctelis ci init --owner @your-team   # lockless workflow; set locked:true after seal
+auctelis demo                         # optional
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).

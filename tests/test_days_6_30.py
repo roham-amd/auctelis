@@ -110,7 +110,7 @@ def test_strict_ruleset_fails_unverified_growth(tmp_path: Path, monkeypatch):
     assert report["protection"] == "unverified"
     assert report["strict_ruleset"] is True
 
-    soft, soft_code = run_gate(root, base_lock=base)
+    soft, soft_code = run_gate(root, base_lock=base, strict_ruleset=False)
     assert soft_code == 0
     assert soft["verdict"] == "PASS"
     assert soft["protection"] == "unverified"

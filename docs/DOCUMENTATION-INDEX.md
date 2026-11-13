@@ -1,27 +1,39 @@
-# Documentation index (auctelis 0.3.3)
+# Documentation index (auctelis 0.3.4)
 
-Skill: [`../skills/auctelis-auditor/SKILL.md`](../skills/auctelis-auditor/SKILL.md)
-
-Product path only. Research/archive trees were removed in the 0.3.0 shrink.
+## Public surface (start here)
 
 | Doc | Purpose |
 | --- | --- |
-| [`PRODUCT.md`](PRODUCT.md) | Frozen product contract, naming, command tiers |
-| [`ROADMAP.md`](ROADMAP.md) | 30/90-day plan + success metrics |
-| [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) | Lock semantics, identity, diff classes, pins |
+| [`../README.md`](../README.md) | Authority Watch first-user journey |
+| [`INSTALL.md`](INSTALL.md) | Clean install (git tag → PyPI) |
+| [`PRODUCT.md`](PRODUCT.md) | Frozen product contract |
+| [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) | Lockless Action → locked upgrade |
+| [`PLAYBOOK.md`](PLAYBOOK.md) | Human authority-review checklist (kill-criterion fallback) |
+
+## Reference
+
+| Doc | Purpose |
+| --- | --- |
+| [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) | Lock semantics, diff classes, pins |
+| [`GUARD-SCAN.md`](GUARD-SCAN.md) | Scan / lock / doctor / vet / hook |
+| [`CLI-REFERENCE.md`](CLI-REFERENCE.md) | Full CLI (`auctelis-dev` for maintainer) |
+| [`POLICY.md`](POLICY.md) | `.auctelis.yml` |
 | [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) | Adapter maturity / unknowns |
 | [`adapters/`](adapters/) | Per-surface maturity specs |
-| [`INSTALL.md`](INSTALL.md) | One clean-install path |
-| [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) | PR gate + CODEOWNERS + Action + rulesets |
-| [`GUARD-SCAN.md`](GUARD-SCAN.md) | Scan / lock / doctor / vet |
-| [`POLICY.md`](POLICY.md) | `.auctelis.yml` policy |
 | [`SECURITY-RULES.md`](SECURITY-RULES.md) | Rules 001–022 (pack 1.6) |
-| [`PLAYBOOK.md`](PLAYBOOK.md) | Human authority-review checklist |
-| [`CLI-REFERENCE.md`](CLI-REFERENCE.md) | Product CLI (`auctelis-dev` for maintainer) |
-| [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) | Evidence classes / chain of custody |
-| [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust requirements |
-| [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | External validation procedure |
-| [`pilots/`](pilots/) | Five-repo × 30-day pilot tracker + kill criterion |
-| [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI install recipe (git tag / SHA; PyPI not published) |
+| [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) | Evidence classes |
+| [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust |
+| [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI recipe |
 
-Root: [`README.md`](../README.md) · [`SECURITY.md`](../SECURITY.md) · [`CHANGELOG.md`](../CHANGELOG.md)
+## Maintainers / evidence
+
+| Doc | Purpose |
+| --- | --- |
+| [`ROADMAP.md`](ROADMAP.md) | 30/90-day Authority Watch plan + kill list |
+| [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling procedure |
+| [`pilots/`](pilots/) | Five-pilot tracker + kill criterion |
+| [`../eval/`](../eval/) | Labeled configs + pilot metrics |
+| [`../CHANGELOG.md`](../CHANGELOG.md) | Release notes |
+| [`../SECURITY.md`](../SECURITY.md) | Vulnerability reporting |
+
+Skill (explainer only): [`../skills/auctelis-auditor/SKILL.md`](../skills/auctelis-auditor/SKILL.md)

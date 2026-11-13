@@ -25,7 +25,7 @@ def test_scan_emits_findings_and_sarif(tmp_path: Path):
     assert not (out / "capabilities.json").is_file()
     _scan2, _p2, _c2 = run_scan(root, output_dir=out / "full", full_report=True)
     full = (out / "full" / "scan-summary-full.txt").read_text(encoding="utf-8")
-    assert "DECISION SUMMARY" in full
+    assert "ANNOTATION SUMMARY" in full or "DECISION SUMMARY" in full
     assert "AUTHORITY SURFACES" in full
     assert (out / "full" / "ecosystem-graph.json").is_file()
     assert (out / "full" / "capabilities.json").is_file()

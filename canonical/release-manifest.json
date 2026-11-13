@@ -1,12 +1,12 @@
 {
   "manifest_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.3.3",
+  "product_version": "0.3.4",
   "package_name": "auctelis",
-  "package_version": "0.3.3",
-  "primary_command": "auctelis gate",
-  "north_star": "Know what authority your AI agents have, what changes when integrations are introduced, and whether those changes have been approved.",
-  "positioning": "The authority lockfile and PR security gate for AI agents.",
+  "package_version": "0.3.4",
+  "primary_command": "auctelis doctor",
+  "north_star": "See what your agents can do, and what changed since you last said OK.",
+  "positioning": "Package-lock for agent authority (Authority Watch). Host-first; PR gate is the team upsell.",
   "release_status": "pre-1.0",
   "contracts": {
     "audit_procedure": "1.0",

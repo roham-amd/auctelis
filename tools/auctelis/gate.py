@@ -269,9 +269,13 @@ def run_gate(
     codeowners_path: Path | None = None,
     codeowners_text: str | None = None,
     check_ruleset: bool = True,
-    strict_ruleset: bool = False,
+    strict_ruleset: bool = True,
 ) -> tuple[dict[str, Any], int]:
-    """Compare base→head lock; fail on growth without CODEOWNERS protection."""
+    """Compare base→head lock; fail on growth without CODEOWNERS protection.
+
+    ``strict_ruleset`` defaults to True (Authority Watch): UNVERIFIED protection
+    on growth is NEEDS_REVIEW, not a green PASS. Pass False for best-effort.
+    """
     root = root.resolve()
     try:
         base = load_authority_lock(base_lock)
@@ -363,23 +367,30 @@ def run_gate(
             f"was found ({ruleset_detail}). Enable require_code_owner_review, "
             "then merge the lock diff under CODEOWNERS."
         )
-    elif needs_approval and ruleset_status == "UNVERIFIED" and strict_ruleset:
+    elif needs_approval and ruleset_status == "UNVERIFIED" and strict_ruleset and check_ruleset:
+        # Strict only applies when the ruleset probe actually ran. --skip-ruleset-check
+        # is best-effort labeling (CODEOWNERS still required).
         ok = False
         verdict = "NEEDS_REVIEW"
         error = (
             "Authority grew but ruleset check is UNVERIFIED under --strict-ruleset "
             f"({ruleset_detail}). Provide API access, enable code-owner review, "
-            "or omit --strict-ruleset for best-effort mode."
+            "or pass --no-strict-ruleset for best-effort mode."
         )
     elif needs_approval:
         # CODEOWNERS present; ruleset OK or UNVERIFIED (best-effort unless strict).
         # Growth is labeled for humans — GitHub enforces the actual review.
         ok = True
         verdict = "PASS"
-        if ruleset_status == "UNVERIFIED":
+        if ruleset_status == "UNVERIFIED" and check_ruleset:
             error = (
                 f"PASS / protection unverified — ruleset check UNVERIFIED "
                 f"({ruleset_detail}). Confirm a code-owner-review ruleset is enabled."
+            )
+        elif ruleset_status == "UNVERIFIED" and not check_ruleset:
+            error = (
+                "PASS / ruleset check skipped — growth labeled; confirm CODEOWNERS "
+                "review is required in branch protection."
             )
 
     protection = protection_status(ruleset_status, needs_approval=needs_approval)

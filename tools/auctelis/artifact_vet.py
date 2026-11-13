@@ -58,7 +58,7 @@ class ArtifactReport:
             "limitations": [
                 "Does not execute install scripts or the package entrypoint.",
                 "Registry metadata can change after this snapshot.",
-                "Not a substitute for sandboxed tools/list (see auctelis snapshot).",
+                "Not a substitute for sandboxed tools/list (see auctelis-dev snapshot).",
             ],
         }
 

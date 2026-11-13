@@ -16,6 +16,7 @@ from auctelis.security.scan import run_scan
 
 def test_core_public_commands_are_six_jobs():
     # check remains a scan alias; open/init-gate aliases were removed.
+    # hook is the Authority Watch installer (0.3.4+).
     assert {
         "demo",
         "doctor",
@@ -25,9 +26,10 @@ def test_core_public_commands_are_six_jobs():
         "lock",
         "gate",
         "ci",
+        "hook",
     } == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in ("demo", "doctor", "vet", "scan", "lock", "gate", "ci"):
+    for name in ("demo", "doctor", "vet", "scan", "lock", "gate", "ci", "hook"):
         assert name in help_text
     # Review / advanced stay omitted from brief help.
     assert "Propose least-privilege" not in help_text

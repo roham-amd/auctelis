@@ -12,7 +12,7 @@ body:
     attributes:
       label: auctelis version
       description: Output of `auctelis --version` (or package version)
-      placeholder: 0.3.3
+      placeholder: 0.3.4
     validations:
       required: true
   - type: textarea

@@ -6,7 +6,6 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from auctelis.deps import ensure_lock_in_sync, parse_declared_requirements, parse_lock_pins
 from auctelis.paths import (
     canonical_schema_path,
     published_schema_paths,
@@ -434,6 +433,8 @@ def check_internal_markdown_links() -> list[str]:
 
 def check_dependency_pins() -> list[str]:
     """Ensure ``uv.lock`` is in sync and satisfies declared ``pyproject.toml`` constraints."""
+    from auctelis.deps import ensure_lock_in_sync, parse_declared_requirements, parse_lock_pins
+
     ensure_lock_in_sync()
     lock = parse_lock_pins()
     normalized = {normalize_package_name(name): ver for name, ver in lock.items()}

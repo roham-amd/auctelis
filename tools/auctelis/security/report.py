@@ -159,19 +159,27 @@ def render_full_terminal_report(
     unverified = len(scan.coverage.get("not_verified") or [])
     decision = compute_decision(scan.findings, coverage=scan.coverage, risk_delta=risk_delta)
     lead = decision_sentences(decision, scan.findings, risk_delta=risk_delta)
+    # Public verdict language is the lock/gate vocabulary. Scanner severities
+    # annotate; they are not a second BLOCK gate. Map for the short summary.
+    gate_vocab = {
+        "BLOCK": "GROWTH",
+        "REVIEW": "NEEDS_REVIEW",
+        "NO-GATED-FINDINGS": "PASS",
+    }.get(decision, decision)
     lines = [
         "auctelis — Authority Diff for AI agents",
         f"Product: auctelis {scan.product_version}  (tooling {scan.package_version})",
         f"Repository: {scan.repository_path}",
         f"Commit: {scan.commit or 'unknown'}",
         "",
-        f"DECISION: {decision}",
+        f"Authority delta: {gate_vocab}",
+        f"  (annotations only — enforce with `auctelis gate`; legacy DECISION: {decision})",
         f"  {lead[0]}",
         f"  {lead[1]}",
         f"  {lead[2]}",
         f"  {coverage_score_line(scan.coverage)}",
         "",
-        "DECISION SUMMARY",
+        "ANNOTATION SUMMARY",
         f"  Components discovered              {len(scan.inventory.get('components') or [])}",
         f"  Authority-bearing components       {scan.authority_bearing_count}",
         f"  External connections               {scan.external_destination_count}",

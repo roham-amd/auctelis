@@ -1,5 +1,26 @@
-repo,commit,path,rule_id,label,tp_fp_fn,reviewer,notes
-# Seed rows for the 25-repo label sample. Replace placeholders with real reviews.
-# label: AUTHORITY_GROWTH | AUTHORITY_REDUCTION | NO_AUTHORITY | UNPARSED
-# tp_fp_fn: TP | FP | FN | TN (relative to auctelis's gated finding / lock delta)
-example/placeholder,HEAD,.cursor/mcp.json,AUCTELIS-RULE-002,AUTHORITY_GROWTH,TP,,seed row — replace
+config_id,surface,expected_growth,expected_capabilities,label_notes,tp_fp_fn,reviewer
+cfg-001-mcp-remote-unpinned,mcp,yes,"network,secrets","remote HTTP MCP without pin",,
+cfg-002-mcp-stdio-node,mcp,yes,"execute_commands","local node stdio server",,
+cfg-003-skill-prompt-injection,skill,yes,"modify_agent_instructions","SKILL.md text heuristic",,
+cfg-004-benign-readme-only,none,no,"","no agent config — TN",,
+cfg-005-hooks-sessionstart,hooks,yes,"execute_commands,network","SessionStart curl env",,
+cfg-006-claude-settings-mcp,host,yes,"network","~/.claude settings mcpServers",,
+cfg-007-cursor-mcp-json,mcp,yes,"network,secrets",".cursor/mcp.json addition",,
+cfg-008-skill-readonly,skill,no,"","docs-only skill — expect no GROWTH",,
+cfg-009-plugin-perms,plugin,yes,"network","plugin connector perms",,
+cfg-010-ci-workflow-agent,ci,yes,"execute_commands,network","GHA installing MCP",,
+cfg-011-mcp-pinned-digest,mcp,yes,"network","pinned; still addition",,
+cfg-012-reduction-remove-mcp,mcp,no,"","removal — REDUCTION not GROWTH",,
+cfg-013-representation-path,mcp,no,"","path churn only — representation",,
+cfg-014-env-secret-pass,mcp,yes,"secrets","env key pass-through",,
+cfg-015-vscode-mcp,mcp,yes,"network",".vscode/mcp.json",,
+cfg-016-subagent,subagent,yes,"modify_agent_instructions",".claude/agents",,
+cfg-017-commands,commands,yes,"execute_commands",".claude/commands",,
+cfg-018-permissions-allow,host,yes,"execute_commands","claude permissions.allow",,
+cfg-019-cleartext-http,mcp,yes,"network","http:// not https",,
+cfg-020-mixed-hosts,host,yes,"network,secrets","cursor+claude together",,
+cfg-021-unparsed-surface,unknown,review,"","UNPARSED coverage gap",,
+cfg-022-inferred-only,skill,review,"modify_agent_instructions","INFERRED_HINT must not alone BLOCK",,
+cfg-023-literal-exec,mcp,yes,"execute_commands","LITERAL_CONFIG exec",,
+cfg-024-policy-change,policy,yes,"",".auctelis.yml mode change",,
+cfg-025-baseline-adopt,lock,baseline,"","first lock BASELINE_ADOPTED",,

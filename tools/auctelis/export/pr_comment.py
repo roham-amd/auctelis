@@ -23,12 +23,12 @@ from auctelis.security.authority import render_component_delta_lines
 from auctelis.security.decision import (
     authority_establishment,
     compute_decision,
-    coverage_score_line,
 )
 from auctelis.security.gating import is_gate_finding, is_high_gate_finding
 
-# Escape markdown specials *except* hyphen inside finding IDs (F-004).
-_MD_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+.!|>])")
+# Escape markdown specials that enable injection. Dots are left alone so paths
+# like `.cursor/mcp.json` stay readable (ordered-list dots only matter at BOL).
+_MD_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+!|>])")
 _URL_RE = re.compile(r"https?://([^/\s]+)(\S*)", re.IGNORECASE)
 _MENTION_RE = re.compile(r"(^|[^/\w])@[\w-]+")
 _SEV_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
@@ -321,22 +321,29 @@ def render_authority_diff_comment(
             )
     visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
 
-    # 2. What new authority?
+    # 2. What new authority? Prefer lock lines; skip noisy representation-only churn.
     visible.append("**Authority delta:**")
     authority_bullets: list[str] = []
-    for line in (lock_lines or component_lines)[:2]:
-        # Keep destination / env key names; 180 chars fits typical +/- lines.
+    meaningful_lock = [
+        line
+        for line in lock_lines
+        if " representation " not in f" {line} " and not line.startswith("~ representation")
+    ]
+    for line in (meaningful_lock or component_lines)[:3]:
         authority_bullets.append(f"- {escape_markdown(line, max_len=180)}")
     if not authority_bullets and new_powers:
-        finding = new_powers[0]
-        where = _evidence_locator(finding, evidence_registry) or _entry(finding)
-        where_bit = f" (`{escape_markdown(where, max_len=40)}`)" if where else ""
-        authority_bullets.append(
-            f"- `{_fid(finding)}` [{escape_markdown(_sev(finding), max_len=12)}] "
-            f"{escape_markdown(_title(finding))}{where_bit}"
-        )
-        if len(new_powers) > 1:
-            authority_bullets.append(f"- +{len(new_powers) - 1} more gated findings")
+        for finding in new_powers[:2]:
+            where = _evidence_locator(finding, evidence_registry) or _entry(finding)
+            where_bit = f" (`{escape_markdown(where, max_len=40)}`)" if where else ""
+            # Evidence-strength enums go in code spans — strip injection chars only
+            # so LITERAL_CONFIG stays readable (escape_markdown would slash underscores).
+            strength = re.sub(r"[\\`*_{}\[\]()#!|>]", "", _confidence(finding))[:24]
+            authority_bullets.append(
+                f"- `{_fid(finding)}` [{escape_markdown(_sev(finding), max_len=12)}] "
+                f"`{strength}` {escape_markdown(_title(finding))}{where_bit}"
+            )
+        if len(new_powers) > 2:
+            authority_bullets.append(f"- +{len(new_powers) - 2} more gated findings")
     if not authority_bullets:
         if establishment == "AUTHORITY_NOT_ESTABLISHED":
             authority_bullets.append("- (none gated; coverage incomplete)")
@@ -363,20 +370,24 @@ def render_authority_diff_comment(
     else:
         visible.append("**Evidence:** see `findings.json` / lock diff lines")
 
-    # 4. Risk interpretation + Confidence (when there is something to interpret).
-    if new_powers and len(visible) < max_lines - 3:
-        risk = _impact(new_powers[0]) or _title(new_powers[0])
-        visible.append("**Risk:** " + escape_markdown(risk, max_len=120))
-        visible.append(
-            "**Confidence:** "
-            + escape_markdown(_confidence(new_powers[0]), max_len=40)
-            + " (runtime not verified)"
-        )
+    # 4. One Risk line per addition (LITERAL_CONFIG vs INFERRED_HINT tagged).
+    if new_powers and len(visible) < max_lines - 2:
+        for finding in new_powers[:3]:
+            if len(visible) >= max_lines - 2:
+                break
+            risk = _impact(finding) or _title(finding)
+            strength = _confidence(finding)
+            tag = (
+                strength
+                if strength in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"}
+                else "INFERRED_HINT"
+            )
+            visible.append(f"**Risk (`{tag}`):** " + escape_markdown(risk, max_len=100))
 
-    # 5. Unknown / coverage honesty
+    # 5. Unknown / coverage honesty (coverage % stays in findings.json / full report).
     visible.append(escape_markdown(_unknowns_line(coverage), max_len=160))
 
-    # 6. Required action
+    # 6. Required action + explain follow-up
     approval_owners = list(needs_approval_from or [])
     growth = bool(
         int(lock_summary.get("additions") or 0)
@@ -398,14 +409,16 @@ def render_authority_diff_comment(
     else:
         visible.append(escape_markdown(required, max_len=160))
 
+    if new_powers and len(visible) < max_lines:
+        fid = _fid(new_powers[0])
+        if fid:
+            visible.append(f"Follow-up: `auctelis explain {escape_markdown(fid, max_len=24)}`")
+
     suppressed_n = int(findings_doc.get("suppression_count") or 0)
     if not suppressed_n:
         suppressed_n = sum(1 for f in findings if isinstance(f, dict) and f.get("suppressed"))
     if suppressed_n and len(visible) < max_lines:
         visible.append(f"Suppressions retained: {suppressed_n}")
-
-    if len(visible) < max_lines:
-        visible.append(escape_markdown(coverage_score_line(coverage), max_len=140))
 
     while len(visible) > max_lines and len(visible) > 6:
         # Drop middle detail first; keep header, decision, authority, footer action.

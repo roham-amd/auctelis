@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.3.3** · product **0.3.3** · rule pack **1.6** (001–022).
+Package `auctelis` **0.3.4** · product **0.3.4** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 lock semantics: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) ·
@@ -103,7 +103,7 @@ Protect the file with CODEOWNERS; GitHub rulesets enforce review. Agents with
 auctelis ci init [PATH] --owner @TEAM [--force]
 ```
 
-Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml` (`locked: true`),
+Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml` (`locked: false` lockless-first),
 `.github/CODEOWNERS` (with `--owner` for `AUTHORITY.lock`), and an
 initial `AUTHORITY.lock` when the tree has **no** HIGH/CRITICAL gated findings.
 If gated findings are present, templates may still be written but the lock is
@@ -220,20 +220,9 @@ Record-level authority lock diff (`addition` / `removal` / `expansion` /
 
 ---
 
-## Advanced: `run` / `snapshot` / `artifact-vet`
-
-```bash
-auctelis run -- COMMAND [ARGS...]
-auctelis snapshot --from-file tools.json | --execute -- COMMAND...
-auctelis artifact-vet SPEC
-```
-
-`run` / `snapshot --execute` scrub a small allowlist of env vars only —
-**not** a sandbox. Prefer `scan` / `lock` / `gate` for product workflows.
-
----
-
 ## Maintainer: `auctelis-dev`
+
+Kill-list / non-product execute paths live here only (not on `auctelis`):
 
 ```bash
 auctelis-dev build [all|schemas]
@@ -245,7 +234,13 @@ auctelis-dev hosts list|show NAME
 auctelis-dev corpus run
 auctelis-dev deps outdated|upgrade [--dry-run]
 auctelis-dev lint [--fix] [--format] [--check-format]
+auctelis-dev run -- COMMAND [ARGS...]
+auctelis-dev snapshot --from-file tools.json | --execute -- COMMAND...
+auctelis-dev artifact-vet SPEC
 ```
+
+`run` / `snapshot --execute` scrub a small allowlist of env vars only —
+**not** a sandbox. Prefer `scan` / `lock` / `gate` / `hook` for product workflows.
 
 - **build:** schema parity, version metadata, dependency pins, example validation, markdown link check
 - **corpus:** deterministic tooling regression (`tests/corpus/`)
