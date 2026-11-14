@@ -1,15 +1,14 @@
 # auctelis tooling (`auctelis`)
 
-Authority Watch CLI: `watch` → `watch --seal` → `watch --arm`, plus repo
-`AUTHORITY.lock`, lockless PR Action, and `gate` for the team upsell. `scan` /
+Authority Watch CLI: `watch` → `--seal` → `--arm` → `why` → `hook status`.
+Repo `AUTHORITY.lock` + optional PR Action/`gate` are the team upsell. `scan` /
 `vet` are hidden annotation layers.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
-**Scan guide:** [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md)  
-**Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
+**Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.4.0** · Product: auctelis **0.4.0**
+Package: `auctelis` **0.5.0** · Product: auctelis **0.5.0**
 
 ---
 
@@ -37,14 +36,14 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
-auctelis watch              # one-screen declared authority delta
+auctelis                    # highlights + inventory, or sealed delta
 auctelis watch --seal       # human baseline in ~/.auctelis/AUTHORITY.lock
-auctelis watch --arm        # Cursor + Claude session/tool hooks
-auctelis hook status        # wired / not firing
-auctelis ci init --owner @your-team   # lockless workflow; set locked:true after seal
-auctelis demo                          # optional
+auctelis watch --arm        # session + tripwire hooks
+auctelis hook status        # wired / not yet observed / firing
+auctelis why <name>         # exact config path
+auctelis demo               # optional
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -57,11 +56,11 @@ cd tools
 uv sync --locked          # creates .venv from uv.lock
 uv run auctelis --help
 uv run auctelis watch --home /tmp/auctelis-home
-uv run auctelis scan /path/to/target-repo
+uv run auctelis scan /path/to/target-repo   # hidden annotation layer
 ```
 
-Primary path: **`watch` / `watch --seal` / `watch --arm` / `hook status` / `gate` / `ci init`**.
-`scan` / `vet` are hidden annotation layers.
+Primary path: **`watch` / `--seal` / `--arm` / `why` / `hook status`**.
+`gate` / `ci init` / `scan` / `vet` are optional or hidden.
 
 `.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`) and the Docker base (`python:3.12.16-slim-trixie@sha256:…`).
 

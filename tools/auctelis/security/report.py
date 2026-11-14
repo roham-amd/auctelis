@@ -295,7 +295,7 @@ def render_finding_explanation(scan: ScanResult, finding: Finding) -> str:
         "",
         f"- Rule: `{finding.rule_id}`",
         f"- Class: **{finding.finding_class}** "
-        f"(CAPABILITY = what it can do; EXPOSURE = reachability; "
+        f"(CAPABILITY = declared reach potential; EXPOSURE = reachability; "
         f"SECURITY_FINDING = evidenced security concern)",
         f"- Severity: **{finding.severity}**",
         f"- Confidence: **{finding.confidence}**",

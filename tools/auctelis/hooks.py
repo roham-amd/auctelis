@@ -1,8 +1,12 @@
 """Install session-start and tool-time authority hooks for Claude and Cursor.
 
 Authority Watch front door: after ``auctelis watch --seal``, install a
-session-start hook that speaks only on change, and a tool-time hook that refuses
-unlisted MCP servers and agent edits to authority-bearing paths.
+session-start hook that speaks only on change, and a tool-time **tripwire** that
+refuses unlisted MCP servers and agent edits to authority-bearing paths.
+
+Tripwires are not a sandbox: an agent can route around them with shell, alternate
+config paths, or a fresh repo. ``hook status`` reports observed fire via the
+local heartbeat ledger, not mere file presence.
 """
 
 from __future__ import annotations
@@ -231,11 +235,11 @@ def install_hooks(
         pretool_paths = _write_pretool_hooks(dest_dir)
         result["pretool_hooks"] = [str(p) for p in pretool_paths]
         for path in pretool_paths:
-            result["messages"].append(f"Wrote PreToolUse lock hook → {path}")
+            result["messages"].append(f"Wrote PreToolUse tripwire hook → {path}")
         cursor_path = _write_cursor_hook(dest_dir)
         if cursor_path is not None:
             result["cursor_hook"] = str(cursor_path)
-            result["messages"].append(f"Wrote Cursor lock hook → {cursor_path}")
+            result["messages"].append(f"Wrote Cursor tripwire hook → {cursor_path}")
 
     session_cmd = _hook_command(session_path) if session_path is not None else None
     pretool_cmd: str | None = None
@@ -315,6 +319,7 @@ def _host_state(
     hooks_dir: Path,
     lock_present: bool,
     cli_on_path: bool,
+    heartbeat: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     data = _load_json_object(settings_path)
     raw_hooks = data.get("hooks")
@@ -339,7 +344,9 @@ def _host_state(
     elif not lock_present:
         state = "not_armed"
     else:
-        state = "firing"
+        from auctelis.ledger import observed_state
+
+        state = observed_state(heartbeat)
     return {
         "wired": wired,
         "events": list(dict.fromkeys(wired_events)),
@@ -355,7 +362,9 @@ def hook_status(
     settings_file: Path | None = None,
     cursor_hooks_file: Path | None = None,
 ) -> dict[str, Any]:
-    """Report whether each host is wired and able to fire."""
+    """Report whether each host is wired and has been observed firing."""
+    from auctelis.ledger import load_heartbeat, load_ledger
+
     home_root = (home or Path.home()).expanduser()
     directory = hooks_dir or default_hooks_dir(home=home_root)
     lock_path = home_root / ".auctelis" / "AUTHORITY.lock"
@@ -363,17 +372,22 @@ def hook_status(
     cli = shutil.which("auctelis")
     claude_settings = settings_file or (home_root / ".claude" / "settings.json")
     cursor_settings = cursor_hooks_file or default_cursor_hooks_file(home=home_root)
+    heartbeat = load_heartbeat(home=home_root)
+    ledger = load_ledger(home=home_root)
     return {
         "lock": str(lock_path),
         "lock_present": lock_present,
         "cli_on_path": cli is not None,
         "hooks_dir": str(directory),
+        "heartbeat": heartbeat,
+        "recent_deltas": ledger,
         "claude": _host_state(
             claude_settings,
             events=_CLAUDE_EVENTS,
             hooks_dir=directory,
             lock_present=lock_present,
             cli_on_path=cli is not None,
+            heartbeat=heartbeat,
         ),
         "cursor": _host_state(
             cursor_settings,
@@ -381,6 +395,7 @@ def hook_status(
             hooks_dir=directory,
             lock_present=lock_present,
             cli_on_path=cli is not None,
+            heartbeat=heartbeat,
         ),
     }
 
@@ -397,4 +412,20 @@ def render_hook_status(status: dict[str, Any]) -> str:
     lines.append(f"Lock: {status.get('lock')} ({lock})")
     if not status.get("cli_on_path"):
         lines.append("CLI: auctelis not on PATH — hooks cannot fire.")
+    heartbeat = status.get("heartbeat") or {}
+    if heartbeat.get("last_fired"):
+        lines.append(
+            f"Heartbeat: last fired {heartbeat.get('last_fired')} "
+            f"({heartbeat.get('event') or 'session'})"
+        )
+    else:
+        lines.append("Heartbeat: none yet (wired hosts stay 'not yet observed' until a session).")
+    recent = status.get("recent_deltas") or []
+    if recent:
+        lines.append(f"Recent deltas: {len(recent)} (newest first)")
+        for entry in reversed(recent[-5:]):
+            stamp = entry.get("fired_at") or "?"
+            preview = (entry.get("lines") or ["(quiet)"])[0]
+            lines.append(f"  {stamp}: {preview}")
+    lines.append("Note: hooks are tripwires, not a sandbox.")
     return "\n".join(lines)

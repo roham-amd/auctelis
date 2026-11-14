@@ -11,8 +11,8 @@ fallback if hook retention is zero at week 4 — not a substitute for the delta.
 | --- | --- |
 | What changed? | Specific authority delta |
 | Who is affected? | Agent, component, principal |
-| What can it do? | Explicit capabilities |
-| Where can it act? | Filesystem, destination, endpoint |
+| What new reach does this add? | Explicit capabilities |
+| Where can it act? | Filesystem, destination host, endpoint |
 | How certain are we? | Declared / Configured / Effective / Verified |
 | What evidence proves it? | Evidence ids + paths |
 | What is unknown? | Coverage / unparsed gaps |
@@ -69,7 +69,7 @@ AUTHORITY.lock  @security-owner
 ```bash
 # Git install only today — PyPI not published yet
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
 
 auctelis watch              # one-screen declared authority delta
 auctelis watch --seal       # human baseline (no approval fields are written)

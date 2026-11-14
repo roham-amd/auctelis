@@ -38,6 +38,6 @@ Log rows in [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv):
 - [ ] Confirm unrelated org/repo (not this product dogfood)
 - [ ] Host path: `watch` → `watch --seal` → `watch --arm` under 5 minutes
 - [ ] Team path: lockless Action first; upgrade to `locked=true` + CODEOWNERS
-- [ ] Pin Action to git tag `v0.4.0` or commit SHA; `strict-ruleset: true`
+- [ ] Pin Action to git tag `v0.5.0` or commit SHA; `strict-ruleset: true`
 - [ ] File labeled findings into `eval/holdout-labels.csv` / `eval/configs/`
 - [ ] Re-check day 30 and update this tracker

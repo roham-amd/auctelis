@@ -4,8 +4,9 @@
 state** for a repository. It is more important than a long audit report.
 
 Schema: [`../schemas/authority-lock.schema.json`](../schemas/authority-lock.schema.json)  
+Reach definition: [`REACH.md`](REACH.md)  
 Implementation: `tools/auctelis/authority_lock.py`  
-Version field: `version: 1` (record-level identity; sealed hash excludes volatile path/commit metadata)
+Version field: `version: 1` (frozen public lockfile standard; sealed hash excludes volatile path/commit metadata)
 
 ---
 
@@ -86,17 +87,16 @@ Agents must not mutate locks (`AUCTELIS_AGENT=1`).
 ## Commands
 
 ```bash
-auctelis watch                             # one-screen delta vs the host seal
+auctelis watch                             # highlights (first run) or sealed delta
 auctelis watch --seal                      # seal ~/.auctelis/AUTHORITY.lock
-auctelis watch --arm                       # Cursor + Claude session/tool hooks
+auctelis watch --arm                       # Cursor + Claude session/tripwire hooks
 auctelis watch --delta-only                # changed lines only (session hook)
-auctelis hook status                       # wired / not firing
+auctelis why <name>                        # exact config path for one record
+auctelis hook status                       # wired / not yet observed / firing
 auctelis lock                              # write / update repo AUTHORITY.lock
-auctelis lock --accept-gated               # explicit override; writes no approval
 auctelis lock --check                      # exit 1 on drift
-auctelis check --locked .                  # scan + lock drift gate (hidden)
-auctelis gate --base-lock base.lock        # growth label + CODEOWNERS/ruleset
-auctelis diff lock A.lock B.lock
+auctelis gate --base-lock base.lock        # optional team upsell (hidden help)
+auctelis diff lock A.lock B.lock           # hidden
 ```
 
 Protect the file:

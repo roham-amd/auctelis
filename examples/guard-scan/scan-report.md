@@ -5,9 +5,9 @@ Absence of findings is not evidence of safety when coverage is incomplete.
 
 ```text
 auctelis — Authority Diff for AI agents
-Product: auctelis 0.4.0  (tooling 0.4.0)
+Product: auctelis 0.5.0  (tooling 0.5.0)
 Repository: C:\Users\rohaa\Projects\auctelis\examples\demo-vulnerable
-Commit: b5e0f1a5ade5c338741abf13d3ea36705eb0f0df
+Commit: b4b69edfec41b93b1444e1df6ee7fc0e20356958
 
 Authority delta: GROWTH
   (annotations only — enforce with `auctelis gate`; legacy DECISION: BLOCK)

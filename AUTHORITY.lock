@@ -7,7 +7,7 @@
   "mcp_tools": {},
   "policy_hash": "sha256:745d70cb4cfec399f4dd8f4a35de56ac95829530f0d02acb72ade38653145c63",
   "product": "auctelis",
-  "product_version": "0.4.0",
+  "product_version": "0.5.0",
   "records": [
     {
       "approval_posture": "unknown",

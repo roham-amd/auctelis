@@ -1,59 +1,23 @@
 # auctelis JSON schemas
 
-Machine-readable contracts for auctelis artifacts.
-
-Canonical **audit report** source of truth:
-
-- Edit: [`../canonical/schemas/audit-report.schema.json`](../canonical/schemas/audit-report.schema.json)
-- Publish: `auctelis-dev build schemas` → `audit-report.schema.json` in this directory
-
-Validate instances:
-
-```bash
-auctelis-dev validate report path/to/summary.json
-```
-
----
-
-## Product-critical schema
+## Product-critical (public)
 
 | File | Version | Purpose |
 | --- | --- | --- |
-| [`authority-lock.schema.json`](authority-lock.schema.json) | lock `version` **1** | **`AUTHORITY.lock`** — approved authority baseline |
-| [`authority-policy.schema.json`](authority-policy.schema.json) | policy contract | `.auctelis.yml` gate policy shape |
+| [`authority-lock.schema.json`](authority-lock.schema.json) | lock `version` **1** | **`AUTHORITY.lock`** — the lockfile standard |
 
-Semantic contract for the lock (identity, expansion/reduction/representation, pins):
-[`../docs/AUTHORITY-LOCK.md`](../docs/AUTHORITY-LOCK.md).
-
----
-
-## Schema catalog
-
-| File | Version field | Purpose |
-| --- | --- | --- |
-| [`audit-report.schema.json`](audit-report.schema.json) | `audit_version` **1.0** | Narrative engagement summary JSON (maintainer/corpus) |
-| [`ecosystem-graph.schema.json`](ecosystem-graph.schema.json) | `graph_version` **1.0** | Nodes/edges seed from inventory (not exploit proof) |
-
-Removed in 0.3.0–0.3.1: research schemas, agent-authority-manifest, and the
-legacy `AI_Agent_Ecosystem_Security_Audit_v1` filename alias.
+Reach definition: [`../docs/REACH.md`](../docs/REACH.md)  
+Semantic contract: [`../docs/AUTHORITY-LOCK.md`](../docs/AUTHORITY-LOCK.md)
 
 ---
 
-## Guard scan JSON (convention-validated)
+## Maintainer / demoted (not the product story)
 
-`auctelis scan` writes additional documents validated by tooling conventions:
-
-| Artifact | Documented in |
+| File | Purpose |
 | --- | --- |
-| `findings.json` | [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md), [`../docs/EVIDENCE-MODEL.md`](../docs/EVIDENCE-MODEL.md) |
-| `inventory.json` | [`../docs/COVERAGE-MATRIX.md`](../docs/COVERAGE-MATRIX.md) |
-| `authority-sbom.json` | [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md) |
-| `findings.sarif.json` | SARIF 2.1.0 via `auctelis.export.sarif` |
+| [`authority-policy.schema.json`](authority-policy.schema.json) | `.auctelis.yml` (optional team gate) |
+| [`audit-report.schema.json`](audit-report.schema.json) | Maintainer/corpus narrative (canonical edit under `canonical/schemas/`) |
+| [`ecosystem-graph.schema.json`](ecosystem-graph.schema.json) | Inventory graph seed — not a public claim |
 
----
-
-## Semantic validation
-
-JSON Schema compliance is necessary but not sufficient. `auctelis-dev validate report`
-also runs semantic checks (orphan evidence, duplicate ids).
-See [`../docs/EVIDENCE-MODEL.md`](../docs/EVIDENCE-MODEL.md).
+`auctelis scan` may still write `findings.json` / SARIF; those are annotation
+artifacts, not the Authority Watch product.

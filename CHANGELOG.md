@@ -5,6 +5,32 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.5.0] — 2026-11-14
+
+### Added
+
+- First-run screen shows **new destinations / executables / secrets** only;
+  remaining records collapse behind an inventory line (exit `0` until sealed).
+- `auctelis why <name>` prints the exact config path and reach fields.
+- Hook **heartbeat** + 5-entry delta ledger; `hook status` distinguishes
+  `wired, not yet observed` from `firing (last: …)`.
+- `docs/REACH.md` — one-page reach definition for lock schema v1.
+- Watch JSON reports include `schema_version: watch-report/1`.
+- Win/macOS pytest matrix job for the product path.
+
+### Changed
+
+- Public path: `watch → --seal → --arm → why → hook status` (gate/ci demoted
+  from default help; still callable).
+- PreToolUse hooks documented as **tripwires**, not enforcement/sandbox.
+- North-star copy unified to “can **reach**” (README / parser / release manifest).
+- `CORE_PUBLIC_COMMANDS` drops `gate` / `ci`; adds `why`.
+- Package description and module docstring match the lockfile product.
+
+### Fixed
+
+- Empty home no longer claims both “no host config” and “every record is new”.
+
 ## [0.4.0] — 2026-11-14
 
 ### Added

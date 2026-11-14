@@ -17,7 +17,7 @@ from auctelis.security.models import Finding
 
 
 def test_public_path_constant_and_version_flag():
-    assert "watch" in PUBLIC_PATH and "lock" in PUBLIC_PATH
+    assert "watch" in PUBLIC_PATH and "seal" in PUBLIC_PATH and "why" in PUBLIC_PATH
     assert "--version" in normalize_argv(["--version"])
     assert normalize_argv(["--version"]) == ["--version"]
     # argparse version action exits; ensure the flag is registered.

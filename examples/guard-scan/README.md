@@ -1,6 +1,6 @@
 # Sample auctelis scan artifacts
 
-Generated from `examples/demo-vulnerable` with auctelis **0.4.0** / tooling **0.4.0**:
+Generated from `examples/demo-vulnerable` with auctelis **0.5.0** / tooling **0.5.0**:
 
 ```bash
 auctelis watch --home /tmp/auctelis-demo-home   # the product first screen

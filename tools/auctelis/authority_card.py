@@ -56,7 +56,9 @@ _CAP_LABELS: dict[str, str] = {
 
 _MCP_KINDS = {"mcp"}
 _PUBLISHER = "publisher NOT VERIFIED"
-_NOISE_KINDS = {"agent host"}
+# Host-settings / agent-host rows are inventory noise on the product screen.
+_NOISE_KINDS = {"agent host", "host"}
+_HIGHLIGHT_CAPS = {"network", "secrets", "execute", "tools"}
 
 
 def kind_label(kind: str | None) -> str:
@@ -216,6 +218,80 @@ def removed_card(record: dict[str, Any], *, prefix: str = "-") -> str:
 
 def _is_renderable(record: dict[str, Any]) -> bool:
     return kind_label(record.get("kind")) not in _NOISE_KINDS
+
+
+def is_highlight_record(record: dict[str, Any]) -> bool:
+    """True when the record introduces a new destination, executable, or secret.
+
+    First-run screens show only these; the rest collapses into inventory counts.
+    """
+    if not _is_renderable(record):
+        return False
+    if destination(record):
+        return True
+    if launcher(record):
+        return True
+    caps = set(_capabilities(record))
+    if caps & _HIGHLIGHT_CAPS:
+        return True
+    return bool(record.get("env_keys"))
+
+
+def highlight_cards(
+    records: list[dict[str, Any]] | None,
+    *,
+    limit: int = 6,
+) -> tuple[list[str], int, int]:
+    """Return ``(cards, highlight_total, inventory_total)`` for a first-run screen."""
+    inventory = [r for r in (records or []) if _is_renderable(r)]
+    highlights = [r for r in inventory if is_highlight_record(r)]
+    cards = [record_card(r) for r in highlights[:limit]]
+    return cards, len(highlights), len(inventory)
+
+
+def why_record(record: dict[str, Any]) -> list[str]:
+    """Exact file / field lines for ``auctelis why``."""
+    kind = kind_label(record.get("kind"))
+    name = str(record.get("name") or record.get("id") or "?").strip()
+    path = str(record.get("path") or "").replace("\\", "/") or "(path unknown)"
+    lines = [
+        f'{kind} "{name}"',
+        f"  path: {path}",
+    ]
+    host = destination(record)
+    if host:
+        lines.append(f"  destination: {host}")
+    launch = launcher(record)
+    if launch:
+        lines.append(f"  launcher: {launch}")
+    caps = _capabilities(record)
+    if caps:
+        lines.append(f"  capabilities: {', '.join(caps)}")
+    env = [str(x) for x in (record.get("env_keys") or []) if str(x)]
+    if env:
+        lines.append(f"  env_keys: {', '.join(env[:8])}")
+    pin = _pin_bit(record)
+    if pin:
+        lines.append(f"  pin: {pin}")
+    lines.append(f"  {_PUBLISHER}")
+    lines.append("  evidence: LITERAL_CONFIG (declared config only; not runtime proof)")
+    return lines
+
+
+def find_records_by_name(
+    records: list[dict[str, Any]] | None,
+    query: str,
+) -> list[dict[str, Any]]:
+    needle = str(query or "").strip().lower()
+    if not needle:
+        return []
+    out: list[dict[str, Any]] = []
+    for record in records or []:
+        name = str(record.get("name") or "").strip().lower()
+        rid = str(record.get("id") or "").strip().lower()
+        if needle == name or needle in name or needle in rid:
+            out.append(record)
+    return out
 
 
 def delta_cards(delta: dict[str, Any] | None, *, limit: int = 3) -> list[str]:

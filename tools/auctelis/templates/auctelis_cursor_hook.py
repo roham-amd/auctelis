@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cursor PreToolUse-style hook: enforce AUTHORITY.lock on MCP and edits.
+"""Cursor PreToolUse-style tripwire: AUTHORITY.lock on MCP and edits.
 
 Install: ``auctelis hook install`` (writes ``~/.cursor/hooks.json``).
 Requires: auctelis on PATH; a prior ``auctelis watch --seal`` (or ``lock``).
@@ -13,7 +13,7 @@ Behaviour:
    An empty MCP allowlist is deny-all (fail closed).
 2. ``beforeShellExecution`` / ``beforeFileEdit``: refuse edits to
    authority-bearing paths — a human updates the lock.
-3. Unknown events fail open; this is a watch, not a sandbox.
+3. Unknown events fail open; this is a tripwire, not a sandbox.
 """
 
 from __future__ import annotations

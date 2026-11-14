@@ -29,6 +29,6 @@ Review AUTHORITY.lock drift for a PR.
 ```text
 Report whether the weekly habit is actually armed.
 1. Run: auctelis hook status
-2. Say wired / not firing / not armed for Cursor and Claude Code.
+2. Say wired / not yet observed / firing / not armed for Cursor and Claude Code.
 3. If not armed, the human runs: auctelis watch --seal && auctelis watch --arm
 ```

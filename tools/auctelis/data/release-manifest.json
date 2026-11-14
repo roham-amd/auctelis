@@ -1,11 +1,11 @@
 {
   "manifest_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.4.0",
+  "product_version": "0.5.0",
   "package_name": "auctelis",
-  "package_version": "0.4.0",
+  "package_version": "0.5.0",
   "primary_command": "auctelis watch",
-  "north_star": "See what your agents can do, and what changed since you last said OK.",
+  "north_star": "See what your agents can reach, and what changed since you last said OK.",
   "positioning": "Package-lock for agent authority (Authority Watch). Host-first; PR gate is the team upsell.",
   "release_status": "pre-1.0",
   "contracts": {
@@ -26,8 +26,10 @@
     "watch": true,
     "watch_seal": true,
     "watch_arm": true,
+    "why": true,
     "delta_only": true,
     "hook_status": true,
+    "hook_heartbeat": true,
     "vet": false,
     "open_alias": false,
     "fix_alias": false,
@@ -51,7 +53,7 @@
     "pypi": "not_published_yet_use_git_tag"
   },
   "assessment_model": {
-    "capability": "What a component can potentially do",
+    "capability": "What a component can potentially reach",
     "exposure": "How reachable that capability is and under which identity",
     "security_finding": "Evidenced violation of a defined security property",
     "authority_layers": "DECLARED | CONFIGURED | EFFECTIVE | VERIFIED (passive scan = DECLARED/CONFIGURED only)",

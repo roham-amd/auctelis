@@ -9,25 +9,25 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "watch → watch --seal (lock --home) → hook install → (team) gate / ci init"
+PUBLIC_PATH = "watch → watch --seal → watch --arm → why <name> → hook status"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
+team (opt):   gate | ci init  (hidden; PR Authority Diff upsell)
 review:       vet | explain | diff lock | annotate | harden  (hidden, optional)
 maintainer:   auctelis-dev (build | lint | corpus | deps)
 
 Bare `auctelis` → watch (host authority delta). `auctelis <path>` → scan (hidden).
-Verdicts (gate / comment): PASS | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED.
 Labels (authority delta): GROWTH | REDUCTION | NONE.
-Target `.auctelis.yml` is ignored unless `--policy` or `--trust-target-policy` is set.
-Agents must set AUCTELIS_AGENT=1 and must not run watch --seal / lock / ci init.
+Hooks are tripwires (not a sandbox). Agents must set AUCTELIS_AGENT=1 and must
+not run watch --seal / lock / ci init.
 """
 
 # Hidden from default --help; still fully callable.
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — the whole first-user surface.
-CORE_PUBLIC_COMMANDS = frozenset({"demo", "watch", "doctor", "lock", "gate", "ci", "hook"})
+CORE_PUBLIC_COMMANDS = frozenset({"demo", "watch", "why", "doctor", "lock", "hook"})
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -36,6 +36,7 @@ _PRODUCT_COMMANDS = frozenset(
         "ci",
         "doctor",
         "watch",
+        "why",
         "vet",
         "demo",
         "harden",
@@ -79,7 +80,10 @@ def normalize_argv(
     ``auctelis /repo`` → ``scan /repo`` (hidden but callable)
     ``auctelis --locked`` → ``scan --locked``
     Known subcommands and ``-h`` / ``--help`` are left unchanged.
+
+    ``cwd`` is accepted for call-site compatibility (reserved for path defaults).
     """
+    _ = cwd
     raw = list(sys.argv[1:] if argv is None else argv)
     known = set(_PRODUCT_COMMANDS)
     if include_dev:
@@ -100,7 +104,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         prog=prog,
         description=(
             "Auctelis — package-lock for agent authority. "
-            "See what your agents can do, and what changed since you last said OK. "
+            "See what your agents can reach, and what changed since you last said OK. "
             "(Maintainer cmds: `auctelis-dev`)"
         ),
         epilog=_EPILOG,
@@ -120,7 +124,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help=_ADV,
     )
 
-    ci = sub.add_parser("ci", help="CI helpers (init workflow + advisory policy)")
+    ci = sub.add_parser("ci", help=_ADV)
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
     ci_init = ci_sub.add_parser("init", help="Write advisory .auctelis.yml + consumer workflow")
     ci_init.add_argument("path", type=Path, nargs="?", default=Path("."))
@@ -238,7 +242,18 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     watch.add_argument(
         "--json",
         action="store_true",
-        help="Emit the watch report as JSON",
+        help="Emit the watch report as JSON (schema_version: watch-report/1)",
+    )
+
+    why = sub.add_parser(
+        "why",
+        help="Show the exact config path for one authority name",
+    )
+    why.add_argument("name", help="Authority record name (MCP server, skill, hook, …)")
+    why.add_argument(
+        "--home",
+        type=Path,
+        help="Override home directory (default: user home; local-only)",
     )
 
     doctor = sub.add_parser(
@@ -398,7 +413,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     gate_cmd = sub.add_parser(
         "gate",
-        help="Label authority growth vs base lock; require CODEOWNERS + ruleset",
+        help=_ADV,
     )
     gate_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
     gate_cmd.add_argument(
@@ -464,7 +479,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     hook_install.add_argument(
         "--pretool-only",
         action="store_true",
-        help="Install only the PreToolUse lock-enforcing hook",
+        help="Install only the PreToolUse tripwire hook",
     )
     hook_install.add_argument(
         "--no-wire",
@@ -479,7 +494,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     hook_status = hook_sub.add_parser(
         "status",
-        help="Report wired / not firing for Claude Code and Cursor",
+        help="Report wired / not yet observed / firing (heartbeat) for Claude + Cursor",
     )
     hook_status.add_argument("--home", type=Path, help="Override home directory")
     hook_status.add_argument("--hooks-dir", type=Path, help="Hook script directory")

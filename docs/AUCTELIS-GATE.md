@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.4.0** |
-| Tooling package | **0.4.0** (`auctelis`) |
+| Product release | **0.5.0** |
+| Tooling package | **0.5.0** (`auctelis`) |
 | Rule pack | **1.6** (rules 001–022) |
 | Primary path | `watch` → `watch --seal` → `hook install` → (team) Action / `gate` |
 | Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) on locked upgrade |
@@ -41,12 +41,12 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ```bash
 # Git tag is the supported install until PyPI returns the package.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
 
 auctelis watch                           # one-screen declared authority delta
 auctelis watch --seal                    # human baseline in ~/.auctelis/AUTHORITY.lock
 auctelis watch --arm                     # Cursor + Claude session/tool hooks
-auctelis hook status                     # wired / not firing
+auctelis hook status                     # wired / not yet observed / firing
 # Team: add the lockless Action (locked=false). Upgrade later:
 auctelis lock                            # write repo AUTHORITY.lock
 auctelis ci init --owner @security-owner # lockless workflow + CODEOWNERS; then locked=true
@@ -138,7 +138,8 @@ Never let the agent edit or approve policy without a human.
 
 | Interface | Status |
 | --- | --- |
-| CLI (`watch` / `watch --seal` / `watch --arm` / `hook status` / `gate` / `ci init`) | Primary product |
+| CLI (`watch` / `--seal` / `--arm` / `why` / `hook status`) | Primary product |
+| CLI (`gate` / `ci init`) | Optional team upsell (hidden from brief help) |
 | GitHub Action (trusted policy) | Supported (composite) |
 | AI agent skill | Supported (`skills/auctelis-auditor`) |
 | Prompt-only kit | Fallback if hook retention is zero at week 4 |

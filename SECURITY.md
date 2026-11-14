@@ -10,7 +10,7 @@
 | 1.0.x | No (yanked / superseded pre-1.0 line; do not use) |
 | < 0.2.0 | No |
 
-Tooling package version (`auctelis`, currently **0.4.0**) is tracked in
+Tooling package version (`auctelis`, currently **0.5.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 

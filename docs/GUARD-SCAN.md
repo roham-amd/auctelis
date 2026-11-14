@@ -1,6 +1,6 @@
 # auctelis scan — annotation layer (hidden)
 
-Guard scan path for **0.4.0**: deterministic discovery plus evidence-backed
+Guard scan path for **0.5.0**: deterministic discovery plus evidence-backed
 observations via `auctelis scan` / `check`, with capability / exposure / finding
 separation. This is an annotation layer behind the product, not the first
 screen. Default terminal output is ≤15 lines (`--full` for the long report).

@@ -1,4 +1,4 @@
-auctelis 0.4.0 — 2 MCP, 0 hooks, 1 skills
+auctelis 0.5.0 — 2 MCP, 0 hooks, 1 skills
 ANNOTATION DECISION: BLOCK (not a gate; use auctelis gate)
 BLOCK: 7 high/critical authority issue(s) require a fix or explicit risk acceptance before merge/install.
 Coverage: 20% SUPPORTED (1/5); PARTIAL=4 MANUAL_ONLY=0 — clean result ≠ safe.

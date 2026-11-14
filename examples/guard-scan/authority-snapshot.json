@@ -1,10 +1,10 @@
 {
   "snapshot_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.4.0",
+  "product_version": "0.5.0",
   "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
-  "audited_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df",
-  "collected_at_utc": "2026-11-14T13:33:34Z",
+  "audited_commit": "b4b69edfec41b93b1444e1df6ee7fc0e20356958",
+  "collected_at_utc": "2026-11-14T14:24:45Z",
   "components": [
     {
       "id": "C-004",
@@ -93,5 +93,5 @@
       ]
     }
   ],
-  "snapshot_hash": "f7c6609cf5265737c0e2ea2ffca68fea"
+  "snapshot_hash": "7b3138ac81d65406324c5ddfb93485bd"
 }

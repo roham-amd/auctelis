@@ -21,7 +21,7 @@ You may explain; you may not approve. Never run `watch --seal` or `watch --arm`,
 ```bash
 # Install once (git tag; PyPI is not live yet):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
 ```
 
 ```bash
@@ -30,7 +30,7 @@ auctelis watch --delta-only       # the changed authority lines
 auctelis watch                    # full one-screen context
 auctelis doctor --since-lock      # same screen (alias)
 auctelis diff lock <base> <head>  # record-level old → new
-auctelis hook status              # wired / not firing
+auctelis hook status              # wired / not yet observed / firing
 ```
 
 Do **not** run `lock`, `watch --seal`, `watch --arm`, `hook install`, `ci init`,

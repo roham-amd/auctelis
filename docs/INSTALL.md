@@ -12,12 +12,13 @@ PyPI is not live yet, so the first command is always the pinned git tag:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
 
-auctelis watch              # one-screen declared authority delta
+auctelis                    # highlights + inventory (first run) or sealed delta
 auctelis watch --seal       # human baseline in ~/.auctelis/AUTHORITY.lock
-auctelis watch --arm        # session + tool hooks for Cursor and Claude Code
-auctelis hook status        # wired / not firing
+auctelis watch --arm        # session + tripwire hooks for Cursor and Claude Code
+auctelis hook status        # wired / not yet observed / firing (heartbeat)
+auctelis why <name>         # exact config path for one authority record
 ```
 
 Bare `auctelis` runs `watch`; it is never a scanner. Use `auctelis <path>` or
@@ -52,19 +53,19 @@ TARGET=/path/to/repo docker compose run --rm auctelis scan /work -o /tmp/aucteli
 
 Image base: `python:3.12.16-slim-trixie` (digest-pinned in `Dockerfile`).
 
-## GitHub Action
+## GitHub Action (optional team upsell)
 
-See [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md). Quickstart is **lockless-first**
-(`locked: false`, `strict-ruleset: true`). `auctelis ci init --owner @team`
-writes that lockless workflow plus CODEOWNERS; after sealing `AUTHORITY.lock`,
-set `locked: true` on the Action step for the approved-state upgrade.
+Not required for the individual consent-ledger path. See
+[`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) if a team wants PR Authority Diff.
+Quickstart is **lockless-first** (`locked: false`). `auctelis ci init` remains
+callable but is hidden from default help.
 Consumer recipe: [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml).
 
 ## Version alignment
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.4.0 |
-| Package `auctelis` | 0.4.0 |
+| Product (`VERSION`) | 0.5.0 |
+| Package `auctelis` | 0.5.0 |
 | `AUTHORITY.lock` schema | 1 |
 | Rule pack | 1.6 |

@@ -46,12 +46,12 @@ def _codex_markers(path: Path, root: Path) -> bool:
     return name in {"codex.md", "config.toml"} or rel.startswith(".codex/")
 
 
-def _gemini_markers(path: Path, root: Path) -> bool:
+def _gemini_markers(path: Path, _root: Path) -> bool:
     name = path.name.lower()
     return name in {"gemini.md", ".gemini.md"} or ".gemini" in path.parts
 
 
-def _windsurf_markers(path: Path, root: Path) -> bool:
+def _windsurf_markers(path: Path, _root: Path) -> bool:
     name = path.name.lower()
     return name in {".windsurfrules", "windsurfrules"} or "windsurf" in path.parts
 

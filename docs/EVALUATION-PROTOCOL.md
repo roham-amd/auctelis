@@ -72,7 +72,7 @@ Only configs with a fixture are scored. Run:
 python eval/score_configs.py
 ```
 
-The 0.4.0 tree has five fixtures: four expected-growth configs and one benign
+The 0.5.0 tree has five fixtures: four expected-growth configs and one benign
 README. The current differ scores **TP=4, FP=0, FN=0, TN=1** on those five.
 That is a regression check, not a precision claim — publish a TP/FP number only
 after outside, independently labeled configs exist.

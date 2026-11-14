@@ -3,66 +3,51 @@
 **Product:** Authority Watch — package-lock for agent authority. See what your
 agents can reach, and what changed since you last said OK.
 
-**Current:** 0.4.0 · tooling 0.4.0 · rule pack 1.6 · policy contract 1.3
+**Positioning:** the lockfile and one-line diff for what AI agents can reach.
+Hooks are **tripwires**, not a sandbox. The scanner / gate / SARIF stack stays
+callable but off the product path until pilots demand CI.
 
-## Shipped in 0.4.0 (the 90-day shrink)
+**Current:** 0.5.0 · lock schema 1 · tooling 0.5.0
 
-1. `auctelis watch` is the first screen: one card per authority change.
-2. `watch --seal` replaces the separate `doctor → lock --home` ceremony.
-3. Cursor hooks (`~/.cursor/hooks.json`) join Claude Code; Claude's PreToolUse
-   matcher is `.*` so MCP calls reach the allowlist.
-4. `hook status` reports wired / not firing for both hosts.
-5. `scan`, `check`, `vet`, `explain`, `harden`, and SARIF are hidden from the
-   default first screen (still callable).
-6. One verdict dialect in the PR comment: `PASS` / `NEEDS_REVIEW` /
-   `BASELINE_ADOPTED` / `FAIL_CLOSED`, with `GROWTH` / `REDUCTION` / `NONE` as
-   labels.
-7. `approved_findings[]` is emitted empty and never a gate input; CODEOWNERS is the approval system.
-8. The first install block everywhere is the git tag, not PyPI.
+## North star (direction #1 + #2)
 
-## 30-day
+1. Lockfile standard + dead-simple delta CLI (`watch` / `--seal` / `--arm` / `why`)
+2. Observed consent hooks for Claude Code + Cursor (heartbeat + ledger)
+
+## 30-day build (in progress)
 
 | Window | Work |
 | --- | --- |
-| Days 1–3 | `watch` is the front door on a clean install. First run vs empty baseline is the aha; next line points at `--seal` / `--arm`. |
-| Days 4–7 | Cursor + Claude hooks; Claude matcher `.*`; `hook status` says wired / not firing. |
-| Week 2 | Hide the scanner surfaces; one verdict line; fix manifest, skill install line, playbook `--accept-gated`. |
-| Week 3 | PyPI remains unpublished; keep the git tag as the documented path until the index returns 200. |
-| Week 4 | Five eval fixtures are scored (`TP=4 FP=0 FN=0 TN=1`). Ask five outside people to run `watch` and say whether the line taught them something; write the answer (or leave empty) in `docs/pilots/TRACKER.md`. |
+| Week 1 | Schema v1 + reach spec; first-run highlights only; demote gate/scanner from help; tripwire language |
+| Week 2 | PyPI trusted publishing (workflow ready); install docs stay git-tag until PyPI 200; OS matrix for pytest |
+| Week 3 | First-run UX + `auctelis why`; watch JSON `schema_version`; exit codes frozen (0 quiet / 1 delta / 2 lock error) |
+| Week 4 | Hook heartbeat + ledger; `hook status` = wired / not yet observed / firing; truthfulness tests |
 
 ## 90-day decision gate
 
-| Signal at week 4 / day 60 | Action |
+| Signal at day 60 | Action |
 | --- | --- |
-| Five hosts still answer `hook status` as firing, or five repos still run the Action | Add optional URL-host pinning and a read-only MCP `check` tool. |
-| Not five | Stop feature work. Publish the playbook as a Cursor rule; archive the scanner. |
-| Fewer than five outside repos at day 60 | Kill criterion: fall back to [`PLAYBOOK.md`](PLAYBOOK.md) + slash commands. |
+| Five hosts still answer `hook status` as firing (observed), or five outside repos | Optional destination pinning + read-only MCP `check_authority` |
+| Not five | Stop feature work. Publish the playbook as a Cursor rule; keep scanner archived behind `auctelis-dev` / hidden commands |
+| Fewer than five outside humans resealed or reverted once | Kill criterion: fold into [`PLAYBOOK.md`](PLAYBOOK.md) |
 
 Do not add a 23rd rule, a badge, a web app, or an egress broker before a
 stranger says the delta line taught them something.
 
-## Kill list
+## Kill list (product path)
 
-- Public findings wall as the first screen; default SARIF upload.
-- `explain` / `harden` / `vet` as top-level product jobs.
-- `approvals[]` / `approved_findings[]` as gate inputs or written fields.
-- Ecosystem-graph and audit-report schemas in the public story.
-- A2A, typosquat, and broker modules until a pilot names them.
-- Eval rows without a fixture.
-- Any doc that says PyPI is the command to run today.
+- Scanner / SARIF / policy engine as the first screen
+- `gate` / `ci init` / ruleset probe as required install ceremony
+- Four-verdict vocabulary beyond what the watch actually needs for individuals
+- Audit / ecosystem-graph schemas in the public story
+- Calling PreToolUse “enforcement” (call it a **tripwire**)
+- Mutable-tag Action as the documented front door once a SHA-pinned or App path exists
 
 ## Success metrics
 
-- Minutes from install to the first delta line (target under 5).
-- Hosts whose hook still answers `hook status` at week 4.
-- Sessions with a non-empty delta that were resealed or reverted.
-- PR comments a human replied to (not just green checks).
-- Growth merges with protection `UNVERIFIED` (target 0).
-- Published TP/FP on labeled configs before any detection claim.
-- Pilot rows stay `_TBD_` until a repo exists.
+- Minutes from install to first *change* delta (target under 3 after seal)
+- Hosts whose heartbeat still fires at day 30
+- Sessions with a non-empty delta that were resealed or reverted
+- Outside pilots in [`pilots/TRACKER.md`](pilots/TRACKER.md) (leave `_TBD_` until real)
 
-Defer: MCP audit server, web Authority Cards, marketplace, runtime broker,
-heavy AgentSecBench claims — until pilots demand them.
-
-Detail: [`PRODUCT.md`](PRODUCT.md) · [`CHANGELOG.md`](../CHANGELOG.md) ·
-[`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) · [`pilots/`](pilots/).
+Detail: [`PRODUCT.md`](PRODUCT.md) · [`REACH.md`](REACH.md) · [`CHANGELOG.md`](../CHANGELOG.md)

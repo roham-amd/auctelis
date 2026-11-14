@@ -2,11 +2,21 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/roham-amd/auctelis/schemas/authority-lock.schema.json",
   "title": "AUTHORITY.lock",
+  "description": "Auctelis authority lockfile v1. Reach = destination hosts ∩ launcher ∩ capabilities ∩ pin. See docs/REACH.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version"],
   "properties": {
-    "version": { "type": "integer", "minimum": 1, "maximum": 1 },
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Lock schema major version. Frozen at 1 for the public lockfile standard."
+    },
+    "schema_id": {
+      "type": "string",
+      "const": "authority-lock/1",
+      "description": "Optional explicit schema id for third-party readers"
+    },
     "product": { "type": "string", "default": "auctelis" },
     "product_version": { "type": "string" },
     "repository": { "type": "string" },
@@ -35,6 +45,10 @@
           "path": { "type": "string" },
           "digest": { "type": "string" },
           "fingerprint": { "type": "string" },
+          "record_digest": {
+            "type": "string",
+            "description": "Optional stable digest of reach fields (identity + caps + dest + launcher + pin)"
+          },
           "pin_state": { "type": "string" },
           "approval_posture": { "type": "string" },
           "capabilities": { "type": "array", "items": { "type": "string" } },
@@ -55,6 +69,18 @@
           "script_digest": {
             "type": "string",
             "description": "Content digest for hook scripts / skill trees"
+          },
+          "first_seen": {
+            "type": "string",
+            "description": "Optional local ISO-8601 first observation (not a gate input)"
+          },
+          "approved_at": {
+            "type": "string",
+            "description": "Optional local ISO-8601 human seal time (not a gate input)"
+          },
+          "approved_by": {
+            "type": "string",
+            "description": "Optional local human identity for the seal (not a gate input)"
           }
         }
       }

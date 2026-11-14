@@ -1,12 +1,12 @@
 {
   "schema": "auctelis.authority_sbom.v1",
   "product": "auctelis",
-  "product_version": "0.4.0",
-  "package_version": "0.4.0",
+  "product_version": "0.5.0",
+  "package_version": "0.5.0",
   "rule_pack": "1.6",
   "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
-  "audited_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df",
-  "collected_at_utc": "2026-11-14T13:33:34Z",
+  "audited_commit": "b4b69edfec41b93b1444e1df6ee7fc0e20356958",
+  "collected_at_utc": "2026-11-14T14:24:45Z",
   "authority_layers": {
     "DECLARED": "What the integration says it requires or exposes.",
     "CONFIGURED": "What host/repo configuration appears to expose.",

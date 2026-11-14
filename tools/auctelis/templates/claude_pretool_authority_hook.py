@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Claude Code PreToolUse hook: enforce AUTHORITY.lock on agent edits + MCP use.
+"""Claude Code PreToolUse tripwire: AUTHORITY.lock on agent edits + MCP use.
 
 Install: ``auctelis hook install`` (or point PreToolUse at this script).
 Requires: auctelis on PATH; a prior ``auctelis lock`` (repo) or ``auctelis lock --home``.
@@ -8,6 +8,7 @@ Claude Code passes hook input as JSON on stdin (tool_name / tool_input.file_path
 Behaviour:
 1. Edits to authority-bearing paths are refused (human must update the lock).
 2. MCP / tool calls that reference a server name not present in the lock are refused.
+3. This is a tripwire, not a sandbox — agents can still route around it.
 """
 
 from __future__ import annotations

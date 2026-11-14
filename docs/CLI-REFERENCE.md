@@ -3,9 +3,10 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.4.0** · product **0.4.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.5.0** · product **0.5.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
+reach: [`REACH.md`](REACH.md) ·
 lock semantics: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) ·
 roadmap: [`ROADMAP.md`](ROADMAP.md).
 
@@ -21,14 +22,16 @@ callable but are omitted from brief `--help`.
 
 | Tier | Command | Purpose |
 | --- | --- | --- |
-| Core | `watch` | One-screen declared authority delta vs `~/.auctelis/AUTHORITY.lock` |
+| Core | `watch` | First-run highlights + inventory, or sealed delta vs host lock |
 | Core | `watch --seal` | Seal the human baseline (`lock --home` still works) |
-| Core | `watch --arm` / `hook install` | Session + tool hooks for Cursor and Claude Code |
-| Core | `hook status` | Wired / not firing |
+| Core | `watch --arm` / `hook install` | Session + tripwire hooks for Cursor and Claude Code |
+| Core | `why <name>` | Exact config path / reach fields for one authority record |
+| Core | `hook status` | Wired / not yet observed / firing (heartbeat + recent deltas) |
 | Core | `doctor` | Alias for `watch` |
-| Core | `gate` | Label growth vs `--base-lock`; require CODEOWNERS + ruleset |
-| Core | `ci init` | `.auctelis.yml` + workflow + CODEOWNERS + lock |
 | Core | `demo` | First-run Authority Diff on packaged `demo-vulnerable` |
+| Core | `lock` | Write / check repo `AUTHORITY.lock` |
+| Team | `gate` | Optional PR growth label vs `--base-lock` (hidden from brief help) |
+| Team | `ci init` | Optional workflow + CODEOWNERS bootstrap (hidden from brief help) |
 | Hidden | `scan` / `check` | Repo annotations (add `--locked`, `--full`) |
 | Hidden | `vet` | Pre-install annotations for a local path or GitHub URL |
 | Review | `harden` | Dry-run least-privilege patch proposals |
@@ -48,20 +51,34 @@ auctelis watch [--home PATH] [--lock-file PATH] [--seal] [--arm]
                [--delta-only] [--json]
 ```
 
-Inventories the host agent configs and prints one card per authority change:
+Inventories the host agent configs. On first run (no seal), prints **new
+destinations / executables / secrets** and collapses the rest behind an
+inventory line. After `--seal`, prints one card per authority change:
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
 ```
 
-With no lock, the baseline is empty and every current record shows. After
-`--seal`, an unchanged host prints `No authority change since you sealed` and
-the session hook stays quiet. `--delta-only` prints only the changed lines (the
+An unchanged sealed host prints `No authority change since you sealed` and the
+session hook stays quiet. `--delta-only` prints only the changed lines (the
 hook uses this). `--arm` installs the Cursor (`~/.cursor/hooks.json`) and Claude
-(`~/.claude/settings.json`) hooks. `--json` emits the report.
+(`~/.claude/settings.json`) tripwire hooks. `--json` emits
+`schema_version: watch-report/1`.
 
-Exit codes: `0` no change / no lock yet; `1` meaningful delta; `2` unusable
-lock or internal error. `--seal` and `--arm` are refused when `AUCTELIS_AGENT=1`.
+Exit codes: `0` quiet / first-run summary; `1` sealed meaningful delta; `2`
+unusable lock or internal error. `--seal` and `--arm` are refused when
+`AUCTELIS_AGENT=1`.
+
+---
+
+## `auctelis why`
+
+```bash
+auctelis why NAME [--home PATH]
+```
+
+Prints the exact config path, destination, launcher, and capabilities for one
+authority name (MCP server, skill, hook, …). Exit `1` when nothing matches.
 
 ---
 
@@ -93,9 +110,18 @@ Claude Code `SessionStart` + `PreToolUse` (matcher `.*`), and wires Cursor
 `sessionStart`, `beforeMCPExecution`, `beforeShellExecution`, `beforeFileEdit`.
 `hook install` is a mutation and is refused for agents.
 
-`status` reports `firing` / `not_firing` / `not_armed` / `not_wired` per host.
-`not_armed` means wired but no `~/.auctelis/AUTHORITY.lock`; `not_firing` means a
-script is missing or `auctelis` is not on PATH.
+`status` reports per host:
+
+| State | Meaning |
+| --- | --- |
+| `not_wired` | Host settings have no auctelis hook entries |
+| `not_firing` | Wired but script missing or `auctelis` not on PATH |
+| `not_armed` | Wired + scripts OK, but no `~/.auctelis/AUTHORITY.lock` |
+| `wired, not yet observed` | Armed, but no heartbeat yet |
+| `firing (last: …)` | Heartbeat present (session hook observed) |
+
+Hooks are **tripwires**, not a sandbox. Recent deltas (up to 5) come from the
+local ledger under `~/.auctelis/`.
 
 ---
 

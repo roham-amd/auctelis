@@ -13,7 +13,7 @@ from auctelis.build import (
 )
 from auctelis.versioning import package_version, product_version
 
-_EXPECTED = "0.4.0"
+_EXPECTED = "0.5.0"
 _ROOT = Path(__file__).resolve().parents[1]
 
 

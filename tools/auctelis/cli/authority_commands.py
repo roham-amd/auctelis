@@ -9,6 +9,15 @@ from auctelis.doctor import run_doctor
 from auctelis.jsonio import print_json
 
 
+def cmd_why(args: argparse.Namespace) -> int:
+    """Print exact config path / fields for one authority name."""
+    from auctelis.watch import why_home
+
+    lines, code = why_home(str(getattr(args, "name", "") or ""), home=getattr(args, "home", None))
+    print("\n".join(lines).rstrip())
+    return code
+
+
 def cmd_hook(args: argparse.Namespace) -> int:
     """Install or inspect Authority Watch hooks."""
     if getattr(args, "hook_command", None) == "status":

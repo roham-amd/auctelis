@@ -47,10 +47,13 @@ def test_watch_first_run_shows_reach_and_cards(tmp_path: Path, capsys):
     )
     code = main(["watch", "--home", str(home)])
     out = capsys.readouterr().out
-    assert code == 1
+    # First run is an onboarding summary, not a growth delta (exit 0).
+    assert code == 0
     assert "Reach: 1 MCP, 0 hooks" in out
     assert '+ mcp "linear" → mcp.linear.app · network' in out
     assert "publisher NOT VERIFIED" in out
+    assert "Inventory:" in out
+    assert "every current record appears as new" not in out
     assert "AUCTELIS-RULE" not in out
 
 
@@ -62,6 +65,7 @@ def test_watch_empty_home_is_an_explicit_zero_baseline(tmp_path: Path, capsys):
     assert code == 0
     assert "0 MCP, 0 hooks, 0 skills, 0 CI" in out
     assert "No host config found" in out
+    assert "every current record appears as new" not in out
 
 
 def test_watch_seal_then_quiet_delta(tmp_path: Path, capsys):
@@ -163,8 +167,18 @@ def test_hook_status_reports_not_wired_then_firing(tmp_path: Path, monkeypatch, 
     monkeypatch.setattr(hooks_mod.shutil, "which", lambda _cmd: "/usr/bin/auctelis")
     assert main(["hook", "status", "--home", str(home)]) == 0
     out = capsys.readouterr().out
-    assert "Claude Code: firing" in out
-    assert "Cursor: firing" in out
+    # Wired + sealed but never observed → not yet firing.
+    assert "Claude Code: wired, not yet observed" in out
+    assert "Cursor: wired, not yet observed" in out
+    assert "tripwire" in out.lower()
+
+    from auctelis.ledger import record_heartbeat
+
+    record_heartbeat(home=home, host="session", event="sessionStart", had_delta=False)
+    assert main(["hook", "status", "--home", str(home)]) == 0
+    out = capsys.readouterr().out
+    assert "Claude Code: firing (last:" in out
+    assert "Cursor: firing (last:" in out
 
 
 def _load_template(name: str):

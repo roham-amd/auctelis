@@ -13,7 +13,7 @@ from auctelis.authority_lock import (
     diff_authority_locks,
     run_lock_command,
 )
-from auctelis.cli.authority_commands import cmd_doctor, cmd_hook, cmd_watch
+from auctelis.cli.authority_commands import cmd_doctor, cmd_hook, cmd_watch, cmd_why
 from auctelis.cli.guards import refuse_agent_mutation
 from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
 from auctelis.export.annotate import render_github_annotations, render_text_annotations
@@ -69,6 +69,8 @@ def dispatch(args: argparse.Namespace) -> int:
     match command:
         case "watch":
             return cmd_watch(args)
+        case "why":
+            return cmd_why(args)
         case "scan":
             return _cmd_scan(args)
         case "doctor":

@@ -1,8 +1,8 @@
 {
-  "auctelis_inventory_version": "0.4.0",
+  "auctelis_inventory_version": "0.5.0",
   "mode": "passive_read_only",
   "repository_path": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
-  "collected_at_utc": "2026-11-14T13:33:34Z",
+  "collected_at_utc": "2026-11-14T14:24:45Z",
   "limits": {
     "max_files": 5000,
     "max_depth": 12,
@@ -341,5 +341,5 @@
     "Deterministic discovery coverage is partial; see coverage.adapter_matrix.",
     "Inventory is not a security clearance or production approval."
   ],
-  "repository_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df"
+  "repository_commit": "b4b69edfec41b93b1444e1df6ee7fc0e20356958"
 }

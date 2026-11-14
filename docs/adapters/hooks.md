@@ -23,9 +23,15 @@
 
 Cursor passes JSON on stdin and expects a JSON decision on stdout:
 `{"permission": "allow" | "deny", "user_message": "..."}`. Unknown events fail
-open. This is a declared-config watch, **not** a sandbox: it does not verify
-publisher identity, effective host permissions, or runtime behaviour.
+open. This is a **tripwire**, not a sandbox: it does not verify publisher
+identity, effective host permissions, or runtime behaviour.
 
-`auctelis hook status` reports `firing` / `not_firing` / `not_armed` /
-`not_wired` for both Cursor and Claude Code. `not_armed` means the hooks are
-wired but no `~/.auctelis/AUTHORITY.lock` exists yet.
+`auctelis hook status` reports, for Cursor and Claude Code:
+
+| State | Meaning |
+| --- | --- |
+| `not_wired` | No auctelis entries in host settings |
+| `not_firing` | Wired but script missing or CLI not on PATH |
+| `not_armed` | Wired, but no `~/.auctelis/AUTHORITY.lock` yet |
+| `wired, not yet observed` | Armed; no heartbeat from a session yet |
+| `firing (last: …)` | Session hook wrote a heartbeat |

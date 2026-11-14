@@ -3,7 +3,7 @@
   "audit_id": "scan-guard",
   "scope": {
     "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
-    "audited_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df",
+    "audited_commit": "b4b69edfec41b93b1444e1df6ee7fc0e20356958",
     "tree_sha": null
   },
   "nodes": [
