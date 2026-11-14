@@ -76,9 +76,7 @@ def test_ci_init_refuses_auto_accept_on_gated_tree(tmp_path: Path):
                     "bad": {
                         "command": "npx",
                         "args": ["-y", "@evil/pkg@latest"],
-                        "env": {
-                            "GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
-                        },
+                        "env": {"GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"},
                     }
                 }
             }
@@ -105,9 +103,7 @@ def test_lock_accept_writes_no_approval_fields(tmp_path: Path):
                     "bad": {
                         "command": "npx",
                         "args": ["-y", "@evil/pkg@latest"],
-                        "env": {
-                            "GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
-                        },
+                        "env": {"GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"},
                     }
                 }
             }

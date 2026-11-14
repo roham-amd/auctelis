@@ -128,8 +128,7 @@ def test_authority_not_established_vs_no_new():
         }
     }
     assert (
-        authority_establishment(coverage=solid, decision="NO-GATED-FINDINGS")
-        == "NO_NEW_AUTHORITY"
+        authority_establishment(coverage=solid, decision="NO-GATED-FINDINGS") == "NO_NEW_AUTHORITY"
     )
 
 

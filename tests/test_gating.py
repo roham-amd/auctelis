@@ -10,9 +10,7 @@ from auctelis.security.gating import (
 from auctelis.security.models import Finding
 
 
-def _finding(
-    *, fclass: str, severity: str, evidence_ids: list[str] | None = None
-) -> Finding:
+def _finding(*, fclass: str, severity: str, evidence_ids: list[str] | None = None) -> Finding:
     return Finding(
         finding_id="F-001",
         rule_id="AUCTELIS-RULE-001",

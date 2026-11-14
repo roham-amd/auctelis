@@ -23,9 +23,7 @@ def test_deps_outdated_report_structure(monkeypatch):
     assert deps.lock_path().is_file()
 
     def fake_latest(name: str, *, timeout: float = 20.0) -> str:
-        return pins.get(
-            name, pins.get(next(k for k in pins if k.lower() == name.lower()))
-        )
+        return pins.get(name, pins.get(next(k for k in pins if k.lower() == name.lower())))
 
     monkeypatch.setattr(deps, "fetch_latest_version", fake_latest)
     report = deps.outdated_report()
@@ -54,11 +52,7 @@ def test_attack_path_search():
 
 def test_inventory_finds_skill_and_mcp():
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "corpus"
-        / "fixtures"
-        / "benign-skill-mcp"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"
     )
     inv = collect_inventory(root)
     names = {c["name"] for c in inv.components}
@@ -79,11 +73,7 @@ def test_preflight_graph_helpers(tmp_path: Path):
     from auctelis.validate_report import validate_graph_file
 
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "corpus"
-        / "fixtures"
-        / "benign-skill-mcp"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"
     )
     inv = collect_inventory(root)
     graph = inventory_to_graph(inv)

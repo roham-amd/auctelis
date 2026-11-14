@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from auctelis.security.scan import run_scan
 
 _ROOT = Path(__file__).resolve().parents[1]

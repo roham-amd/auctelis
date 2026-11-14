@@ -70,9 +70,7 @@ def test_project_abs_path_is_not_broad(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert not any(
-        f.rule_id == "AUCTELIS-RULE-002" and f.severity == "HIGH" for f in scan.findings
-    )
+    assert not any(f.rule_id == "AUCTELIS-RULE-002" and f.severity == "HIGH" for f in scan.findings)
 
 
 def test_root_path_still_high(tmp_path: Path):
@@ -93,9 +91,7 @@ def test_root_path_still_high(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert any(
-        f.rule_id == "AUCTELIS-RULE-002" and f.severity == "HIGH" for f in scan.findings
-    )
+    assert any(f.rule_id == "AUCTELIS-RULE-002" and f.severity == "HIGH" for f in scan.findings)
 
 
 def test_design_token_skill_not_gated(tmp_path: Path):
@@ -107,12 +103,9 @@ def test_design_token_skill_not_gated(tmp_path: Path):
         encoding="utf-8",
     )
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    gated = [
-        f for f in scan.findings if f.finding_class in {"SECURITY_FINDING", "EXPOSURE"}
-    ]
+    gated = [f for f in scan.findings if f.finding_class in {"SECURITY_FINDING", "EXPOSURE"}]
     assert not any(
-        f.rule_id == "AUCTELIS-RULE-006" and f.finding_class == "SECURITY_FINDING"
-        for f in gated
+        f.rule_id == "AUCTELIS-RULE-006" and f.finding_class == "SECURITY_FINDING" for f in gated
     )
 
 
@@ -137,9 +130,7 @@ def test_jsonc_mcp_parses(tmp_path: Path):
     (root / ".vscode").mkdir(parents=True)
     (root / ".vscode" / "mcp.json").write_text(raw, encoding="utf-8")
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert any(
-        c.get("type") == "MCP Server Registration" for c in scan.inventory["components"]
-    )
+    assert any(c.get("type") == "MCP Server Registration" for c in scan.inventory["components"])
 
 
 def test_unparsed_oversize_mcp_is_review(tmp_path: Path):
@@ -186,6 +177,4 @@ def test_decision_label_is_no_gated_findings(tmp_path: Path):
     root.mkdir()
     (root / "README.md").write_text("hi\n", encoding="utf-8")
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / "out")
-    assert (
-        compute_decision(scan.findings, coverage=scan.coverage) == "NO-GATED-FINDINGS"
-    )
+    assert compute_decision(scan.findings, coverage=scan.coverage) == "NO-GATED-FINDINGS"

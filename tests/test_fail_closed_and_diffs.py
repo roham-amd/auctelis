@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from auctelis.authority_lock import (
     delta_label,
     diff_authority_locks,
@@ -34,9 +35,7 @@ def _sealed_repo(tmp_path: Path) -> tuple[Path, Path]:
     (root / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     return root, base
 
 
@@ -60,9 +59,7 @@ def test_gate_unparsed_head_fails_even_with_trusted_head_lock(tmp_path: Path):
 def test_gate_missing_base_lock_fails_closed(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()
-    report, code = run_gate(
-        root, base_lock=tmp_path / "missing.lock", check_ruleset=False
-    )
+    report, code = run_gate(root, base_lock=tmp_path / "missing.lock", check_ruleset=False)
     assert code == 2
     assert report["verdict"] == "FAIL_CLOSED"
     assert "cannot read base lock" in report["error"]
@@ -108,9 +105,7 @@ def test_watch_reports_unusable_lock(tmp_path: Path, capsys):
     home = tmp_path / "home"
     (home / ".auctelis").mkdir(parents=True)
     _mcp(home)
-    (home / ".auctelis" / "AUTHORITY.lock").write_text(
-        '{"records": [', encoding="utf-8"
-    )
+    (home / ".auctelis" / "AUTHORITY.lock").write_text('{"records": [', encoding="utf-8")
     report, _cards, _scan = build_watch_report(home=home)
     assert report["error"]
     assert main(["watch", "--home", str(home), "--delta-only"]) == 2

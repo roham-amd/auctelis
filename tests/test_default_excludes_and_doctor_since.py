@@ -39,10 +39,7 @@ def test_include_fixtures_flag(tmp_path: Path):
         json.dumps({"mcpServers": {"evil": {"command": "node", "args": ["e.js"]}}}),
         encoding="utf-8",
     )
-    assert (
-        main(["scan", str(root), "-o", str(tmp_path / "out1"), "--fail-on", "never"])
-        == 0
-    )
+    assert main(["scan", str(root), "-o", str(tmp_path / "out1"), "--fail-on", "never"]) == 0
     assert (
         main(
             [
@@ -59,15 +56,15 @@ def test_include_fixtures_flag(tmp_path: Path):
     )
     default_names = {
         str(c.get("name") or "")
-        for c in json.loads(
-            (tmp_path / "out1" / "inventory.json").read_text(encoding="utf-8")
-        ).get("components", [])
+        for c in json.loads((tmp_path / "out1" / "inventory.json").read_text(encoding="utf-8")).get(
+            "components", []
+        )
     }
     included_names = {
         str(c.get("name") or "")
-        for c in json.loads(
-            (tmp_path / "out2" / "inventory.json").read_text(encoding="utf-8")
-        ).get("components", [])
+        for c in json.loads((tmp_path / "out2" / "inventory.json").read_text(encoding="utf-8")).get(
+            "components", []
+        )
     }
     assert "evil" not in default_names
     assert "evil" in included_names
@@ -92,9 +89,7 @@ def test_default_excludes_skip_eval_fixtures(tmp_path: Path):
 
 
 def test_doctor_since_lock_missing(tmp_path: Path):
-    text, code = run_doctor_since_lock(
-        home=tmp_path / "home", lock_file=tmp_path / "missing.lock"
-    )
+    text, code = run_doctor_since_lock(home=tmp_path / "home", lock_file=tmp_path / "missing.lock")
     # No lock is a valid empty baseline (first run), not an error.
     assert code == 0
     assert "none yet" in text

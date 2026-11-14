@@ -26,16 +26,21 @@ def run_ruff(
     if not roots:
         return {"ok": False, "error": "no Python roots found", "commands": []}
 
+    # Pin the config so results do not depend on the caller's cwd: Ruff otherwise
+    # falls back to line-length 88 when run from the repo root and 100 from tools/.
+    config = repo_root() / "tools" / "pyproject.toml"
+    config_args = ["--config", str(config)] if config.is_file() else []
+
     commands: list[list[str]] = []
-    lint_cmd = [sys.executable, "-m", "ruff", "check", *roots]
+    lint_cmd = [sys.executable, "-m", "ruff", "check", *roots, *config_args]
     if fix:
         lint_cmd.append("--fix")
     commands.append(lint_cmd)
 
     if format_code:
-        commands.append([sys.executable, "-m", "ruff", "format", *roots])
+        commands.append([sys.executable, "-m", "ruff", "format", *roots, *config_args])
     elif check_format:
-        commands.append([sys.executable, "-m", "ruff", "format", "--check", *roots])
+        commands.append([sys.executable, "-m", "ruff", "format", "--check", *roots, *config_args])
 
     results: list[dict[str, Any]] = []
     ok = True

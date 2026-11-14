@@ -20,9 +20,7 @@ from auctelis.lock_io import load_authority_lock
 def _repo_with_mcp(root: Path, servers: dict) -> None:
     path = root / ".cursor" / "mcp.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"mcpServers": servers}, indent=2) + "\n", encoding="utf-8"
-    )
+    path.write_text(json.dumps({"mcpServers": servers}, indent=2) + "\n", encoding="utf-8")
 
 
 def test_lock_write_check_and_diff(tmp_path: Path):

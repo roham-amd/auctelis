@@ -29,14 +29,10 @@ def test_gate_growth_passes_with_codeowners(tmp_path: Path):
     root = tmp_path / "repo"
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text(
-        "AUTHORITY.lock @sec-owners\n", encoding="utf-8"
-    )
+    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec-owners\n", encoding="utf-8")
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
 
     _mcp(
         root,
@@ -59,9 +55,7 @@ def test_gate_growth_fails_without_codeowners(tmp_path: Path):
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(
         root,
         {
@@ -80,9 +74,7 @@ def test_gate_cli(tmp_path: Path):
     root = tmp_path / "repo"
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text(
-        "AUTHORITY.lock @owner\n", encoding="utf-8"
-    )
+    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @owner\n", encoding="utf-8")
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
     base.write_bytes((root / "AUTHORITY.lock").read_bytes())
@@ -93,23 +85,17 @@ def test_gate_cli(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
-    assert (
-        main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
-    )
+    assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
 
 
 def test_same_name_launcher_swap_is_replacement(tmp_path: Path):
     root = tmp_path / "swap"
     _mcp(root, {"pkg": {"command": "npx", "args": ["-y", "pkg@1.0.0"]}})
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text(
-        "AUTHORITY.lock @sec\n", encoding="utf-8"
-    )
+    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(root, {"pkg": {"command": "npx", "args": ["-y", "pkg@9.9.9"]}})
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0

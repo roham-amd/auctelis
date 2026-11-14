@@ -119,10 +119,7 @@ def test_rule_016_pr_target_agent(tmp_path: Path):
 
 def test_rule_010_name_marker_strength():
     root = (
-        Path(__file__).resolve().parents[0]
-        / "rules"
-        / "fixtures"
-        / "rule-010-positive-injection"
+        Path(__file__).resolve().parents[0] / "rules" / "fixtures" / "rule-010-positive-injection"
     )
     scan = run_security_scan(root)
     hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-010")
@@ -132,12 +129,7 @@ def test_rule_010_name_marker_strength():
 
 
 def test_rule_010_content_abuse_strength():
-    root = (
-        Path(__file__).resolve().parents[0]
-        / "rules"
-        / "fixtures"
-        / "rule-010-positive-content"
-    )
+    root = Path(__file__).resolve().parents[0] / "rules" / "fixtures" / "rule-010-positive-content"
     scan = run_security_scan(root)
     hit = next(f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-010")
     # Heuristic instruction phrasing is INFERRED_HINT (not LITERAL_CONFIG), EXPOSURE/MEDIUM.

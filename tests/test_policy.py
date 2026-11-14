@@ -36,24 +36,14 @@ def test_load_policy_simple_yaml(tmp_path: Path):
 def test_apply_policy_defaults_cli_wins():
     path_policy = None
     assert (
-        apply_policy_defaults(policy=path_policy, fail_on="high", fail_on_from_cli=True)
-        == "high"
+        apply_policy_defaults(policy=path_policy, fail_on="high", fail_on_from_cli=True) == "high"
     )
-    assert (
-        apply_policy_defaults(
-            policy=path_policy, fail_on="never", fail_on_from_cli=True
-        )
-        is None
-    )
+    assert apply_policy_defaults(policy=path_policy, fail_on="never", fail_on_from_cli=True) is None
 
 
 def test_suppression_filters_findings(tmp_path: Path):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "corpus"
-        / "fixtures"
-        / "skill-to-mcp-path"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"
     )
     policy_path = tmp_path / ".auctelis.yml"
     policy_path.write_text(SAMPLE, encoding="utf-8")
@@ -62,24 +52,16 @@ def test_suppression_filters_findings(tmp_path: Path):
     scan, payload, code = run_scan(root, output_dir=out, policy=policy, fail_on=None)
     assert code == 0
     # Suppressed findings stay in the artifact stream, marked suppressed=True.
-    suppressed = [
-        f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-002" and f.suppressed
-    ]
+    suppressed = [f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-002" and f.suppressed]
     assert suppressed
-    assert not any(
-        f.rule_id == "AUCTELIS-RULE-002" and not f.suppressed for f in scan.findings
-    )
+    assert not any(f.rule_id == "AUCTELIS-RULE-002" and not f.suppressed for f in scan.findings)
     assert payload.get("suppressions")
     assert (out / "suppressions.json").is_file()
 
 
 def test_default_output_not_under_target(tmp_path: Path, monkeypatch):
     root = (
-        Path(__file__).resolve().parents[1]
-        / "tests"
-        / "corpus"
-        / "fixtures"
-        / "benign-skill-only"
+        Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-only"
     )
     cwd = tmp_path / "cwd"
     cwd.mkdir()

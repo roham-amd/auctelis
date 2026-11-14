@@ -22,9 +22,7 @@ def test_pr_comment_is_compact_and_verdict_led(tmp_path: Path):
     demo = _demo_root()
     assert demo.is_dir()
     scan, payload, _code = run_scan(demo, output_dir=tmp_path / "out")
-    comment = payload.get("pr_comment") or render_authority_diff_comment(
-        scan.to_findings_doc()
-    )
+    comment = payload.get("pr_comment") or render_authority_diff_comment(scan.to_findings_doc())
     assert "Verdict:" in comment
     assert "Changed:" in comment
     assert "Authority delta:" in comment
@@ -32,9 +30,7 @@ def test_pr_comment_is_compact_and_verdict_led(tmp_path: Path):
     assert "F-0" not in comment
     assert "auctelis explain" not in comment
     # Sticky HTML marker is metadata; visible body stays ≤12 lines.
-    body_lines = [
-        ln for ln in comment.strip().splitlines() if not ln.startswith("<!--")
-    ]
+    body_lines = [ln for ln in comment.strip().splitlines() if not ln.startswith("<!--")]
     assert len(body_lines) <= 12
 
 
@@ -54,18 +50,14 @@ def test_pr_comment_includes_lock_delta_expansions():
             "policy_changed": False,
             "meaningful_authority_change": True,
         },
-        "lines": [
-            "+ addition MCP Server Registration `evil`: execute_commands; pin=floating"
-        ],
+        "lines": ["+ addition MCP Server Registration `evil`: execute_commands; pin=floating"],
     }
     comment = render_authority_diff_comment(findings_doc, lock_delta=lock_delta)
     assert "additions" in comment
     assert "evil" in comment
     assert "Verdict:" in comment
     assert "Authority delta:" in comment
-    body_lines = [
-        ln for ln in comment.strip().splitlines() if not ln.startswith("<!--")
-    ]
+    body_lines = [ln for ln in comment.strip().splitlines() if not ln.startswith("<!--")]
     assert len(body_lines) <= 12
 
 

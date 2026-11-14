@@ -75,14 +75,10 @@ def test_hollow_base_fails_closed(tmp_path: Path):
     root = tmp_path / "repo"
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text(
-        "AUTHORITY.lock @sec\n", encoding="utf-8"
-    )
+    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
     hollow = tmp_path / "hollow.lock"
     hollow.write_text(
-        json.dumps(
-            {"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}
-        ),
+        json.dumps({"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}),
         encoding="utf-8",
     )
     report, code = run_gate(root, base_lock=hollow)

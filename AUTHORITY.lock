@@ -1,8 +1,8 @@
 {
   "approvals": [],
   "approved_findings": [],
-  "audited_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df",
-  "lock_hash": "22b51dcfa827251f09bdece954b894fd",
+  "audited_commit": "5f72f8b241e87a6461bd05224f338ef14261d01c",
+  "lock_hash": "92b361ccef05b1033c301d579191a997",
   "mcp_servers": {},
   "mcp_tools": {},
   "policy_hash": "sha256:745d70cb4cfec399f4dd8f4a35de56ac95829530f0d02acb72ade38653145c63",
@@ -80,9 +80,9 @@
         "unattended_operation"
       ],
       "destinations": [],
-      "digest": "sha256:582415a8ae57d136771ba3f6e371f7c8c788ada82e8f88ddb6d797a6f2180711",
+      "digest": "sha256:d7a8d6d6f229c177fd34ff679e8a99036b7e59413c3e902be19cbb36a31440f2",
       "env_keys": [],
-      "fingerprint": "2c9a7cd277628bdb",
+      "fingerprint": "7e9074f418aea2ab",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/release@.github/workflows/release.yml",
       "identity_key": "github_workflows|ci workflow|release",

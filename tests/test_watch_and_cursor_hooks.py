@@ -18,9 +18,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 def _mcp(home: Path, servers: dict) -> None:
     cursor = home / ".cursor"
     cursor.mkdir(parents=True, exist_ok=True)
-    (cursor / "mcp.json").write_text(
-        json.dumps({"mcpServers": servers}), encoding="utf-8"
-    )
+    (cursor / "mcp.json").write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
 
 
 def test_bare_auctelis_is_watch_not_scan(tmp_path: Path):
@@ -139,9 +137,7 @@ def test_hook_install_wires_cursor_and_broad_claude_matcher(tmp_path: Path):
     home = tmp_path / "home"
     home.mkdir()
     assert main(["hook", "install", "--home", str(home)]) == 0
-    claude = json.loads(
-        (home / ".claude" / "settings.json").read_text(encoding="utf-8")
-    )
+    claude = json.loads((home / ".claude" / "settings.json").read_text(encoding="utf-8"))
     pretool = claude["hooks"]["PreToolUse"][0]
     assert pretool["matcher"] == ".*"
     cursor = json.loads((home / ".cursor" / "hooks.json").read_text(encoding="utf-8"))
@@ -207,20 +203,14 @@ def test_cursor_hook_allows_known_and_denies_unknown_mcp(tmp_path: Path):
             input=json.dumps(payload),
             capture_output=True,
             text=True,
-            env={**env, "SYSTEMROOT": "C:\\Windows"}
-            if sys.platform == "win32"
-            else env,
+            env={**env, "SYSTEMROOT": "C:\\Windows"} if sys.platform == "win32" else env,
             check=False,
         )
         return json.loads(proc.stdout)
 
-    allowed = run(
-        {"hook_event_name": "beforeMCPExecution", "tool_name": "mcp__linear__read"}
-    )
+    allowed = run({"hook_event_name": "beforeMCPExecution", "tool_name": "mcp__linear__read"})
     assert allowed["permission"] == "allow"
-    denied = run(
-        {"hook_event_name": "beforeMCPExecution", "tool_name": "mcp__evil__run"}
-    )
+    denied = run({"hook_event_name": "beforeMCPExecution", "tool_name": "mcp__evil__run"})
     assert denied["permission"] == "deny"
     edit = run({"hook_event_name": "beforeFileEdit", "file_path": ".cursor/mcp.json"})
     assert edit["permission"] == "deny"
@@ -286,9 +276,7 @@ def test_gate_verdict_wins_in_pr_comment(tmp_path: Path, monkeypatch):
     )
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     (root / ".cursor" / "mcp.json").write_text(
         json.dumps(
             {

@@ -73,9 +73,7 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     assert code == 0
     assert (root / ".auctelis.yml").is_file()
     assert (root / ".github" / "workflows" / "auctelis-gate.yml").is_file()
-    workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     assert "trusted-policy" in workflow
     assert 'locked: "false"' in workflow
     assert 'strict-ruleset: "true"' in workflow
@@ -93,9 +91,7 @@ def test_cli_vet_local(tmp_path: Path, capsys):
     root = tmp_path / "pkg"
     skill = root / "skills" / "ok"
     skill.mkdir(parents=True)
-    (skill / "SKILL.md").write_text(
-        "---\nname: ok\n---\nRead-only helper.\n", encoding="utf-8"
-    )
+    (skill / "SKILL.md").write_text("---\nname: ok\n---\nRead-only helper.\n", encoding="utf-8")
     code = main(["vet", str(root), "-o", str(tmp_path / "out")])
     out = capsys.readouterr().out
     assert "auctelis vet" in out

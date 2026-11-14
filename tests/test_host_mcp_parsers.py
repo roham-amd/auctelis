@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+
 from auctelis.inventory.collector import collect_inventory
 
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "hosts"

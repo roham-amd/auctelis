@@ -49,9 +49,7 @@ def test_authority_snapshot_and_new_only_decision(tmp_path: Path):
 
     # Identical head → zero delta → NO-GATED-FINDINGS even if findings exist.
     out2 = tmp_path / "out2"
-    scan2, payload, code = run_scan(
-        root, output_dir=out2, baseline=base_path, fail_on="high"
-    )
+    scan2, payload, code = run_scan(root, output_dir=out2, baseline=base_path, fail_on="high")
     assert code == 0
     assert payload["risk_delta"]["high_or_critical_findings_added"] == 0
     decision = compute_decision(
@@ -61,9 +59,7 @@ def test_authority_snapshot_and_new_only_decision(tmp_path: Path):
     )
     assert decision == "NO-GATED-FINDINGS"
 
-    delta = diff_against_baseline(
-        scan2, {"finding_keys": [], "component_fingerprints": []}
-    )
+    delta = diff_against_baseline(scan2, {"finding_keys": [], "component_fingerprints": []})
     assert "gated_new_findings" in delta["changes"]
 
 
@@ -97,7 +93,4 @@ def test_authority_component_delta_detects_add(tmp_path: Path):
         ],
     }
     delta = diff_authority_snapshots(base, head)
-    assert (
-        delta["summary"]["components_modified"] >= 1
-        or delta["summary"]["components_added"] >= 1
-    )
+    assert delta["summary"]["components_modified"] >= 1 or delta["summary"]["components_added"] >= 1

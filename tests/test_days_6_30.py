@@ -30,9 +30,7 @@ def _mcp(root: Path, servers: dict) -> None:
 
 def _owners(root: Path) -> None:
     (root / ".github").mkdir(parents=True, exist_ok=True)
-    (root / ".github" / "CODEOWNERS").write_text(
-        "AUTHORITY.lock @sec\n", encoding="utf-8"
-    )
+    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
 
 
 def _rec(
@@ -66,16 +64,12 @@ def _rec(
 
 
 def test_adoption_ceremony_distinct_from_growth_gate():
-    adopted = adoption_bootstrap_verdict(
-        base_lock_present=False, head_lock_present=True
-    )
+    adopted = adoption_bootstrap_verdict(base_lock_present=False, head_lock_present=True)
     assert adopted["verdict"] == "BASELINE_ADOPTED"
     assert adopted["ceremony"] == "baseline_adopted"
     assert adopted["ok"] is True
 
-    closed = adoption_bootstrap_verdict(
-        base_lock_present=False, head_lock_present=False
-    )
+    closed = adoption_bootstrap_verdict(base_lock_present=False, head_lock_present=False)
     assert closed["ok"] is False
     assert closed["verdict"] == "FAIL_CLOSED"
 
@@ -97,9 +91,7 @@ def test_strict_ruleset_fails_unverified_growth(tmp_path: Path, monkeypatch):
     _owners(root)
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(
         root,
         {
@@ -131,9 +123,7 @@ def test_ruleset_missing_fails_growth(tmp_path: Path):
     _owners(root)
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(
         root,
         {
@@ -141,9 +131,7 @@ def test_ruleset_missing_fails_growth(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
-    with patch(
-        "auctelis.gate.check_code_owner_ruleset", return_value=("MISSING", "no ruleset")
-    ):
+    with patch("auctelis.gate.check_code_owner_ruleset", return_value=("MISSING", "no ruleset")):
         report, code = run_gate(root, base_lock=base)
     assert code == 1
     assert report["verdict"] == "NEEDS_REVIEW"
@@ -156,9 +144,7 @@ def test_ruleset_ok_marks_protection_verified(tmp_path: Path):
     _owners(root)
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(
         root,
         {
@@ -217,9 +203,7 @@ def test_gate_cli_strict_ruleset_flag(tmp_path: Path, monkeypatch, capsys):
     _owners(root)
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     _mcp(
         root,
         {

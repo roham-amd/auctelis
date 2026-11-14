@@ -30,9 +30,7 @@ def _owners(root: Path, owner: str = "@sec-owners") -> None:
 def _lock_base(root: Path, tmp: Path) -> Path:
     assert main(["lock", str(root)]) == 0
     base = tmp / "base.lock"
-    base.write_text(
-        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
-    )
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     return base
 
 
@@ -156,9 +154,7 @@ def test_scenario_hollow_lock_fails_closed(tmp_path: Path):
     assert main(["lock", str(root)]) == 0
     hollow = tmp_path / "hollow.lock"
     hollow.write_text(
-        json.dumps(
-            {"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}
-        ),
+        json.dumps({"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}),
         encoding="utf-8",
     )
     code = main(["gate", str(root), "--base-lock", str(hollow), "--skip-ruleset-check"])

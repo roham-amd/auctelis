@@ -45,9 +45,7 @@ def test_compute_decision_no_fallthrough_with_empty_delta():
 def test_sticky_comment_marker_is_first_line(tmp_path: Path):
     demo = Path(__file__).resolve().parents[1] / "examples" / "demo-vulnerable"
     scan, payload, _ = run_scan(demo, output_dir=tmp_path / "out")
-    comment = payload.get("pr_comment") or render_authority_diff_comment(
-        scan.to_findings_doc()
-    )
+    comment = payload.get("pr_comment") or render_authority_diff_comment(scan.to_findings_doc())
     assert comment.startswith(AUCTELIS_COMMENT_MARKER)
     assert (
         (tmp_path / "out" / "pr-comment.md")
@@ -57,9 +55,7 @@ def test_sticky_comment_marker_is_first_line(tmp_path: Path):
 
 
 def test_toml_parse_and_discover(tmp_path: Path):
-    data = _parse_simple_toml(
-        '[mcp_servers.demo]\ncommand = "npx"\nurl = "https://example.com"\n'
-    )
+    data = _parse_simple_toml('[mcp_servers.demo]\ncommand = "npx"\nurl = "https://example.com"\n')
     assert data["mcp_servers"]["demo"]["command"] == "npx"
     root = tmp_path / "repo"
     root.mkdir()
