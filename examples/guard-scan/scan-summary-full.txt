@@ -1,15 +1,16 @@
 auctelis — Authority Diff for AI agents
-Product: auctelis 0.3.1  (tooling 0.3.1)
+Product: auctelis 0.4.0  (tooling 0.4.0)
 Repository: C:\Users\rohaa\Projects\auctelis\examples\demo-vulnerable
-Commit: 827a4f339dee9add20a1f4b11bc63d5ba975b562
+Commit: b5e0f1a5ade5c338741abf13d3ea36705eb0f0df
 
-DECISION: BLOCK
+Authority delta: GROWTH
+  (annotations only — enforce with `auctelis gate`; legacy DECISION: BLOCK)
   BLOCK: 7 high/critical authority issue(s) require a fix or explicit risk acceptance before merge/install.
   Observed 11 gated finding(s) and 2 capability observation(s).
-  Next: `auctelis explain F-00N` for evidence, or `auctelis fix` for dry-run fix patches.
+  Next: `auctelis explain F-00N` for evidence, or `auctelis harden` for dry-run patches. Product delta: `auctelis watch`.
   Coverage: 20% SUPPORTED (1/5); PARTIAL=4 MANUAL_ONLY=0 — clean result ≠ safe.
 
-DECISION SUMMARY
+ANNOTATION SUMMARY
   Components discovered              5
   Authority-bearing components       4
   External connections               2

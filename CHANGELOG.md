@@ -5,7 +5,65 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
-## [Unreleased]
+## [0.4.0] — 2026-11-14
+
+### Added
+
+- `auctelis watch`: one-screen declared authority delta against
+  `~/.auctelis/AUTHORITY.lock`, with one card per change
+  (`+ mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED`).
+- `watch --seal` (human baseline), `watch --arm` (hooks), `--delta-only`, `--json`.
+- Cursor hooks: `~/.cursor/hooks.json` (`sessionStart`, `beforeMCPExecution`,
+  `beforeShellExecution`, `beforeFileEdit`), plus `auctelis_cursor_hook.py`.
+- `auctelis hook status`: wired / not firing / not armed per host.
+- 54 rule-case manifests are now a live parametrized regression suite.
+- Fail-closed tests for unparsed configs, missing/corrupt locks, and `mcp_tools`
+  diffs.
+
+### Security / reliability
+
+- `auctelis gate` now fails closed (`NEEDS_REVIEW`) when head configs cannot be
+  parsed, even when a trusted `--head-lock` is supplied.
+- Missing base or head lock files return `FAIL_CLOSED` instead of a traceback or
+  a silent re-scan.
+- `AUTHORITY.lock` loading rejects truncated/garbage JSON instead of falling
+  back to an empty YAML lock.
+- `mcp_tools` additions/removals/digest changes are part of the authority delta.
+- Hook install backs up corrupt Claude/Cursor settings before rewriting, and
+  refuses when `AUCTELIS_AGENT=1`.
+- Session hook reconfigures stdout to UTF-8 so Windows pipes cannot crash it.
+- Locks and JSON artifacts are written with LF newlines.
+
+### Changed
+
+- Bare `auctelis` runs `watch`, never a scanner.
+- `doctor` and `doctor --since-lock` render the same one-screen delta; the
+  findings wall is gone.
+- Claude PreToolUse matcher is `.*`; `mcp__server__tool` calls now reach the
+  allowlist and known servers are allowed.
+- `scan`, `check`, `vet`, `explain`, `harden`, and SARIF are hidden from default
+  help (still callable).
+- PR comment: one verdict line (`PASS` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` /
+  `FAIL_CLOSED`), at most three old → new cards, no finding IDs, and
+  `NOT PARSED` in the unknown line.
+- Release manifest: `locked_action_default: false`, `primary_command:
+  auctelis watch`, verdict/label language separated.
+- First install block everywhere is the git tag; PyPI is not the command today.
+- Architecture: host staging moved to `host_scan.py`; CLI guards/handlers split;
+  shared `delta_label`; `escape_markdown` moved to `textutil.py` so the rule
+  engine no longer imports the export layer.
+- Removed obsolete audit sample files and dead `auctelis delta` / `baseline save`
+  / `validate claim` documentation; fixed the Docker Compose duplicate service.
+
+### Removed
+
+- `approved_findings[]` population and the `--accept-gated` acceptance note
+  (`--accept-gated` remains an explicit human override that records nothing).
+- Default SARIF upload in the Action (`upload-sarif` defaults to `false`).
+- Eval rows/configs without a fixture; the external repo manifest is empty until
+  a real pilot exists.
+- Legacy `sigstore-release.yml` duplicate workflow and unused Action `profile`
+  input.
 
 ## [0.3.4] — 2026-11-13
 

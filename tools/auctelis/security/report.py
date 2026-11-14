@@ -128,7 +128,7 @@ def render_short_terminal_report(
     gated = [f for f in ordered if is_gate_finding(f)]
     lines = [
         f"auctelis {scan.product_version} — {mcp_n} MCP, {hook_n} hooks, {skill_n} skills",
-        f"DECISION: {decision}",
+        f"ANNOTATION DECISION: {decision} (not a gate; use auctelis gate)",
         lead[0],
         coverage_score_line(scan.coverage),
     ]
@@ -140,7 +140,7 @@ def render_short_terminal_report(
         )
     if len(gated) > 3:
         lines.append(f"  … +{len(gated) - 3} more gated (auctelis scan --full)")
-    lines.append("Next: auctelis lock | auctelis explain F-00N | auctelis scan --full")
+    lines.append("Next: auctelis watch | auctelis explain F-00N | auctelis scan --full")
     return "\n".join(lines)
 
 
@@ -331,7 +331,7 @@ def render_finding_explanation(scan: ScanResult, finding: Finding) -> str:
             "## Verification requirements",
             "",
             "- Do not promote this to CONFIRMED / Verified impact without independent evidence.",
-            "- Optional: `auctelis fix` for dry-run patches; `auctelis doctor` for host map.",
+            "- Optional: `auctelis harden` for dry-run patches; `auctelis watch` for host authority.",
             "",
         ]
     )

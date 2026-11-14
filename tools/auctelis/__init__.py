@@ -7,6 +7,6 @@ Public entry points:
   ``auctelis.gate.run_gate``, ``auctelis.authority_lock``
 """
 
-__version__ = "0.3.4"
-__product_version__ = "0.3.4"
+__version__ = "0.4.0"
+__product_version__ = "0.4.0"
 __product_name__ = "auctelis"

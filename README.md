@@ -2,66 +2,70 @@
 
 **Package-lock for agent authority**
 
-> See what your agents can do, and what changed since you last said OK.
+> See what your agents can reach, and what changed since you last said OK.
 
-Auctelis maps MCP servers, skills, and host agent config on your laptop, seals
-an approved state in `AUTHORITY.lock`, and shouts when authority grows — in a
-session hook or a PR comment. Enforcement stays with GitHub (CODEOWNERS /
-rulesets). Deterministic tooling is the source of truth; an agent is an optional
-explainer.
+Auctelis inventories the MCP servers, skills, hooks, commands, and CI steps your
+agents can use, seals the state you approved in `AUTHORITY.lock`, and prints one
+line when that reach changes — at session start or in a PR comment. GitHub stays
+the approval system (CODEOWNERS / rulesets). Deterministic tooling is the source
+of truth; an agent can explain it, never approve it.
 
-It is **not** a certification, marketplace badge, runtime sandbox, or substitute
-for organizational risk acceptance. Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md).
+It is **not** a certification, runtime sandbox, or marketplace badge. Contract:
+[`docs/PRODUCT.md`](docs/PRODUCT.md).
 
 ---
 
 ## First five minutes (Authority Watch)
 
 ```bash
-# Install from the pinned kit tag (PyPI path once published: uvx auctelis doctor)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools" auctelis doctor
-
+# Git tag is the supported install until the PyPI package returns 200.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
 
-auctelis doctor              # host map: secrets, network, unpinned
-auctelis lock --home         # seal ~/.auctelis/AUTHORITY.lock
-auctelis hook install        # session-start delta + PreToolUse lock enforce
-auctelis doctor --since-lock # one-screen delta (hooks call this)
-auctelis vet github.com/org/some-skill
+auctelis watch              # one screen: current declared reach vs your seal
+auctelis watch --seal       # human baseline in ~/.auctelis/AUTHORITY.lock
+auctelis watch --arm        # session + tool hooks for Cursor and Claude Code
+auctelis hook status        # wired / not firing
 ```
 
-After the next MCP add, a new agent session prints only the delta
-(`+1 MCP x: network, secrets, unpinned`). Unchanged hosts stay quiet.
+The first screen is a delta, not a findings wall:
 
-**Verdict language (one):** `PASS` | `GROWTH` | `NEEDS_REVIEW` | `BASELINE_ADOPTED`.
-Scan severities annotate the diff; they are not a second public `BLOCK` gate.
+```text
++ mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
+```
 
-Agents must export `AUCTELIS_AGENT=1` so lock / policy mutations are refused.
+After the seal, a new MCP server prints that one line in your next Cursor or
+Claude session. An unchanged host stays quiet. A human reseals or reverts.
+
+**Verdicts:** `PASS` | `NEEDS_REVIEW` | `BASELINE_ADOPTED` | `FAIL_CLOSED`.
+**Labels:** `GROWTH` | `REDUCTION` | `NONE` (what the lock delta is, not a verdict).
+
+Agents must export `AUCTELIS_AGENT=1`; `watch --seal`, `watch --arm`,
+`hook install`, `lock`, and `ci init` are refused for agents.
 
 ---
 
 ## Team upsell (PR Authority Diff)
 
-Lockless-first — one Action line, no baseline ceremony:
+Lockless-first — one Action step, no baseline ceremony:
 
 ```yaml
 - uses: actions/checkout@v4
   with:
     fetch-depth: 0
-- run: >
-    pip install
-    "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools"
-# Prefer: uses: …/auctelis-gate@<commit-sha>
-- uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.3.4
+# Prefer pinning the Action to a commit SHA.
+# The Action ships the matching tools/ tree; do not uv-sync a PR-controlled one.
+- uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.4.0
   with:
     path: .
     trusted-policy: "true"
     authority-diff: "true"
-    locked: "false"          # quickstart: post the diff, no lock required
+    locked: "false"          # post the diff; no lock required
     strict-ruleset: "true"   # UNVERIFIED protection fails growth
-    install-tools-from: path
 ```
+
+The comment is one verdict plus at most three `old → new` lines (host, launcher,
+env keys). Finding IDs stay out of the review UI.
 
 Approved-state upgrade: commit `AUTHORITY.lock`, set `locked: true`, then
 `auctelis ci init --owner @team` for CODEOWNERS + workflow.
@@ -75,13 +79,17 @@ Gate docs: [`docs/AUCTELIS-GATE.md`](docs/AUCTELIS-GATE.md).
 
 | Command | Purpose |
 | --- | --- |
-| `auctelis doctor` | Host authority map (front door) |
-| `auctelis lock --home` / `lock` | Seal host or repo `AUTHORITY.lock` |
-| `auctelis hook install` | Session-start delta + PreToolUse lock hook |
-| `auctelis vet` | Pre-install annotations |
-| `auctelis gate` | Label growth vs `--base-lock` (strict ruleset default) |
-| `auctelis ci init --owner @user` | Policy + workflow + CODEOWNERS |
-| `auctelis demo` | Packaged evil fixture (optional) |
+| `auctelis watch` | One-screen declared authority delta (front door) |
+| `auctelis watch --seal` | Seal the human baseline (`lock --home` still works) |
+| `auctelis watch --arm` / `hook install` | Session + tool hooks for Cursor and Claude Code |
+| `auctelis hook status` | Wired / not firing |
+| `auctelis gate` | Label growth vs `--base-lock`; strict ruleset default on |
+| `auctelis ci init --owner @user` | Policy + lockless workflow + CODEOWNERS |
+| `auctelis demo` | Packaged fixture (optional) |
+
+`scan` / `check` / `vet` / `explain` / `harden` remain callable for existing
+scripts but are hidden from the default first screen. The scanner is an
+annotation layer, not the product.
 
 Public docs: [`INSTALL`](docs/INSTALL.md) · [`PRODUCT`](docs/PRODUCT.md) ·
 [`AUCTELIS-GATE`](docs/AUCTELIS-GATE.md) · [`PLAYBOOK`](docs/PLAYBOOK.md) ·

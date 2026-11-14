@@ -12,7 +12,7 @@ Pilot ground-truth cases for **deterministic tooling** (inventory adapters, vali
 
 ```bash
 cd tools && uv sync --locked
-auctelis corpus run
+auctelis-dev corpus run
 ```
 
 ## Ground-truth rules

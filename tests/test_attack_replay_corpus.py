@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from auctelis.security.decision import compute_decision
 from auctelis.security.scan import run_scan
 
@@ -81,7 +80,9 @@ def test_attack_replay_expected_signals(
 ):
     root = _REPLAY / case_dir
     assert root.is_dir(), case_dir
-    scan, _payload, _code = run_scan(root, output_dir=tmp_path / case_dir, fail_on="never")
+    scan, _payload, _code = run_scan(
+        root, output_dir=tmp_path / case_dir, fail_on="never"
+    )
     fired = {f.rule_id for f in scan.findings}
     if special == "flex_unparsed_or_rule011":
         unparsed = int(scan.coverage.get("unparsed_agent_config_count") or 0)
@@ -91,4 +92,6 @@ def test_attack_replay_expected_signals(
             or compute_decision(scan.findings, coverage=scan.coverage) == "REVIEW"
         ), (fired, unparsed, scan.parser_events)
         return
-    assert expected_rules & fired, f"{case_dir}: expected one of {expected_rules}, got {fired}"
+    assert expected_rules & fired, (
+        f"{case_dir}: expected one of {expected_rules}, got {fired}"
+    )

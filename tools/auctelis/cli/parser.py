@@ -9,28 +9,25 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "doctor → lock --home → hook install → (team) gate / ci init"
+PUBLIC_PATH = "watch → watch --seal (lock --home) → hook install → (team) gate / ci init"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
-review:       vet | explain | diff lock | annotate | harden  (optional)
+review:       vet | explain | diff lock | annotate | harden  (hidden, optional)
 maintainer:   auctelis-dev (build | lint | corpus | deps)
 
-Bare `auctelis` → doctor (no repo config) or scan . (AUTHORITY.lock / .auctelis.yml).
-Passive scans never execute target code.
-One verdict language (gate): PASS | GROWTH | NEEDS_REVIEW | BASELINE_ADOPTED.
-Scan severities annotate the diff; they are not a second public BLOCK gate.
+Bare `auctelis` → watch (host authority delta). `auctelis <path>` → scan (hidden).
+Verdicts (gate / comment): PASS | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED.
+Labels (authority delta): GROWTH | REDUCTION | NONE.
 Target `.auctelis.yml` is ignored unless `--policy` or `--trust-target-policy` is set.
-Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init / policy edits.
+Agents must set AUCTELIS_AGENT=1 and must not run watch --seal / lock / ci init.
 """
 
 # Hidden from default --help; still fully callable.
 _ADV = argparse.SUPPRESS
 
-# Enforceable public mental model — six jobs, not six brand names.
-CORE_PUBLIC_COMMANDS = frozenset(
-    {"demo", "doctor", "vet", "scan", "check", "lock", "gate", "ci", "hook"}
-)
+# Enforceable public mental model — the whole first-user surface.
+CORE_PUBLIC_COMMANDS = frozenset({"demo", "watch", "doctor", "lock", "gate", "ci", "hook"})
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -38,6 +35,7 @@ _PRODUCT_COMMANDS = frozenset(
         "check",
         "ci",
         "doctor",
+        "watch",
         "vet",
         "demo",
         "harden",
@@ -69,23 +67,16 @@ _DEV_COMMANDS = frozenset(
 )
 
 
-def _cwd_has_repo_config(cwd: Path | None = None) -> bool:
-    root = (cwd or Path.cwd()).resolve()
-    if (root / "AUTHORITY.lock").is_file():
-        return True
-    return (root / ".auctelis.yml").is_file() or (root / ".auctelis.yaml").is_file()
-
-
 def normalize_argv(
     argv: Sequence[str] | None,
     *,
     include_dev: bool = False,
     cwd: Path | None = None,
 ) -> list[str]:
-    """Default bare invocations: doctor (no repo config) or scan .
+    """Default bare invocations to the Authority Watch screen.
 
-    ``auctelis`` → ``doctor`` when no AUTHORITY.lock / .auctelis.yml, else ``scan .``
-    ``auctelis /repo`` → ``scan /repo``
+    ``auctelis`` → ``watch`` (host authority delta; never a scanner)
+    ``auctelis /repo`` → ``scan /repo`` (hidden but callable)
     ``auctelis --locked`` → ``scan --locked``
     Known subcommands and ``-h`` / ``--help`` are left unchanged.
     """
@@ -94,9 +85,7 @@ def normalize_argv(
     if include_dev:
         known |= _DEV_COMMANDS
     if not raw:
-        if _cwd_has_repo_config(cwd):
-            return ["scan", "."]
-        return ["doctor"]
+        return ["watch"]
     head = raw[0]
     if head in ("-h", "--help", "-V", "--version") or head in known:
         return raw
@@ -128,7 +117,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     scan = sub.add_parser(
         "scan",
         aliases=["check"],
-        help="Repo authority scan (default when repo config exists; add --locked)",
+        help=_ADV,
     )
 
     ci = sub.add_parser("ci", help="CI helpers (init workflow + advisory policy)")
@@ -217,9 +206,44 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Emit compact agent JSON digest (fenced evidence; token-bounded)",
     )
 
+    watch = sub.add_parser(
+        "watch",
+        help="One-screen declared authority delta vs the sealed host lock",
+    )
+    watch.add_argument(
+        "--home",
+        type=Path,
+        help="Override home directory (default: user home; local-only)",
+    )
+    watch.add_argument(
+        "--lock-file",
+        type=Path,
+        help="Baseline lock path (default: ~/.auctelis/AUTHORITY.lock)",
+    )
+    watch.add_argument(
+        "--seal",
+        action="store_true",
+        help="Seal current host authority as the baseline (human only)",
+    )
+    watch.add_argument(
+        "--arm",
+        action="store_true",
+        help="Install session + tool hooks for Cursor and Claude Code",
+    )
+    watch.add_argument(
+        "--delta-only",
+        action="store_true",
+        help="Print only changed authority lines (used by session hooks)",
+    )
+    watch.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the watch report as JSON",
+    )
+
     doctor = sub.add_parser(
         "doctor",
-        help="Map authority on this machine's Cursor/Claude/VS Code host configs",
+        help="Alias for watch: declared authority on this machine",
     )
     doctor.add_argument(
         "--home",
@@ -230,7 +254,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "-o",
         "--output-dir",
         type=Path,
-        help="Optional directory for per-surface scan artifacts",
+        help="Optional directory for watch-report.json",
     )
     doctor.add_argument(
         "--fail-on",
@@ -241,12 +265,17 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     doctor.add_argument(
         "--since-lock",
         action="store_true",
-        help="One-screen authority diff vs ~/.auctelis/AUTHORITY.lock (or --lock-file)",
+        help="Same one-screen delta (kept for compatibility)",
     )
     doctor.add_argument(
         "--lock-file",
         type=Path,
         help="AUTHORITY.lock path for --since-lock (default: ~/.auctelis/AUTHORITY.lock)",
+    )
+    doctor.add_argument(
+        "--delta-only",
+        action="store_true",
+        help="Print only changed authority lines",
     )
     doctor.add_argument(
         "--agent",
@@ -256,7 +285,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     vet = sub.add_parser(
         "vet",
-        help="Pre-install verdict for a local path or GitHub URL (safe shallow clone)",
+        help=_ADV,
     )
     vet.add_argument("source", help="Local path, Git URL, or owner/repo GitHub shorthand")
     vet.add_argument(
@@ -333,8 +362,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--approval",
         metavar="OWNER",
         help=(
-            "Deprecated: ignored for gate enforcement. Prefer CODEOWNERS + rulesets. "
-            "Still recorded in approved_findings notes when used with --accept-gated."
+            "Deprecated no-op. CODEOWNERS + rulesets are the approval system; "
+            "no approval fields are written."
         ),
     )
     lock_cmd.add_argument(
@@ -410,12 +439,12 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     hook_cmd = sub.add_parser(
         "hook",
-        help="Install session-start delta + PreToolUse lock hooks (Authority Watch)",
+        help="Install or inspect Authority Watch hooks (Claude Code + Cursor)",
     )
     hook_sub = hook_cmd.add_subparsers(dest="hook_command", required=True)
     hook_install = hook_sub.add_parser(
         "install",
-        help="Copy hooks to ~/.auctelis/hooks and wire Claude Code settings.json",
+        help="Copy hooks to ~/.auctelis/hooks and wire Claude Code + Cursor",
     )
     hook_install.add_argument(
         "--home",
@@ -440,8 +469,27 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     hook_install.add_argument(
         "--no-wire",
         action="store_true",
-        help="Copy scripts only; do not edit ~/.claude/settings.json",
+        help="Copy scripts only; do not edit Claude/Cursor settings",
     )
+    hook_install.add_argument(
+        "--no-cursor",
+        action="store_true",
+        help="Wire Claude Code only (skip ~/.cursor/hooks.json)",
+    )
+
+    hook_status = hook_sub.add_parser(
+        "status",
+        help="Report wired / not firing for Claude Code and Cursor",
+    )
+    hook_status.add_argument("--home", type=Path, help="Override home directory")
+    hook_status.add_argument("--hooks-dir", type=Path, help="Hook script directory")
+    hook_status.add_argument("--settings-file", type=Path, help="Claude settings.json path")
+    hook_status.add_argument(
+        "--cursor-hooks-file",
+        type=Path,
+        help="Cursor hooks.json path",
+    )
+    hook_status.add_argument("--json", action="store_true", help="Emit JSON")
 
     explain = sub.add_parser("explain", help=_ADV)
     explain.add_argument("finding_id", help="Finding id such as F-001")
@@ -515,7 +563,6 @@ def _add_dev_commands(sub: Any) -> None:
         choices=["all", "schemas"],
         help="Build target (default: all)",
     )
-    build.add_argument("--write", action="store_true", help="Write generated assets")
 
     val = sub.add_parser("validate", help="Validate auctelis JSON artifacts")
     val_sub = val.add_subparsers(dest="validate_cmd", required=True)

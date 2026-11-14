@@ -56,14 +56,20 @@ def test_annotations_skip_findings_without_evidence_ids() -> None:
 
 
 def test_sample_findings_still_annotatable_when_present() -> None:
-    path = Path(__file__).resolve().parents[1] / "examples" / "guard-scan" / "findings.json"
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "examples"
+        / "guard-scan"
+        / "findings.json"
+    )
     if not path.is_file():
         return
     doc = read_json(path)
     # Historical samples may lag; only assert shape when gateable findings exist.
     targets = iter_annotation_targets(doc)
     if any(
-        f.get("finding_class") in {"SECURITY_FINDING", "EXPOSURE"} and f.get("evidence_ids")
+        f.get("finding_class") in {"SECURITY_FINDING", "EXPOSURE"}
+        and f.get("evidence_ids")
         for f in doc.get("findings") or []
     ):
         assert targets

@@ -1,6 +1,7 @@
-# 25-repo sample manifest for the labeled authority dataset (one repo per line).
-# Format: owner/name[@ref]  — clone shallow, run auctelis scan, record labels in holdout-labels.csv
-# Status: scaffold — replace with real outside repos for the pilot matrix (docs/pilots/TRACKER.md).
-# Dogfood of this product does not count toward the five-repo × 30-day kill criterion.
-# Slot hints: MCP | skills | hooks | plugins | CI — see docs/EVALUATION-PROTOCOL.md
-roham-amd/auctelis@v0.3.4
+# External repo manifest for the labeled authority dataset (one repo per line).
+# Format: owner/name[@ref] — shallow clone, run the hidden scanner, then label
+# findings into holdout-labels.csv.
+#
+# Add real outside repositories for the pilot matrix (docs/pilots/TRACKER.md).
+# Do not add roham-amd/auctelis dogfood; it does not count toward the five-slot
+# kill criterion. The manifest is intentionally empty until a pilot exists.

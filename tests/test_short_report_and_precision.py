@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from auctelis.cli import main
-from auctelis.security.report import render_short_terminal_report, render_terminal_report
+from auctelis.security.report import (
+    render_short_terminal_report,
+    render_terminal_report,
+)
 from auctelis.security.scan import run_scan
 
 
@@ -53,11 +56,11 @@ def test_product_cli_hides_maintainer_commands(tmp_path: Path):
     except SystemExit:
         product_has_adv = False
     assert product_has_adv is False
-    # Bare argv → doctor when no repo config.
+    # Bare argv → watch when no repo config.
     empty = tmp_path / "no-config"
     empty.mkdir()
     args_bare = product.parse_args(normalize_argv([], cwd=empty))
-    assert args_bare.command == "doctor"
+    assert args_bare.command == "watch"
     try:
         product.parse_args(["build", "all"])
         ok = True

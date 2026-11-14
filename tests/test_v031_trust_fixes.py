@@ -17,7 +17,7 @@ from auctelis.security.models import Finding
 
 
 def test_public_path_constant_and_version_flag():
-    assert "doctor" in PUBLIC_PATH and "lock" in PUBLIC_PATH
+    assert "watch" in PUBLIC_PATH and "lock" in PUBLIC_PATH
     assert "--version" in normalize_argv(["--version"])
     assert normalize_argv(["--version"]) == ["--version"]
     # argparse version action exits; ensure the flag is registered.
@@ -28,7 +28,10 @@ def test_public_path_constant_and_version_flag():
 
 def test_approval_line_keeps_owners():
     comment = render_authority_diff_comment(
-        {"findings": [], "coverage": {"component_counts_by_maturity": {"SUPPORTED": 4}}},
+        {
+            "findings": [],
+            "coverage": {"component_counts_by_maturity": {"SUPPORTED": 4}},
+        },
         lock_delta={
             "summary": {"additions": 1, "expansions": 0, "replacements": 0},
             "lines": ["+ MCP 'evil'"],
@@ -73,7 +76,9 @@ def test_ci_init_refuses_auto_accept_on_gated_tree(tmp_path: Path):
                     "bad": {
                         "command": "npx",
                         "args": ["-y", "@evil/pkg@latest"],
-                        "env": {"GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"},
+                        "env": {
+                            "GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+                        },
                     }
                 }
             }
@@ -89,7 +94,7 @@ def test_ci_init_refuses_auto_accept_on_gated_tree(tmp_path: Path):
         assert not lock.get("approvals")
 
 
-def test_lock_accept_records_rule_ids(tmp_path: Path):
+def test_lock_accept_writes_no_approval_fields(tmp_path: Path):
     root = tmp_path / "repo"
     mcp = root / ".cursor"
     mcp.mkdir(parents=True)
@@ -100,7 +105,9 @@ def test_lock_accept_records_rule_ids(tmp_path: Path):
                     "bad": {
                         "command": "npx",
                         "args": ["-y", "@evil/pkg@latest"],
-                        "env": {"GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"},
+                        "env": {
+                            "GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+                        },
                     }
                 }
             }
@@ -109,14 +116,10 @@ def test_lock_accept_records_rule_ids(tmp_path: Path):
     )
     assert main(["lock", str(root), "--accept-gated", "--approval", "@owner"]) == 0
     lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
-    assert lock.get("approved_findings")
+    # Approval fields are never written; CODEOWNERS/rulesets are the approval system.
+    assert lock.get("approved_findings") == []
     assert lock.get("approvals") in ([], None)
-    notes = [
-        str(item.get("acceptance_note") or "")
-        for item in lock["approved_findings"]
-        if isinstance(item, dict)
-    ]
-    assert any("accepted_rule_ids=" in n for n in notes)
+    assert lock.get("lock_hash")
 
 
 def test_claude_commands_discovered(tmp_path: Path):

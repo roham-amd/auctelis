@@ -1,5 +1,5 @@
 # Build, sign, attach assets to the GitHub Release, and publish to GitHub Packages.
-# Trigger: push a version tag matching v* (e.g. v0.3.4).
+# Trigger: push a version tag matching v* (e.g. v0.4.0).
 # PyPI remains a separate trusted-publishing workflow (publish-pypi.yml).
 
 name: Release
@@ -163,10 +163,12 @@ jobs:
           fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${assets[@]}" --clobber
+            gh release edit "$TAG" --latest
           else
             gh release create "$TAG" "${assets[@]}" \
               --title "Auctelis ${TAG#v}" \
-              --notes "$NOTES"
+              --notes "$NOTES" \
+              --latest
           fi
 
       # Optional; public distribution is GitHub Release assets + PyPI (publish-pypi.yml).

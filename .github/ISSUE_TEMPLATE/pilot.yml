@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Use one issue per outside repository. Self-dogfood of auctelis does not count.
-        Update [`docs/pilots/TRACKER.md`](../docs/pilots/TRACKER.md) when status changes.
+        Update [`docs/pilots/TRACKER.md`](../../docs/pilots/TRACKER.md) when status changes.
   - type: input
     id: repo
     attributes:
@@ -42,13 +42,32 @@ body:
         - unassigned
     validations:
       required: true
+  - type: dropdown
+    id: path
+    attributes:
+      label: Pilot path
+      options:
+        - Host hook (watch --seal / watch --arm)
+        - Team repo (lockless Action)
+        - Team repo (locked gate + CODEOWNERS)
+    validations:
+      required: true
   - type: input
     id: first_lock
     attributes:
-      label: First AUTHORITY.lock merge date (UTC)
+      label: First seal / first AUTHORITY.lock merge date (UTC)
       placeholder: 2026-11-20
+  - type: dropdown
+    id: taught
+    attributes:
+      label: Did the single delta line teach you something you would have missed?
+      options:
+        - "yes"
+        - partial
+        - "no"
+        - not yet
   - type: textarea
     id: notes
     attributes:
       label: Setup notes / FP-FN observations
-      description: Link PRs, note UNVERIFIED share, usefulness of PR comment
+      description: Link PRs, note hook status at week 4, UNVERIFIED share, usefulness of the delta line

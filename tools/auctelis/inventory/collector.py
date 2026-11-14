@@ -17,8 +17,9 @@ from auctelis.inventory.types import (
     ParserEvent,
     assign_component_ids,
 )
+from auctelis.versioning import product_version
 
-INVENTORY_VERSION = "0.3.4"
+INVENTORY_VERSION = product_version()
 
 
 @dataclass(slots=True)

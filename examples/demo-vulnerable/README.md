@@ -3,10 +3,13 @@
 Seeded fixtures that **should** produce gated findings. Not for production use.
 
 ```bash
-# Preferred first-run path (works from wheel + git install):
+# Preferred first screen: host authority delta
+auctelis watch
+
+# The canned repo fixture (for the PR-comment shape):
 auctelis demo
 
-# Or scan this checkout directory directly:
+# Hidden annotation layer, when you explicitly want findings:
 auctelis scan examples/demo-vulnerable -o auctelis-out-demo --fail-on high
 auctelis explain F-001 -o auctelis-out-demo
 auctelis harden --findings auctelis-out-demo/findings.json

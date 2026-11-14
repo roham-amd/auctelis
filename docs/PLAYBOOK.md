@@ -1,8 +1,9 @@
 # Agent authority review playbook
 
-One page for humans reviewing agent-config diffs. Graduate to
-`auctelis lock` + CODEOWNERS when ready. Distilled from archived modules —
-not a substitute for the scanner.
+One page for humans reviewing agent-config diffs. The weekly habit is the
+`auctelis watch` delta in Cursor or Claude; graduate to a repo
+`AUTHORITY.lock` + CODEOWNERS when a team needs the merge gate. This is the
+fallback if hook retention is zero at week 4 — not a substitute for the delta.
 
 ## Report questions (every Authority Diff)
 
@@ -67,10 +68,19 @@ AUTHORITY.lock  @security-owner
 
 ```bash
 # Git install only today — PyPI not published yet
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools" auctelis doctor
-auctelis vet <url-or-path>
-auctelis ci init --owner @you && auctelis lock --accept-gated
-auctelis demo   # canned bad fixture + PR comment (exits 0)
+uv tool install --python 3.12 \
+  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
+
+auctelis watch              # one-screen declared authority delta
+auctelis watch --seal       # human baseline (no approval fields are written)
+auctelis watch --arm        # Cursor + Claude session/tool hooks
+auctelis ci init --owner @you   # lockless workflow + CODEOWNERS
+auctelis demo               # canned fixture + PR comment (exits 0)
 # scan --base-lock is advisory; gate is the authority-growth verdict:
 auctelis gate --base-lock AUTHORITY.lock
 ```
+
+If the tree already has high/critical annotations, fix them first. Sealing with
+`--accept-gated` is an explicit human override; it records **no** approval —
+CODEOWNERS and rulesets are the approval system.
+

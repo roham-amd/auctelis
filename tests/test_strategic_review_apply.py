@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.authority_lock import build_authority_lock, diff_authority_locks, write_authority_lock
+from auctelis.authority_lock import (
+    build_authority_lock,
+    diff_authority_locks,
+    write_authority_lock,
+)
 from auctelis.cli import main
 from auctelis.cli.dispatch import _demo_target
 from auctelis.cli.parser import CORE_PUBLIC_COMMANDS, build_parser
@@ -14,23 +18,28 @@ from auctelis.security.relationships import emit_relationships
 from auctelis.security.scan import run_scan
 
 
-def test_core_public_commands_are_six_jobs():
-    # check remains a scan alias; open/init-gate aliases were removed.
-    # hook is the Authority Watch installer (0.3.4+).
+def test_core_public_commands_are_the_first_screen():
+    # The first screen is Authority Watch. scan/check/vet remain callable but
+    # are hidden from default help (the framework is not the page).
     assert {
         "demo",
+        "watch",
         "doctor",
-        "vet",
-        "scan",
-        "check",
         "lock",
         "gate",
         "ci",
         "hook",
     } == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in ("demo", "doctor", "vet", "scan", "lock", "gate", "ci", "hook"):
+    for name in ("demo", "watch", "doctor", "lock", "gate", "ci", "hook"):
         assert name in help_text
+    listed = [
+        line.strip()
+        for line in help_text.splitlines()
+        if line.startswith("    ") and not line.strip().startswith("(")
+    ]
+    assert not any(line.startswith("scan") for line in listed)
+    assert not any(line.startswith("vet") for line in listed)
     # Review / advanced stay omitted from brief help.
     assert "Propose least-privilege" not in help_text
     assert "Explain a finding" not in help_text
@@ -83,7 +92,8 @@ def test_addition_class_and_empty_approvals(tmp_path: Path):
     assert code == 0
     sealed = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
     assert sealed.get("approvals") in ([], None)
-    assert sealed.get("approved_findings") or sealed.get("lock_hash")
+    assert sealed.get("approved_findings") == []
+    assert sealed.get("lock_hash")
 
 
 def test_agent_cannot_mutate_lock(tmp_path: Path, monkeypatch):
@@ -118,7 +128,8 @@ def test_authority_not_established_vs_no_new():
         }
     }
     assert (
-        authority_establishment(coverage=solid, decision="NO-GATED-FINDINGS") == "NO_NEW_AUTHORITY"
+        authority_establishment(coverage=solid, decision="NO-GATED-FINDINGS")
+        == "NO_NEW_AUTHORITY"
     )
 
 

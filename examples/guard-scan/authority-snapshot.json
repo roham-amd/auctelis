@@ -1,33 +1,17 @@
 {
   "snapshot_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.3.1",
+  "product_version": "0.4.0",
   "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
-  "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
-  "collected_at_utc": "2026-11-12T13:22:39Z",
+  "audited_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df",
+  "collected_at_utc": "2026-11-14T13:33:34Z",
   "components": [
-    {
-      "id": "C-005",
-      "kind": "Agent Host",
-      "host": "cursor",
-      "path": ".cursor/mcp.json",
-      "fingerprint": "9157bf9a162ab31d",
-      "name": "Cursor",
-      "capabilities": [],
-      "destinations": [],
-      "identity": [],
-      "approval_posture": "unknown",
-      "pin_state": "n/a",
-      "evidence": [
-        ".cursor/mcp.json"
-      ]
-    },
     {
       "id": "C-004",
       "kind": "CI Workflow",
       "host": "github_workflows",
       "path": ".github/workflows/agent.yml",
-      "fingerprint": "b2dc43cd8d40936b",
+      "fingerprint": "42ec874f99cb8ab2",
       "name": "agent",
       "capabilities": [
         "access_secrets",
@@ -90,7 +74,7 @@
       "kind": "Skill",
       "host": "skill_md",
       "path": "skills/bootstrap/SKILL.md",
-      "fingerprint": "1adac0942a7e3b04",
+      "fingerprint": "49397cde765a077b",
       "name": "bootstrap",
       "capabilities": [
         "access_network",
@@ -109,5 +93,5 @@
       ]
     }
   ],
-  "snapshot_hash": "d5b128f3611d8cac1f81fa219d2dbfde"
+  "snapshot_hash": "f7c6609cf5265737c0e2ea2ffca68fea"
 }

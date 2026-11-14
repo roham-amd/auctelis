@@ -14,11 +14,6 @@ from auctelis.security.fingerprint import (
     paths_by_fingerprint,
 )
 
-
-def baseline_path(output_dir: Path) -> Path:
-    return output_dir / "baseline.json"
-
-
 BASELINE_VERSION = "1.3"
 
 

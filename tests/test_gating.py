@@ -2,11 +2,17 @@ from datetime import date
 from pathlib import Path
 
 from auctelis.policy import Suppression, load_policy
-from auctelis.security.gating import compute_exit_code, is_gate_finding, is_high_gate_finding
+from auctelis.security.gating import (
+    compute_exit_code,
+    is_gate_finding,
+    is_high_gate_finding,
+)
 from auctelis.security.models import Finding
 
 
-def _finding(*, fclass: str, severity: str, evidence_ids: list[str] | None = None) -> Finding:
+def _finding(
+    *, fclass: str, severity: str, evidence_ids: list[str] | None = None
+) -> Finding:
     return Finding(
         finding_id="F-001",
         rule_id="AUCTELIS-RULE-001",

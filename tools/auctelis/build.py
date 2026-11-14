@@ -17,10 +17,6 @@ from auctelis.supply_chain.digest import sha256_file
 from auctelis.versioning import load_versions as load_canonical_versions
 
 
-def _sha256(path: Path) -> str:
-    return sha256_file(path)
-
-
 def sync_schemas() -> list[str]:
     """Copy canonical schema to published aliases; return actions."""
     src = canonical_schema_path()
@@ -64,7 +60,7 @@ def check_schema_parity() -> None:
     for dest in published_schema_paths():
         if not dest.is_file():
             raise SystemExit(f"Missing published schema: {dest}")
-        if _sha256(src) != _sha256(dest):
+        if sha256_file(src) != sha256_file(dest):
             raise SystemExit(
                 f"Schema drift: {dest} does not match canonical {src}. "
                 "Run: auctelis-dev build schemas"
@@ -75,7 +71,7 @@ def check_schema_parity() -> None:
         dest = root / "tools" / "auctelis" / "data" / name
         if not dest.is_file():
             raise SystemExit(f"Missing packaged schema: {dest}")
-        if _sha256(src) != _sha256(dest):
+        if sha256_file(src) != sha256_file(dest):
             raise SystemExit(
                 f"Schema drift: {dest} does not match schemas/{name}. "
                 "Run: auctelis-dev build schemas"
@@ -179,7 +175,7 @@ def check_demo_fixture_parity() -> None:
                 f"tools/auctelis/data/demo-vulnerable/{dest_rel.as_posix()}. "
                 "Run: auctelis-dev build all"
             )
-        if _sha256(src) != _sha256(dest):
+        if sha256_file(src) != sha256_file(dest):
             raise SystemExit(
                 f"Demo fixture drift: {dest} does not match {src}. Run: auctelis-dev build all"
             )
@@ -380,8 +376,6 @@ def validate_examples() -> list[str]:
     validator = Draft202012Validator(schema)
     results: list[str] = []
     for example in sorted((root / "examples").glob("*.json")):
-        if example.name in ("sample-component-inventory.json", "sample-runtime-test-record.json"):
-            continue
         doc = json.loads(example.read_text(encoding="utf-8"))
         errors = sorted(validator.iter_errors(doc), key=lambda e: e.path)
         if errors:

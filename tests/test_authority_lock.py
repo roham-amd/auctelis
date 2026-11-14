@@ -20,7 +20,9 @@ from auctelis.lock_io import load_authority_lock
 def _repo_with_mcp(root: Path, servers: dict) -> None:
     path = root / ".cursor" / "mcp.json"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"mcpServers": servers}, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps({"mcpServers": servers}, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def test_lock_write_check_and_diff(tmp_path: Path):
@@ -69,8 +71,18 @@ def test_lock_write_check_and_diff(tmp_path: Path):
 
 
 def test_identity_key_path_independent():
-    a = {"host": "cursor", "kind": "MCP Server Registration", "name": "echo", "path": "a/mcp.json"}
-    b = {"host": "cursor", "kind": "MCP Server Registration", "name": "echo", "path": "b/mcp.json"}
+    a = {
+        "host": "cursor",
+        "kind": "MCP Server Registration",
+        "name": "echo",
+        "path": "a/mcp.json",
+    }
+    b = {
+        "host": "cursor",
+        "kind": "MCP Server Registration",
+        "name": "echo",
+        "path": "b/mcp.json",
+    }
     assert identity_key(a) == identity_key(b)
 
 
@@ -190,7 +202,17 @@ def test_lock_cli_roundtrip(tmp_path: Path):
     assert (root / "AUTHORITY.lock").is_file()
     assert main(["lock", str(root), "--check"]) == 0
     assert (
-        main(["check", str(root), "--locked", "-o", str(tmp_path / "out"), "--fail-on", "never"])
+        main(
+            [
+                "check",
+                str(root),
+                "--locked",
+                "-o",
+                str(tmp_path / "out"),
+                "--fail-on",
+                "never",
+            ]
+        )
         == 0
     )
 
@@ -203,6 +225,16 @@ def test_lock_cli_roundtrip(tmp_path: Path):
     )
     assert main(["lock", str(root), "--check"]) == 1
     assert (
-        main(["check", str(root), "--locked", "-o", str(tmp_path / "out2"), "--fail-on", "never"])
+        main(
+            [
+                "check",
+                str(root),
+                "--locked",
+                "-o",
+                str(tmp_path / "out2"),
+                "--fail-on",
+                "never",
+            ]
+        )
         == 1
     )

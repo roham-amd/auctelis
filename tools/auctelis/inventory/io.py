@@ -34,6 +34,7 @@ _DEFAULT_EXCLUDE_DIRS = {
     "test",
     "examples",
     "example",
+    "eval",
     "docs",
     "doc",
     "fixtures",

@@ -1,8 +1,8 @@
 {
   "auctelis_audit_profile": "scan",
   "product": "auctelis",
-  "product_version": "0.3.1",
-  "package_version": "0.3.1",
+  "product_version": "0.4.0",
+  "package_version": "0.4.0",
   "purpose": "Authority Diff + deterministic security observations",
   "deliverable": "PR comment, findings, inventory, SARIF; --full adds graph/report",
   "rules_applied": [

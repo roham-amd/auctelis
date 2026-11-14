@@ -228,7 +228,8 @@ def decision_sentences(
                 "fully established — review coverage gaps before treating this as clean."
             )
     action = (
-        "Next: `auctelis explain F-00N` for evidence, or `auctelis fix` for dry-run fix patches."
+        "Next: `auctelis explain F-00N` for evidence, or `auctelis harden` for dry-run patches. "
+        "Product delta: `auctelis watch`."
     )
     return [lead, delta, action]
 

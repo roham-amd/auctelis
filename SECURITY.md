@@ -4,20 +4,24 @@
 
 | Project version | Supported |
 | --- | --- |
-| 0.3.x | Yes |
-| 0.2.x | Yes (security fixes backported when practical) |
+| 0.4.x | Yes |
+| 0.3.x | Yes (security fixes backported when practical) |
+| 0.2.x | Security fixes only when practical |
 | 1.0.x | No (yanked / superseded pre-1.0 line; do not use) |
 | < 0.2.0 | No |
 
-Tooling package version (`auctelis`, currently **0.3.4**) is tracked in
+Tooling package version (`auctelis`, currently **0.4.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
 ## What this project is
 
-`auctelis` is a **lockfile + Authority Diff** for AI-agent ecosystems: host doctor,
-pre-install vet, deterministic repo scan (`auctelis scan` / `lock` / `check --locked`),
-CI gate with trusted policy, and an optional AI auditor skill.
+`auctelis` is **Authority Watch**: a declared-config inventory plus a sealed
+`AUTHORITY.lock` and a one-screen delta. `auctelis watch` prints what your agents
+can reach and what changed since the last human seal; `watch --arm` installs
+Cursor/Claude hooks; the optional team path is a lockless PR Authority Diff and
+`auctelis gate`. `doctor` is an alias for `watch`; `scan` / `vet` are hidden
+annotation layers, not the first screen.
 
 It is **not** an automated vulnerability scanner that proves systems are safe,
 a penetration-testing tool, runtime sandbox, marketplace certification authority,
@@ -50,7 +54,7 @@ Do **not** include production secrets, customer data, or live exploit payloads a
 
 ## Auditor safety expectations
 
-Operators and audit agents must treat target repositories as **untrusted data**. Passive audits must remain read-only: no install, no execute, no contact with target-controlled services.
+Operators and audit agents must treat target repositories as **untrusted data**. Passive audits must remain read-only: no install, no execution, and no contact with target-controlled services. `vet` shallow-clones the Git source you explicitly name; `gate` may query GitHub rulesets with a token. Neither executes target code.
 
 Deterministic collectors apply resource limits (`max_files`, `max_depth`, `max_file_bytes`). Limits reduce abuse risk; they are not a full sandbox.
 

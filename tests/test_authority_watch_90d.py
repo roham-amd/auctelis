@@ -65,7 +65,7 @@ def test_escape_markdown_keeps_path_dots():
     assert ".cursor/mcp.json" in text
 
 
-def test_pr_comment_tags_evidence_strength_and_skips_coverage_pct():
+def test_pr_comment_drops_finding_ids_and_keeps_verdict():
     comment = render_authority_diff_comment(
         {
             "findings": [],
@@ -93,9 +93,11 @@ def test_pr_comment_tags_evidence_strength_and_skips_coverage_pct():
             },
         },
     )
-    assert "LITERAL_CONFIG" in comment
+    assert "**Verdict:**" in comment
+    assert "NEEDS_REVIEW" in comment
+    assert "F-001" not in comment
+    assert "auctelis explain" not in comment
     assert "coverage %" not in comment.lower()
-    assert "auctelis explain" in comment
 
 
 def test_gate_strict_ruleset_default_on(tmp_path: Path, monkeypatch):
@@ -109,7 +111,9 @@ def test_gate_strict_ruleset_default_on(tmp_path: Path, monkeypatch):
     (root / "CODEOWNERS").write_text("* @sec\nAUTHORITY.lock @sec\n", encoding="utf-8")
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    base.write_text(
+        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
+    )
     (root / ".cursor" / "mcp.json").write_text(
         json.dumps(
             {
@@ -129,7 +133,9 @@ def test_gate_strict_ruleset_default_on(tmp_path: Path, monkeypatch):
     assert code == 1
     assert report["verdict"] == "NEEDS_REVIEW"
 
-    soft_code = main(["gate", str(root), "--base-lock", str(base), "--no-strict-ruleset"])
+    soft_code = main(
+        ["gate", str(root), "--base-lock", str(base), "--no-strict-ruleset"]
+    )
     assert soft_code == 0
 
 
@@ -168,7 +174,9 @@ def test_hook_cli_pretool_only_and_idempotent(tmp_path: Path):
         )
         == 0
     )
-    settings = json.loads((home / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    settings = json.loads(
+        (home / ".claude" / "settings.json").read_text(encoding="utf-8")
+    )
     assert len(settings["hooks"]["SessionStart"]) == 1
     assert len(settings["hooks"]["PreToolUse"]) == 1
 
@@ -209,7 +217,9 @@ def test_ci_init_writes_lockless_workflow(tmp_path: Path, capsys):
     )
     code = main(["ci", "init", "--owner", "@sec", "--force", str(root)])
     assert code == 0
-    wf = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
+    wf = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(
+        encoding="utf-8"
+    )
     assert 'locked: "false"' in wf
     assert 'strict-ruleset: "true"' in wf
     out = capsys.readouterr().out
@@ -258,7 +268,9 @@ def test_pretool_hook_refuses_unknown_mcp(tmp_path: Path, monkeypatch, capsys):
     (root / "AUTHORITY.lock").write_text(json.dumps(lock), encoding="utf-8")
     monkeypatch.chdir(root)
     monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(root))
-    payload = json.dumps({"tool_name": "mcp__evil__tool", "tool_input": {"server": "evil"}})
+    payload = json.dumps(
+        {"tool_name": "mcp__evil__tool", "tool_input": {"server": "evil"}}
+    )
     monkeypatch.setenv("CLAUDE_TOOL_INPUT", payload)
     assert mod.main() == 2
     # Empty allowlist also fail-closed for MCP-shaped tools

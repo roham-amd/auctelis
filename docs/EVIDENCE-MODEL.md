@@ -132,7 +132,7 @@ Never upgrade one class into another without new evidence.
 | `NOT ASSESSED` | Out of scope for this engagement |
 | `NOT APPLICABLE` | Not relevant (with reason) |
 
-Guard rules emit `OBSERVED` or `POTENTIAL` only. AI auditors must not promote to `CONFIRMED` without cited evidence (`auctelis validate claim` enforces non-empty `evidence_ids` for `CONFIRMED`).
+Guard rules emit `OBSERVED` or `POTENTIAL` only. AI auditors must not promote to `CONFIRMED` without cited evidence; a finding without `evidence_ids` is not a gate finding.
 
 ---
 
@@ -195,23 +195,21 @@ A reviewer should be able to answer:
 `AUTHORITY.lock` must retain enough identity to distinguish a changed component
 from a representation-only change ([`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md)).
 
-### Approval record (human authorization chain)
+### Approval record (GitHub-native)
 
-Every accepted authority state should be able to answer: who approved *this*
-exact lock hash, for *this* commit, under *this* policy?
+Auctelis does **not** write a self-asserted approval chain into the lock. The
+approval record is the Git history plus CODEOWNERS/rulesets:
 
-| Field | Purpose |
+| Surface | Purpose |
 | --- | --- |
-| `owner` | Reviewer / security owner identity |
-| `approved_at` | UTC timestamp of the decision |
-| `lock_hash` | Sealed authority hash being accepted |
-| `audited_commit` | Repository commit under review |
-| `policy_hash` | Policy version at approval time |
-| `justification` | Why the authority state is accepted |
-| `exceptions` | Accepted finding fingerprints with optional expiry |
+| `AUTHORITY.lock` commit | Exact sealed authority state |
+| CODEOWNERS on `AUTHORITY.lock` | Required human reviewer |
+| Ruleset requiring code-owner review | Enforcement of that reviewer |
+| PR discussion / commit message | Why the state was accepted |
 
-Write with `auctelis lock --approval <owner>`. Approvals are metadata bound to
-the sealed authority hash — they are not a substitute for CODEOWNERS review.
+`approvals[]` and `approved_findings[]` are emitted empty for compatibility and
+are never gate inputs. `auctelis gate` labels growth and checks protection; it
+does not count PR approvals.
 
 ### Freshness vs strength
 
@@ -288,13 +286,13 @@ Before writing the full narrative report, emit intermediate claims:
 }
 ```
 
-Validate:
+Validate report-shaped JSON with the maintainer command:
 
 ```bash
-auctelis validate claim claim.json
+auctelis-dev validate report findings.json
 ```
 
-Schema: `../schemas/structured-claim.schema.json`.
+There is no separate `validate claim` command in this release.
 
 ---
 
@@ -306,7 +304,7 @@ NEW → TRIAGED → INVESTIGATING
         → REMEDIATED → REVALIDATED
 ```
 
-Preserve rejected findings and reasons. Revalidate after changes. Prefer baselines + `auctelis diff risk` for recurring work ([`GUARD-SCAN.md`](GUARD-SCAN.md)).
+Preserve rejected findings and reasons. Revalidate after changes. Prefer `auctelis watch` for host deltas and `auctelis diff lock` / `auctelis gate` for recurring repo work ([`GUARD-SCAN.md`](GUARD-SCAN.md)).
 
 ---
 

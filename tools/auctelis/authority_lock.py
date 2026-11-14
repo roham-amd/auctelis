@@ -35,6 +35,7 @@ __all__ = [
     "check_locked",
     "classify_record_change",
     "default_lock_path",
+    "delta_label",
     "diff_authority_locks",
     "field_level_change_bits",
     "identity_key",
@@ -47,6 +48,28 @@ __all__ = [
 
 LOCK_NAME = "AUTHORITY.lock"
 LOCK_VERSION = 1
+
+
+def delta_label(summary: dict[str, Any]) -> str:
+    """Classify a lock delta as GROWTH / REDUCTION / NONE.
+
+    One implementation for the gate, the watch screen, and the PR comment. This
+    is a label, not a verdict: ``PASS`` / ``NEEDS_REVIEW`` belong to the gate.
+    """
+    adds = int(summary.get("additions") or 0)
+    expansions = int(summary.get("expansions") or 0)
+    replacements = int(summary.get("replacements") or 0)
+    tools_added = int(summary.get("mcp_tools_added") or 0)
+    tools_changed = int(summary.get("mcp_tools_changed") or 0)
+    policy = bool(summary.get("policy_changed"))
+    reductions = int(summary.get("reductions") or 0) + int(summary.get("removals") or 0)
+    tools_removed = int(summary.get("mcp_tools_removed") or 0)
+    if adds or expansions or replacements or tools_added or tools_changed or policy:
+        return "GROWTH"
+    if reductions or tools_removed:
+        return "REDUCTION"
+    return "NONE"
+
 
 ChangeClass = Literal[
     "addition",
@@ -238,17 +261,10 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
     body["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
     # Non-sealed metadata for humans / tooling (ignored by normalize_lock_for_compare).
     body["audited_commit"] = scan.commit
-    # approvals[] is decorative / legacy — never a gate input. Preserve only
-    # approved_findings (explicit --accept-gated seal) across regenerations.
+    # Legacy decorative fields: never a gate input and never written. GitHub
+    # CODEOWNERS / rulesets are the approval system.
     body["approvals"] = []
     body["approved_findings"] = []
-    existing_path = default_lock_path(root)
-    if existing_path.is_file():
-        try:
-            prior = load_authority_lock(existing_path)
-            body["approved_findings"] = list(prior.get("approved_findings") or [])
-        except (OSError, ValueError, TypeError, json.JSONDecodeError):
-            pass
     return body
 
 
@@ -283,47 +299,17 @@ def write_authority_lock(
             "refusing to lock a tree with high/critical gated findings without "
             f"--accept-gated. Seen: {preview}{more}"
         )
+    del approval_owner  # deprecated: CODEOWNERS is the approval system
     lock = build_authority_lock(root, scan=scan)
-    if accept_gated:
-        from auctelis.security.gating import is_high_gate_finding
-
-        accepted: list[dict[str, Any]] = []
-        for finding in scan.findings:
-            if not is_high_gate_finding(finding):
-                continue
-            accepted.append(
-                {
-                    "rule_id": finding.rule_id,
-                    "severity": finding.severity,
-                    "title": finding.title,
-                    "finding_id": finding.finding_id,
-                }
-            )
-        if accepted:
-            prior = list(lock.get("approved_findings") or [])
-            # Replace prior accepted set for this seal with the explicit accept list.
-            lock["approved_findings"] = accepted
-            # Keep prior entries that are still present only when re-locking cleanly.
-            del prior  # explicit accept is the source of truth for this write
-    # Lock-only product: do not append self-asserted approvals[] (GitHub
-    # CODEOWNERS/rulesets enforce review). Keep the field empty for schema compat.
+    # Lock-only product: approval fields are never written. GitHub CODEOWNERS /
+    # rulesets enforce review; `--accept-gated` is only an explicit human
+    # override to seal the current (imperfect) state.
     lock["approvals"] = []
-    if approval_owner and approval_owner.strip() and accept_gated and lock.get("approved_findings"):
-        # Optional audit note on accepted findings only (not a gate input).
-        ids = sorted(
-            {
-                str(item.get("rule_id") or "")
-                for item in (lock.get("approved_findings") or [])
-                if isinstance(item, dict) and item.get("rule_id")
-            }
-        )
-        if ids:
-            note = f"accepted_by={approval_owner.strip()}; accepted_rule_ids={','.join(ids)}"
-            for item in lock["approved_findings"]:
-                if isinstance(item, dict):
-                    item["acceptance_note"] = note
+    lock["approved_findings"] = []
     dest = path or default_lock_path(root)
-    dest.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    dest.write_text(
+        json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+    )
     return dest, lock
 
 
@@ -485,6 +471,13 @@ def diff_authority_locks(
             }
         )
 
+    base_tools = dict(base_n.get("mcp_tools") or {})
+    head_tools = dict(head_n.get("mcp_tools") or {})
+    tools_added = sorted(set(head_tools) - set(base_tools))
+    tools_removed = sorted(set(base_tools) - set(head_tools))
+    tools_changed = sorted(
+        name for name in set(base_tools) & set(head_tools) if base_tools[name] != head_tools[name]
+    )
     policy_changed = base_n.get("policy_hash") != head_n.get("policy_hash")
     classes = [str(a.get("change_class")) for a in added]
     classes.extend(str(r.get("change_class")) for r in removed)
@@ -499,12 +492,18 @@ def diff_authority_locks(
         or expansion_n
         or reduction_n
         or replacement_n
+        or tools_added
+        or tools_removed
+        or tools_changed
         or policy_changed
         or any(c.get("change_class") == "mixed" for c in changed)
     )
     # Representation-only churn still marks lock drift (hash/path) but is labeled.
     authority_changed = meaningful or bool(changed or added or removed or policy_changed)
     lines = render_lock_diff_lines(added=added, removed=removed, changed=changed)
+    lines.extend(f"+ mcp tool pin `{name}`" for name in tools_added)
+    lines.extend(f"- mcp tool pin `{name}`" for name in tools_removed)
+    lines.extend(f"~ mcp tool pin `{name}`: digest changed" for name in tools_changed)
     return {
         "kind": "authority_lock_delta",
         "summary": {
@@ -516,11 +515,21 @@ def diff_authority_locks(
             "reductions": reduction_n,
             "replacements": replacement_n,
             "representations": representation_n,
+            "mcp_tools_added": len(tools_added),
+            "mcp_tools_removed": len(tools_removed),
+            "mcp_tools_changed": len(tools_changed),
             "policy_changed": policy_changed,
             "authority_changed": authority_changed,
             "meaningful_authority_change": meaningful,
         },
-        "changes": {"added": added, "removed": removed, "changed": changed},
+        "changes": {
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "mcp_tools_added": tools_added,
+            "mcp_tools_removed": tools_removed,
+            "mcp_tools_changed": tools_changed,
+        },
         "lines": lines,
     }
 
@@ -736,12 +745,15 @@ def run_lock_command(
         return str(exc), 1
     if mcp_tools:
         lock = merge_mcp_tools_into_lock(lock, mcp_tools)
-        dest.write_text(json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        dest.write_text(
+            json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+        )
     n = len(lock.get("records") or [])
     action = "Updated" if update or path.exists() else "Wrote"
-    note_bit = ""
-    if approval and approval.strip() and accept_gated and lock.get("approved_findings"):
-        note_bit = f" · acceptance notes for {approval.strip()}"
-    gated_bit = " · gated findings accepted" if accept_gated else ""
+    gated_bit = (
+        " · sealed with --accept-gated (no approval recorded; CODEOWNERS governs)"
+        if accept_gated
+        else ""
+    )
     tools_bit = f" · mcp_tools={len(lock.get('mcp_tools') or {})}" if mcp_tools else ""
-    return f"{action} {dest} ({n} authority records){note_bit}{gated_bit}{tools_bit}.", 0
+    return f"{action} {dest} ({n} authority records){gated_bit}{tools_bit}.", 0

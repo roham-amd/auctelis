@@ -1,14 +1,15 @@
 # auctelis tooling (`auctelis`)
 
-Authority Watch CLI: `doctor` → `lock --home` → `hook install`, plus repo
-`AUTHORITY.lock`, lockless PR Action, and `gate` for the team upsell.
+Authority Watch CLI: `watch` → `watch --seal` → `watch --arm`, plus repo
+`AUTHORITY.lock`, lockless PR Action, and `gate` for the team upsell. `scan` /
+`vet` are hidden annotation layers.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
 **Scan guide:** [`../docs/GUARD-SCAN.md`](../docs/GUARD-SCAN.md)  
 **Rule catalog:** [`../docs/SECURITY-RULES.md`](../docs/SECURITY-RULES.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.3.4** · Product: auctelis **0.3.4**
+Package: `auctelis` **0.4.0** · Product: auctelis **0.4.0**
 
 ---
 
@@ -36,14 +37,14 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
-auctelis doctor
-auctelis lock --home
-auctelis hook install
-auctelis vet github.com/org/some-skill
+auctelis watch              # one-screen declared authority delta
+auctelis watch --seal       # human baseline in ~/.auctelis/AUTHORITY.lock
+auctelis watch --arm        # Cursor + Claude session/tool hooks
+auctelis hook status        # wired / not firing
 auctelis ci init --owner @your-team   # lockless workflow; set locked:true after seal
-auctelis demo                         # optional
+auctelis demo                          # optional
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -55,11 +56,12 @@ Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 cd tools
 uv sync --locked          # creates .venv from uv.lock
 uv run auctelis --help
-uv run auctelis doctor
+uv run auctelis watch --home /tmp/auctelis-home
 uv run auctelis scan /path/to/target-repo
 ```
 
-Primary path: **`doctor` / `lock` / `scan` / `gate` / `ci`**.
+Primary path: **`watch` / `watch --seal` / `watch --arm` / `hook status` / `gate` / `ci init`**.
+`scan` / `vet` are hidden annotation layers.
 
 `.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`) and the Docker base (`python:3.12.16-slim-trixie@sha256:…`).
 
@@ -123,12 +125,16 @@ uv run --locked auctelis-dev corpus run
 
 ```bash
 # Primary product surface
-uv run auctelis doctor [--home DIR] [-o DIR] [--agent]
-uv run auctelis vet SOURCE [-o DIR] [--agent]
+uv run auctelis watch [--home DIR] [--lock-file PATH] [--seal] [--arm] [--delta-only]
+uv run auctelis hook install [--home DIR] [--no-cursor]
+uv run auctelis hook status [--home DIR] [--json]
 uv run auctelis ci init --owner @TEAM [PATH] [--force]
-uv run auctelis scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
-uv run auctelis lock [PATH] [--check] [--accept-gated] [--home]
 uv run auctelis gate [PATH] --base-lock PATH
+
+# Hidden annotation layer (callable, not the first screen)
+uv run auctelis scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
+uv run auctelis vet SOURCE [-o DIR] [--agent]
+uv run auctelis lock [PATH] [--check] [--accept-gated] [--home]
 uv run auctelis harden [--findings PATH]
 uv run auctelis explain F-001 -o DIR [--agent]
 uv run auctelis annotate FINDINGS.json --format github|text|pr-comment
@@ -154,11 +160,15 @@ uv run auctelis-dev lint [--fix] [--format] [--check-format]
 | `security/` | Guard engine: capabilities, rules, scan, baseline, report |
 | `security/rules.py` | Deterministic rules AUCTELIS-RULE-001…022 (pack 1.6) |
 | `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
+| `authority_card.py` | One-line authority cards for watch / PR comment |
+| `watch.py` / `host_scan.py` | Authority Watch screen + host discovery/staging |
+| `hooks.py` / `templates/` | Cursor + Claude hook installation and status |
 | `gate.py` | Base-lock growth labels + CODEOWNERS / ruleset check |
 | `security/scan.py` | Artifact writer + policy fail-on + PR comment |
-| `security/decision.py` | BLOCK / REVIEW / NO-GATED-FINDINGS |
+| `security/decision.py` | Internal BLOCK / REVIEW / NO-GATED-FINDINGS annotation |
 | `harden.py` | Dry-run least-privilege patch proposals |
-| `doctor.py` / `vet.py` | Host map + pre-install verdict |
+| `doctor.py` | Alias for the watch screen |
+| `vet.py` | Hidden pre-install annotation layer |
 | `inventory/` | Bounded I/O, adapter registry, collector, coverage |
 | `inventory/adapters/` | Skills, MCP, hooks, plugins, subagents, automations, A2A, workflows |
 | `preflight.py` | Graph seed + audit-context helpers |
@@ -171,6 +181,7 @@ uv run auctelis-dev lint [--fix] [--format] [--check-format]
 | `versioning.py` | Product/package version resolution |
 | `deps.py` / `pins.py` / `lint.py` | Engineering helpers |
 | `jsonio.py` | Shared JSON/text I/O |
+| `textutil.py` | Markdown/terminal escaping shared by rules and exports |
 | `broker.py` / `mcp_snapshot.py` / `process_env.py` | Advanced run/snapshot surfaces |
 
 Library entry points are documented in the package docstring and [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md).

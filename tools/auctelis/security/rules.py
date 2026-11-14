@@ -19,14 +19,13 @@ from auctelis.security.models import (
     Severity,
     VerificationStatus,
 )
+from auctelis.textutil import escape_markdown
 
 RuleFn = Callable[[dict[str, Any], list[Evidence], list[Finding], EvidenceContext], None]
 
 
 def _label(component: dict[str, Any]) -> str:
     """Sanitize attacker-controlled names before embedding in finding prose."""
-    from auctelis.export.pr_comment import escape_markdown
-
     raw = str(component.get("name") or component.get("component_id") or "unnamed")
     return escape_markdown(raw, max_len=80).replace("`", "'")
 

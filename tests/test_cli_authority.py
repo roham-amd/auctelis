@@ -8,14 +8,15 @@ from auctelis.cli import main
 from auctelis.cli.parser import build_parser, normalize_argv
 
 
-def test_normalize_argv_defaults_doctor_or_scan(tmp_path: Path):
+def test_normalize_argv_defaults_watch_or_scan(tmp_path: Path):
     empty = tmp_path / "empty"
     empty.mkdir()
-    assert normalize_argv([], cwd=empty) == ["doctor"]
+    assert normalize_argv([], cwd=empty) == ["watch"]
     locked = tmp_path / "locked"
     locked.mkdir()
     (locked / "AUTHORITY.lock").write_text("{}\n", encoding="utf-8")
-    assert normalize_argv([], cwd=locked) == ["scan", "."]
+    # Bare is never a scanner, even inside a locked repo.
+    assert normalize_argv([], cwd=locked) == ["watch"]
     assert normalize_argv(["."]) == ["scan", "."]
     assert normalize_argv(["--locked"]) == ["scan", "--locked"]
     assert normalize_argv(["doctor"]) == ["doctor"]
@@ -23,7 +24,7 @@ def test_normalize_argv_defaults_doctor_or_scan(tmp_path: Path):
     assert normalize_argv(["check", "--locked", "."]) == ["check", "--locked", "."]
 
 
-def test_bare_auctelis_runs_scan(tmp_path: Path, capsys):
+def test_auctelis_path_runs_scan(tmp_path: Path, capsys):
     root = tmp_path / "repo"
     root.mkdir()
     (root / "README.md").write_text("x\n", encoding="utf-8")
@@ -36,6 +37,7 @@ def test_product_help_hides_advanced_shows_core():
     help_text = build_parser(include_dev=False).format_help()
     assert "demo" in help_text
     assert "doctor" in help_text
+    assert "watch" in help_text
     assert "lock" in help_text
     # Advanced names may appear in the epilog tier list, not as listed commands.
     listed = [
@@ -47,6 +49,9 @@ def test_product_help_hides_advanced_shows_core():
     assert "artifact-vet" not in listed_text
     assert "lsp-validate" not in listed_text
     assert "init-manifest" not in listed_text
+    # Scanner surfaces are hidden from the default first screen.
+    assert not any(line.strip().startswith("scan") for line in listed)
+    assert not any(line.strip().startswith("vet") for line in listed)
     # `baseline` command is suppressed; delta may still mention --baseline.
     assert not any(line.strip().startswith("baseline") for line in listed)
 
@@ -57,7 +62,7 @@ def test_cli_doctor_help_and_empty_home(tmp_path: Path, capsys):
     code = main(["doctor", "--home", str(home)])
     out = capsys.readouterr().out
     assert code == 0
-    assert "auctelis doctor" in out or "auctelis doctor" in out
+    assert "auctelis doctor" in out
     assert "no host config" in out.lower() or "absent" in out.lower()
 
 
@@ -68,7 +73,9 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     assert code == 0
     assert (root / ".auctelis.yml").is_file()
     assert (root / ".github" / "workflows" / "auctelis-gate.yml").is_file()
-    workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
+    workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(
+        encoding="utf-8"
+    )
     assert "trusted-policy" in workflow
     assert 'locked: "false"' in workflow
     assert 'strict-ruleset: "true"' in workflow
@@ -86,10 +93,12 @@ def test_cli_vet_local(tmp_path: Path, capsys):
     root = tmp_path / "pkg"
     skill = root / "skills" / "ok"
     skill.mkdir(parents=True)
-    (skill / "SKILL.md").write_text("---\nname: ok\n---\nRead-only helper.\n", encoding="utf-8")
+    (skill / "SKILL.md").write_text(
+        "---\nname: ok\n---\nRead-only helper.\n", encoding="utf-8"
+    )
     code = main(["vet", str(root), "-o", str(tmp_path / "out")])
     out = capsys.readouterr().out
-    assert "auctelis vet" in out or "auctelis vet" in out
+    assert "auctelis vet" in out
     assert "verdict:" in out
     assert code in {0, 1}
 

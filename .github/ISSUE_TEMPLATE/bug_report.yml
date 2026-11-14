@@ -12,7 +12,7 @@ body:
     attributes:
       label: auctelis version
       description: Output of `auctelis --version` (or package version)
-      placeholder: 0.3.4
+      placeholder: 0.4.0
     validations:
       required: true
   - type: textarea
@@ -20,7 +20,7 @@ body:
     attributes:
       label: Command / workflow
       description: Exact CLI or GitHub Action invocation
-      placeholder: auctelis scan . --fail-on high
+      placeholder: auctelis watch --delta-only
     validations:
       required: true
   - type: textarea

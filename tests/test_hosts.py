@@ -15,7 +15,13 @@ def test_host_profiles_include_cursor_and_claude():
 
 
 def test_discover_cursor_host_declared_only():
-    root = Path(__file__).resolve().parents[1] / "tests" / "hosts" / "fixtures" / "cursor-declared"
+    root = (
+        Path(__file__).resolve().parents[1]
+        / "tests"
+        / "hosts"
+        / "fixtures"
+        / "cursor-declared"
+    )
     inv = collect_inventory(root)
     hosts = [c for c in inv.components if c.get("type") == "Agent Host"]
     assert any(c.get("host_id") == "cursor" for c in hosts)
@@ -38,7 +44,13 @@ def test_discover_claude_code_host():
 
 
 def test_no_host_markers():
-    root = Path(__file__).resolve().parents[1] / "tests" / "hosts" / "fixtures" / "no-host-markers"
+    root = (
+        Path(__file__).resolve().parents[1]
+        / "tests"
+        / "hosts"
+        / "fixtures"
+        / "no-host-markers"
+    )
     inv = collect_inventory(root)
     hosts = [c for c in inv.components if c.get("type") == "Agent Host"]
     assert hosts == []

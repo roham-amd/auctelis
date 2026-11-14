@@ -33,8 +33,10 @@ pilot notes were removed in the shrink; cite only rows with day-30 retention evi
 ## Procedure (per repository)
 
 ```bash
-auctelis vet <owner/repo> -o auctelis-out-pilot/<slug>
-# or, for a local checkout:
+auctelis watch                       # one-screen delta vs the host seal
+auctelis watch --seal                # human baseline
+auctelis watch --arm                 # Cursor + Claude hooks
+# Hidden annotation layer, if you need finding-level detail:
 auctelis scan <path> -o auctelis-out-pilot/<slug> --full
 ```
 
@@ -45,10 +47,11 @@ Capture:
 | Commit SHA | `audited_commit` / `profile.json` |
 | Product / tooling / rule pack | `provenance` in `findings.json` |
 | Component count + maturity mix | `coverage` |
-| Gated findings | `SECURITY_FINDING` + `EXPOSURE` with evidence ids |
+| Delta cards | `auctelis watch` / `watch --delta-only` |
 | Unsupported / unparsed | `coverage.manual_review_families`, `unparsed_agent_config_count` |
-| Setup time | wall clock to first PR comment artifact |
+| Setup time | wall clock to the first delta line |
 | Reviewer disposition | accepted / rejected / deferred / remediated |
+| Did the line teach them something? | yes / partial / no (tracker) |
 
 ## Labeling rules
 
@@ -60,6 +63,19 @@ For each gated finding on a holdout set:
 - **Ambiguous** — insufficient evidence for a confident determination (do not force a label)
 
 `NAME_MARKER` findings must not count as independent HIGH/CRITICAL gate TPs.
+
+## Current fixture score (no detection claim yet)
+
+Only configs with a fixture are scored. Run:
+
+```bash
+python eval/score_configs.py
+```
+
+The 0.4.0 tree has five fixtures: four expected-growth configs and one benign
+README. The current differ scores **TP=4, FP=0, FN=0, TN=1** on those five.
+That is a regression check, not a precision claim — publish a TP/FP number only
+after outside, independently labeled configs exist.
 
 ## Reporting
 

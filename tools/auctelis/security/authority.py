@@ -147,6 +147,10 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
         if not isinstance(raw, dict):
             continue
         kind = str(raw.get("type") or "unknown")
+        # Host containers are inventory, not authority records; keeping them
+        # puts a no-capability "Cursor" line in every lock and diff.
+        if kind == "Agent Host":
+            continue
         # Skip pure inventory hosts with no authority signal unless they carry hints.
         hints = list(raw.get("priority_hints") or [])
         authority_kinds = {

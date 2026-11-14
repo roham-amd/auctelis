@@ -1,17 +1,9 @@
 """Compact Authority Diff PR comment (≤12 lines).
 
-Answers five questions immediately:
-1. What changed?
-2. What new authority does it introduce?
-3. What evidence supports that claim?
-4. What is unknown?
-5. What decision or action is required?
-
-Fields align with the product contract: Change, Authority delta, Evidence,
-Risk interpretation, Confidence, Coverage, Required action.
-
-The product is the PR comment, not the scan report. Target-derived strings are
-escaped so findings cannot inject markdown links/mentions into the review UI.
+One verdict, at most three old → new authority cards, the unknowns (including
+``NOT PARSED``), and the required action. Finding IDs and rule IDs stay in the
+artifacts, not the review UI. Target-derived strings are escaped so findings
+cannot inject markdown links/mentions.
 """
 
 from __future__ import annotations
@@ -19,49 +11,22 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from auctelis.authority_card import count_cards, delta_cards
+from auctelis.authority_lock import delta_label
 from auctelis.security.authority import render_component_delta_lines
-from auctelis.security.decision import (
-    authority_establishment,
-    compute_decision,
-)
-from auctelis.security.gating import is_gate_finding, is_high_gate_finding
+from auctelis.security.gating import is_gate_finding
+from auctelis.textutil import escape_markdown
 
-# Escape markdown specials that enable injection. Dots are left alone so paths
-# like `.cursor/mcp.json` stay readable (ordered-list dots only matter at BOL).
-_MD_SPECIAL = re.compile(r"([\\`*_{}\[\]()#+!|>])")
-_URL_RE = re.compile(r"https?://([^/\s]+)(\S*)", re.IGNORECASE)
-_MENTION_RE = re.compile(r"(^|[^/\w])@[\w-]+")
+__all__ = [
+    "AUCTELIS_COMMENT_MARKER",
+    "escape_markdown",
+    "render_authority_diff_comment",
+]
+
 _SEV_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
 
 # Sticky-comment marker for `gh pr comment --edit-last` / create-or-update flows.
 AUCTELIS_COMMENT_MARKER = "<!-- auctelis-authority-diff -->"
-
-
-def escape_markdown(value: str, *, max_len: int = 160) -> str:
-    """Neutralize markdown/HTML injection from target-controlled strings."""
-    text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
-    # Strip terminal/OSC control sequences as well as markdown.
-    text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]|\x1b\][^\x07]*\x07", "", text)
-    # Keep destination hosts visible in code spans; drop URL paths (injection defense).
-    # Placeholders survive markdown escaping, then expand to unescaped `` `host` ``.
-    hosts: list[str] = []
-
-    def _stash_host(match: re.Match[str]) -> str:
-        host = match.group(1) or "redacted-host"
-        # Hostnames are shown inside code spans; strip only injection-prone chars.
-        safe = re.sub(r"[\\`*_{}\[\]()#!|>]", "", host)
-        hosts.append(safe or "redacted-host")
-        return f"\x00HOST{len(hosts) - 1}\x00"
-
-    text = _URL_RE.sub(_stash_host, text)
-    text = _MENTION_RE.sub(r"\1[@]", text)
-    text = text.replace("<", "&lt;").replace(">", "&gt;")
-    text = _MD_SPECIAL.sub(r"\\\1", text)
-    for idx, host in enumerate(hosts):
-        text = text.replace(f"\x00HOST{idx}\x00", f"`{host}`")
-    if len(text) > max_len:
-        text = text[: max_len - 1] + "…"
-    return text
 
 
 def _title(finding: Any) -> str:
@@ -70,85 +35,10 @@ def _title(finding: Any) -> str:
     return str(finding.title)
 
 
-def _fid(finding: Any) -> str:
-    if isinstance(finding, dict):
-        return str(finding.get("finding_id") or "")
-    return str(finding.finding_id)
-
-
 def _sev(finding: Any) -> str:
     if isinstance(finding, dict):
         return str(finding.get("severity") or "")
     return str(finding.severity)
-
-
-def _entry(finding: Any) -> str:
-    if isinstance(finding, dict):
-        return str(finding.get("entry_point") or "")
-    return str(getattr(finding, "entry_point", "") or "")
-
-
-def _fix(finding: Any) -> str:
-    if isinstance(finding, dict):
-        return str(finding.get("fix_snippet") or finding.get("recommended_action") or "")
-    return str(
-        getattr(finding, "fix_snippet", "") or getattr(finding, "recommended_action", "") or ""
-    )
-
-
-def _confidence(finding: Any) -> str:
-    if isinstance(finding, dict):
-        return str(finding.get("confidence") or finding.get("evidence_strength") or "POTENTIAL")
-    return str(
-        getattr(finding, "confidence", None)
-        or getattr(finding, "evidence_strength", None)
-        or "POTENTIAL"
-    )
-
-
-def _impact(finding: Any) -> str:
-    if isinstance(finding, dict):
-        return str(finding.get("impact") or finding.get("trust_boundary") or "")
-    return str(getattr(finding, "impact", "") or getattr(finding, "trust_boundary", "") or "")
-
-
-def _evidence_ids(finding: Any) -> list[str]:
-    if isinstance(finding, dict):
-        raw = finding.get("evidence_ids") or finding.get("evidence") or []
-    else:
-        raw = getattr(finding, "evidence_ids", None) or getattr(finding, "evidence", None) or []
-    out: list[str] = []
-    for item in raw:
-        if isinstance(item, str) and item:
-            out.append(item)
-        elif isinstance(item, dict):
-            eid = item.get("evidence_id") or item.get("id")
-            if eid:
-                out.append(str(eid))
-    return out
-
-
-def _evidence_locator(
-    finding: Any,
-    evidence_registry: list[dict[str, Any]] | None,
-) -> str:
-    """Prefer exact file:line from the evidence registry; fall back to entry_point."""
-    ids = set(_evidence_ids(finding))
-    for ev in evidence_registry or []:
-        if ids and str(ev.get("evidence_id") or "") not in ids:
-            continue
-        path = str(ev.get("file_path") or "").strip()
-        if not path:
-            continue
-        start = ev.get("line_start")
-        end = ev.get("line_end")
-        if start:
-            span = str(start)
-            if end and end != start:
-                span = f"{start}-{end}"
-            return f"{path}:{span}"
-        return path
-    return _entry(finding)
 
 
 def _unknowns_line(coverage: dict[str, Any]) -> str:
@@ -167,9 +57,9 @@ def _unknowns_line(coverage: dict[str, Any]) -> str:
     if isinstance(manual, list) and manual:
         bits.append("MANUAL_ONLY: " + ", ".join(str(x) for x in manual[:2]))
     if unparsed:
-        bits.append(f"UNPARSED={unparsed}")
+        bits.append(f"NOT PARSED: {unparsed} agent config(s)")
     if not bits:
-        return "Unknown: runtime / host-effective permissions not assessed"
+        return "Unknown: publisher identity, effective permissions, runtime behavior"
     return "Unknown: " + "; ".join(bits)
 
 
@@ -189,41 +79,33 @@ def _format_owners_for_comment(owners: list[str]) -> str:
 
 
 def _required_action(
-    decision: str,
-    new_powers: list[Any],
-    lock_lines: list[str],
-    establishment: str,
+    verdict: str,
     *,
-    advisory: bool = False,
+    growth: bool,
+    new_powers: list[Any],
     needs_approval_from: list[str] | None = None,
 ) -> str:
     owners = [o for o in (needs_approval_from or []) if o]
-    if owners and lock_lines:
+    if growth and owners:
         who = _format_owners_for_comment(owners) or "(none)"
         # Owners are already code-spanned; do not re-escape this line.
         return f"Needs approval from: {who}"
-    if advisory and decision == "BLOCK":
-        return "ADVISORY: would BLOCK under enforce — remediate or promote policy.mode"
-    if advisory and decision == "REVIEW":
-        return "ADVISORY: would REVIEW under enforce — approve or narrow authority"
-    if decision == "BLOCK":
-        return "Required: remediate high/critical authority, then re-run gate"
-    if decision == "REVIEW":
+    if verdict == "NEEDS_REVIEW":
+        if growth:
+            return "CODEOWNERS for AUTHORITY.lock (run `auctelis ci init --owner @team`)"
         if new_powers:
-            fix = _fix(new_powers[0])
-            if fix:
-                return f"Required: {fix}"
-            return "Required: review gated findings and approve or narrow authority"
-        if lock_lines:
-            return "Required: CODEOWNERS review of AUTHORITY.lock update"
-        return "Required: review coverage gaps / unparsed configs"
-    if establishment == "AUTHORITY_NOT_ESTABLISHED":
-        return "Required: review coverage gaps — absence of findings ≠ no authority change"
-    return "Required: no gated action — still review Unknowns before merge"
+            return "Review the new authority, then seal the baseline."
+        return "Review the unknown / NOT PARSED entries before merge."
+    if verdict == "FAIL_CLOSED":
+        return "Fail closed: fix the lock or coverage gap before merge."
+    return "No action beyond reviewing Unknowns before merge."
 
 
 def _sort_findings_by_severity(items: list[Any]) -> list[Any]:
     return sorted(items, key=lambda f: _SEV_RANK.get(_sev(f).upper(), 9))
+
+
+_ALLOWED_VERDICTS = {"PASS", "NEEDS_REVIEW", "BASELINE_ADOPTED", "FAIL_CLOSED"}
 
 
 def render_authority_diff_comment(
@@ -235,26 +117,20 @@ def render_authority_diff_comment(
     lock_delta: dict[str, Any] | None = None,
     policy_mode: str | None = None,
     needs_approval_from: list[str] | None = None,
+    verdict: str | None = None,
     max_lines: int = 12,
 ) -> str:
-    """Render a short PR body focused on the Authority Diff questions."""
-    del authority_snapshot  # reserved for future evidence drill-down
+    """Render a short PR body: one verdict, at most three old → new lines.
+
+    Finding IDs and rule IDs stay out of the comment body. The line carries
+    name, destination/launcher, capabilities, and evidence strength only.
+    """
+    del authority_snapshot, policy_mode  # reserved / not part of the public dialect
     findings = list(findings_doc.get("findings") or [])
     coverage = findings_doc.get("coverage") or {}
-    evidence_registry = [
-        e for e in (findings_doc.get("evidence_registry") or []) if isinstance(e, dict)
-    ]
     summary = (risk_delta or {}).get("summary") if risk_delta else None
     if summary is None and risk_delta and "gated_findings_added" in risk_delta:
         summary = risk_delta
-    decision = compute_decision(findings, coverage=coverage, risk_delta=summary)
-    establishment = authority_establishment(
-        coverage=coverage if isinstance(coverage, dict) else {},
-        risk_delta=summary if isinstance(summary, dict) else None,
-        lock_delta=lock_delta if isinstance(lock_delta, dict) else None,
-        decision=decision,
-    )
-    advisory = (policy_mode or "").lower() == "advisory"
 
     new_powers: list[Any] = []
     has_baseline = risk_delta is not None
@@ -266,9 +142,7 @@ def render_authority_diff_comment(
                 new_powers = [f for f in items if isinstance(f, dict) and is_gate_finding(f)]
                 break
     elif not has_baseline:
-        new_powers = [f for f in findings if is_high_gate_finding(f)] or [
-            f for f in findings if is_gate_finding(f)
-        ]
+        new_powers = [f for f in findings if is_gate_finding(f)]
     new_powers = _sort_findings_by_severity(new_powers)
 
     component_lines: list[str] = []
@@ -278,141 +152,90 @@ def render_authority_diff_comment(
     elif isinstance(risk_delta, dict) and risk_delta.get("component_delta_lines"):
         component_lines = list(risk_delta.get("component_delta_lines") or [])
 
-    lock_lines: list[str] = []
-    lock_summary: dict[str, Any] = {}
-    if isinstance(lock_delta, dict):
-        lock_lines = list(lock_delta.get("lines") or [])
-        lock_summary = dict(lock_delta.get("summary") or {})
+    lock_summary = dict((lock_delta or {}).get("summary") or {})
+    label = delta_label(lock_summary)
+    growth = label == "GROWTH"
+    if verdict is None:
+        if growth and not needs_approval_from:
+            verdict = "NEEDS_REVIEW"
+        elif growth:
+            verdict = "PASS"
+        elif new_powers:
+            verdict = "NEEDS_REVIEW"
+        else:
+            verdict = "PASS"
+    verdict = str(verdict).upper()
+    if verdict not in _ALLOWED_VERDICTS:
+        verdict = "NEEDS_REVIEW"
+    # An unparsed agent config means authority could not be established; never
+    # emit PASS in that case.
+    try:
+        unparsed_count = int(coverage.get("unparsed_agent_config_count") or 0)
+    except (TypeError, ValueError):
+        unparsed_count = 0
+    if unparsed_count and verdict == "PASS":
+        verdict = "NEEDS_REVIEW"
 
-    decision_label = (
-        f"ADVISORY (would {decision})" if advisory and decision in {"BLOCK", "REVIEW"} else decision
-    )
     # Marker is sticky-comment metadata — not counted toward the ≤12 visible lines.
     visible: list[str] = [
         "### auctelis Authority Diff",
-        f"**Decision:** `{decision_label}`",
+        f"**Verdict:** `{verdict}` · label `{label}`",
     ]
 
-    # 1. What changed?
     changed_bits: list[str] = []
-    if lock_summary:
-        for label, key in (
-            ("additions", "additions"),
-            ("expansions", "expansions"),
-            ("reductions", "reductions"),
-            ("replacements", "replacements"),
-            ("representations", "representations"),
-        ):
-            n = int(lock_summary.get(key) or 0)
-            if n:
-                changed_bits.append(f"{n} {label}")
-        if lock_summary.get("policy_changed"):
-            changed_bits.append("policy")
+    for key in ("additions", "expansions", "reductions", "replacements"):
+        count = int(lock_summary.get(key) or 0)
+        if count:
+            changed_bits.append(f"{key} {count}")
+    if lock_summary.get("policy_changed"):
+        changed_bits.append("policy")
     if summary is not None:
-        changed_bits.append(f"{int(summary.get('gated_findings_added') or 0)} gated findings")
+        gated = int(summary.get("gated_findings_added") or 0)
+        if gated:
+            changed_bits.append(f"gated findings {gated}")
     if not changed_bits and component_lines:
-        changed_bits.append(f"{len(component_lines)} component delta(s)")
+        changed_bits.append(f"component deltas {len(component_lines)}")
     if not changed_bits:
-        if establishment == "AUTHORITY_NOT_ESTABLISHED":
-            changed_bits.append("authority could not be fully established")
-        else:
-            changed_bits.append(
-                "no new authority vs baseline" if has_baseline else "absolute head scan"
-            )
+        changed_bits.append(
+            "no new authority vs baseline" if has_baseline else "absolute head scan"
+        )
     visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
 
-    # 2. What new authority? Prefer lock lines; skip noisy representation-only churn.
     visible.append("**Authority delta:**")
-    authority_bullets: list[str] = []
-    meaningful_lock = [
-        line
-        for line in lock_lines
-        if " representation " not in f" {line} " and not line.startswith("~ representation")
-    ]
-    for line in (meaningful_lock or component_lines)[:3]:
-        authority_bullets.append(f"- {escape_markdown(line, max_len=180)}")
-    if not authority_bullets and new_powers:
-        for finding in new_powers[:2]:
-            where = _evidence_locator(finding, evidence_registry) or _entry(finding)
-            where_bit = f" (`{escape_markdown(where, max_len=40)}`)" if where else ""
-            # Evidence-strength enums go in code spans — strip injection chars only
-            # so LITERAL_CONFIG stays readable (escape_markdown would slash underscores).
-            strength = re.sub(r"[\\`*_{}\[\]()#!|>]", "", _confidence(finding))[:24]
-            authority_bullets.append(
-                f"- `{_fid(finding)}` [{escape_markdown(_sev(finding), max_len=12)}] "
-                f"`{strength}` {escape_markdown(_title(finding))}{where_bit}"
-            )
-        if len(new_powers) > 2:
-            authority_bullets.append(f"- +{len(new_powers) - 2} more gated findings")
-    if not authority_bullets:
-        if establishment == "AUTHORITY_NOT_ESTABLISHED":
-            authority_bullets.append("- (none gated; coverage incomplete)")
-        else:
-            authority_bullets.append("- (none gated)")
-    visible.extend(authority_bullets)
+    cards = delta_cards(lock_delta, limit=3)
+    if not cards and isinstance(lock_delta, dict):
+        cards = [
+            f"- {line.lstrip('+-~ ')}"
+            for line in (lock_delta.get("lines") or [])
+            if " representation " not in f" {line} "
+        ][:3]
+    if not cards and component_lines:
+        cards = [f"- {line.lstrip('+-~ ')}" for line in component_lines[:3]]
+    if not cards and new_powers:
+        cards = [
+            f"- {escape_markdown(_sev(finding), max_len=12)} "
+            f"{escape_markdown(_title(finding), max_len=120)}"
+            for finding in new_powers[:3]
+        ]
+    if not cards:
+        unparsed = int((findings_doc.get("coverage") or {}).get("unparsed_agent_config_count") or 0)
+        cards = ["- NOT PARSED (coverage gap)" if unparsed else "- (no authority change)"]
+    for card in cards:
+        visible.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
+    total_cards = count_cards(lock_delta)
+    if total_cards > len(cards):
+        visible.append(f"- +{total_cards - len(cards)} more")
 
-    # 3. Evidence — prefer file:line locators over opaque IDs alone.
-    evidence_bits: list[str] = []
-    for finding in new_powers[:2]:
-        loc = _evidence_locator(finding, evidence_registry)
-        if loc:
-            evidence_bits.append(loc)
-        evidence_bits.extend(_evidence_ids(finding)[:1])
-        fid = _fid(finding)
-        if fid:
-            evidence_bits.append(fid)
-    evidence_bits = list(dict.fromkeys(evidence_bits))[:4]
-    if evidence_bits:
-        visible.append(
-            "**Evidence:** "
-            + ", ".join(f"`{escape_markdown(e, max_len=48)}`" for e in evidence_bits)
-        )
-    else:
-        visible.append("**Evidence:** see `findings.json` / lock diff lines")
+    visible.append(escape_markdown(_unknowns_line(coverage), max_len=200))
 
-    # 4. One Risk line per addition (LITERAL_CONFIG vs INFERRED_HINT tagged).
-    if new_powers and len(visible) < max_lines - 2:
-        for finding in new_powers[:3]:
-            if len(visible) >= max_lines - 2:
-                break
-            risk = _impact(finding) or _title(finding)
-            strength = _confidence(finding)
-            tag = (
-                strength
-                if strength in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"}
-                else "INFERRED_HINT"
-            )
-            visible.append(f"**Risk (`{tag}`):** " + escape_markdown(risk, max_len=100))
-
-    # 5. Unknown / coverage honesty (coverage % stays in findings.json / full report).
-    visible.append(escape_markdown(_unknowns_line(coverage), max_len=160))
-
-    # 6. Required action + explain follow-up
-    approval_owners = list(needs_approval_from or [])
-    growth = bool(
-        int(lock_summary.get("additions") or 0)
-        or int(lock_summary.get("expansions") or 0)
-        or int(lock_summary.get("replacements") or 0)
-        or lock_summary.get("policy_changed")
-    )
     required = _required_action(
-        decision,
-        new_powers,
-        lock_lines,
-        establishment,
-        advisory=advisory,
-        needs_approval_from=approval_owners if growth else None,
+        verdict,
+        growth=growth,
+        new_powers=new_powers,
+        needs_approval_from=needs_approval_from if growth else None,
     )
-    # Owner names are already code-spanned; escaping would blank `@alice` → `[@]`.
-    if required.startswith("Needs approval from:"):
-        visible.append(required if len(required) <= 160 else required[:159] + "…")
-    else:
-        visible.append(escape_markdown(required, max_len=160))
-
-    if new_powers and len(visible) < max_lines:
-        fid = _fid(new_powers[0])
-        if fid:
-            visible.append(f"Follow-up: `auctelis explain {escape_markdown(fid, max_len=24)}`")
+    # Owner names are already code-spanned; static instruction text stays readable.
+    visible.append(required if len(required) <= 160 else required[:159] + "…")
 
     suppressed_n = int(findings_doc.get("suppression_count") or 0)
     if not suppressed_n:
@@ -421,10 +244,9 @@ def render_authority_diff_comment(
         visible.append(f"Suppressions retained: {suppressed_n}")
 
     while len(visible) > max_lines and len(visible) > 6:
-        # Drop middle detail first; keep header, decision, authority, footer action.
-        cut_at = 4
-        if cut_at < len(visible) - 2:
-            visible.pop(cut_at)
+        # Drop middle detail first; keep header, verdict, authority, footer action.
+        if len(visible) - 2 > 4:
+            visible.pop(4)
         else:
             break
     return AUCTELIS_COMMENT_MARKER + "\n" + "\n".join(visible) + "\n"

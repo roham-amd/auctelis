@@ -7,7 +7,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from auctelis.artifact_vet import parse_artifact_spec
 from auctelis.broker import run_brokered
 from auctelis.lock_io import load_authority_lock
@@ -24,7 +23,11 @@ from auctelis.security.scan import run_scan
 
 def test_parse_artifact_spec():
     assert parse_artifact_spec("npm:lodash@4.17.21") == ("npm", "lodash", "4.17.21")
-    assert parse_artifact_spec("pypi:requests==2.32.0") == ("pypi", "requests", "2.32.0")
+    assert parse_artifact_spec("pypi:requests==2.32.0") == (
+        "pypi",
+        "requests",
+        "2.32.0",
+    )
     assert parse_artifact_spec("@scope/pkg")[0] == "npm"
 
 
@@ -113,7 +116,10 @@ def test_attack_replay_sessionstart(tmp_path: Path):
     scan, _p, _c = run_scan(root, output_dir=tmp_path / "out")
     fired = {f.rule_id for f in scan.findings}
     assert "AUCTELIS-RULE-015" in fired or "AUCTELIS-RULE-004" in fired
-    assert compute_decision(scan.findings, coverage=scan.coverage) in {"BLOCK", "REVIEW"}
+    assert compute_decision(scan.findings, coverage=scan.coverage) in {
+        "BLOCK",
+        "REVIEW",
+    }
 
 
 def test_decision_sentences_no_gated_with_coverage_gaps():
@@ -130,10 +136,14 @@ def test_decision_sentences_no_gated_with_coverage_gaps():
         },
     )
     assert any("NO-GATED-FINDINGS" in line for line in lines)
-    assert any("could not" in line.lower() or "coverage" in line.lower() for line in lines)
+    assert any(
+        "could not" in line.lower() or "coverage" in line.lower() for line in lines
+    )
 
 
 def test_tools_from_list_payload_nested():
-    tools = tools_from_list_payload({"result": {"tools": [{"name": "x", "description": "y"}]}})
+    tools = tools_from_list_payload(
+        {"result": {"tools": [{"name": "x", "description": "y"}]}}
+    )
     assert len(tools) == 1
     assert tools[0].name == "x"

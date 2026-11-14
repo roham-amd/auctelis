@@ -23,11 +23,11 @@ def read_json(path: Path) -> JsonValue:
 
 def write_json(path: Path, data: JsonValue) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(dumps_pretty(data), encoding="utf-8")
+    path.write_text(dumps_pretty(data), encoding="utf-8", newline="\n")
 
 
 def write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if not text.endswith("\n"):
         text += "\n"
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")

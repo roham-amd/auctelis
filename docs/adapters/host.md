@@ -3,6 +3,6 @@
 | | |
 | --- | --- |
 | Maturity | PARTIAL |
-| Establishes | DECLARED/CONFIGURED host markers (Cursor, Claude Code, Codex, VS Code) |
+| Establishes | DECLARED/CONFIGURED host markers (Cursor, Claude Code, Claude Desktop, Codex, VS Code, Windsurf, Gemini, Zed) |
 | Does not establish | EFFECTIVE sandbox/approval enforcement |
 | Unknown → report | User-global settings outside the scan target |

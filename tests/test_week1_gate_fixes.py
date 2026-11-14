@@ -67,7 +67,9 @@ def test_lock_refuses_gated_without_accept(tmp_path: Path):
                     "bad": {
                         "command": "npx",
                         "args": ["-y", "@evil/pkg@latest"],
-                        "env": {"GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"},
+                        "env": {
+                            "GITHUB_TOKEN": "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+                        },
                     }
                 }
             }
@@ -109,7 +111,7 @@ def test_lock_hash_stable_across_path_and_commit(tmp_path: Path, monkeypatch):
     assert lock_b.get("audited_commit") == "deadbeef"
 
 
-def test_pr_comment_advisory_and_url_host(tmp_path: Path):
+def test_pr_comment_verdict_has_no_finding_ids_and_url_host(tmp_path: Path):
     findings = {
         "findings": [
             {
@@ -138,13 +140,14 @@ def test_pr_comment_advisory_and_url_host(tmp_path: Path):
         ],
     }
     comment = render_authority_diff_comment(findings, policy_mode="advisory")
-    assert "ADVISORY (would BLOCK)" in comment
-    assert "ADVISORY: would BLOCK" in comment
-    # CRITICAL must lead over HIGH.
-    crit = comment.index("F-001")
-    high = comment.index("F-002") if "F-002" in comment else crit
-    assert crit <= high
-    escaped = escape_markdown("reaches http://analytics.example.net/mcp, passes GITHUB_TOKEN")
+    assert "**Verdict:**" in comment
+    assert "NEEDS_REVIEW" in comment
+    assert "F-001" not in comment
+    assert "F-002" not in comment
+    assert "ADVISORY" not in comment
+    escaped = escape_markdown(
+        "reaches http://analytics.example.net/mcp, passes GITHUB_TOKEN"
+    )
     assert "`analytics.example.net`" in escaped
     assert "http://" not in escaped
     assert "/mcp" not in escaped
@@ -161,9 +164,13 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
     )
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    base.write_text(
+        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
+    )
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec-owners\n", encoding="utf-8")
+    (root / ".github" / "CODEOWNERS").write_text(
+        "AUTHORITY.lock @sec-owners\n", encoding="utf-8"
+    )
     (mcp / "mcp.json").write_text(
         json.dumps(
             {
@@ -188,11 +195,15 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
         ]
     )
     assert code == 0
-    delta = json.loads((tmp_path / "out" / "base-lock-delta.json").read_text(encoding="utf-8"))
+    delta = json.loads(
+        (tmp_path / "out" / "base-lock-delta.json").read_text(encoding="utf-8")
+    )
     assert delta["summary"]["additions"] >= 1
     comment = (tmp_path / "out" / "pr-comment.md").read_text(encoding="utf-8")
     assert "addition" in comment.lower()
-    assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
+    assert (
+        main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
+    )
 
 
 def test_workflows_not_double_registered(tmp_path: Path):

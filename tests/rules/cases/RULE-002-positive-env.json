@@ -6,10 +6,11 @@
   "expect": {
     "rule_fired": true,
     "finding_class": "SECURITY_FINDING",
-    "severity": "HIGH",
-    "confidence": "POTENTIAL"
+    "severity": "MEDIUM",
+    "confidence": "INFERRED_HINT"
   },
   "notes": [
-    "Credential-shaped env inheritance escalates to HIGH (literal secrets are RULE-012 CRITICAL)"
+    "Credential-shaped env inheritance is INFERRED_HINT/MEDIUM (literal secrets are RULE-012 CRITICAL)"
   ]
 }
+

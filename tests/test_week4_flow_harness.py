@@ -14,14 +14,18 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
     mcp = root / ".cursor"
     mcp.mkdir(parents=True)
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
+    (root / ".github" / "CODEOWNERS").write_text(
+        "AUTHORITY.lock @sec\n", encoding="utf-8"
+    )
     (mcp / "mcp.json").write_text(
         json.dumps({"mcpServers": {"a": {"command": "node", "args": ["a.js"]}}}),
         encoding="utf-8",
     )
     assert main(["lock", str(root)]) == 0
     base = tmp_path / "base.lock"
-    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    base.write_text(
+        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
+    )
 
     (mcp / "mcp.json").write_text(
         json.dumps(
@@ -51,7 +55,9 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
         )
         == 0
     )
-    assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
+    assert (
+        main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
+    )
 
     assert main(["lock", str(root), "--accept-gated", "--approval", "@sec"]) == 0
     out_ok = tmp_path / "out-ok"
@@ -71,7 +77,12 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
         )
         == 0
     )
-    assert main(["gate", str(root), "--base-lock", str(fresh_base), "--skip-ruleset-check"]) == 0
+    assert (
+        main(
+            ["gate", str(root), "--base-lock", str(fresh_base), "--skip-ruleset-check"]
+        )
+        == 0
+    )
 
 
 def test_ci_init_policy_ignore_empty_list(tmp_path: Path):

@@ -13,7 +13,8 @@ from auctelis.authority_lock import (
     diff_authority_locks,
     run_lock_command,
 )
-from auctelis.doctor import run_doctor
+from auctelis.cli.authority_commands import cmd_doctor, cmd_hook, cmd_watch
+from auctelis.cli.guards import refuse_agent_mutation
 from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
 from auctelis.export.annotate import render_github_annotations, render_text_annotations
 from auctelis.export.pr_comment import render_authority_diff_comment
@@ -63,13 +64,15 @@ def dispatch(args: argparse.Namespace) -> int:
     if args.command == "ci":
         return _cmd_init_gate(args) if getattr(args, "ci_command", None) == "init" else 2
     if args.command == "hook":
-        return _cmd_hook(args)
+        return cmd_hook(args)
 
     match command:
+        case "watch":
+            return cmd_watch(args)
         case "scan":
             return _cmd_scan(args)
         case "doctor":
-            return _cmd_doctor(args)
+            return cmd_doctor(args)
         case "vet":
             return _cmd_vet(args)
         case "demo":
@@ -81,7 +84,7 @@ def dispatch(args: argparse.Namespace) -> int:
         case "gate":
             return _cmd_gate(args)
         case "hook":
-            return _cmd_hook(args)
+            return cmd_hook(args)
         case "explain":
             return _cmd_explain(args)
         case "build":
@@ -287,7 +290,7 @@ def _cmd_scan(args: argparse.Namespace) -> int:
 def _cmd_lock(args: argparse.Namespace) -> int:
     # `--check` is read-only; writes/updates require a human (not AUCTELIS_AGENT).
     if not bool(getattr(args, "check", False)):
-        refused = _refuse_agent_mutation("lock")
+        refused = refuse_agent_mutation("lock")
         if refused is not None:
             return refused
     from contextlib import ExitStack
@@ -337,7 +340,8 @@ def _cmd_lock(args: argparse.Namespace) -> int:
             update=bool(getattr(args, "update", False)),
             lock_path=lock_path,
             approval=getattr(args, "approval", None),
-            accept_gated=bool(getattr(args, "accept_gated", False)),
+            accept_gated=bool(getattr(args, "accept_gated", False))
+            or bool(getattr(args, "home", False)),
             mcp_tools=mcp_tools,
         )
     finally:
@@ -350,26 +354,6 @@ def _cmd_lock(args: argparse.Namespace) -> int:
             "then auctelis lock --snapshot tools.json"
         )
     return code
-
-
-def _cmd_hook(args: argparse.Namespace) -> int:
-    """Install Authority Watch session + PreToolUse hooks."""
-    if getattr(args, "hook_command", None) != "install":
-        return 2
-    from auctelis.hooks import install_hooks
-
-    session_only = bool(getattr(args, "session_only", False))
-    pretool_only = bool(getattr(args, "pretool_only", False))
-    result = install_hooks(
-        home=getattr(args, "home", None),
-        hooks_dir=getattr(args, "hooks_dir", None),
-        session=not pretool_only,
-        pretool=not session_only,
-        wire_claude=not bool(getattr(args, "no_wire", False)),
-    )
-    for msg in result.get("messages") or []:
-        print(msg)
-    return 0
 
 
 def _cmd_gate(args: argparse.Namespace) -> int:
@@ -392,32 +376,21 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         gate_out.mkdir(parents=True, exist_ok=True)
         write_json(gate_out / "gate-report.json", report)
         write_text(gate_out / "gate-report.txt", render_gate_report(report))
-    return code
-
-
-def _cmd_doctor(args: argparse.Namespace) -> int:
-    text, code = run_doctor(
-        home=getattr(args, "home", None),
-        output_dir=getattr(args, "output_dir", None),
-        fail_on=getattr(args, "fail_on", None),
-        since_lock=bool(getattr(args, "since_lock", False)),
-        lock_file=getattr(args, "lock_file", None),
-    )
-    if getattr(args, "agent", False):
-        out = getattr(args, "output_dir", None)
-        findings_path = None
-        if out is not None and Path(out).is_dir():
-            candidates = sorted(Path(out).glob("*/findings.json"))
-            if candidates:
-                findings_path = candidates[0]
-        doc: dict[str, Any] = (
-            read_json(findings_path)
-            if findings_path and findings_path.is_file()
-            else {"findings": []}
-        )
-        _emit_agent_digest(doc)
-        return code
-    print(text)
+        # Keep the one verdict dialect: when the gate ran, its verdict wins
+        # over the comment renderer's local heuristic.
+        findings_path = gate_out / "findings.json"
+        if findings_path.is_file():
+            findings_doc = read_json(findings_path)
+            if isinstance(findings_doc, dict):
+                comment = render_authority_diff_comment(
+                    findings_doc,
+                    lock_delta=report.get("delta")
+                    if isinstance(report.get("delta"), dict)
+                    else None,
+                    needs_approval_from=report.get("required_owners") or None,
+                    verdict=report.get("verdict"),
+                )
+                write_text(gate_out / "pr-comment.md", comment)
     return code
 
 
@@ -471,7 +444,7 @@ def _emit_agent_digest(
 
 def _cmd_harden(args: argparse.Namespace) -> int:
     if bool(getattr(args, "apply", False)):
-        refused = _refuse_agent_mutation("harden --apply")
+        refused = refuse_agent_mutation("harden --apply")
         if refused is not None:
             return refused
     text, code = run_harden(
@@ -550,19 +523,6 @@ def _demo_target() -> Path | None:
     return _materialize_packaged_demo(packaged)
 
 
-def _refuse_agent_mutation(command: str) -> int | None:
-    """Agents explain evidence; they must not mutate lock/policy/CODEOWNERS."""
-    import os
-
-    if os.environ.get("AUCTELIS_AGENT", "").strip() in {"1", "true", "yes"}:
-        print(
-            f"refused: `{command}` mutates authority state. "
-            "Unset AUCTELIS_AGENT and have a human run lock / ci init / policy edits."
-        )
-        return 2
-    return None
-
-
 def _cmd_demo(args: argparse.Namespace) -> int:
     """Run the canned vulnerable fixture and print the Authority Diff (+/- lock lines)."""
     target = _demo_target()
@@ -617,7 +577,7 @@ def _cmd_demo(args: argparse.Namespace) -> int:
 
 
 def _cmd_init_gate(args: argparse.Namespace) -> int:
-    refused = _refuse_agent_mutation("ci init")
+    refused = refuse_agent_mutation("ci init")
     if refused is not None:
         return refused
     owner = (getattr(args, "owner", None) or "").strip()
@@ -673,9 +633,9 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         if lock_code != 0:
             print(
                 "ci init wrote policy/workflow/CODEOWNERS but did not seal AUTHORITY.lock.\n"
-                "Review gated findings, then run:\n"
-                f"  auctelis lock --accept-gated --approval {owner}\n"
-                "That records accepted rule IDs; ci init never invents a human review."
+                "Review the gated findings and remediate, or seal explicitly with:\n"
+                "  auctelis lock --accept-gated\n"
+                "The lock records no approval; GitHub CODEOWNERS is the approval system."
             )
             if wrote:
                 print("Wrote:")

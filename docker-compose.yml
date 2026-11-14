@@ -1,8 +1,8 @@
-# Local auctelis container — kit baked into the image; mount a target repo at /work.
+# Local auctelis container - kit baked into the image; mount a target repo at /work.
 #
 #   docker compose build
 #   TARGET=/path/to/repo docker compose run --rm auctelis scan /work -o /tmp/auctelis-out
-#   docker compose run --rm auctelis doctor --home /work
+#   docker compose run --rm auctelis watch --home /work
 #
 # Prefer writing artifacts outside the mounted target (e.g. /tmp/auctelis-out).
 
@@ -16,8 +16,3 @@ services:
     volumes:
       - ${TARGET:-.}:/work
     # Drop privileges already handled by USER in the Dockerfile.
-  # Compat alias
-  auctelis:
-    extends:
-      service: auctelis
-    image: auctelis:local

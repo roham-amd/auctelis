@@ -18,7 +18,10 @@ class AuthorityLockError(ValueError):
 
 
 def _loads_object(text: str) -> dict[str, Any]:
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise AuthorityLockError(f"AUTHORITY lock is not valid JSON: {exc}") from exc
     if not isinstance(data, dict):
         raise AuthorityLockError("AUTHORITY lock root must be a JSON object")
     return data
@@ -28,18 +31,22 @@ def _parse_simple_lock_yaml(text: str) -> dict[str, Any]:
     """Parse a tiny AUTHORITY.lock subset without a YAML dependency."""
     tools: dict[str, str] = {}
     in_tools = False
+    found_tools = False
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
         if stripped in {"mcp_tools:", "mcp_tools: {}"}:
             in_tools = True
+            found_tools = True
             continue
         if in_tools and line.startswith("  ") and ":" in line:
             key, _, val = stripped.partition(":")
             tools[key.strip()] = val.strip().strip("\"'")
         elif in_tools and not line.startswith((" ", "\t")):
             in_tools = False
+    if not found_tools:
+        raise AuthorityLockError("AUTHORITY.lock is neither valid JSON nor a YAML mcp_tools lock")
     return {"mcp_tools": tools, "version": 1}
 
 
@@ -88,12 +95,13 @@ def load_authority_lock(path: Path) -> dict[str, Any]:
         validate_authority_lock(data, path=path)
         return data
     if suffix in {".yml", ".yaml"} or "lock" in name:
-        try:
+        # A document that starts with `{` is JSON: never fall back to YAML on a
+        # truncated/merge-conflicted file (that would silently become an empty lock).
+        if text.lstrip().startswith("{"):
             data = _loads_object(text)
-        except (json.JSONDecodeError, ValueError):
-            return _parse_simple_lock_yaml(text)
-        validate_authority_lock(data, path=path)
-        return data
+            validate_authority_lock(data, path=path)
+            return data
+        return _parse_simple_lock_yaml(text)
     data = _loads_object(text)
     validate_authority_lock(data, path=path)
     return data

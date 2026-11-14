@@ -1,0 +1,6 @@
+config_id,surface,expected_growth,actual_growth,capabilities,tp_fp_fn,records
+cfg-001-mcp-remote-unpinned,mcp,yes,yes,"access_network, access_secrets, invoke_tools",TP,1
+cfg-002-mcp-stdio-node,mcp,yes,yes,"execute_commands, invoke_tools",TP,1
+cfg-003-skill-prompt-injection,skill,yes,yes,"access_network, access_secrets, modify_agent_instructions",TP,1
+cfg-004-benign-readme-only,none,no,no,,TN,0
+cfg-005-hooks-sessionstart,hooks,yes,yes,"access_network, execute, execute_commands, modify_approvals",TP,1

@@ -51,6 +51,7 @@ def write_scan_artifacts(
         findings_doc["suppression_count"] = len(suppressions)
     findings_doc["target_policy_ignored"] = target_policy_ignored
     summary = render_terminal_report(scan, risk_delta=risk_delta, full=full_report)
+    short_summary = render_terminal_report(scan, risk_delta=risk_delta, full=False)
     # Product defaults: Authority Diff surfaces + inventory (needed by CI diffs/locks).
     write_json(output_dir / "findings.json", findings_doc)
     write_json(output_dir / "inventory.json", scan.inventory)
@@ -58,7 +59,7 @@ def write_scan_artifacts(
         write_json(output_dir / "authority-snapshot.json", authority_snapshot)
     if authority_delta is not None:
         write_json(output_dir / "authority-delta.json", authority_delta)
-    write_text(output_dir / "scan-summary.txt", summary)
+    write_text(output_dir / "scan-summary.txt", short_summary)
     write_json(output_dir / "findings.sarif.json", findings_doc_to_sarif(findings_doc))
     comment = render_authority_diff_comment(
         findings_doc,

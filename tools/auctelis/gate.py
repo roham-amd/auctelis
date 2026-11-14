@@ -21,7 +21,12 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from auctelis.authority_lock import LOCK_NAME, build_authority_lock, diff_authority_locks
+from auctelis.authority_lock import (
+    LOCK_NAME,
+    build_authority_lock,
+    delta_label,
+    diff_authority_locks,
+)
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
 from auctelis.security.engine import ScanResult, run_security_scan
 
@@ -197,16 +202,7 @@ def check_code_owner_ruleset(
 
 def growth_label(summary: dict[str, Any]) -> str:
     """Classify lock delta for comments: GROWTH, REDUCTION, or NONE."""
-    adds = int(summary.get("additions") or 0)
-    expansions = int(summary.get("expansions") or 0)
-    replacements = int(summary.get("replacements") or 0)
-    policy = bool(summary.get("policy_changed"))
-    reductions = int(summary.get("reductions") or 0) + int(summary.get("removals") or 0)
-    if adds or expansions or replacements or policy:
-        return "GROWTH"
-    if reductions:
-        return "REDUCTION"
-    return "NONE"
+    return delta_label(summary)
 
 
 def adoption_bootstrap_verdict(
@@ -223,7 +219,7 @@ def adoption_bootstrap_verdict(
         return {
             "ok": True,
             "ceremony": "growth_gate",
-            "verdict": "GROWTH_GATE",
+            "verdict": "PASS",
             "message": "Base lock present — run auctelis gate for authority growth.",
         }
     if head_lock_present:
@@ -279,11 +275,11 @@ def run_gate(
     root = root.resolve()
     try:
         base = load_authority_lock(base_lock)
-    except AuthorityLockError as exc:
+    except (AuthorityLockError, FileNotFoundError, OSError) as exc:
         return {
             "ok": False,
             "verdict": "FAIL_CLOSED",
-            "error": str(exc),
+            "error": f"cannot read base lock {base_lock}: {exc}",
             "needs_approval": True,
             "required_owners": [],
             "label": "GROWTH",
@@ -291,13 +287,24 @@ def run_gate(
             "lines": [],
         }, 2
     try:
-        if head_lock is not None and head_lock.is_file():
+        if head_lock is not None:
+            if not head_lock.is_file():
+                return {
+                    "ok": False,
+                    "verdict": "FAIL_CLOSED",
+                    "error": f"head lock not found: {head_lock}",
+                    "needs_approval": True,
+                    "required_owners": [],
+                    "label": "GROWTH",
+                    "ruleset": "UNVERIFIED",
+                    "lines": [],
+                }, 2
             head = load_authority_lock(head_lock)
         else:
             if scan is None:
                 scan = run_security_scan(root)
             head = build_authority_lock(root, scan=scan)
-    except AuthorityLockError as exc:
+    except (AuthorityLockError, FileNotFoundError, OSError) as exc:
         return {
             "ok": False,
             "verdict": "FAIL_CLOSED",
@@ -308,6 +315,15 @@ def run_gate(
             "ruleset": "UNVERIFIED",
             "lines": [],
         }, 2
+    # Coverage matters even when a trusted head lock is supplied: an unparsed
+    # config means the lock's absence of a record is not evidence of no authority.
+    if scan is None:
+        scan = run_security_scan(root)
+    coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
+    try:
+        unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
+    except (TypeError, ValueError):
+        unparsed = 0
 
     base_records = list(base.get("records") or [])
     head_records = list(head.get("records") or [])
@@ -392,6 +408,14 @@ def run_gate(
                 "PASS / ruleset check skipped — growth labeled; confirm CODEOWNERS "
                 "review is required in branch protection."
             )
+
+    # Unparsed configs mean authority could not be established. Never let a
+    # missing record look like a reduction/PASS.
+    if unparsed:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        detail = f"{unparsed} agent config file(s) could not be parsed on head"
+        error = f"{error} {detail}." if error else f"{detail} — review before merge."
 
     protection = protection_status(ruleset_status, needs_approval=needs_approval)
     report: dict[str, Any] = {

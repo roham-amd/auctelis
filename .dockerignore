@@ -25,7 +25,6 @@ auctelis-out-*/
 docs/
 examples/
 tests/
-control-packs/
 skills/
 
 # Docker build context noise

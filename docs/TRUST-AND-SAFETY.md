@@ -14,7 +14,7 @@ Related: [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md), [`POLICY.md`](POLICY.md),
 | Input isolation | Target content is data, never trusted instructions | Skill + CLI treat target skills/READMEs as untrusted |
 | Execution isolation | Passive mode does not execute target scripts, hooks, installers, launchers, or services | Default scan path is read-only; `run` / `snapshot --execute` are explicit opt-in |
 | Filesystem safety | Bound traversal, file size, parser time, artifact count; handle symlinks | `CollectorLimits` + path containment in inventory I/O |
-| Network safety | No outbound connections during passive inspection | Passive commands do not fetch remote MCP tools or install packages |
+| Network safety | No MCP or production-endpoint contact during passive inspection | Passive commands do not fetch remote MCP tools or install packages. `vet` shallow-clones the Git source you name; `gate` may query GitHub rulesets with a token |
 | Secret handling | Redact literal credentials in terminal/reports while preserving that a credential-like value was found | Findings cite evidence without echoing secrets; env values not hashed into digests |
 | Policy integrity | PR authors cannot grant themselves trust | Action loads `.auctelis.yml` from base ref when `trusted-policy=true` |
 | Provenance | Reports record assessed commit, scanner version, rules version, parsers | `findings.json` → `provenance` + evidence `rule_pack_version` / digests |

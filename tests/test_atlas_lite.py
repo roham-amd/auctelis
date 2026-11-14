@@ -17,7 +17,9 @@ def test_benign_corpus_never_blocks(tmp_path: Path):
             continue
         scan, _payload, _code = run_scan(fixture, output_dir=tmp_path / fixture.name)
         decision = compute_decision(scan.findings, coverage=scan.coverage)
-        assert decision != "BLOCK", f"{fixture.name} BLOCKED: {[f.rule_id for f in scan.findings]}"
+        assert decision != "BLOCK", (
+            f"{fixture.name} BLOCKED: {[f.rule_id for f in scan.findings]}"
+        )
         assert not any(is_high_gate_finding(f) for f in scan.findings), fixture.name
         rule016 = [f for f in scan.findings if f.rule_id == "AUCTELIS-RULE-016"]
         assert not rule016, f"{fixture.name} must not fire RULE-016 alone: {rule016}"

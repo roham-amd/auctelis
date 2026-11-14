@@ -47,8 +47,8 @@ per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 
 | Host | Status |
 | --- | --- |
-| Cursor | Partial profile |
-| Claude Code | Partial profile |
+| Cursor | Partial profile; session + tool hooks wired by `watch --arm` |
+| Claude Code | Partial profile; SessionStart + `.*` PreToolUse hooks |
 | Codex | Partial profile |
 | VS Code / Copilot markers | Partial / manual |
 

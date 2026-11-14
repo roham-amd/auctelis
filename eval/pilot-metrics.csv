@@ -1,4 +1,5 @@
-repo,started_on,install_to_first_lock_minutes,pr_output_useful,false_positives,false_negatives,action_still_enabled_day30,unverified_growth_prs,total_growth_prs,reviewer,notes
+repo,started_on,install_to_first_delta_minutes,hook_status_week4,taught_something,pr_replies,false_positives,false_negatives,action_still_enabled_day30,unverified_growth_prs,total_growth_prs,reviewer,notes
 # One row per external pilot. Do not count roham-amd/auctelis dogfood.
-# pr_output_useful: yes | partial | no
+# hook_status_week4: firing | not_firing | not_armed | not_wired
+# taught_something / pr_replies: yes | partial | no
 # action_still_enabled_day30: yes | no | pending

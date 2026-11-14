@@ -1,12 +1,12 @@
 {
   "schema": "auctelis.authority_sbom.v1",
   "product": "auctelis",
-  "product_version": "0.3.1",
-  "package_version": "0.3.1",
+  "product_version": "0.4.0",
+  "package_version": "0.4.0",
   "rule_pack": "1.6",
   "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
-  "audited_commit": "827a4f339dee9add20a1f4b11bc63d5ba975b562",
-  "collected_at_utc": "2026-11-12T13:22:39Z",
+  "audited_commit": "b5e0f1a5ade5c338741abf13d3ea36705eb0f0df",
+  "collected_at_utc": "2026-11-14T13:33:34Z",
   "authority_layers": {
     "DECLARED": "What the integration says it requires or exposes.",
     "CONFIGURED": "What host/repo configuration appears to expose.",
@@ -22,8 +22,8 @@
       "path": "skills/bootstrap/SKILL.md",
       "adapter": "skill_md",
       "adapter_maturity": "SUPPORTED",
-      "fingerprint": "1adac0942a7e3b04",
-      "content_digest": "sha256:e9b9eb115a3173986d31f403fa7299490bbcf05cdf9b344aab4a12a4f9fd3e94",
+      "fingerprint": "49397cde765a077b",
+      "content_digest": "sha256:89ee6f278e2a62ebbc021efa5458ec9db5e0cf7149c145998c23f8139724e894",
       "authority_layer": "CONFIGURED",
       "capabilities": [
         {
@@ -152,8 +152,8 @@
       "path": ".github/workflows/agent.yml",
       "adapter": "github_workflows",
       "adapter_maturity": "PARTIAL",
-      "fingerprint": "b2dc43cd8d40936b",
-      "content_digest": "sha256:91f962924e7000550abcf3e74522b23e491d7fe6a0eded9388f4f95e2db5d2ab",
+      "fingerprint": "42ec874f99cb8ab2",
+      "content_digest": "sha256:162bc70996cd12f6592c756b09e9f30b89c60021452c75d683395eac88104e57",
       "authority_layer": "CONFIGURED",
       "capabilities": [
         {
@@ -192,8 +192,8 @@
       "path": ".cursor/mcp.json",
       "adapter": "host_profiles",
       "adapter_maturity": "PARTIAL",
-      "fingerprint": "9157bf9a162ab31d",
-      "content_digest": "sha256:f96daed4e08186f65c69fb357c7d82c6a1dcf253a209a1b95c9a45cd12af60d0",
+      "fingerprint": "a69c28305d9479b6",
+      "content_digest": "sha256:8269cff5a4fb07cb69a97466ae712df6adc83c65ddfe8a86a784e2b3ae20f644",
       "authority_layer": "CONFIGURED",
       "capabilities": [],
       "destinations": [],

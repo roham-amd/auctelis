@@ -76,20 +76,25 @@ self-asserted lock approvals as a gate input. Review is enforced by:
 2. A GitHub ruleset (or branch protection) requiring code-owner review
 3. `auctelis gate` labeling GROWTH vs REDUCTION vs the base-ref lock
 
-`approved_findings[]` remains the explicit `--accept-gated` register for
-HIGH/CRITICAL findings sealed into a baseline (optional `acceptance_note`
-when `--approval` is also passed). Agents must not mutate locks
-(`AUCTELIS_AGENT=1`).
+`approvals[]` and `approved_findings[]` are emitted **empty** for schema
+compatibility and are never gate inputs. `--accept-gated` is only an explicit
+human override to seal the current (imperfect) state; it records no approval.
+Agents must not mutate locks (`AUCTELIS_AGENT=1`).
 
 ---
 
 ## Commands
 
 ```bash
-auctelis lock                              # write / update AUTHORITY.lock
-auctelis lock --accept-gated [--approval @me]  # seal gated findings (notes only)
+auctelis watch                             # one-screen delta vs the host seal
+auctelis watch --seal                      # seal ~/.auctelis/AUTHORITY.lock
+auctelis watch --arm                       # Cursor + Claude session/tool hooks
+auctelis watch --delta-only                # changed lines only (session hook)
+auctelis hook status                       # wired / not firing
+auctelis lock                              # write / update repo AUTHORITY.lock
+auctelis lock --accept-gated               # explicit override; writes no approval
 auctelis lock --check                      # exit 1 on drift
-auctelis check --locked .                  # scan + lock drift gate
+auctelis check --locked .                  # scan + lock drift gate (hidden)
 auctelis gate --base-lock base.lock        # growth label + CODEOWNERS/ruleset
 auctelis diff lock A.lock B.lock
 ```
@@ -133,7 +138,7 @@ See [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md).
 
 ## Migration
 
-- **v1 → v2:** regenerate with `auctelis lock` (record-level format).
+- The on-disk lock format is **v1**; there is no v2 reader/writer in this release.
 - Adding `identity_key` is backward compatible: older locks without the field
   are keyed via computed `host|kind|name` at diff time.
 - Do not hand-edit `lock_hash`; it is recomputed on write.

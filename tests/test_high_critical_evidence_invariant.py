@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from auctelis.security.gating import is_high_gate_finding
 from auctelis.security.scan import run_scan
 
@@ -17,7 +16,9 @@ _DEMO = Path(__file__).resolve().parents[1] / "examples" / "demo-vulnerable"
 def test_high_critical_not_inferred_hint_only(tmp_path: Path, root: Path):
     if not root.is_dir():
         pytest.skip("not a directory")
-    scan, _payload, _code = run_scan(root, output_dir=tmp_path / root.name, fail_on="never")
+    scan, _payload, _code = run_scan(
+        root, output_dir=tmp_path / root.name, fail_on="never"
+    )
     bad = [
         f
         for f in scan.findings

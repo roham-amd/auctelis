@@ -4,13 +4,14 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.3.4** |
-| Tooling package | **0.3.4** (`auctelis`) |
+| Product release | **0.4.0** |
+| Tooling package | **0.4.0** (`auctelis`) |
 | Rule pack | **1.6** (rules 001–022) |
-| Primary path | `doctor` → `lock --home` → `hook install` → (team) Action / `gate` |
+| Primary path | `watch` → `watch --seal` → `hook install` → (team) Action / `gate` |
 | Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) on locked upgrade |
 | Action | `.github/actions/auctelis-gate` — lockless default; `strict-ruleset` on |
-| Verdict | `PASS` / `GROWTH` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` |
+| Verdict | `PASS` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` / `FAIL_CLOSED` |
+| Label | `GROWTH` / `REDUCTION` / `NONE` (delta shape, not a verdict) |
 
 Normative depth: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`GUARD-SCAN.md`](GUARD-SCAN.md),
 [`POLICY.md`](POLICY.md), [`DOCUMENTATION-INDEX.md`](DOCUMENTATION-INDEX.md).
@@ -23,30 +24,29 @@ Normative depth: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`GUARD-SCAN.md`](GUA
 > what authority it introduces, who receives that authority, what data can flow
 > through it, and what materially changed.
 
-The valuable artifact is the **PR Authority Diff comment** (≤12 lines), answering:
+The valuable artifact is the **PR Authority Diff comment** (≤12 lines): one
+verdict, at most three `old → new` cards, the unknowns, and the action.
 
-1. What changed?
-2. What is the **Authority delta**?
-3. What evidence (prefer file:line)?
-4. What is unknown / not established?
-5. What action is required?
+1. What changed? (`GROWTH` / `REDUCTION` / `NONE`)
+2. What new host, launcher, or env key?
+3. What is unknown / `NOT PARSED`?
+4. What action is required? (`PASS` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` / `FAIL_CLOSED`)
+
+Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 
 ---
 
 ## First user journey
 
 ```bash
-# One-shot aha (PyPI not published yet — git tag/SHA only):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools" auctelis doctor
-
-# Persistent install, then the gate path:
+# Git tag is the supported install until PyPI returns the package.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.3.4#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.4.0#subdirectory=tools"
 
-auctelis doctor                          # host authority map
-auctelis lock --home                     # seal host lock
-auctelis hook install                    # session delta + PreToolUse
-auctelis vet github.com/org/some-skill   # pre-install annotations
+auctelis watch                           # one-screen declared authority delta
+auctelis watch --seal                    # human baseline in ~/.auctelis/AUTHORITY.lock
+auctelis watch --arm                     # Cursor + Claude session/tool hooks
+auctelis hook status                     # wired / not firing
 # Team: add the lockless Action (locked=false). Upgrade later:
 auctelis lock                            # write repo AUTHORITY.lock
 auctelis ci init --owner @security-owner # lockless workflow + CODEOWNERS; then locked=true
@@ -93,6 +93,10 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 | Growth + ruleset `UNVERIFIED` | `NEEDS_REVIEW` (default `strict-ruleset`); soft PASS only with `--no-strict-ruleset` | Missing token/API access — not green assurance |
 | Growth + ruleset `MISSING` | `NEEDS_REVIEW` | Confirmed absence of code-owner review requirement |
 
+`PASS / protection verified` refers **only** to the CODEOWNERS/ruleset probe.
+Publisher identity, effective permissions, and runtime behavior remain
+`NOT VERIFIED`.
+
 Minimum workflow permissions (example recipe):
 
 ```yaml
@@ -134,10 +138,10 @@ Never let the agent edit or approve policy without a human.
 
 | Interface | Status |
 | --- | --- |
-| CLI (`doctor` / `vet` / `scan` / `lock`) | Primary product |
+| CLI (`watch` / `watch --seal` / `watch --arm` / `hook status` / `gate` / `ci init`) | Primary product |
 | GitHub Action (trusted policy) | Supported (composite) |
 | AI agent skill | Supported (`skills/auctelis-auditor`) |
-| Prompt-only kit | Removed in 0.3.0 shrink |
+| Prompt-only kit | Fallback if hook retention is zero at week 4 |
 | MCP server assistant | Deferred |
 | Web workbench / marketplace | Deferred |
 

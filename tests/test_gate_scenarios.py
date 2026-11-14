@@ -30,7 +30,9 @@ def _owners(root: Path, owner: str = "@sec-owners") -> None:
 def _lock_base(root: Path, tmp: Path) -> Path:
     assert main(["lock", str(root)]) == 0
     base = tmp / "base.lock"
-    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    base.write_text(
+        (root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8"
+    )
     return base
 
 
@@ -88,8 +90,9 @@ def test_scenario_expand_labeled_growth(tmp_path: Path):
     assert _scan_base(root, tmp_path / "out-expand", base) == 0
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0
-    assert report["needs_approval"] is True or report["meaningful_authority_change"] is True
-    assert report["label"] in {"GROWTH", "NONE"}
+    assert report["needs_approval"] is True
+    assert report["meaningful_authority_change"] is True
+    assert report["label"] == "GROWTH"
 
 
 def test_scenario_reduce_does_not_need_approval(tmp_path: Path):
@@ -153,11 +156,13 @@ def test_scenario_hollow_lock_fails_closed(tmp_path: Path):
     assert main(["lock", str(root)]) == 0
     hollow = tmp_path / "hollow.lock"
     hollow.write_text(
-        json.dumps({"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}),
+        json.dumps(
+            {"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}
+        ),
         encoding="utf-8",
     )
     code = main(["gate", str(root), "--base-lock", str(hollow), "--skip-ruleset-check"])
-    assert code in {1, 2}
+    assert code == 1
 
 
 def test_scenario_same_name_swap(tmp_path: Path):

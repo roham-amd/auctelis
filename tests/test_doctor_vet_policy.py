@@ -34,7 +34,7 @@ def test_doctor_scans_synthetic_home(tmp_path: Path):
     surfaces = discover_host_surfaces(home=home)
     assert any(s.host_id == "cursor" and s.exists for s in surfaces)
     text, code = run_doctor(home=home, output_dir=tmp_path / "out")
-    assert "auctelis doctor" in text or "auctelis doctor" in text
+    assert "auctelis doctor" in text
     assert "cursor" in text
     assert code in {0, 1}
 
@@ -50,7 +50,7 @@ def test_vet_local_path_verdict(tmp_path: Path):
     kind, resolved = resolve_vet_source(str(root))
     assert kind == "path"
     text, code = run_vet(str(root), output_dir=tmp_path / "vet-out")
-    assert "auctelis vet" in text or "auctelis vet" in text
+    assert "auctelis vet" in text
     assert "verdict:" in text
     assert code in {0, 1}
     assert resolved == str(root.resolve())

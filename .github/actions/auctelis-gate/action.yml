@@ -9,12 +9,6 @@ inputs:
     description: Repository path to assess (relative to workspace)
     required: false
     default: "."
-  profile:
-    description: >-
-      Legacy audit profile (quick|standard|deployment). Ignored when mode=scan
-      (default). Kept for consumers migrating from auctelis audit.
-    required: false
-    default: "quick"
   mode:
     description: scan (default). Legacy audit mode removed in 0.3.0.
     required: false
@@ -68,7 +62,7 @@ inputs:
   upload-sarif:
     description: If true, print path to findings.sarif.json for workflow upload
     required: false
-    default: "true"
+    default: "false"
   annotate:
     description: If true (scan mode), emit GitHub Actions annotations from findings
     required: false

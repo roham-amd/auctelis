@@ -7,6 +7,7 @@ from auctelis.paths import repo_root
 from auctelis.semantic import validate_semantics
 from auctelis.supply_chain.digest import verify_file_digest
 from auctelis.validate_report import analyze_graph_paths, validate_graph_file, validate_report_file
+from auctelis.versioning import load_versions
 
 
 def run_corpus() -> dict:
@@ -141,7 +142,7 @@ def run_corpus() -> dict:
             failed += 1
 
     return {
-        "corpus_version": "0.3.4",
+        "corpus_version": load_versions().get("test_corpus", "unknown"),
         "passed": passed,
         "failed": failed,
         "cases": results,

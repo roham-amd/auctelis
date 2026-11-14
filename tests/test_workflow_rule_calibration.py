@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from auctelis.security.decision import compute_decision
 from auctelis.security.engine import run_security_scan
 from auctelis.security.gating import is_high_gate_finding

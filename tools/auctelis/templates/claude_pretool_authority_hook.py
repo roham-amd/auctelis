@@ -76,6 +76,10 @@ def _touches_authority(path: str, raw: str, tool: str) -> bool:
 def _looks_like_mcp(tool: str, tool_input: dict, raw: str) -> str | None:
     """Return a candidate MCP server name if this tool call appears MCP-scoped."""
     t = tool.lower()
+    if t.startswith("mcp__"):
+        parts = tool.split("__")
+        if len(parts) >= 2 and parts[1].strip():
+            return parts[1].strip()
     for key in ("server", "server_name", "mcp_server", "name"):
         val = tool_input.get(key)
         if not isinstance(val, str) or not val.strip():
@@ -84,7 +88,7 @@ def _looks_like_mcp(tool: str, tool_input: dict, raw: str) -> str | None:
             return val.strip()
     if any(h in t for h in _MCP_TOOL_HINTS):
         # mcp__server__tool convention
-        parts = tool.replace("-", "_").split("_")
+        parts = tool.replace("-", "_").split("__")
         for i, part in enumerate(parts):
             if part.lower() == "mcp" and i + 1 < len(parts) and parts[i + 1]:
                 return parts[i + 1]
