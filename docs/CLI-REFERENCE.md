@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.5.0** · product **0.5.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.6.0** · product **0.6.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,13 +22,14 @@ callable but are omitted from brief `--help`.
 
 | Tier | Command | Purpose |
 | --- | --- | --- |
-| Core | `watch` | First-run highlights + inventory, or sealed delta vs host lock |
-| Core | `watch --seal` | Seal the human baseline (`lock --home` still works) |
-| Core | `watch --arm` / `hook install` | Session + tripwire hooks for Cursor and Claude Code |
+| Core | `watch` | Every sealable record + Accept digest, or sealed delta vs host (+ project) |
+| Core | `watch --seal --accept <digest>` | Seal the human baseline (digest must match screen) |
+| Core | `allow --accept <digest>` | Allow current project authority hash |
+| Core | `watch --arm` / `hook install` | Session + tripwire hooks (absolute interpreter paths) |
 | Core | `why <name>` | Exact config path / reach fields for one authority record |
-| Core | `hook status` | Wired / not yet observed / firing (heartbeat + recent deltas) |
+| Core | `hook status [--probe]` | Wired / firing per host; `--probe` proves tripwires deny |
 | Core | `doctor` | Alias for `watch` |
-| Core | `demo` | First-run Authority Diff on packaged `demo-vulnerable` |
+| Core | `demo` | Packaged fixture walkthrough |
 | Core | `lock` | Write / check repo `AUTHORITY.lock` |
 | Team | `gate` | Optional PR growth label vs `--base-lock` (hidden from brief help) |
 | Team | `ci init` | Optional workflow + CODEOWNERS bootstrap (hidden from brief help) |
@@ -47,27 +48,44 @@ Maintainer-only (`auctelis-dev`): `build`, `lint`, `deps`, `corpus`, `hosts`,
 ## `auctelis watch`
 
 ```bash
-auctelis watch [--home PATH] [--lock-file PATH] [--seal] [--arm]
-               [--delta-only] [--json]
+auctelis watch [--home PATH] [--project PATH] [--lock-file PATH]
+               [--seal] [--accept DIGEST] [--arm] [--delta-only] [--json]
 ```
 
-Inventories the host agent configs. On first run (no seal), prints **new
-destinations / executables / secrets** and collapses the rest behind an
-inventory line. After `--seal`, prints one card per authority change:
+Inventories host agent configs and the current project (cwd by default). On
+first run (no seal), prints **every sealable record** (including Host Settings /
+permission posture) plus an Accept digest. `--seal` requires `--accept` to match
+that digest. After sealing, prints one card per authority change:
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
+~ host "claude-settings:settings.json" · permissions: prompt → bypassPermissions · +allow Bash(*)
 ```
 
 An unchanged sealed host prints `No authority change since you sealed` and the
 session hook stays quiet. `--delta-only` prints only the changed lines (the
 hook uses this). `--arm` installs the Cursor (`~/.cursor/hooks.json`) and Claude
-(`~/.claude/settings.json`) tripwire hooks. `--json` emits
-`schema_version: watch-report/1`.
+(`~/.claude/settings.json`) tripwire hooks with absolute interpreter paths.
+`--json` emits `schema_version: watch-report/1` (includes `screen_digest` and
+optional `project_allow`).
 
 Exit codes: `0` quiet / first-run summary; `1` sealed meaningful delta; `2`
-unusable lock or internal error. `--seal` and `--arm` are refused when
-`AUCTELIS_AGENT=1`.
+unusable lock, seal-accept mismatch, or internal error. `--seal` and `--arm`
+are refused when `AUCTELIS_AGENT=1`.
+
+---
+
+## `auctelis allow`
+
+```bash
+auctelis allow [PATH] [--home PATH] [--accept DIGEST] [--status] [--json]
+```
+
+Records human consent for the current project's authority hash in
+`~/.auctelis/project-allow.json`. When the project has sealable records,
+`--accept` is required (same digest integrity as seal). `--status` reports
+`allowed` / `drifted` / `unknown` without writing. Watch surfaces project-allow
+status when project surfaces are present.
 
 ---
 
@@ -77,8 +95,9 @@ unusable lock or internal error. `--seal` and `--arm` are refused when
 auctelis why NAME [--home PATH]
 ```
 
-Prints the exact config path, destination, launcher, and capabilities for one
-authority name (MCP server, skill, hook, …). Exit `1` when nothing matches.
+Prints the exact config path, destination, launcher, permissions, and
+capabilities for one authority name (MCP server, skill, hook, host settings, …).
+Exit `1` when nothing matches.
 
 ---
 

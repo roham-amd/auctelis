@@ -11,8 +11,9 @@ Explain the last Authority Watch delta.
 1. Run: auctelis watch --delta-only
 2. Quote each changed line exactly: kind, name, destination/launcher, capabilities, pin, publisher NOT VERIFIED.
 3. State what remains unknown (publisher, effective permissions, NOT PARSED).
-4. Recommend the human action: reseal (auctelis watch --seal) or revert the config.
-Do not reseal, approve, or edit AUTHORITY.lock yourself.
+4. Recommend the human action: reseal (`auctelis watch --seal --accept <digest>`) /
+   allow (`auctelis allow --accept <digest>`) or revert the config.
+Do not reseal, allow, approve, or edit AUTHORITY.lock yourself.
 ```
 
 ## review-lock
@@ -20,7 +21,7 @@ Do not reseal, approve, or edit AUTHORITY.lock yourself.
 ```text
 Review AUTHORITY.lock drift for a PR.
 1. auctelis diff lock <base>/AUTHORITY.lock <head>/AUTHORITY.lock --agent
-2. Summarize old → new host, launcher, and env keys; ignore representation-only churn.
+2. Summarize old → new host, launcher, permissions, and env keys; ignore representation-only churn.
 3. Do not update AUTHORITY.lock without explicit human approval.
 ```
 
@@ -28,7 +29,7 @@ Review AUTHORITY.lock drift for a PR.
 
 ```text
 Report whether the weekly habit is actually armed.
-1. Run: auctelis hook status
+1. Run: auctelis hook status --probe
 2. Say wired / not yet observed / firing / not armed for Cursor and Claude Code.
-3. If not armed, the human runs: auctelis watch --seal && auctelis watch --arm
+3. If not armed, the human runs: auctelis watch --seal --accept <digest> && auctelis watch --arm
 ```

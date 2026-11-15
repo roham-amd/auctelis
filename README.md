@@ -18,18 +18,19 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 ```bash
 # Git tag is the supported install until the PyPI package returns 200.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.6.0#subdirectory=tools"
 
-auctelis                        # summary + new destinations / executables / secrets
-auctelis watch --seal           # human baseline in ~/.auctelis/AUTHORITY.lock
-auctelis watch --arm            # session + tripwire hooks for Cursor and Claude Code
-auctelis hook status            # wired / not yet observed / firing (heartbeat)
+auctelis                        # every sealable record + Accept digest
+auctelis watch --seal --accept <digest>   # human baseline (digest from the screen)
+auctelis allow                  # allow this project's authority hash
+auctelis watch --arm            # session + tripwire hooks (absolute paths)
+auctelis hook status --probe    # prove each wired tripwire denies
 auctelis why linear             # exact config path for one name
 ```
 
-First run shows **highlights** (new destinations, executables, secrets) and
-collapses the rest behind an inventory line. After you seal, a new MCP server
-prints one line in the next session. Unchanged hosts stay quiet.
+First run shows **every record that will be sealed** (including host permission
+posture) and an Accept digest. After you seal, a new MCP server or permission
+escalation prints one line. Unchanged hosts stay quiet.
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
@@ -48,10 +49,11 @@ Agents must export `AUCTELIS_AGENT=1`; `watch --seal`, `watch --arm`,
 | Command | Purpose |
 | --- | --- |
 | `auctelis` / `watch` | One-screen declared authority (front door) |
-| `auctelis watch --seal` | Seal the human baseline |
+| `auctelis watch --seal --accept <digest>` | Seal the human baseline (digest from screen) |
+| `auctelis allow` | Allow current project authority hash |
 | `auctelis watch --arm` | Install session + tripwire hooks |
 | `auctelis why <name>` | Exact config path / fields for one record |
-| `auctelis hook status` | Wired / not yet observed / firing + recent deltas |
+| `auctelis hook status [--probe]` | Wired / firing per host; optional tripwire probe |
 | `auctelis demo` | Packaged fixture (optional) |
 
 `scan` / `gate` / `ci` / `vet` / `explain` / `harden` remain callable for

@@ -72,7 +72,7 @@ uv tool install --python 3.12 \
   "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
 
 auctelis watch              # one-screen declared authority delta
-auctelis watch --seal       # human baseline (no approval fields are written)
+auctelis watch --seal --accept <digest>  # human baseline (no approval fields are written)
 auctelis watch --arm        # Cursor + Claude session/tool hooks
 auctelis ci init --owner @you   # lockless workflow + CODEOWNERS
 auctelis demo               # canned fixture + PR comment (exits 0)

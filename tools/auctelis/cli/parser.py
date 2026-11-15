@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "watch → watch --seal → watch --arm → why <name> → hook status"
+PUBLIC_PATH = (
+    "watch → watch --seal --accept <digest> → allow → watch --arm → why <name> → hook status"
+)
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
@@ -27,7 +29,7 @@ not run watch --seal / lock / ci init.
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — the whole first-user surface.
-CORE_PUBLIC_COMMANDS = frozenset({"demo", "watch", "why", "doctor", "lock", "hook"})
+CORE_PUBLIC_COMMANDS = frozenset({"demo", "watch", "why", "doctor", "lock", "hook", "allow"})
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -43,6 +45,7 @@ _PRODUCT_COMMANDS = frozenset(
         "lock",
         "gate",
         "hook",
+        "allow",
         "explain",
         "diff",
         "annotate",
@@ -228,6 +231,16 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--seal",
         action="store_true",
         help="Seal current host authority as the baseline (human only)",
+    )
+    watch.add_argument(
+        "--accept",
+        metavar="DIGEST",
+        help="Required with --seal: digest printed on the watch screen",
+    )
+    watch.add_argument(
+        "--project",
+        type=Path,
+        help="Project root to include (default: cwd)",
     )
     watch.add_argument(
         "--arm",
@@ -505,6 +518,35 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Cursor hooks.json path",
     )
     hook_status.add_argument("--json", action="store_true", help="Emit JSON")
+    hook_status.add_argument(
+        "--probe",
+        action="store_true",
+        help="Fire a synthetic unknown-MCP event through each wired tripwire",
+    )
+
+    allow = sub.add_parser(
+        "allow",
+        help="Allow the current project's authority hash (Project Trust)",
+    )
+    allow.add_argument(
+        "path",
+        nargs="?",
+        type=Path,
+        default=None,
+        help="Project root (default: cwd)",
+    )
+    allow.add_argument("--home", type=Path, help="Override home for the allow store")
+    allow.add_argument(
+        "--accept",
+        metavar="DIGEST",
+        help="Required when the project has records: digest of current project authority",
+    )
+    allow.add_argument("--json", action="store_true", help="Emit JSON")
+    allow.add_argument(
+        "--status",
+        action="store_true",
+        help="Show allow status without writing",
+    )
 
     explain = sub.add_parser("explain", help=_ADV)
     explain.add_argument("finding_id", help="Finding id such as F-001")

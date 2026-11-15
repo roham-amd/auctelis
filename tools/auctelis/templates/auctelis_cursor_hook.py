@@ -2,7 +2,7 @@
 """Cursor PreToolUse-style tripwire: AUTHORITY.lock on MCP and edits.
 
 Install: ``auctelis hook install`` (writes ``~/.cursor/hooks.json``).
-Requires: auctelis on PATH; a prior ``auctelis watch --seal`` (or ``lock``).
+Requires: a prior ``auctelis watch --seal --accept <digest>`` (or ``lock``).
 
 Cursor passes hook input as JSON on stdin and expects a JSON decision on stdout:
 
@@ -49,6 +49,10 @@ def _deny(message: str) -> int:
     return 0
 
 
+class _MalformedHookInput(Exception):
+    """Raised when stdin is present but not valid hook JSON (fail closed)."""
+
+
 def _payload() -> dict:
     raw = os.environ.get("CURSOR_HOOK_INPUT") or ""
     if not raw and len(sys.argv) > 1:
@@ -60,9 +64,11 @@ def _payload() -> dict:
         return {}
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return data if isinstance(data, dict) else {}
+    except json.JSONDecodeError as exc:
+        raise _MalformedHookInput(str(exc)) from exc
+    if not isinstance(data, dict):
+        raise _MalformedHookInput("hook payload must be a JSON object")
+    return data
 
 
 def _event(payload: dict) -> str:
@@ -157,11 +163,24 @@ def _touches_authority(target: str, command: str) -> bool:
     return any(marker in blob for marker in _AUTHORITY_MARKERS)
 
 
+def _record_heartbeat(event: str) -> None:
+    try:
+        from auctelis.ledger import record_heartbeat
+
+        record_heartbeat(host="cursor", event=event or "cursor-hook", had_delta=False)
+    except Exception:
+        pass
+
+
 def main() -> int:
-    payload = _payload()
+    try:
+        payload = _payload()
+    except _MalformedHookInput as exc:
+        return _deny(f"auctelis: malformed Cursor hook stdin — refused (fail-closed): {exc}")
     event = _event(payload).lower()
     tool = _tool(payload)
     target = _target_path(payload)
+    _record_heartbeat(event or "cursor-hook")
 
     is_mcp = event in {"beforemcpexecution"} or ("mcp" in event and "execution" in event)
     if is_mcp:
@@ -169,11 +188,13 @@ def main() -> int:
         if not server:
             return _deny(
                 "auctelis: MCP call did not name a server — refused (fail closed). "
-                "Human: reseal with `auctelis watch --seal` if this is intended."
+                "Human: reseal with `auctelis watch --seal --accept <digest>` if intended."
             )
         resolved = _resolve_lock()
         if resolved is None:
-            return _deny("auctelis: no AUTHORITY.lock — run `auctelis watch --seal` first.")
+            return _deny(
+                "auctelis: no AUTHORITY.lock — run `auctelis watch --seal --accept <digest>` first."
+            )
         lock, _root = resolved
         allowed = _lock_server_names(lock)
         if server.lower() not in allowed:

@@ -18,10 +18,11 @@ reach = destination host set ∩ launcher identity ∩ capabilities ∩ pin
 
 | Signal | Meaning |
 | --- | --- |
-| New destination | A host that was not in the sealed baseline |
+| New destination | A host that was not in the sealed baseline (incl. `curl|sh` hosts) |
 | New executable | A launcher / argv digest change on an identity |
 | New secrets | New `env_keys` or secrets-class capabilities |
-| Inventory | Everything else (skills, commands, host settings) — collapsed on first run |
+| Permission posture | Host settings `approval_posture` / `permission_allows` (e.g. bypass) |
+| Inventory | Skills, commands, and other sealable records — **all shown before seal** |
 
 ## What reach is not
 

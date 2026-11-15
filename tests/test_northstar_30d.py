@@ -28,6 +28,8 @@ def test_public_path_is_lockfile_not_gate():
 
 def test_first_run_highlights_not_growth_exit(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = tmp_path / "project"
+    project.mkdir()
     _mcp(
         home,
         {
@@ -37,15 +39,15 @@ def test_first_run_highlights_not_growth_exit(tmp_path: Path, capsys):
             }
         },
     )
-    report, cards, _scan = build_watch_report(home=home)
+    report, cards, _scan = build_watch_report(home=home, project=project)
     assert report["first_run"] is True
     assert report["meaningful"] is False
     assert report["schema_version"] == "watch-report/1"
     assert any("linear" in c for c in cards)
     text = render_watch(report, cards)
-    assert "New reach" in text or "Inventory:" in text
+    assert "Authority on screen" in text or "Inventory:" in text
     assert "every current record appears as new" not in text
-    assert main(["watch", "--home", str(home)]) == 0
+    assert main(["watch", "--home", str(home), "--project", str(project)]) == 0
     assert "Inventory:" in capsys.readouterr().out
 
 
@@ -62,15 +64,32 @@ def test_why_prints_path(tmp_path: Path, capsys):
 
 def test_watch_json_first_run_then_sealed(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = tmp_path / "project"
+    project.mkdir()
     _mcp(home, {"linear": {"url": "https://mcp.linear.app/sse"}})
-    assert main(["watch", "--home", str(home), "--json"]) == 0
+    assert main(["watch", "--home", str(home), "--project", str(project), "--json"]) == 0
     report = json.loads(capsys.readouterr().out)
     assert report["schema_version"] == "watch-report/1"
     assert report["first_run"] is True
     assert report["meaningful"] is False
-    assert main(["watch", "--home", str(home), "--seal"]) == 0
+    assert report["screen_digest"]
+    assert (
+        main(
+            [
+                "watch",
+                "--home",
+                str(home),
+                "--project",
+                str(project),
+                "--seal",
+                "--accept",
+                report["screen_digest"],
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
-    assert main(["watch", "--home", str(home), "--json"]) == 0
+    assert main(["watch", "--home", str(home), "--project", str(project), "--json"]) == 0
     sealed = json.loads(capsys.readouterr().out)
     assert sealed.get("first_run") is False
     assert sealed["lock_present"] is True

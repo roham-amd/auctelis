@@ -2,7 +2,7 @@
 """SessionStart: print host authority delta vs ~/.auctelis/AUTHORITY.lock (quiet if none).
 
 Install via: ``auctelis hook install`` (or ``auctelis watch --arm``)
-Requires: ``auctelis`` on PATH and a prior ``auctelis watch --seal``.
+Requires: prior ``auctelis watch --seal --accept <digest>`` (CLI path baked at install).
 
 Always writes a local heartbeat so ``auctelis hook status`` can distinguish
 wired-but-never-observed from actually firing. This is a tripwire watch, not a gate.
@@ -32,6 +32,8 @@ def _record_heartbeat(had_delta: bool, lines: list[str]) -> None:
     try:
         from auctelis.ledger import record_heartbeat
 
+        # SessionStart is shared; stamp both hosts so per-host status stays honest.
+        # Only the first call appends the ledger entry.
         record_heartbeat(
             home=home,
             host="session",
@@ -39,6 +41,14 @@ def _record_heartbeat(had_delta: bool, lines: list[str]) -> None:
             had_delta=had_delta,
             delta_lines=lines,
         )
+        for host_id in ("claude-code", "cursor"):
+            record_heartbeat(
+                home=home,
+                host=host_id,
+                event="sessionStart",
+                had_delta=False,
+                delta_lines=None,
+            )
         return
     except Exception:
         pass

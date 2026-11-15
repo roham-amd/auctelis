@@ -57,38 +57,69 @@ def test_watch_first_run_shows_reach_and_cards(tmp_path: Path, capsys):
     assert "AUCTELIS-RULE" not in out
 
 
+def _empty_project(tmp_path: Path) -> Path:
+    project = tmp_path / "project"
+    project.mkdir(exist_ok=True)
+    return project
+
+
+def _seal_watch(home: Path, project: Path) -> None:
+    from auctelis.watch import build_watch_report
+
+    report, _cards, _scan = build_watch_report(home=home, project=project)
+    digest = report["screen_digest"]
+    assert (
+        main(
+            [
+                "watch",
+                "--home",
+                str(home),
+                "--project",
+                str(project),
+                "--seal",
+                "--accept",
+                digest,
+            ]
+        )
+        == 0
+    )
+
+
 def test_watch_empty_home_is_an_explicit_zero_baseline(tmp_path: Path, capsys):
     home = tmp_path / "empty"
     home.mkdir()
-    code = main(["watch", "--home", str(home)])
+    project = _empty_project(tmp_path)
+    code = main(["watch", "--home", str(home), "--project", str(project)])
     out = capsys.readouterr().out
     assert code == 0
-    assert "0 MCP, 0 hooks, 0 skills, 0 CI" in out
+    assert "0 MCP, 0 hooks, 0 skills" in out
     assert "No host config found" in out
     assert "every current record appears as new" not in out
 
 
 def test_watch_seal_then_quiet_delta(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = _empty_project(tmp_path)
     _mcp(home, {"linear": {"url": "https://mcp.linear.app/sse"}})
-    assert main(["watch", "--home", str(home), "--seal"]) == 0
+    _seal_watch(home, project)
     capsys.readouterr()
     lock = home / ".auctelis" / "AUTHORITY.lock"
     assert lock.is_file()
     assert json.loads(lock.read_text(encoding="utf-8"))["records"]
 
-    assert main(["watch", "--home", str(home)]) == 0
+    assert main(["watch", "--home", str(home), "--project", str(project)]) == 0
     quiet = capsys.readouterr().out
     assert "No authority change since you sealed." in quiet
 
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 0
+    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 0
     assert capsys.readouterr().out.strip() == ""
 
 
 def test_watch_delta_only_prints_one_addition_line(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = _empty_project(tmp_path)
     _mcp(home, {"linear": {"url": "https://mcp.linear.app/sse"}})
-    assert main(["watch", "--home", str(home), "--seal"]) == 0
+    _seal_watch(home, project)
     capsys.readouterr()
     _mcp(
         home,
@@ -97,7 +128,7 @@ def test_watch_delta_only_prints_one_addition_line(tmp_path: Path, capsys):
             "github": {"command": "npx", "args": ["-y", "server-github"]},
         },
     )
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 1
+    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
     lines = [line for line in capsys.readouterr().out.strip().splitlines() if line]
     assert len(lines) == 1
     assert lines[0].startswith('+ mcp "github"')
@@ -106,14 +137,16 @@ def test_watch_delta_only_prints_one_addition_line(tmp_path: Path, capsys):
 
 def test_watch_delta_only_is_silent_before_seal(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = _empty_project(tmp_path)
     _mcp(home, {"linear": {"url": "https://mcp.linear.app/sse"}})
     # The session hook must not narrate the unsealed baseline every session.
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 0
+    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 0
     assert capsys.readouterr().out.strip() == ""
 
 
 def test_watch_reports_removal_after_config_deleted(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = _empty_project(tmp_path)
     _mcp(
         home,
         {
@@ -121,10 +154,10 @@ def test_watch_reports_removal_after_config_deleted(tmp_path: Path, capsys):
             "github": {"command": "node", "args": ["g.js"]},
         },
     )
-    assert main(["watch", "--home", str(home), "--seal"]) == 0
+    _seal_watch(home, project)
     capsys.readouterr()
     _mcp(home, {"linear": {"url": "https://mcp.linear.app/sse"}})
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 1
+    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
     out = capsys.readouterr().out
     assert '- mcp "github" · removed' in out
 

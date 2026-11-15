@@ -87,12 +87,13 @@ Agents must not mutate locks (`AUCTELIS_AGENT=1`).
 ## Commands
 
 ```bash
-auctelis watch                             # highlights (first run) or sealed delta
-auctelis watch --seal                      # seal ~/.auctelis/AUTHORITY.lock
+auctelis watch                             # every sealable record + Accept digest
+auctelis watch --seal --accept <digest>    # seal ~/.auctelis/AUTHORITY.lock
+auctelis allow --accept <digest>           # allow project authority hash
 auctelis watch --arm                       # Cursor + Claude session/tripwire hooks
 auctelis watch --delta-only                # changed lines only (session hook)
 auctelis why <name>                        # exact config path for one record
-auctelis hook status                       # wired / not yet observed / firing
+auctelis hook status --probe               # wired / firing; prove tripwires deny
 auctelis lock                              # write / update repo AUTHORITY.lock
 auctelis lock --check                      # exit 1 on drift
 auctelis gate --base-lock base.lock        # optional team upsell (hidden help)

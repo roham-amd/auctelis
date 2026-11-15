@@ -13,16 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from auctelis.inventory.env_routing import is_routing_override_env_key
+from auctelis.inventory.hints import DOWNLOAD_EXEC_RE, extract_url_hosts_from_command
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.jsonc import loads_json_tolerant
 from auctelis.inventory.limits import CollectorLimits
 
-_DOWNLOAD_EXEC_RE = re.compile(
-    r"(curl\s+[^\n|;]*\|\s*(?:sudo\s+)?(?:ba)?sh|"
-    r"wget\s+[^\n|;]*\|\s*(?:sudo\s+)?(?:ba)?sh|"
-    r"\$\(\s*env\s*\)|\$\{\s*env\s*\})",
-    re.IGNORECASE,
-)
+_DOWNLOAD_EXEC_RE = DOWNLOAD_EXEC_RE
 
 
 def _is_claude_settings(path: Path, root: Path) -> bool:
@@ -122,18 +118,31 @@ def discover_claude_settings(
 
         perm = data.get("permissions") or data.get("permissionMode") or data.get("permission_mode")
         perm_s = json.dumps(perm).lower() if perm is not None else ""
-        if "bypass" in perm_s or data.get("permissionMode") == "bypassPermissions":
+        default_mode = ""
+        if isinstance(perm, dict):
+            default_mode = str(perm.get("defaultMode") or perm.get("permissionMode") or "")
+        elif isinstance(perm, str):
+            default_mode = perm
+        if not default_mode:
+            default_mode = str(data.get("permissionMode") or data.get("permission_mode") or "")
+        if default_mode:
+            detail["defaultMode"] = default_mode
+        if (
+            "bypass" in perm_s
+            or default_mode == "bypassPermissions"
+            or data.get("permissionMode") == "bypassPermissions"
+        ):
             hints.append("permission_bypass_flag")
         allow: list[Any] = []
         if isinstance(perm, dict):
             raw_allow = perm.get("allow")
-            if raw_allow is None:
-                raw_allow = perm.get("defaultMode")
             if isinstance(raw_allow, str):
                 allow = [raw_allow]
             elif isinstance(raw_allow, list):
                 allow = list(raw_allow)
         joined_allow = " ".join(str(a) for a in allow)
+        if allow:
+            detail["allow"] = [str(a) for a in allow]
         if "bash(*)" in joined_allow.lower() or "bash(*)" in perm_s:
             hints.append("wildcard_bash_permission")
             hints.append("permission_bypass_flag")
@@ -148,6 +157,7 @@ def discover_claude_settings(
 
         hooks = data.get("hooks")
         hook_pairs = _walk_hooks(hooks)
+        settings_destinations: list[str] = []
         for event_name, cmd in hook_pairs:
             event_l = event_name.lower()
             if event_l in {
@@ -159,6 +169,8 @@ def discover_claude_settings(
             }:
                 hints.append("pre_execution_lifecycle")
                 hints.append("auto_running_hook")
+            hosts = extract_url_hosts_from_command(cmd)
+            settings_destinations.extend(hosts)
             # Only curl|sh / wget|sh style pipes are download-and-execute; bare
             # `curl` (e.g. Slack notification) is network egress, not RCE.
             if _DOWNLOAD_EXEC_RE.search(cmd):
@@ -179,6 +191,7 @@ def discover_claude_settings(
             # Still record the settings file as a host settings surface.
             hints.append("host_declared_configuration")
 
+        permission_allows = [str(a) for a in allow if str(a).strip()]
         results.append(
             {
                 "name": f"claude-settings:{path.name}",
@@ -191,6 +204,8 @@ def discover_claude_settings(
                 "host_id": "claude-code",
                 "priority_hints": sorted(set(hints)),
                 "settings_detail": detail,
+                "permission_allows": permission_allows,
+                "destinations": sorted(set(settings_destinations)),
             }
         )
 
@@ -206,6 +221,7 @@ def discover_claude_settings(
                 hook_hints.append("pre_execution_lifecycle")
             if _DOWNLOAD_EXEC_RE.search(cmd) or "$(env)" in cmd:
                 hook_hints.append("download_and_execute")
+            hook_hosts = extract_url_hosts_from_command(cmd)
             results.append(
                 {
                     "name": f"{event_name}",
@@ -215,8 +231,10 @@ def discover_claude_settings(
                     "adapter": "claude_settings",
                     "adapter_maturity": "SUPPORTED",
                     "discovery_status": "IDENTIFIED",
+                    "host_id": "claude-code",
                     "command": cmd[:240],
                     "priority_hints": hook_hints,
+                    "destinations": hook_hosts,
                 }
             )
 

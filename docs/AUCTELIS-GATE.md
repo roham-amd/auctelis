@@ -7,7 +7,7 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 | Product release | **0.5.0** |
 | Tooling package | **0.5.0** (`auctelis`) |
 | Rule pack | **1.6** (rules 001–022) |
-| Primary path | `watch` → `watch --seal` → `hook install` → (team) Action / `gate` |
+| Primary path | `watch` → `watch --seal --accept` → `allow` → `hook install` → (team) Action / `gate` |
 | Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) on locked upgrade |
 | Action | `.github/actions/auctelis-gate` — lockless default; `strict-ruleset` on |
 | Verdict | `PASS` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` / `FAIL_CLOSED` |
@@ -44,7 +44,7 @@ uv tool install --python 3.12 \
   "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
 
 auctelis watch                           # one-screen declared authority delta
-auctelis watch --seal                    # human baseline in ~/.auctelis/AUTHORITY.lock
+auctelis watch --seal --accept <digest>  # human baseline in ~/.auctelis/AUTHORITY.lock
 auctelis watch --arm                     # Cursor + Claude session/tool hooks
 auctelis hook status                     # wired / not yet observed / firing
 # Team: add the lockless Action (locked=false). Upgrade later:

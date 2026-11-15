@@ -4,8 +4,7 @@
 (Cursor, Claude Code, VS Code, …), compares them with the last human seal in
 ``~/.auctelis/AUTHORITY.lock``, and prints one line per authority change.
 
-- No lock yet → summary counts + highlight new destinations / executables /
-  secrets; the rest collapses behind an inventory line. Seal is the next step.
+- No lock yet → every sealable record on screen + accept digest; seal is next.
 - Lock present and unchanged → quiet (the second-session experience).
 - Lock present and changed → the delta, and a human chooses reseal or revert.
 """
@@ -22,6 +21,8 @@ from auctelis.authority_card import (
     delta_cards,
     highlight_cards,
     kind_label,
+    screen_digest,
+    sealable_records,
 )
 from auctelis.authority_lock import (
     build_authority_lock,
@@ -30,7 +31,11 @@ from auctelis.authority_lock import (
     home_lock_path,
     write_authority_lock,
 )
-from auctelis.host_scan import discover_host_surfaces, stage_all_host_surfaces
+from auctelis.host_scan import (
+    discover_host_surfaces,
+    discover_project_surfaces,
+    stage_watch_root,
+)
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
 from auctelis.security.engine import ScanResult, run_security_scan
 
@@ -41,14 +46,14 @@ _EMPTY_LOCK: dict[str, Any] = {
     "mcp_tools": {},
 }
 
-_REACH_KEYS = ("mcp", "hook", "skill", "ci", "command", "other")
+_REACH_KEYS = ("mcp", "hook", "skill", "ci", "command", "host", "other")
 
 
 def _counts(records: list[dict[str, Any]]) -> dict[str, int]:
     counts = dict.fromkeys(_REACH_KEYS, 0)
     for record in records:
         label = kind_label(record.get("kind"))
-        if label in {"agent host", "host"}:
+        if label == "agent host":
             continue
         if label in counts:
             counts[label] += 1
@@ -75,49 +80,69 @@ def build_watch_report(
     *,
     home: Path | None = None,
     lock_file: Path | None = None,
+    project: Path | None = None,
 ) -> tuple[dict[str, Any], list[str], ScanResult | None]:
-    """Return ``(report, delta_cards, scan)`` for the current host.
+    """Return ``(report, delta_cards, scan)`` for the current host (+ project).
 
     ``delta_cards`` are pre-rendered so the session hook can print a one-line
-    delta without re-reading the lock. On first run (no seal) they are the
-    highlight cards (destinations / executables / secrets), not the full inventory.
+    delta without re-reading the lock. On first run every sealable record is
+    shown (Host Settings included) so seal never hides posture.
     """
     home_root = (home or Path.home()).expanduser().resolve()
+    # Library callers may omit project (home-only). The CLI always passes cwd.
+    project_root = project.expanduser().resolve() if project is not None else None
     lock_path = home_lock_path(home_root, lock_file=lock_file)
     surfaces = discover_host_surfaces(home=home_root)
+    project_surfaces = (
+        discover_project_surfaces(root=project_root) if project_root is not None else []
+    )
     present = [s for s in surfaces if s.exists]
+    present_project = [s for s in project_surfaces if s.exists]
 
     report: dict[str, Any] = {
         "schema_version": "watch-report/1",
         "home": str(home_root),
+        "project": str(project_root) if project_root else None,
         "lock_path": str(lock_path),
         "lock_present": False,
         "surfaces": [
             {"host_id": surface.host_id, "path": str(surface.path)} for surface in present
         ],
-        "surface_ids": _surface_ids(present),
+        "project_surfaces": [
+            {"host_id": surface.host_id, "path": str(surface.path)} for surface in present_project
+        ],
+        "surface_ids": _surface_ids([*present, *present_project]),
         "counts": dict.fromkeys(_REACH_KEYS, 0),
         "delta": {},
         "label": "NONE",
         "meaningful": False,
         "unparsed": 0,
-        "empty": not present,
+        "empty": not present and not present_project,
         "first_run": False,
         "inventory_total": 0,
         "highlight_total": 0,
+        "screen_digest": None,
         "error": None,
     }
 
     scan: ScanResult | None = None
     head: dict[str, Any] = dict(_EMPTY_LOCK)
     with ExitStack() as stack:
-        synth, _staged = stage_all_host_surfaces(stack, home=home_root)
+        synth, _staged = stage_watch_root(stack, home=home_root, project=project_root)
         scan = run_security_scan(synth)
         head = build_authority_lock(synth, scan=scan)
 
     head_records = list(head.get("records") or [])
+    sealable = sealable_records(head_records)
+    digest = screen_digest(sealable)
     report["counts"] = _counts(head_records)
     report["unparsed"] = _unparsed_count(scan)
+    report["screen_digest"] = digest
+    report["inventory_total"] = len(sealable)
+    if project_root is not None and present_project:
+        from auctelis.allow import project_is_allowed
+
+        report["project_allow"] = project_is_allowed(project_root, home=home_root)
 
     base = dict(_EMPTY_LOCK)
     if lock_path.is_file():
@@ -129,7 +154,8 @@ def build_watch_report(
             return report, [], scan
     else:
         report["first_run"] = True
-        cards, highlight_total, inventory_total = highlight_cards(head_records, limit=6)
+        # Show every sealable record (Project Trust: never hide what will be sealed).
+        cards, highlight_total, inventory_total = highlight_cards(head_records)
         report["highlight_total"] = highlight_total
         report["inventory_total"] = inventory_total
         # First run is not a "delta" for exit codes / session hooks — sealing is.
@@ -144,7 +170,7 @@ def build_watch_report(
                 "authority_changed": False,
                 "policy_changed": False,
             },
-            "changes": {"added": head_records, "removed": [], "changed": []},
+            "changes": {"added": sealable, "removed": [], "changed": []},
         }
         return report, cards, scan
 
@@ -155,9 +181,6 @@ def build_watch_report(
     report["delta"] = delta
     report["label"] = delta_label(summary) if meaningful else "NONE"
     report["meaningful"] = meaningful
-    report["inventory_total"] = sum(
-        1 for r in head_records if kind_label(r.get("kind")) not in {"agent host", "host"}
-    )
     return report, cards, scan
 
 
@@ -165,49 +188,75 @@ def seal_home_lock(
     *,
     home: Path | None = None,
     lock_file: Path | None = None,
+    project: Path | None = None,
+    accept: str | None = None,
 ) -> dict[str, Any]:
-    """Seal the current host authority. Human-only; never called by a hook."""
+    """Seal the current host (+ project) authority. Human-only; never called by a hook.
+
+    Requires ``accept`` to match the current screen digest so records never
+    sealed were never shown.
+    """
     home_root = (home or Path.home()).expanduser().resolve()
+    project_root = project.expanduser().resolve() if project is not None else None
     lock_path = home_lock_path(home_root, lock_file=lock_file)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    surfaces = [s for s in discover_host_surfaces(home=home_root) if s.exists]
 
-    if not surfaces:
-        with tempfile.TemporaryDirectory(prefix="auctelis-empty-baseline-") as tmp:
+    with ExitStack() as stack:
+        synth, staged = stage_watch_root(stack, home=home_root, project=project_root)
+        scan = run_security_scan(synth)
+        head = build_authority_lock(synth, scan=scan)
+        sealable = sealable_records(list(head.get("records") or []))
+        digest = screen_digest(sealable)
+        expected = str(accept or "").strip().lower()
+        if not expected:
+            raise ValueError(f"seal requires --accept {digest} (digest of every record on screen)")
+        if expected != digest:
+            raise ValueError(
+                f"accept digest mismatch: got {expected!r}, screen is {digest!r} — "
+                "re-run `auctelis watch` and pass the printed Accept digest"
+            )
+        if not staged:
+            empty_tmp = stack.enter_context(
+                tempfile.TemporaryDirectory(prefix="auctelis-empty-baseline-")
+            )
             dest, lock = write_authority_lock(
-                Path(tmp),
+                Path(empty_tmp),
                 path=lock_path,
                 accept_gated=True,
             )
-        return {"path": str(dest), "records": len(lock.get("records") or []), "empty": True}
-
-    with ExitStack() as stack:
-        synth, staged = stage_all_host_surfaces(stack, home=home_root)
-        scan = run_security_scan(synth)
+            return {
+                "path": str(dest),
+                "records": len(lock.get("records") or []),
+                "empty": True,
+                "screen_digest": digest,
+            }
         dest, lock = write_authority_lock(
             synth,
             path=lock_path,
             accept_gated=True,
             scan=scan,
         )
-    return {
-        "path": str(dest),
-        "records": len(lock.get("records") or []),
-        "empty": not staged,
-    }
+        return {
+            "path": str(dest),
+            "records": len(sealable),
+            "empty": False,
+            "screen_digest": digest,
+        }
 
 
 def why_home(
     query: str,
     *,
     home: Path | None = None,
+    project: Path | None = None,
 ) -> tuple[list[str], int]:
     """Resolve ``auctelis why <name>`` against the current host inventory."""
     from auctelis.authority_card import find_records_by_name, why_record
 
     home_root = (home or Path.home()).expanduser().resolve()
+    project_root = project.expanduser().resolve() if project is not None else None
     with ExitStack() as stack:
-        synth, _staged = stage_all_host_surfaces(stack, home=home_root)
+        synth, _staged = stage_watch_root(stack, home=home_root, project=project_root)
         scan = run_security_scan(synth)
         head = build_authority_lock(synth, scan=scan)
     matches = find_records_by_name(list(head.get("records") or []), query)
@@ -225,7 +274,8 @@ def why_home(
 def _reach_line(counts: dict[str, int]) -> str:
     return (
         f"Reach: {counts.get('mcp', 0)} MCP, {counts.get('hook', 0)} hooks, "
-        f"{counts.get('skill', 0)} skills, {counts.get('ci', 0)} CI"
+        f"{counts.get('skill', 0)} skills, {counts.get('host', 0)} host settings, "
+        f"{counts.get('ci', 0)} CI"
     )
 
 
@@ -237,6 +287,7 @@ def _inventory_line(report: dict[str, Any]) -> str:
         ("mcp", "MCP"),
         ("hook", "hooks"),
         ("skill", "skills"),
+        ("host", "host settings"),
         ("command", "commands"),
         ("ci", "CI"),
     ):
@@ -283,19 +334,45 @@ def render_watch(
     else:
         lines.append(f"Lock: none yet ({report.get('lock_path')})")
 
+    digest = report.get("screen_digest")
+    if digest and not report.get("lock_present"):
+        lines.append(f"Accept digest: {digest}")
+
     if report.get("empty"):
         lines.append(f"No host config found under {report.get('home')}.")
         lines.append(_reach_line(counts))
         lines.append("")
         lines.append("Empty baseline: seal when you are ready, or add an agent host config.")
-        lines.append(
-            "Next: `auctelis watch --seal` (then `auctelis watch --arm` for session tripwires)."
-        )
+        if digest:
+            lines.append(
+                f"Next: `auctelis watch --seal --accept {digest}` "
+                "(then `auctelis watch --arm` for session tripwires)."
+            )
+        else:
+            lines.append(
+                "Next: `auctelis watch --seal --accept <digest>` "
+                "(then `auctelis watch --arm` for session tripwires)."
+            )
         return "\n".join(lines)
 
     if surface_ids:
         lines.append(f"Found {len(surface_ids)} agent surface(s): {', '.join(surface_ids)}.")
     lines.append(_reach_line(counts))
+    project_allow = report.get("project_allow")
+    if isinstance(project_allow, dict):
+        status = str(project_allow.get("status") or "unknown")
+        if status == "allowed":
+            lines.append(f"Project allow: allowed (digest {project_allow.get('digest')})")
+        elif status == "drifted":
+            lines.append(
+                f"Project allow: DRIFTED (prior {project_allow.get('prior_digest')} → "
+                f"{project_allow.get('digest')}) — run `auctelis allow --accept <digest>`"
+            )
+        else:
+            lines.append(
+                f"Project allow: not yet allowed (digest {project_allow.get('digest')}) — "
+                "`auctelis allow --accept <digest>`"
+            )
     lines.append("")
 
     if error:
@@ -306,29 +383,40 @@ def render_watch(
 
     if report.get("first_run"):
         highlight_total = int(report.get("highlight_total") or 0)
+        inventory_total = int(report.get("inventory_total") or 0)
         if current_cards:
-            lines.append("New reach (destinations / executables / secrets) — not yet sealed:")
+            lines.append("Authority on screen (every record that will be sealed):")
             lines.extend(current_cards)
-            if highlight_total > len(current_cards):
-                lines.append(f"… +{highlight_total - len(current_cards)} more highlights")
+            if inventory_total > len(current_cards):
+                lines.append(f"… +{inventory_total - len(current_cards)} more records")
+            elif highlight_total and highlight_total < inventory_total:
+                pass
         else:
-            lines.append("No new remote destinations, executables, or secrets detected.")
+            lines.append("No sealable authority records detected.")
         lines.append(_inventory_line(report))
         lines.append("")
         unknown = "Unknown: publisher identity, effective permissions, runtime behavior."
         if int(report.get("unparsed") or 0):
             unknown += f" NOT PARSED: {report['unparsed']} agent config file(s)."
         lines.append(unknown)
-        lines.append(
-            "Next: seal this baseline → `auctelis watch --seal` "
-            "(then `auctelis watch --arm`). Consent baseline, not a security clearance."
-        )
+        if digest:
+            lines.append(
+                f"Next: seal this baseline → `auctelis watch --seal --accept {digest}` "
+                "(then `auctelis watch --arm`). Consent baseline, not a security clearance."
+            )
+        else:
+            lines.append(
+                "Next: seal this baseline → `auctelis watch --seal --accept <digest>` "
+                "(then `auctelis watch --arm`). Consent baseline, not a security clearance."
+            )
         return "\n".join(lines)
 
     if not report.get("meaningful"):
         lines.append("No authority change since you sealed.")
     else:
         lines.append("Delta since you sealed:")
+        if digest:
+            lines.append(f"Accept digest: {digest}")
 
     if current_cards:
         lines.extend(current_cards)
@@ -345,7 +433,16 @@ def render_watch(
     lines.append(unknown)
 
     if report.get("meaningful"):
-        lines.append("Next: review, then `auctelis watch --seal` to accept — or revert the config.")
+        if digest:
+            lines.append(
+                f"Next: review, then `auctelis watch --seal --accept {digest}` "
+                "to accept — or revert the config."
+            )
+        else:
+            lines.append(
+                "Next: review, then `auctelis watch --seal --accept <digest>` "
+                "to accept — or revert the config."
+            )
         lines.append("Tip: `auctelis why <name>` prints the exact config path.")
     else:
         lines.append("Next: nothing to do; the hook speaks only when authority changes.")

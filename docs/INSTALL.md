@@ -4,7 +4,7 @@
 
 - Python **3.12+** (uv can fetch a managed interpreter)
 - Git (for a remote `vet`, if you use the hidden scanner)
-- Optional: Docker for the digest-pinned image
+- Optional: Docker for the digest-pinned image (deferred / not required for Project Trust)
 
 ## Canonical install (current supported path)
 
@@ -12,19 +12,23 @@ PyPI is not live yet, so the first command is always the pinned git tag:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.6.0#subdirectory=tools"
 
-auctelis                    # highlights + inventory (first run) or sealed delta
-auctelis watch --seal       # human baseline in ~/.auctelis/AUTHORITY.lock
-auctelis watch --arm        # session + tripwire hooks for Cursor and Claude Code
-auctelis hook status        # wired / not yet observed / firing (heartbeat)
-auctelis why <name>         # exact config path for one authority record
+auctelis                                   # every sealable record + Accept digest
+auctelis watch --seal --accept <digest>    # human baseline in ~/.auctelis/AUTHORITY.lock
+auctelis allow --accept <digest>           # allow this project's authority hash
+auctelis watch --arm                       # session + tripwire hooks (absolute paths)
+auctelis hook status --probe               # wired / firing per host; prove deny
+auctelis why <name>                        # exact config path for one authority record
 ```
 
 Bare `auctelis` runs `watch`; it is never a scanner. Use `auctelis <path>` or
 `auctelis scan <path>` only when you explicitly want the hidden annotation
 layer. `auctelis demo` is packaged inside the wheel and works from every install
 path.
+
+Plugin bundles (optional): [`plugins/claude/`](../plugins/claude/),
+[`plugins/cursor/`](../plugins/cursor/).
 
 ### Once the package is on PyPI
 
@@ -40,11 +44,14 @@ Trusted Publishing workflow:
 ```bash
 cd tools
 uv sync --locked
-uv run auctelis watch --home /tmp/auctelis-home
+uv run auctelis watch --home /tmp/auctelis-home --project /tmp/empty-project
 uv run auctelis demo -o /tmp/auctelis-demo
 ```
 
-## Docker
+## Docker (optional / deferred)
+
+Docker remains available for the hidden scan path but is **not** part of the
+Project Trust install. Prefer the git-tag CLI above.
 
 ```bash
 docker compose build
@@ -65,7 +72,7 @@ Consumer recipe: [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.e
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.5.0 |
-| Package `auctelis` | 0.5.0 |
+| Product (`VERSION`) | 0.6.0 |
+| Package `auctelis` | 0.6.0 |
 | `AUTHORITY.lock` schema | 1 |
 | Rule pack | 1.6 |

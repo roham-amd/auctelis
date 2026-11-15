@@ -28,9 +28,10 @@ def test_core_public_commands_are_the_first_screen():
         "doctor",
         "lock",
         "hook",
+        "allow",
     } == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in ("demo", "watch", "why", "doctor", "lock", "hook"):
+    for name in ("demo", "watch", "why", "doctor", "lock", "hook", "allow"):
         assert name in help_text
     listed = [
         line.strip()

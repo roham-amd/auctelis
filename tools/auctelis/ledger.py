@@ -6,6 +6,8 @@ The product screen must distinguish:
 - not_wired / not_armed
 
 Hooks call ``record_heartbeat`` / ``append_delta``; ``hook status`` reads them.
+Per-host heartbeats live under ``~/.auctelis/heartbeats/<host>.json``; a
+legacy single ``heartbeat.json`` remains as the aggregate / session view.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 _HEARTBEAT_NAME = "heartbeat.json"
+_HEARTBEATS_DIR = "heartbeats"
 _LEDGER_NAME = "ledger.jsonl"
 _MAX_LEDGER = 5
 
@@ -24,8 +27,12 @@ def auctelis_state_dir(*, home: Path | None = None) -> Path:
     return (home or Path.home()).expanduser() / ".auctelis"
 
 
-def heartbeat_path(*, home: Path | None = None) -> Path:
-    return auctelis_state_dir(home=home) / _HEARTBEAT_NAME
+def heartbeat_path(*, home: Path | None = None, host: str | None = None) -> Path:
+    root = auctelis_state_dir(home=home)
+    if host and host not in {"session", "aggregate", ""}:
+        safe = "".join(ch if ch.isalnum() or ch in "-_" else "_" for ch in host)
+        return root / _HEARTBEATS_DIR / f"{safe}.json"
+    return root / _HEARTBEAT_NAME
 
 
 def ledger_path(*, home: Path | None = None) -> Path:
@@ -36,11 +43,17 @@ def _now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def write_heartbeat_doc(doc: dict[str, Any], *, home: Path | None = None) -> Path:
+def write_heartbeat_doc(
+    doc: dict[str, Any],
+    *,
+    home: Path | None = None,
+    host: str | None = None,
+) -> Path:
     """Persist a heartbeat document (shared by CLI import and script fallback)."""
     root = auctelis_state_dir(home=home)
     root.mkdir(parents=True, exist_ok=True)
-    path = heartbeat_path(home=home)
+    path = heartbeat_path(home=home, host=host)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8", newline="\n")
     return path
 
@@ -64,25 +77,57 @@ def record_heartbeat(
         "last_delta": stamp if had_delta else None,
         "last_delta_lines": list(delta_lines or [])[:5] if had_delta else [],
     }
-    prev = load_heartbeat(home=home)
+    prev = load_heartbeat(home=home, host=host)
     if prev and not had_delta:
         doc["last_delta"] = prev.get("last_delta")
         doc["last_delta_lines"] = list(prev.get("last_delta_lines") or [])[:5]
-    write_heartbeat_doc(doc, home=home)
+    write_heartbeat_doc(doc, home=home, host=host)
+    # Keep legacy aggregate heartbeat.json in sync for session / unspecified host.
+    if host in {"session", "aggregate", ""}:
+        write_heartbeat_doc(doc, home=home, host=None)
     if had_delta and delta_lines:
         append_delta(delta_lines, home=home, host=host, fired_at=stamp)
     return doc
 
 
-def load_heartbeat(*, home: Path | None = None) -> dict[str, Any] | None:
-    path = heartbeat_path(home=home)
+def load_heartbeat(
+    *,
+    home: Path | None = None,
+    host: str | None = None,
+) -> dict[str, Any] | None:
+    path = heartbeat_path(home=home, host=host)
     if not path.is_file():
+        # Fall back to aggregate for callers that ask for a specific host.
+        if host and host not in {"session", "aggregate", ""}:
+            aggregate = load_heartbeat(home=home, host=None)
+            if aggregate and str(aggregate.get("host") or "") == host:
+                return aggregate
         return None
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
     return data if isinstance(data, dict) else None
+
+
+def load_all_heartbeats(*, home: Path | None = None) -> dict[str, dict[str, Any]]:
+    """Return ``{host_id: heartbeat_doc}`` including per-host files + aggregate."""
+    out: dict[str, dict[str, Any]] = {}
+    root = auctelis_state_dir(home=home)
+    hb_dir = root / _HEARTBEATS_DIR
+    if hb_dir.is_dir():
+        for path in sorted(hb_dir.glob("*.json")):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(data, dict):
+                host = str(data.get("host") or path.stem)
+                out[host] = data
+    aggregate = load_heartbeat(home=home, host=None)
+    if aggregate:
+        out.setdefault(str(aggregate.get("host") or "session"), aggregate)
+    return out
 
 
 def append_delta(

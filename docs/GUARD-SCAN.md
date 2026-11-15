@@ -7,7 +7,7 @@ screen. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./auctelis-out` (not inside the target tree).
 
 Product front door: `auctelis watch` (one-screen authority delta) →
-`auctelis watch --seal` → `auctelis watch --arm`.
+`auctelis watch --seal --accept <digest>` → `auctelis allow` → `auctelis watch --arm`.
 
 Companion commands: `auctelis doctor` (alias for watch) and
 `auctelis lock` (committed authority lockfile). `auctelis vet` remains callable

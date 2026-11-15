@@ -42,18 +42,24 @@ _MCP_TOOL_HINTS = (
 )
 
 
+class _MalformedHookInput(Exception):
+    """Raised when stdin is present but not valid hook JSON (fail closed)."""
+
+
 def _parse_stdin(raw: str) -> tuple[str, str, dict]:
     raw = raw.strip()
     if not raw:
         return "", "", {}
     try:
         payload = json.loads(raw)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        # Non-JSON stdin that looks like a command string (legacy) is allowed;
+        # broken JSON objects must fail closed.
         if raw.startswith("{"):
-            return "", "", {}
+            raise _MalformedHookInput(str(exc)) from exc
         return "", raw, {}
     if not isinstance(payload, dict):
-        return "", "", {}
+        raise _MalformedHookInput("hook payload must be a JSON object")
     tool = str(payload.get("tool_name") or "").strip()
     tool_input = payload.get("tool_input") or {}
     if not isinstance(tool_input, dict):
@@ -146,7 +152,14 @@ def main() -> int:
     if not raw and not sys.stdin.isatty():
         raw = sys.stdin.read()
 
-    tool, target, tool_input = _parse_stdin(raw)
+    try:
+        tool, target, tool_input = _parse_stdin(raw)
+    except _MalformedHookInput as exc:
+        print(
+            f"auctelis: malformed PreToolUse stdin — refusing (fail-closed): {exc}",
+            file=sys.stderr,
+        )
+        return 2
     if tool.lower() in {"edit", "write"} and not target:
         print(
             f"auctelis: PreToolUse {tool} missing file_path — refusing (fail-closed).",

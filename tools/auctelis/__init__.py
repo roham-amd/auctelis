@@ -7,6 +7,6 @@ Public entry points:
   (``auctelis.gate`` / ``auctelis.security.scan`` remain callable upsell/annotation)
 """
 
-__version__ = "0.5.0"
-__product_version__ = "0.5.0"
+__version__ = "0.6.0"
+__product_version__ = "0.6.0"
 __product_name__ = "auctelis"

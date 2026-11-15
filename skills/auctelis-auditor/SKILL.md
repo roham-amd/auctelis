@@ -3,8 +3,8 @@ name: auctelis-auditor
 description: >-
   Explain the last auctelis Authority Watch delta (watch / watch --delta-only /
   diff lock) line by line. Use when a session prints a new MCP server, skill,
-  hook, command, or CI authority line. Never approve a lock, never invent
-  findings, never run the scanner as a substitute for the delta.
+  hook, command, host permission change, or CI authority line. Never approve a
+  lock, never invent findings, never run the scanner as a substitute for the delta.
 ---
 
 # auctelis explainer
@@ -12,8 +12,8 @@ description: >-
 `AUTHORITY.lock` and `auctelis watch` are the source of truth. Your job is to
 read the delta and answer one question: **what should the human do next?**
 
-You may explain; you may not approve. Never run `watch --seal` or `watch --arm`,
-`hook install`, `lock`, or `ci init`. Never edit `.auctelis.yml`,
+You may explain; you may not approve. Never run `watch --seal`, `allow`,
+`watch --arm`, `hook install`, `lock`, or `ci init`. Never edit `.auctelis.yml`,
 `AUTHORITY.lock`, CODEOWNERS, or hooks.
 
 ## Run
@@ -21,7 +21,7 @@ You may explain; you may not approve. Never run `watch --seal` or `watch --arm`,
 ```bash
 # Install once (git tag; PyPI is not live yet):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.6.0#subdirectory=tools"
 ```
 
 ```bash
@@ -33,22 +33,24 @@ auctelis diff lock <base> <head>  # record-level old → new
 auctelis hook status              # wired / not yet observed / firing
 ```
 
-Do **not** run `lock`, `watch --seal`, `watch --arm`, `hook install`, `ci init`,
-`run`, `snapshot --execute`, or `auctelis-dev` commands. Do not add
+Do **not** run `lock`, `watch --seal`, `allow`, `watch --arm`, `hook install`,
+`ci init`, `run`, `snapshot --execute`, or `auctelis-dev` commands. Do not add
 `--trust-target-policy`.
 
 ## How to read one line
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
+~ host "claude-settings:settings.json" · permissions: prompt → bypassPermissions · +allow Bash(*)
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `mcp` / `hook` / `skill` / `ci` / `command` | Record kind |
+| `mcp` / `hook` / `skill` / `ci` / `command` / `host` | Record kind |
 | `"linear"` | Name declared in the host config |
 | `→ mcp.linear.app` | Destination host (or `launcher npx` for stdio) |
-| `network` / `secrets` / `execute` / `instructions` / `tools` | Declared capabilities |
+| `permissions: …` | Host permission posture change |
+| `network` / `secrets` / `execute` / `approvals` / `tools` | Declared capabilities |
 | `unpinned` / `pinned` / `digest` | Launcher pin state |
 | `publisher NOT VERIFIED` | Always true unless a human separately attested it |
 
@@ -65,9 +67,9 @@ expected second-session state.
 4. Never invent a finding, host, capability, or evidence id.
 5. Never claim a clean delta is safe; state what remains unknown (publisher,
    effective permission, runtime behavior).
-6. Never suggest the agent reseal or revert the lock — that is a human command.
+6. Never suggest the agent reseal or allow — that is a human command.
 7. If the human asks "is this okay?", answer with the four fields and the two
-   choices: **reseal** (accept the new reach) or **revert the config**.
+   choices: **reseal / allow** (accept the new reach) or **revert the config**.
 
 ## What to say
 
@@ -76,7 +78,8 @@ For a non-empty delta, report only:
 1. The changed line(s), quoted exactly.
 2. The destination and capability that are new.
 3. What is unknown (`publisher`, effective permissions, `NOT PARSED` if present).
-4. The human action: `auctelis watch --seal` or revert.
+4. The human action: `auctelis watch --seal --accept <digest>` /
+   `auctelis allow --accept <digest>`, or revert.
 
 Do not produce a vulnerability report from the scanner. If the human wants
 annotations, point them at `auctelis scan --agent` and say it is an annotation

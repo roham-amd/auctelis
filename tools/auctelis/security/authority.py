@@ -95,6 +95,12 @@ def _destinations(component: dict[str, Any]) -> list[str]:
         vals = component.get(key)
         if isinstance(vals, list):
             out.extend(str(v) for v in vals if v)
+    # curl|sh / wget|sh hosts embedded in hook command strings.
+    cmd = str(component.get("command") or "")
+    if cmd:
+        from auctelis.inventory.hints import extract_url_hosts_from_command
+
+        out.extend(extract_url_hosts_from_command(cmd))
     return sorted(set(out))
 
 
@@ -135,8 +141,17 @@ def _capabilities(component: dict[str, Any], findings: list[Any]) -> list[str]:
         caps.add("execute")
     if "literal_secret_in_env" in hints or "host_secret_inheritance" in hints:
         caps.add("access_secrets")
-    if component.get("url") or "external_url_reference" in hints:
+    if (
+        component.get("url")
+        or "external_url_reference" in hints
+        or component.get("destinations")
+        or "network_egress_in_hook" in hints
+        or "download_and_execute" in hints
+    ):
         caps.add("access_network")
+    if "permission_bypass_flag" in hints or "wildcard_bash_permission" in hints:
+        caps.add("modify_approvals")
+        caps.add("unattended_operation")
     return sorted(caps)
 
 

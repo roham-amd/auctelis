@@ -97,6 +97,7 @@ _AUTHORITY_FIELDS = (
     "capabilities",
     "destinations",
     "env_keys",
+    "permission_allows",
     "pin_state",
     "approval_posture",
     # Pinned facts: same name with different launcher/args/host is a replacement.
@@ -184,6 +185,22 @@ def _record_from_component(
     host_from_url = url_host(str(raw.get("url") or ""))
     if host_from_url and host_from_url not in destinations:
         destinations = [*destinations, host_from_url]
+    # Normalize destination URLs to hosts for cards / digests.
+    normalized_dest: list[str] = []
+    for item in destinations:
+        host = url_host(str(item)) or str(item).strip().lower()
+        if host and host not in normalized_dest:
+            normalized_dest.append(host)
+    destinations = normalized_dest
+    if host_from_url and host_from_url not in destinations:
+        destinations = [*destinations, host_from_url]
+    permission_allows = [
+        str(a)
+        for a in (
+            raw.get("permission_allows") or (raw.get("settings_detail") or {}).get("allow") or []
+        )
+        if str(a).strip()
+    ]
     return {
         "id": logical,
         "identity_key": key,
@@ -198,9 +215,10 @@ def _record_from_component(
         "capabilities": list(comp.get("capabilities") or []),
         "destinations": destinations,
         "env_keys": list(raw.get("env_keys") or []),
+        "permission_allows": permission_allows,
         "launcher": launcher,
         "args_digest": args_digest(args_list) if (launcher or args_list) else "",
-        "url_host": host_from_url,
+        "url_host": host_from_url or (destinations[0] if destinations else ""),
         "script_digest": script_digest,
     }
 
@@ -333,6 +351,7 @@ def normalize_lock_for_compare(lock: dict[str, Any]) -> dict[str, Any]:
             "capabilities": sorted(str(c) for c in (rec.get("capabilities") or [])),
             "destinations": sorted(str(d) for d in (rec.get("destinations") or [])),
             "env_keys": sorted(str(k) for k in (rec.get("env_keys") or [])),
+            "permission_allows": sorted(str(k) for k in (rec.get("permission_allows") or [])),
             "launcher": str(rec.get("launcher") or ""),
             "args_digest": str(rec.get("args_digest") or ""),
             "url_host": str(rec.get("url_host") or ""),
@@ -392,7 +411,7 @@ def classify_record_change(
             continue
         authority_touched = True
         representation_only = False
-        if field in {"capabilities", "destinations", "env_keys"}:
+        if field in {"capabilities", "destinations", "env_keys", "permission_allows"}:
             up, down = _set_delta(
                 [str(x) for x in (b_val or [])],
                 [str(x) for x in (a_val or [])],
@@ -565,7 +584,7 @@ def field_level_change_bits(
 ) -> list[str]:
     """Human-readable old → new fragments for lock PR lines."""
     bits: list[str] = []
-    for field in ("capabilities", "destinations", "env_keys"):
+    for field in ("capabilities", "destinations", "env_keys", "permission_allows"):
         bits.extend(
             _set_field_bits(
                 field,

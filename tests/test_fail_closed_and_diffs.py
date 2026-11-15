@@ -147,10 +147,31 @@ def test_gate_policy_change_is_growth(tmp_path: Path):
     assert report["delta"]["summary"]["policy_changed"] is True
 
 
+def _seal_home(home: Path, project: Path) -> None:
+    report, _cards, _scan = build_watch_report(home=home, project=project)
+    assert (
+        main(
+            [
+                "watch",
+                "--home",
+                str(home),
+                "--project",
+                str(project),
+                "--seal",
+                "--accept",
+                report["screen_digest"],
+            ]
+        )
+        == 0
+    )
+
+
 def test_watch_changed_card_shows_old_to_new(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = tmp_path / "project"
+    project.mkdir()
     _mcp(home, "linear")
-    assert main(["watch", "--home", str(home), "--seal"]) == 0
+    _seal_home(home, project)
     capsys.readouterr()
     (home / ".cursor" / "mcp.json").write_text(
         json.dumps(
@@ -167,7 +188,7 @@ def test_watch_changed_card_shows_old_to_new(tmp_path: Path, capsys):
         ),
         encoding="utf-8",
     )
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 1
+    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
     out = capsys.readouterr().out
     assert out.startswith('~ mcp "linear"')
     assert "host:" in out or "launcher:" in out
@@ -176,10 +197,12 @@ def test_watch_changed_card_shows_old_to_new(tmp_path: Path, capsys):
 
 def test_watch_removal_after_surface_deleted(tmp_path: Path, capsys):
     home = tmp_path / "home"
+    project = tmp_path / "project"
+    project.mkdir()
     _mcp(home)
-    assert main(["watch", "--home", str(home), "--seal"]) == 0
+    _seal_home(home, project)
     capsys.readouterr()
     (home / ".cursor" / "mcp.json").unlink()
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 1
+    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
     out = capsys.readouterr().out
     assert "removed" in out

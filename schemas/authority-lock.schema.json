@@ -54,6 +54,11 @@
           "capabilities": { "type": "array", "items": { "type": "string" } },
           "destinations": { "type": "array", "items": { "type": "string" } },
           "env_keys": { "type": "array", "items": { "type": "string" } },
+          "permission_allows": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Declared host permission allow list (e.g. Bash(*))"
+          },
           "launcher": {
             "type": "string",
             "description": "Executable / transport launcher (npx, uvx, node, …)"

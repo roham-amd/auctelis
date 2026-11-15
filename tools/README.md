@@ -1,14 +1,14 @@
 # auctelis tooling (`auctelis`)
 
-Authority Watch CLI: `watch` → `--seal` → `--arm` → `why` → `hook status`.
-Repo `AUTHORITY.lock` + optional PR Action/`gate` are the team upsell. `scan` /
-`vet` are hidden annotation layers.
+Project Trust CLI: `watch` → `--seal --accept` → `allow` → `--arm` → `why` →
+`hook status [--probe]`. Repo `AUTHORITY.lock` + optional PR Action/`gate` are
+the team upsell. `scan` / `vet` are hidden annotation layers.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.5.0** · Product: auctelis **0.5.0**
+Package: `auctelis` **0.6.0** · Product: auctelis **0.6.0**
 
 ---
 
@@ -36,14 +36,15 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.6.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
-auctelis                    # highlights + inventory, or sealed delta
-auctelis watch --seal       # human baseline in ~/.auctelis/AUTHORITY.lock
-auctelis watch --arm        # session + tripwire hooks
-auctelis hook status        # wired / not yet observed / firing
-auctelis why <name>         # exact config path
-auctelis demo               # optional
+auctelis                                   # every sealable record + Accept digest
+auctelis watch --seal --accept <digest>    # human baseline
+auctelis allow --accept <digest>           # project allow store
+auctelis watch --arm                       # session + tripwire hooks
+auctelis hook status --probe               # wired / firing; prove deny
+auctelis why <name>                        # exact config path
+auctelis demo                              # optional
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).

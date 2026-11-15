@@ -11,6 +11,8 @@ available to tooling but does not become the page.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 from urllib.parse import urlparse
 
@@ -56,9 +58,16 @@ _CAP_LABELS: dict[str, str] = {
 
 _MCP_KINDS = {"mcp"}
 _PUBLISHER = "publisher NOT VERIFIED"
-# Host-settings / agent-host rows are inventory noise on the product screen.
-_NOISE_KINDS = {"agent host", "host"}
-_HIGHLIGHT_CAPS = {"network", "secrets", "execute", "tools"}
+# Agent-host containers are inventory scaffolding, not sealable authority.
+# Host Settings (permissions, bypass) MUST appear — they are the highest-risk class.
+_NOISE_KINDS = {"agent host"}
+_HIGHLIGHT_CAPS = {"network", "secrets", "execute", "tools", "approvals", "unattended"}
+_POSTURE_LABELS = {
+    "prompt": "prompt",
+    "auto": "auto",
+    "bypass": "bypassPermissions",
+    "unknown": "unknown",
+}
 
 
 def kind_label(kind: str | None) -> str:
@@ -94,7 +103,7 @@ def destination(record: dict[str, Any]) -> str:
     if explicit:
         return explicit
     for item in record.get("destinations") or []:
-        host = _host_from(item)
+        host = _host_from(item) or (str(item).strip().lower() if "." in str(item) else "")
         if host:
             return host
     return ""
@@ -125,6 +134,15 @@ def _pin_bit(record: dict[str, Any]) -> str:
     return ""
 
 
+def _posture(record: dict[str, Any]) -> str:
+    raw = str(record.get("approval_posture") or "").strip().lower()
+    return _POSTURE_LABELS.get(raw, raw)
+
+
+def _permission_allows(record: dict[str, Any]) -> list[str]:
+    return [str(a) for a in (record.get("permission_allows") or []) if str(a).strip()]
+
+
 def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
     """Render one added/current authority record as a single card line."""
     kind = kind_label(record.get("kind"))
@@ -132,8 +150,27 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
     path = str(record.get("path") or "").replace("\\", "/")
     host = destination(record)
     launch = launcher(record)
+    posture = _posture(record)
+    allows = _permission_allows(record)
 
-    bits: list[str] = []
+    # First-class permission-posture card for host settings / bypass.
+    if kind == "host" or posture == "bypassPermissions" or allows:
+        bits: list[str] = []
+        if posture and posture != "unknown":
+            bits.append(f"permissions: {posture}")
+        if allows:
+            shown = ", ".join(allows[:4])
+            bits.append(f"+allow {shown}")
+        caps = _capabilities(record)
+        for cap in caps:
+            if cap not in {"approvals", "unattended"} and cap not in bits:
+                bits.append(cap)
+        if host:
+            bits.append(f"→ {host}")
+        bits.append(_PUBLISHER)
+        return f'{prefix} {kind} "{name}" · ' + " · ".join(bits)
+
+    bits = []
     target = ""
     if host:
         target = f" → {host}"
@@ -156,7 +193,8 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
 def _hosts(record: dict[str, Any]) -> set[str]:
     hosts = {str(record.get("url_host") or "").strip().lower()}
     for item in record.get("destinations") or []:
-        hosts.add(_host_from(item))
+        host = _host_from(item) or (str(item).strip().lower() if "." in str(item) else "")
+        hosts.add(host)
     return {h for h in hosts if h}
 
 
@@ -173,6 +211,18 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
     kind = kind_label(after.get("kind") or before.get("kind"))
     name = str(after.get("name") or before.get("name") or item.get("id") or "?").strip()
     bits: list[str] = []
+
+    old_posture, new_posture = _posture(before), _posture(after)
+    if old_posture != new_posture:
+        bits.append(f"permissions: {old_posture or '∅'} → {new_posture or '∅'}")
+
+    allow_added, allow_removed = _set_delta(
+        before.get("permission_allows"), after.get("permission_allows")
+    )
+    if allow_added:
+        bits.append(f"+allow {', '.join(allow_added[:3])}")
+    if allow_removed:
+        bits.append(f"-allow {', '.join(allow_removed[:3])}")
 
     before_hosts, after_hosts = _hosts(before), _hosts(after)
     added_hosts = sorted(after_hosts - before_hosts)
@@ -205,8 +255,27 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
     if old_pin != new_pin:
         bits.append(f"pin: {old_pin or '∅'} → {new_pin or '∅'}")
 
+    # Always name a concrete field — never a bare "fields changed".
     if not bits:
-        bits.append("fields changed")
+        changed_fields = []
+        for field in (
+            "approval_posture",
+            "permission_allows",
+            "destinations",
+            "url_host",
+            "launcher",
+            "capabilities",
+            "env_keys",
+            "pin_state",
+            "script_digest",
+            "args_digest",
+        ):
+            if before.get(field) != after.get(field):
+                changed_fields.append(field)
+        if changed_fields:
+            bits.append(f"{changed_fields[0]} changed")
+        else:
+            bits.append("record identity changed")
     return f'{prefix} {kind} "{name}" · ' + " · ".join(bits)
 
 
@@ -223,10 +292,14 @@ def _is_renderable(record: dict[str, Any]) -> bool:
 def is_highlight_record(record: dict[str, Any]) -> bool:
     """True when the record introduces a new destination, executable, or secret.
 
-    First-run screens show only these; the rest collapses into inventory counts.
+    First-run screens show these first; host permission posture is always a highlight.
     """
     if not _is_renderable(record):
         return False
+    if _posture(record) == "bypassPermissions":
+        return True
+    if _permission_allows(record):
+        return True
     if destination(record):
         return True
     if launcher(record):
@@ -240,13 +313,52 @@ def is_highlight_record(record: dict[str, Any]) -> bool:
 def highlight_cards(
     records: list[dict[str, Any]] | None,
     *,
-    limit: int = 6,
+    limit: int | None = None,
 ) -> tuple[list[str], int, int]:
-    """Return ``(cards, highlight_total, inventory_total)`` for a first-run screen."""
+    """Return ``(cards, highlight_total, inventory_total)`` for a first-run screen.
+
+    Every sealable (renderable) record is shown so seal never hides Host Settings.
+    Highlights are listed first. ``limit=None`` means no truncation.
+    """
     inventory = [r for r in (records or []) if _is_renderable(r)]
     highlights = [r for r in inventory if is_highlight_record(r)]
-    cards = [record_card(r) for r in highlights[:limit]]
+    remainder = [r for r in inventory if not is_highlight_record(r)]
+    ordered = [*highlights, *remainder]
+    shown = ordered if limit is None else ordered[: max(int(limit), 0)]
+    cards = [record_card(r) for r in shown]
     return cards, len(highlights), len(inventory)
+
+
+def sealable_records(records: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Records that appear on screen and may be sealed (excludes agent-host noise)."""
+    return [r for r in (records or []) if _is_renderable(r)]
+
+
+def screen_digest(records: list[dict[str, Any]] | None) -> str:
+    """Stable short digest of every record shown / sealed on the current screen."""
+    payload = []
+    for record in sealable_records(records):
+        payload.append(
+            {
+                "id": record.get("id"),
+                "kind": kind_label(record.get("kind")),
+                "name": record.get("name"),
+                "path": str(record.get("path") or "").replace("\\", "/"),
+                "approval_posture": record.get("approval_posture"),
+                "permission_allows": sorted(
+                    str(a) for a in (record.get("permission_allows") or [])
+                ),
+                "destinations": sorted(str(d) for d in (record.get("destinations") or [])),
+                "url_host": record.get("url_host"),
+                "launcher": record.get("launcher"),
+                "capabilities": sorted(str(c) for c in (record.get("capabilities") or [])),
+                "env_keys": sorted(str(k) for k in (record.get("env_keys") or [])),
+                "pin_state": record.get("pin_state"),
+            }
+        )
+    payload.sort(key=lambda r: (str(r.get("kind")), str(r.get("name")), str(r.get("path"))))
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
 def why_record(record: dict[str, Any]) -> list[str]:
@@ -258,6 +370,12 @@ def why_record(record: dict[str, Any]) -> list[str]:
         f'{kind} "{name}"',
         f"  path: {path}",
     ]
+    posture = _posture(record)
+    if posture and posture != "unknown":
+        lines.append(f"  permissions: {posture}")
+    allows = _permission_allows(record)
+    if allows:
+        lines.append(f"  allow: {', '.join(allows[:8])}")
     host = destination(record)
     if host:
         lines.append(f"  destination: {host}")

@@ -5,6 +5,35 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.6.0] — 2026-11-15
+
+### Added
+
+- **Consent integrity:** first-class permission-posture cards
+  (`bypassPermissions`, `+allow Bash(*)`); Host Settings always on screen;
+  `watch --seal --accept <digest>` refuses seal unless the screen digest matches.
+- **curl|sh host extract:** destination host from `curl`/`wget` pipelines lands
+  in destinations / cards (`→ evil.example`).
+- **Project Trust:** project-level discovery (`.mcp.json`, `.claude/settings.json`,
+  `.cursor/mcp.json`, commands/hooks) + `auctelis allow --accept <digest>` store;
+  watch surfaces project-allow status.
+- **Hook hardening:** absolute interpreter paths at install; per-host heartbeats;
+  `hook status --probe` (exit 1 on fail); malformed hook stdin fails closed.
+- **Distribution:** `plugins/claude/` and `plugins/cursor/` bundles.
+
+### Changed
+
+- Public path: `watch → --seal --accept → allow → --arm → why → hook status`.
+- Roadmap north-star is Project Trust (direnv allow for agent authority).
+- Lock schema records may include `permission_allows`.
+- First-run screen shows every sealable record (no silent truncation).
+
+### Compatibility
+
+- Existing `AUTHORITY.lock` files without `permission_allows` remain valid.
+- `--seal` without `--accept` now fails closed (exit 2) — intentional consent fix.
+- Hidden scanner / gate / Docker remain callable; not required for install.
+
 ## [0.5.0] — 2026-11-14
 
 ### Added
