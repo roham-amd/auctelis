@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "fs": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem@0.1.0",
+        "/tmp"
+      ]
+    }
+  }
+}
