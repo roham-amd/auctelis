@@ -1,26 +1,26 @@
 config_id,surface,expected_growth,actual_growth,capabilities,tp_fp_fn,records
-cfg-001-mcp-remote-unpinned,mcp,yes,yes,"access_network, access_secrets, invoke_tools",TP,1
+cfg-001-mcp-remote-unpinned,mcp,yes,yes,"access_network, invoke_tools",TP,1
 cfg-002-mcp-stdio-node,mcp,yes,yes,"execute_commands, invoke_tools",TP,1
 cfg-003-skill-prompt-injection,skill,yes,yes,"access_network, access_secrets, modify_agent_instructions",TP,1
 cfg-004-benign-readme-only,none,no,no,,TN,0
-cfg-005-hooks-sessionstart,hooks,yes,yes,"access_network, execute, execute_commands, modify_approvals",TP,1
+cfg-005-hooks-sessionstart,hooks,yes,yes,"access_network, execute, execute_commands, modify_approvals, unattended_operation",TP,1
 cfg-006-mcp-pinned-benign,mcp,yes,yes,"execute_commands, invoke_tools",TP,1
 cfg-007-mcp-cursor-url,mcp,yes,yes,"access_network, invoke_tools",TP,1
-cfg-008-claude-settings-bypass,host,yes,yes,"execute_commands, modify_approvals, unattended_operation",TP,1
-cfg-009-agents-md-instructions,instructions,yes,yes,,TP,1
-cfg-010-claude-md,instructions,yes,yes,,TP,1
-cfg-011-cursor-rules,instructions,yes,yes,,TP,2
-cfg-012-skill-clean,skill,yes,yes,,TP,1
-cfg-013-skill-secrets-hint,skill,yes,yes,access_secrets,TP,1
+cfg-008-claude-settings-bypass,host,yes,yes,"modify_approvals, unattended_operation",TP,1
+cfg-009-agents-md-instructions,instructions,yes,yes,modify_agent_instructions,TP,1
+cfg-010-claude-md,instructions,yes,yes,modify_agent_instructions,TP,1
+cfg-011-cursor-rules,instructions,yes,yes,modify_agent_instructions,TP,2
+cfg-012-skill-clean,skill,yes,yes,modify_agent_instructions,TP,1
+cfg-013-skill-secrets-hint,skill,yes,yes,"access_secrets, modify_agent_instructions",TP,1
 cfg-014-plugin-manifest,plugin,yes,yes,,TP,1
 cfg-015-subagent-file,subagent,yes,yes,delegate_tasks,TP,1
-cfg-016-ci-workflow-mcp,ci,yes,yes,"access_secrets, invoke_agent_tooling, unattended_operation",TP,1
-cfg-017-hooks-json-pretool,hooks,yes,yes,"execute, execute_commands, modify_approvals",TP,1
+cfg-016-ci-workflow-mcp,ci,yes,yes,"access_secrets, unattended_operation",TP,1
+cfg-017-hooks-json-pretool,hooks,yes,yes,"execute, execute_commands, modify_approvals, unattended_operation",TP,1
 cfg-018-vscode-mcp,mcp,yes,yes,"execute_commands, invoke_tools",TP,1
 cfg-019-nested-mcp,mcp,yes,yes,"access_network, invoke_tools",TP,1
-cfg-020-gemini-md,instructions,yes,yes,,TP,1
+cfg-020-gemini-md,instructions,yes,yes,modify_agent_instructions,TP,1
 cfg-021-empty-dir-tn,none,no,no,,TN,0
 cfg-022-readme-only-tn,none,no,no,,TN,0
 cfg-023-mcp-floating-npx,mcp,yes,yes,"execute_commands, invoke_tools",TP,1
-cfg-024-claude-commands,command,yes,no,,FN,0
+cfg-024-claude-commands,command,yes,yes,modify_agent_instructions,TP,1
 cfg-025-multi-mcp-growth,mcp,yes,yes,"access_network, execute_commands, invoke_tools",TP,3

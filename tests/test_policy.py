@@ -41,6 +41,19 @@ def test_apply_policy_defaults_cli_wins():
     assert apply_policy_defaults(policy=path_policy, fail_on="never", fail_on_from_cli=True) is None
 
 
+def test_enforce_does_not_promote_fail_on_never(tmp_path: Path):
+    """Lock-only contract: mode=enforce must not rewrite fail_on=never → high."""
+    path = tmp_path / ".auctelis.yml"
+    path.write_text(
+        "version: 1\npolicy:\n  mode: enforce\n  fail_on: never\n",
+        encoding="utf-8",
+    )
+    policy = load_policy(path)
+    assert policy.mode == "enforce"
+    assert policy.fail_on == "never"
+    assert apply_policy_defaults(policy=policy, fail_on=None, fail_on_from_cli=False) is None
+
+
 def test_suppression_filters_findings(tmp_path: Path):
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"

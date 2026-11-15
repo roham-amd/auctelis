@@ -131,9 +131,9 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     init_cmd.add_argument("--force", action="store_true")
     init_cmd.add_argument(
         "--owner",
-        metavar="@TEAM",
+        metavar="TEAM",
         required=True,
-        help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners)",
+        help="CODEOWNERS identity for AUTHORITY.lock (e.g. security; @ optional)",
     )
     init_cmd.add_argument(
         "--advisory",
@@ -151,6 +151,11 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Show lock / workflow / CODEOWNERS / protection status",
     )
     status_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
+    status_cmd.add_argument(
+        "--check",
+        action="store_true",
+        help="Exit nonzero when the authority gate is not armed",
+    )
 
     ci = sub.add_parser("ci", help="Write enforce workflow + CODEOWNERS + lock")
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
@@ -162,8 +167,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     ci_init.add_argument("--force", action="store_true")
     ci_init.add_argument(
         "--owner",
-        metavar="@TEAM",
-        help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners); required",
+        metavar="TEAM",
+        help="CODEOWNERS identity for AUTHORITY.lock (e.g. security; @ optional); required",
     )
     ci_init.add_argument(
         "--advisory",

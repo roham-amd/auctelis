@@ -47,6 +47,12 @@ jobs:
       - name: Pytest
         run: uv run --locked pytest -q ../tests
 
+      - name: Dogfood lock freshness
+        working-directory: .
+        run: |
+          uv run --directory tools --locked auctelis check .
+          uv run --directory tools --locked auctelis lock --check .
+
   # Week-2 OS matrix: product CLI smoke on Windows / macOS (full lint stays Ubuntu).
   pytest-matrix:
     strategy:

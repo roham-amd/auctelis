@@ -13,17 +13,17 @@ from auctelis.build import (
 )
 from auctelis.versioning import package_version, product_version
 
-_EXPECTED = "0.8.1"
 _ROOT = Path(__file__).resolve().parents[1]
+_EXPECTED = (_ROOT / "VERSION").read_text(encoding="utf-8").strip()
 
 
 def test_version_surfaces_aligned():
+    assert _EXPECTED
     assert __product_version__ == _EXPECTED
     assert __version__ == _EXPECTED
     assert product_version() == _EXPECTED
     assert package_version() == _EXPECTED
     assert LOCK_VERSION == 1
-    assert (_ROOT / "VERSION").read_text(encoding="utf-8").strip() == _EXPECTED
 
 
 def test_release_manifest_disables_removed_aliases():

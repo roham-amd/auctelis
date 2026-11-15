@@ -6,7 +6,7 @@ Related: [`ROADMAP.md`](ROADMAP.md), [`tests/rules/`](../tests/rules/),
 [`tests/atlas/`](../tests/atlas/) (fixture corpus).
 
 **Honesty:** `eval/configs/cfg-001`…`cfg-025` are a **fixture regression suite**
-scored by `python eval/score_configs.py` (current: 21 TP / 0 FP / 1 FN / 3 TN).
+scored by `python eval/score_configs.py` (current: **22 TP / 0 FP / 0 FN / 3 TN**).
 That number is **not** published precision/recall on external repos.
 `eval/repos-25.txt` remains a seed list for outside pilots — do not conflate
 the two.

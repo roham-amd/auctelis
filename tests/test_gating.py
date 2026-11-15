@@ -1,7 +1,7 @@
 from datetime import date
 from pathlib import Path
 
-from auctelis.policy import Suppression, load_policy
+from auctelis.policy import load_policy
 from auctelis.security.gating import (
     compute_exit_code,
     is_gate_finding,
@@ -126,6 +126,6 @@ def test_example_policy_loads():
     root = Path(__file__).resolve().parents[1]
     policy = load_policy(root / "examples" / "auctelis.policy.example.yml")
     assert policy.mode == "enforce"
-    assert policy.fail_on == "high"
-    assert policy.suppressions
-    assert isinstance(policy.suppressions[0], Suppression)
+    # Product default: fail_on never (lock-only; research scan is separate).
+    assert policy.fail_on == "never"
+    assert policy.suppressions == []

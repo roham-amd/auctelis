@@ -1,5 +1,5 @@
 # Enforce-by-default quickstart. For warn-only: locked=false or
-# `auctelis ci init --advisory --owner @team`.
+# `auctelis init --advisory --owner security`.
 # Prefer an immutable Action commit SHA in high-assurance repos.
 name: auctelis
 on:
@@ -18,15 +18,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install auctelis (git tag; PyPI not published yet)
-        run: >
-          pip install
-          "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
-
       - name: auctelis Authority Diff
+        # Tools are bundled in the Action — no pip install required.
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.1
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.2
         with:
           path: .
           mode: scan
@@ -34,6 +30,5 @@ jobs:
           authority-diff: "true"
           locked: "true"
           strict-ruleset: "true"
-          install-tools-from: path
           annotate: true
           output-dir: auctelis-out

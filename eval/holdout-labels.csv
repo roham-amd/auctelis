@@ -22,5 +22,5 @@ cfg-020-gemini-md,instructions,yes,modify_agent_instructions,GEMINI.md,TP,fixtur
 cfg-021-empty-dir-tn,none,no,,empty tree TN,TN,fixture
 cfg-022-readme-only-tn,none,no,,non-agent docs TN,TN,fixture
 cfg-023-mcp-floating-npx,mcp,yes,execute_commands,unpinned npx package,TP,fixture
-cfg-024-claude-commands,command,yes,,claude slash command — known adapter gap (FN),FN,fixture
+cfg-024-claude-commands,command,yes,modify_agent_instructions,claude slash command (fixture TP),TP,fixture
 cfg-025-multi-mcp-growth,mcp,yes,"network,execute_commands",multi MCP growth,TP,fixture

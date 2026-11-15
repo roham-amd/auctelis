@@ -16,16 +16,17 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 ## First ten minutes
 
 ```bash
-# Git tag until PyPI returns 200 for 0.8.1+.
-uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
+# Prefer PyPI when live; otherwise pin the release tag.
+uvx auctelis --version
+# or: uv tool install --python 3.12 auctelis
+# fallback: git+https://github.com/roham-amd/auctelis.git@v0.8.2#subdirectory=tools
 
 cd your-repo
-auctelis init --owner @security   # policy + workflow + CODEOWNERS + lock
-# commit, open PR → BASELINE_ADOPTED; later growth needs CODEOWNERS
+auctelis init --owner security    # policy + workflow + CODEOWNERS + lock
+# PowerShell: omit @ — auctelis adds it. commit → PR → BASELINE_ADOPTED
 
 auctelis check                    # repo authority vs AUTHORITY.lock
-auctelis status                   # lock / workflow / CODEOWNERS / protection
+auctelis status --check           # nonzero if gate is not armed
 auctelis diff --base origin/main  # local PR Authority Diff simulator
 auctelis why linear               # exact config path for one name
 ```
@@ -52,9 +53,9 @@ Agents must export `AUCTELIS_AGENT=1`; `lock`, `init`, and `ci init` are refused
 
 | Command | Purpose |
 | --- | --- |
-| `auctelis init --owner @team` | One-command setup (preferred) |
+| `auctelis init --owner team` | One-command setup (preferred; `@` optional) |
 | `auctelis` / `check` | Repo authority vs `AUTHORITY.lock` (front door) |
-| `auctelis status` | Lock / workflow / CODEOWNERS / protection |
+| `auctelis status [--check]` | Lock / workflow / CODEOWNERS / protection |
 | `auctelis lock --update` | Write / refresh the committed lock |
 | `auctelis ci init --apply --owner @team` | Same as init (legacy alias path) |
 | `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS gate |

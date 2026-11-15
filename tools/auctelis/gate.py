@@ -103,6 +103,105 @@ def codeowners_covers_lock(codeowners_text: str) -> bool:
     return bool(parse_codeowners_for_path(codeowners_text, target=LOCK_NAME))
 
 
+# Concrete paths probed for gate self-protection (CODEOWNERS last-match).
+_PROTECTION_TARGETS = (
+    LOCK_NAME,
+    ".auctelis.yml",
+    ".github/workflows/auctelis-gate.yml",
+    ".github/actions/auctelis-gate/action.yml",
+    "CODEOWNERS",
+    ".github/CODEOWNERS",
+)
+
+
+def _codeowners_owners_for(codeowners_text: str, target: str) -> list[str]:
+    """Owners for ``target``, honoring directory / glob CODEOWNERS rules."""
+    direct = parse_codeowners_for_path(codeowners_text, target=target)
+    if direct:
+        return direct
+    # Directory rules: `.github/workflows/` covers nested workflow files.
+    owners: list[str] = []
+    target_norm = target.replace("\\", "/").lstrip("/")
+    for raw in codeowners_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if not parts:
+            continue
+        pattern, *rest = parts
+        normalized = pattern.replace("\\", "/").lstrip("/")
+        matched = False
+        if (
+            normalized in {"*", "**"}
+            or (normalized.endswith("/") and target_norm.startswith(normalized))
+            or (normalized.endswith("/**") and target_norm.startswith(normalized[:-3]))
+            or (normalized.endswith("/**/*") and target_norm.startswith(normalized[:-5]))
+            or (normalized.rstrip("/") and target_norm.startswith(normalized.rstrip("/") + "/"))
+        ):
+            matched = True
+        if matched:
+            owners = [t for t in rest if t.startswith("@")]
+    return owners
+
+
+def codeowners_covers_path(codeowners_text: str, target: str) -> bool:
+    return bool(_codeowners_owners_for(codeowners_text, target))
+
+
+def codeowners_covers_protection(
+    codeowners_text: str,
+    *,
+    root: Path | None = None,
+) -> tuple[bool, list[str]]:
+    """Return ``(ok, missing_paths)`` for lock + existing gate self-protection paths.
+
+    When ``root`` is set, only paths that exist on disk are required (plus
+    ``AUTHORITY.lock``). Init templates still emit the full set.
+    """
+    if not codeowners_text.strip():
+        return False, [LOCK_NAME]
+
+    targets: list[str]
+    if root is None:
+        targets = list(_PROTECTION_TARGETS)
+    else:
+        targets = [LOCK_NAME]
+        gate_installed = (root / ".github" / "workflows" / "auctelis-gate.yml").is_file() or (
+            root / ".github" / "actions" / "auctelis-gate" / "action.yml"
+        ).is_file()
+        for rel in _PROTECTION_TARGETS:
+            if rel == LOCK_NAME:
+                continue
+            if rel in {"CODEOWNERS", ".github/CODEOWNERS"}:
+                # Self-cover CODEOWNERS once the gate workflow/action is installed.
+                if gate_installed and any(
+                    (root / cand).is_file() for cand in (".github/CODEOWNERS", "CODEOWNERS")
+                ):
+                    targets.append(rel)
+                continue
+            if (root / rel).is_file() or (root / rel).is_dir():
+                targets.append(rel)
+        # Deduplicate while preserving order.
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for t in targets:
+            if t not in seen:
+                seen.add(t)
+                deduped.append(t)
+        targets = deduped
+
+    missing = [target for target in targets if not codeowners_covers_path(codeowners_text, target)]
+    # CODEOWNERS / .github/CODEOWNERS: covering either form is enough.
+    co_missing = [p for p in missing if p in {"CODEOWNERS", ".github/CODEOWNERS"}]
+    if len(co_missing) == 1:
+        missing = [p for p in missing if p not in {"CODEOWNERS", ".github/CODEOWNERS"}]
+    elif len(co_missing) >= 2:
+        missing = [p for p in missing if p not in {"CODEOWNERS", ".github/CODEOWNERS"}]
+        missing.append(".github/CODEOWNERS")
+    return (not missing), missing
+
+
 def _api_get_json(url: str, *, token: str) -> tuple[Any | None, int]:
     req = urllib.request.Request(
         url,
@@ -242,12 +341,27 @@ def adoption_bootstrap_verdict(
     *,
     base_lock_present: bool,
     head_lock_present: bool,
+    codeowners_covers: bool | None = None,
+    base_ref_resolved: bool = True,
+    missing_protection_paths: list[str] | None = None,
 ) -> dict[str, Any]:
     """Distinguish first-lock adoption from a normal growth-gate pass.
 
     Used by the GitHub Action (and tests) when there is no base-ref lock.
     ``BASELINE_ADOPTED`` is **not** equivalent to ``PASS`` on a growth gate.
+    Adoption requires a resolved base ref and CODEOWNERS protection coverage.
     """
+    if not base_ref_resolved:
+        return {
+            "ok": False,
+            "ceremony": "fail_closed",
+            "verdict": "FAIL_CLOSED",
+            "message": (
+                "Base ref could not be resolved — fail closed. "
+                "BASELINE_ADOPTED only applies when the base ref resolves and "
+                "has no AUTHORITY.lock."
+            ),
+        }
     if base_lock_present:
         return {
             "ok": True,
@@ -256,6 +370,18 @@ def adoption_bootstrap_verdict(
             "message": "Base lock present — run auctelis gate for authority growth.",
         }
     if head_lock_present:
+        if codeowners_covers is False:
+            missing = ", ".join(missing_protection_paths or []) or "AUTHORITY.lock"
+            return {
+                "ok": False,
+                "ceremony": "fail_closed",
+                "verdict": "NEEDS_REVIEW",
+                "message": (
+                    "First AUTHORITY.lock on head, but CODEOWNERS does not cover "
+                    f"protection paths ({missing}). Add owners before treating "
+                    "this as BASELINE_ADOPTED."
+                ),
+            }
         return {
             "ok": True,
             "ceremony": "baseline_adopted",
@@ -398,6 +524,9 @@ def run_gate(
         else load_codeowners_text(root, codeowners_path=codeowners_path)
     )
     owners_present = codeowners_covers_lock(co_text) if co_text else bool(owners)
+    protection_ok, missing_protection = (
+        codeowners_covers_protection(co_text, root=root) if co_text else (False, [LOCK_NAME])
+    )
     needs_approval = label == "GROWTH"
     # Head CODEOWNERS alone is attacker-writable on a PR. Trust it only when:
     # - caller passed a base-ref copy (--codeowners / codeowners_text), or
@@ -434,7 +563,16 @@ def run_gate(
         error = (
             "AUTHORITY.lock has no CODEOWNERS entry on the trusted ref; "
             "cannot rely on GitHub-native review. "
-            "Run `auctelis ci init --owner @user` and protect authority paths."
+            "Run `auctelis init --owner security` and protect authority paths."
+        )
+    elif needs_approval and not protection_ok:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        missing = ", ".join(missing_protection) or "protection paths"
+        error = (
+            f"CODEOWNERS is missing coverage for gate self-protection ({missing}). "
+            "Cover AUTHORITY.lock, .auctelis.yml, .github/workflows/, "
+            ".github/actions/, and CODEOWNERS."
         )
     elif needs_approval and ruleset_status == "MISSING":
         ok = False
@@ -498,6 +636,8 @@ def run_gate(
         "label": label,
         "required_owners": owners,
         "owners_present": owners_present,
+        "protection_paths_covered": protection_ok,
+        "missing_protection_paths": missing_protection,
         "ruleset": ruleset_status,
         "ruleset_detail": ruleset_detail,
         "delta": delta,
@@ -534,7 +674,13 @@ def render_gate_report(report: dict[str, Any]) -> str:
         if protection:
             ruleset_line += f" [{protection}]"
         lines.append(ruleset_line)
-        if report.get("strict_ruleset"):
+        ruleset_detail = str(report.get("ruleset_detail") or "")
+        if (
+            ruleset_detail == "not checked"
+            or "ruleset check skipped" in str(report.get("error") or "").lower()
+        ):
+            lines.append("Ruleset check skipped")
+        elif report.get("strict_ruleset"):
             lines.append("Strict ruleset: ON (UNVERIFIED fails growth)")
         lines.append(
             "Approval model: GitHub-native CODEOWNERS/rulesets "

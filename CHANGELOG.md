@@ -5,12 +5,46 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.8.2] — 2026-11-15
+
+### Fixed
+
+- **No `fail_on` promotion** — `mode: enforce` + `fail_on: never` stays never
+  (lock-only contract; research findings no longer become a de facto gate).
+- **Action inventory-only** — required check fails on gate only; research scan
+  is `continue-on-error` / advisory.
+- **Fail closed on unresolved base ref** — not silent `BASELINE_ADOPTED`.
+- **Adoption requires CODEOWNERS** coverage for `AUTHORITY.lock`.
+- **`check` / `lock` refuse unparsed** agent configs (no false-green 0-record seals).
+- **`evidence_strength` / `capability_origin`** survive lock normalize → PR cards
+  keep `LITERAL_CONFIG`; CI type defaults stay `TYPE_DEFAULT`.
+- **`init` CODEOWNERS** — merge into root/docs/`.github` without shadowing; `--force`
+  never wipes; reports actual workflow locked/mode.
+- Instruction / slash-command type defaults include `modify_agent_instructions`.
+
+### Added
+
+- **`auctelis status --check`** — nonzero when the gate is not armed.
+- Protection-path CODEOWNERS coverage (lock, policy, workflows, actions, CODEOWNERS)
+  when the gate workflow/action is installed.
+- Compact PR reach table (up to 10 cards; named overflow).
+- Dogfood validate step: `auctelis check .` + `lock --check .`.
+- Trust-reset tests (`tests/test_trust_reset_30d.py`).
+
+### Changed
+
+- Generated Action uses **bundled tools** (no consumer `pip install`).
+- Demo is lock-only (no findings-first walkthrough).
+- Policy docs / example default to `fail_on: never`.
+- Eval fixture score **22 TP / 0 FP / 0 FN / 3 TN** (cfg-024 TP).
+- Install docs prefer `uvx auctelis` + signed wheel / cosign.
+
 ## [0.8.1] — 2026-11-15
 
 ### Fixed
 
-- **Consumer Action pin** — `init` / `ci init --apply` pin the Action and pip
-  install to the auctelis **release tag** (`v0.8.1`), never consumer-repo HEAD
+- **Consumer Action pin** — `init` / `ci init --apply` pin the Action to the
+  auctelis **release tag** (`v0.8.1`), never consumer-repo HEAD
   (which returned GitHub 422 outside the dogfood repo).
 - **Empty-baseline growth** — a 0-record base lock + head authority is `GROWTH`
   needing CODEOWNERS, not permanent `FAIL_CLOSED`.

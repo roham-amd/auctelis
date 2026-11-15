@@ -38,6 +38,27 @@ _TYPE_DEFAULTS: dict[str, list[tuple[CapabilityKind, VerificationStatus, str]]] 
     "Skill": [
         ("modify_agent_instructions", "OBSERVED", "Skills inject instructions into the agent."),
     ],
+    "Rule / instruction file": [
+        (
+            "modify_agent_instructions",
+            "OBSERVED",
+            "Instruction files inject guidance into the agent.",
+        ),
+    ],
+    "Rule pack": [
+        (
+            "modify_agent_instructions",
+            "OBSERVED",
+            "Rule packs inject guidance into the agent.",
+        ),
+    ],
+    "Claude slash command": [
+        (
+            "modify_agent_instructions",
+            "OBSERVED",
+            "Slash commands inject prompt/instructions.",
+        ),
+    ],
     "Hook": [
         ("unattended_operation", "POTENTIAL", "Hooks can run on lifecycle events."),
         ("modify_approvals", "POTENTIAL", "Pre-tool hooks may alter approved arguments."),

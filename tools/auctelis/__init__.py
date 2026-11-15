@@ -9,6 +9,6 @@ plus build, lint, corpus, and other toolkit commands.
 Libraries: ``auctelis.check``, ``auctelis.authority_lock``, ``auctelis.gate``.
 """
 
-__version__ = "0.8.1"
-__product_version__ = "0.8.1"
+__version__ = "0.8.2"
+__product_version__ = "0.8.2"
 __product_name__ = "auctelis"

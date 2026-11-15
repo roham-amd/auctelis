@@ -137,6 +137,7 @@ def build_check_report(
     report["unparsed"] = _unparsed_count(scan)
     report["gated_findings"] = _gated_finding_count(scan)
     report["coverage_line"] = _family_coverage_line(scan)
+    report["coverage"] = scan.coverage if isinstance(scan.coverage, dict) else {}
     report["inventory_total"] = len(sealable)
     report["empty"] = len(sealable) == 0
 
@@ -157,6 +158,10 @@ def build_check_report(
         report["meaningful"] = False
         report["label"] = "NONE"
         report["verdict"] = "BASELINE_NEEDED"
+        if report["unparsed"]:
+            report["meaningful"] = True
+            report["verdict"] = "NEEDS_REVIEW"
+            report["label"] = "GROWTH"
         report["delta"] = {
             "summary": {
                 "added": inventory_total,
@@ -173,7 +178,12 @@ def build_check_report(
     delta = diff_authority_locks(base, head)
     summary = dict(delta.get("summary") or {})
     cards = delta_cards(delta, limit=12)
-    meaningful = bool(cards or summary.get("policy_changed"))
+    # Align with lock --check: representation path/digest drift is also review.
+    lock_drift = bool(summary.get("authority_changed"))
+    meaningful = bool(cards or summary.get("policy_changed") or lock_drift)
+    unparsed = int(report["unparsed"] or 0)
+    if unparsed:
+        meaningful = True
     report["delta"] = delta
     report["label"] = delta_label(summary) if meaningful else "NONE"
     report["meaningful"] = meaningful
@@ -287,12 +297,16 @@ def render_check(
         return "\n".join(lines)
 
     lines.append(f"auctelis check · {verdict} · {label}")
+    if unparsed:
+        lines.append(f"NOT PARSED: {unparsed} agent config(s) — lock match is not clearance.")
     if cards:
         lines.extend(cards)
     else:
         summary = (report.get("delta") or {}).get("summary") or {}
         if summary.get("policy_changed"):
             lines.append("~ policy: .auctelis.yml changed")
+        elif summary.get("authority_changed"):
+            lines.append("~ representation drift (path/digest) — reseal AUTHORITY.lock")
     lines.append("")
     lines.append(f"Next: review the delta, then `auctelis lock --update` and commit {LOCK_NAME}")
     lines.extend(_coverage_footer())
@@ -300,9 +314,9 @@ def render_check(
 
 
 def check_exit_code(report: dict[str, Any]) -> int:
-    """Exit 0 quiet/first-run, 1 authority delta, 2 lock error."""
+    """Exit 0 quiet/first-run, 1 authority delta / unparsed, 2 lock error."""
     if report.get("error"):
         return 2
-    if report.get("meaningful"):
+    if report.get("meaningful") or int(report.get("unparsed") or 0):
         return 1
     return 0

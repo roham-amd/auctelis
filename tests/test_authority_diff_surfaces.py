@@ -28,9 +28,9 @@ def test_pr_comment_is_compact_and_verdict_led(tmp_path: Path):
     assert "Unknown:" in comment
     assert "F-0" not in comment
     assert "auctelis explain" not in comment
-    # Sticky HTML marker is metadata; visible body stays ≤12 lines.
+    # Sticky HTML marker is metadata; complete reach table stays compact (≤20).
     body_lines = [ln for ln in comment.strip().splitlines() if not ln.startswith("<!--")]
-    assert len(body_lines) <= 12
+    assert len(body_lines) <= 20
 
 
 def test_pr_comment_includes_lock_delta_expansions():

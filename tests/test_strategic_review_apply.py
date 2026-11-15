@@ -60,8 +60,12 @@ def test_demo_target_resolves_packaged_fixture():
 def test_demo_command_runs(tmp_path: Path):
     code = main(["demo", "-o", str(tmp_path / "out")])
     assert code == 0
-    assert (tmp_path / "out" / "findings.json").is_file()
+    # Lock-only demo: PR comment + JSON delta; no research findings.json.
     assert (tmp_path / "out" / "pr-comment.md").is_file()
+    assert (tmp_path / "out" / "authority-lock-delta.json").is_file()
+    comment = (tmp_path / "out" / "pr-comment.md").read_text(encoding="utf-8")
+    assert "Authority Diff" in comment
+    assert "GROWTH" in comment or "NEEDS_REVIEW" in comment
 
 
 def test_addition_class_and_empty_approvals(tmp_path: Path):

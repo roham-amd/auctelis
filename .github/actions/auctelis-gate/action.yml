@@ -191,10 +191,21 @@ runs:
         if git diff --name-only "${base}...HEAD" | grep -E '(^|/)\.auctelis\.yml$' >/dev/null; then
           # First-adoption PRs that *add* .auctelis.yml (absent on base) must not fail the gate.
           if git cat-file -e "${base}:.auctelis.yml" 2>/dev/null; then
-            echo "::error::PR modifies existing .auctelis.yml. Policy changes are an authority-surface edit and must be reviewed on their own; the gate loads policy from the base ref when trusted-policy=true."
-            exit 1
+            # Policy edits are allowed when CODEOWNERS covers .auctelis.yml; the
+            # gate still loads the trusted base-ref policy for this PR.
+            owners=""
+            for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+              if [[ -f "$cand" ]]; then owners="$cand"; break; fi
+            done
+            if [[ -n "$owners" ]] && grep -E '(^|[[:space:]])\.auctelis\.yml([[:space:]]|$)' "$owners" >/dev/null 2>&1; then
+              echo "::notice::PR edits .auctelis.yml under CODEOWNERS; gate still uses base-ref policy for this run."
+            else
+              echo "::error::PR modifies existing .auctelis.yml without CODEOWNERS coverage. Add a .auctelis.yml owner, or keep policy edits on their own PR."
+              exit 1
+            fi
+          else
+            echo "PR adds .auctelis.yml for the first time (allowed for adoption)."
           fi
-          echo "PR adds .auctelis.yml for the first time (allowed for adoption)."
         fi
         echo "No blocking .auctelis.yml edits in this PR."
 
@@ -255,14 +266,17 @@ runs:
         echo "path=" >> "$GITHUB_OUTPUT"
         echo "lock=" >> "$GITHUB_OUTPUT"
         echo "codeowners=" >> "$GITHUB_OUTPUT"
+        echo "resolved=false" >> "$GITHUB_OUTPUT"
         base="origin/${AUCTELIS_BASE_REF}"
         if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
           if ! git fetch --no-tags origin "${AUCTELIS_BASE_REF}:refs/remotes/origin/${AUCTELIS_BASE_REF}" 2>/dev/null; then
-            echo "Could not resolve base ref ${AUCTELIS_BASE_REF}; skipping Authority Diff baseline."
-            exit 0
+            echo "::error::Could not resolve base ref ${AUCTELIS_BASE_REF}; fail closed (not BASELINE_ADOPTED)."
+            echo "resolved=false" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
           base="origin/${AUCTELIS_BASE_REF}"
         fi
+        echo "resolved=true" >> "$GITHUB_OUTPUT"
         work="${RUNNER_TEMP}/auctelis-base-worktree"
         out="${RUNNER_TEMP}/auctelis-base-out"
         baseline="${RUNNER_TEMP}/auctelis-base-baseline.json"
@@ -306,19 +320,29 @@ runs:
           echo "Base-ref CODEOWNERS copied: $base_owners"
           echo "codeowners=${base_owners}" >> "$GITHUB_OUTPUT"
         fi
+        # Research baseline is advisory only (continue-on-error semantics via set +e).
         base_args=(scan "$target" -o "$out" --save-baseline "$baseline" --fail-on never)
         if [[ "${AUCTELIS_NO_POLICY}" == "true" ]]; then
           base_args+=(--no-policy)
         elif [[ -n "${AUCTELIS_TRUSTED_POLICY:-}" ]]; then
           base_args+=(--policy "$AUCTELIS_TRUSTED_POLICY")
         fi
+        set +e
         auctelis-dev "${base_args[@]}"
-        echo "Base-ref baseline written: $baseline"
-        echo "path=${baseline}" >> "$GITHUB_OUTPUT"
+        base_scan_rc=$?
+        set -e
+        if [[ "$base_scan_rc" -ne 0 ]]; then
+          echo "::warning::base-ref research scan exited ${base_scan_rc} (advisory; not a gate)."
+        fi
+        if [[ -f "$baseline" ]]; then
+          echo "Base-ref baseline written: $baseline"
+          echo "path=${baseline}" >> "$GITHUB_OUTPUT"
+        fi
         git worktree remove --force "$work" || true
 
-    - name: Run auctelis scan (passive)
+    - name: Run auctelis research scan (advisory)
       id: scan
+      continue-on-error: true
       if: inputs.mode == 'scan'
       shell: bash
       env:
@@ -448,8 +472,9 @@ runs:
         fi
         # Do not exit yet — comment/artifact steps use always(). Final step fails the job.
 
-    - name: Annotate pull request findings
+    - name: Annotate pull request findings (advisory)
       if: always() && inputs.mode == 'scan' && inputs.annotate == 'true'
+      continue-on-error: true
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -486,18 +511,37 @@ runs:
         head_lock_path="${AUCTELIS_PATH%/}/${head_lock_rel}"
         head_lock_path="${head_lock_path#./}"
         if [[ "${AUCTELIS_LOCKED}" == "true" && -z "${AUCTELIS_BASE_LOCK}" && -f "$head_lock_path" ]]; then
-          {
-            echo "<!-- auctelis-authority-diff -->"
-            echo "### auctelis Authority Diff"
-            echo "**Verdict:** \`BASELINE_ADOPTED\` · label \`NONE\`"
-            echo ""
-            echo "First \`AUTHORITY.lock\` on head with no trusted base lock."
-            echo "This is an adoption ceremony — not a growth-gate PASS."
-            echo "Require CODEOWNERS review of the new lock before merge."
-            echo ""
-            echo "**Action:** CODEOWNERS review AUTHORITY.lock + protection config"
-          } >"$COMMENT"
-          echo "Overwrote sticky comment with BASELINE_ADOPTED (adoption ceremony)."
+          # Adoption comment only when CODEOWNERS covers protection paths.
+          co_ok=0
+          for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+            if [[ -f "$cand" ]] && grep -E '(^|[[:space:]])AUTHORITY\.lock([[:space:]]|$)' "$cand" >/dev/null 2>&1; then
+              co_ok=1
+              break
+            fi
+          done
+          if [[ "$co_ok" -eq 1 ]]; then
+            {
+              echo "<!-- auctelis-authority-diff -->"
+              echo "### auctelis Authority Diff"
+              echo "**Verdict:** \`BASELINE_ADOPTED\` · label \`NONE\`"
+              echo ""
+              echo "First \`AUTHORITY.lock\` on head with no trusted base lock."
+              echo "This is an adoption ceremony — not a growth-gate PASS."
+              echo "Require CODEOWNERS review of the new lock before merge."
+              echo ""
+              echo "**Action:** CODEOWNERS review AUTHORITY.lock + protection config"
+            } >"$COMMENT"
+            echo "Overwrote sticky comment with BASELINE_ADOPTED (adoption ceremony)."
+          else
+            {
+              echo "<!-- auctelis-authority-diff -->"
+              echo "### auctelis Authority Diff"
+              echo "**Verdict:** \`NEEDS_REVIEW\` · label \`GROWTH\`"
+              echo ""
+              echo "First \`AUTHORITY.lock\` on head, but CODEOWNERS does not cover AUTHORITY.lock."
+              echo "Add owners for the lock and gate paths before treating this as BASELINE_ADOPTED."
+            } >"$COMMENT"
+          fi
         elif [[ ! -f "$COMMENT" ]]; then
           if [[ -f "$DELTA" ]]; then
             auctelis-dev annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
@@ -619,7 +663,7 @@ runs:
       run: |
         echo "::warning::auctelis locked=false — authority growth is unchecked. Set locked=true after AUTHORITY.lock is committed."
 
-    - name: Fail job on scan or gate verdict
+    - name: Fail job on gate verdict (inventory-only)
       if: always() && inputs.mode == 'scan'
       shell: bash
       env:
@@ -627,6 +671,8 @@ runs:
         AUCTELIS_GATE_CODE: ${{ steps.gate.outputs.code }}
         AUCTELIS_SCAN_OUTCOME: ${{ steps.scan.outcome }}
         AUCTELIS_GATE_OUTCOME: ${{ steps.gate.outcome }}
+        AUCTELIS_AUTH_DIFF_OUTCOME: ${{ steps.auth_diff.outcome }}
+        AUCTELIS_BASE_RESOLVED: ${{ steps.auth_diff.outputs.resolved }}
         AUCTELIS_LOCKED: ${{ inputs.locked }}
         AUCTELIS_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
         AUCTELIS_EVENT_NAME: ${{ github.event_name }}
@@ -634,22 +680,35 @@ runs:
         AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
       run: |
         set -euo pipefail
-        if [[ "${AUCTELIS_SCAN_OUTCOME}" == "skipped" ]]; then
-          echo "::error::auctelis scan did not run (earlier step failed)."
-          exit 1
-        fi
+        # Research scan is advisory — never fail the required check on findings.
         scan_code="${AUCTELIS_SCAN_CODE:-0}"
         gate_code="${AUCTELIS_GATE_CODE:-0}"
         [[ -z "$scan_code" ]] && scan_code=0
         [[ -z "$gate_code" ]] && gate_code=0
-        # locked=true on a PR must not silently skip the gate — except adoption
-        # bootstrap, where the first AUTHORITY.lock lands on head with no base lock.
+        if [[ "${scan_code}" -ne 0 ]]; then
+          echo "::notice::auctelis research scan exited ${scan_code} (advisory; not a gate input)."
+        fi
         head_lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         head_lock_path="${AUCTELIS_PATH%/}/${head_lock_rel}"
         head_lock_path="${head_lock_path#./}"
         if [[ "${AUCTELIS_LOCKED}" == "true" && "${AUCTELIS_EVENT_NAME}" == "pull_request" ]]; then
+          if [[ "${AUCTELIS_AUTH_DIFF_OUTCOME}" == "failure" || "${AUCTELIS_BASE_RESOLVED}" == "false" ]]; then
+            echo "::error::Base ref could not be resolved — fail closed (not BASELINE_ADOPTED)."
+            exit 1
+          fi
           if [[ -z "${AUCTELIS_BASE_LOCK}" ]]; then
             if [[ -f "$head_lock_path" ]]; then
+              co_ok=0
+              for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+                if [[ -f "$cand" ]] && grep -E '(^|[[:space:]])AUTHORITY\.lock([[:space:]]|$)' "$cand" >/dev/null 2>&1; then
+                  co_ok=1
+                  break
+                fi
+              done
+              if [[ "$co_ok" -ne 1 ]]; then
+                echo "::error::BASELINE_ADOPTED refused — CODEOWNERS does not cover AUTHORITY.lock."
+                exit 1
+              fi
               echo "::notice::BASELINE_ADOPTED — adoption ceremony (not a growth-gate PASS). Head AUTHORITY.lock must be CODEOWNERS-reviewed on this PR; later PRs require base-lock growth approval."
               {
                 echo "## auctelis adoption ceremony"
@@ -676,12 +735,8 @@ runs:
           echo "::error::auctelis gate exited ${gate_code} (unapproved authority growth)."
           exit "$gate_code"
         fi
-        if [[ "$scan_code" -ne 0 ]]; then
-          echo "::error::auctelis scan exited ${scan_code}."
-          exit "$scan_code"
-        fi
         if [[ -z "${AUCTELIS_BASE_LOCK}" && "${AUCTELIS_LOCKED}" == "true" && "${AUCTELIS_EVENT_NAME}" == "pull_request" && -f "$head_lock_path" ]]; then
-          echo "auctelis adoption ceremony complete (BASELINE_ADOPTED); scan passed."
+          echo "auctelis adoption ceremony complete (BASELINE_ADOPTED); inventory gate path passed."
         else
-          echo "auctelis scan and gate passed."
+          echo "auctelis inventory gate passed (research scan advisory)."
         fi

@@ -457,10 +457,10 @@ def _risk_score(record: dict[str, Any] | None) -> int:
 def _risk_summary(records: list[dict[str, Any]], *, hidden: int) -> str | None:
     if hidden <= 0:
         return None
-    flags: list[str] = []
+    named: list[str] = []
     for record in records:
+        name = str(record.get("name") or record.get("id") or "?").strip()
         bits: list[str] = []
-        kind = kind_label(record.get("kind"))
         if _posture(record) == "bypassPermissions":
             bits.append("bypass")
         caps = set(_capabilities(record))
@@ -468,17 +468,25 @@ def _risk_summary(records: list[dict[str, Any]], *, hidden: int) -> str | None:
             bits.append("execute")
         if "secrets" in caps:
             bits.append("secrets")
-        if bits:
-            flags.append(f"{kind} with {'/'.join(bits)}")
-    if flags:
-        return f"+{hidden} more ({', '.join(flags[:2])})"
+        if "network" in caps or destination(record):
+            bits.append("network")
+        if record.get("env_keys"):
+            bits.append("env")
+        if launcher(record):
+            bits.append("launcher")
+        reason = "/".join(bits) if bits else kind_label(record.get("kind"))
+        named.append(f"{name} ({reason})")
+    if named:
+        shown = ", ".join(named[:4])
+        extra = f", +{len(named) - 4}" if len(named) > 4 else ""
+        return f"+{hidden} more: {shown}{extra}"
     return f"+{hidden} more"
 
 
 def delta_cards(
     delta: dict[str, Any] | None,
     *,
-    limit: int = 3,
+    limit: int = 10,
     include_overflow_summary: bool = False,
 ) -> list[str]:
     """Risk-ranked cards: bypass/execute/secrets before quieter additions."""

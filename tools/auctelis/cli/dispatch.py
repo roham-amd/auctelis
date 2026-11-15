@@ -457,24 +457,21 @@ def _demo_target() -> Path | None:
 
 
 def _cmd_demo(args: argparse.Namespace) -> int:
-    """Run the canned vulnerable fixture and print the Authority Diff (+/- lock lines)."""
+    """Lock-only walkthrough: inventory + empty→demo Authority Diff PR comment."""
+    from auctelis.security.engine import run_authority_inventory
+
     target = _demo_target()
     if target is None:
         print(
             "demo fixture not found. Reinstall auctelis, or from a checkout: "
-            "auctelis-dev scan examples/demo-vulnerable --fail-on high"
+            "auctelis check examples/demo-vulnerable"
         )
         return 2
     out = (args.output_dir or Path("auctelis-out-demo")).resolve()
+    out.mkdir(parents=True, exist_ok=True)
     print(f"auctelis demo → {target}")
-    print("Expected: gated findings (unpinned launcher, secrets, HTTP MCP, curl|sh, …)")
-    # Demo is an aha walkthrough, not a CI gate — always scan advisory then show +/-.
-    scan, payload, _code = run_scan(
-        target,
-        output_dir=out,
-        fail_on="never",
-        full_report=False,
-    )
+    print("Lock-only walkthrough: empty baseline → demo AUTHORITY.lock growth.")
+    scan = run_authority_inventory(target)
     empty = {
         "version": 1,
         "records": [],
@@ -490,23 +487,27 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     if not lock_delta.get("lines"):
         print("  (no lock records)")
     print()
+    findings_doc = {
+        "findings": [],
+        "coverage": scan.coverage if isinstance(scan.coverage, dict) else {},
+        "suppression_count": 0,
+    }
     comment = render_authority_diff_comment(
-        scan.to_findings_doc(),
-        risk_delta=payload.get("risk_delta_doc"),
-        authority_delta=payload.get("authority_delta"),
+        findings_doc,
         lock_delta=lock_delta,
-        policy_mode="advisory",
+        needs_approval_from=["@security"],
+        verdict="NEEDS_REVIEW",
     )
     write_text(out / "pr-comment.md", comment)
+    write_json(out / "authority-lock-delta.json", lock_delta)
     print(comment.strip() or "(no PR comment generated)")
     print()
     print(f"Artifacts: {out}")
-    print(f"Findings: {len(scan.findings)}")
+    print(f"Records sealed in demo lock: {len(head_lock.get('records') or [])}")
     from auctelis.cli.parser import PUBLIC_PATH
 
-    print("Next: auctelis lock --update  # or lock --accept-gated for intentional imperfect seals")
+    print("Next: auctelis init --owner security  # then open a PR")
     print(f"Then: auctelis {PUBLIC_PATH}")
-    # First-run aha always exits 0 so install scripts and tutorials succeed.
     return 0
 
 
@@ -526,15 +527,23 @@ def _cmd_init(args: argparse.Namespace) -> int:
 
 def _cmd_status(args: argparse.Namespace) -> int:
     """Show whether the authority gate is armed in this repo."""
-    from auctelis.gate import check_code_owner_ruleset, codeowners_covers_lock, load_codeowners_text
+    from auctelis.gate import (
+        check_code_owner_ruleset,
+        codeowners_covers_lock,
+        codeowners_covers_protection,
+        load_codeowners_text,
+    )
     from auctelis.lock_io import AuthorityLockError, load_authority_lock
     from auctelis.versioning import product_version
 
     root = args.path.resolve()
+    check_mode = bool(getattr(args, "check", False))
     lock_path = root / "AUTHORITY.lock"
     workflow_path = root / ".github" / "workflows" / "auctelis-gate.yml"
+    local_action = root / ".github" / "actions" / "auctelis-gate" / "action.yml"
     policy_path = root / ".auctelis.yml"
     lines: list[str] = [f"auctelis status · {root}", f"Product: {product_version()}"]
+    problems: list[str] = []
 
     if lock_path.is_file():
         try:
@@ -544,55 +553,144 @@ def _cmd_status(args: argparse.Namespace) -> int:
             lines.append(f"Lock: present ({n} records) · audited_commit {audited}")
         except AuthorityLockError as exc:
             lines.append(f"Lock: INVALID — {exc}")
+            problems.append("invalid AUTHORITY.lock")
     else:
-        lines.append("Lock: missing — run `auctelis init --owner @team`")
+        lines.append("Lock: missing — run `auctelis init --owner security`")
+        problems.append("missing AUTHORITY.lock")
 
     if policy_path.is_file():
-        lines.append(f"Policy: {policy_path.name}")
+        try:
+            policy = load_policy(policy_path)
+            lines.append(
+                f"Policy: {policy_path.name} · mode={policy.mode} · fail_on={policy.fail_on}"
+            )
+        except ValueError as exc:
+            lines.append(f"Policy: INVALID — {exc}")
+            problems.append("invalid .auctelis.yml")
     else:
         lines.append("Policy: missing (.auctelis.yml)")
+        problems.append("missing .auctelis.yml")
 
     if workflow_path.is_file():
         body = workflow_path.read_text(encoding="utf-8")
-        locked = 'locked: "true"' in body or "locked: 'true'" in body or "locked: true" in body
-        pin_m = re.search(
-            r"roham-amd/auctelis/\.github/actions/auctelis-gate@([^\s#]+)",
-            body,
+        has_gate, locked, pin = _workflow_locked_state(body)
+        strict = "--no-strict-ruleset" not in body
+        install = "local-action" if local_action.is_file() else "remote-action"
+        lines.append(
+            f"Workflow: present · gate={'yes' if has_gate else 'NO'} · "
+            f"locked={'true' if locked else 'false'} · strict-ruleset="
+            f"{'on' if strict else 'off'} · Action @{pin} · install={install}"
         )
-        pin = pin_m.group(1) if pin_m else "(unpinned)"
-        lines.append(f"Workflow: present · locked={'true' if locked else 'false'} · Action @{pin}")
+        if not has_gate:
+            problems.append("workflow lacks auctelis-gate action")
+        if not locked:
+            problems.append("workflow locked!=true")
     else:
-        lines.append("Workflow: missing — run `auctelis init --owner @team`")
+        lines.append("Workflow: missing — run `auctelis init --owner security`")
+        problems.append("missing auctelis-gate.yml")
 
     co_text = load_codeowners_text(root)
+    existing_co = _find_existing_codeowners(root)
     if co_text and codeowners_covers_lock(co_text):
-        lines.append("CODEOWNERS: covers AUTHORITY.lock")
+        protection_ok, missing = codeowners_covers_protection(co_text)
+        loc = str(existing_co.relative_to(root)).replace("\\", "/") if existing_co else "?"
+        if protection_ok:
+            lines.append(f"CODEOWNERS: covers protection paths ({loc})")
+        else:
+            lines.append(
+                f"CODEOWNERS: covers AUTHORITY.lock but missing {', '.join(missing)} ({loc})"
+            )
+            problems.append("CODEOWNERS incomplete protection coverage")
     elif co_text:
         lines.append("CODEOWNERS: present but does not cover AUTHORITY.lock")
+        problems.append("CODEOWNERS missing AUTHORITY.lock")
     else:
         lines.append("CODEOWNERS: missing")
+        problems.append("missing CODEOWNERS")
 
     status, detail = check_code_owner_ruleset()
     lines.append(f"Protection: {status} — {detail}")
+    if check_mode and problems:
+        lines.append("Gate armed: NO — " + "; ".join(problems))
+    elif check_mode:
+        lines.append("Gate armed: YES")
     print("\n".join(lines))
+    if check_mode and problems:
+        return 1
     return 0
 
 
-def _merge_codeowners_authority(existing: str, owner: str) -> str:
-    """Ensure AUTHORITY.lock / .auctelis.yml lines exist without wiping other rules."""
-    from auctelis.gate import codeowners_covers_lock
+def _codeowners_candidates(root: Path) -> list[Path]:
+    """GitHub CODEOWNERS search order (first existing file wins)."""
+    return [
+        root / ".github" / "CODEOWNERS",
+        root / "CODEOWNERS",
+        root / "docs" / "CODEOWNERS",
+    ]
 
+
+def _find_existing_codeowners(root: Path) -> Path | None:
+    for path in _codeowners_candidates(root):
+        if path.is_file():
+            return path
+    return None
+
+
+def _has_explicit_codeowners_pattern(text: str, pattern: str) -> bool:
+    """True when a non-comment CODEOWNERS line starts with ``pattern`` (not via ``*``)."""
+    needle = pattern.replace("\\", "/").rstrip("/")
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        rule = line.split()[0].replace("\\", "/").lstrip("/")
+        rule_stem = rule.rstrip("/")
+        if rule_stem in {"*", "**"}:
+            continue
+        if rule_stem == needle or rule_stem.startswith(needle + "/"):
+            return True
+        if needle.startswith(rule_stem + "/") and rule.endswith("/"):
+            return True
+    return False
+
+
+def _merge_codeowners_authority(existing: str, owner: str) -> str:
+    """Ensure lock / policy / workflow / action / CODEOWNERS lines without wiping."""
     text = existing if existing.endswith("\n") else existing + "\n"
-    lines = text.splitlines()
-    has_policy = any("auctelis.yml" in ln and not ln.strip().startswith("#") for ln in lines)
-    if codeowners_covers_lock(text):
-        if has_policy:
-            return text
-        return text.rstrip() + f"\n.auctelis.yml {owner}\n"
-    block = (
-        f"\n# Added by auctelis ci init --apply\nAUTHORITY.lock {owner}\n.auctelis.yml {owner}\n"
+    required = (
+        "AUTHORITY.lock",
+        ".auctelis.yml",
+        ".github/workflows/",
+        ".github/actions/",
+        ".github/CODEOWNERS",
     )
+    missing_lines: list[str] = []
+    for pattern in required:
+        if pattern == ".github/CODEOWNERS" and (
+            _has_explicit_codeowners_pattern(text, "CODEOWNERS")
+            or _has_explicit_codeowners_pattern(text, ".github/CODEOWNERS")
+        ):
+            continue
+        if not _has_explicit_codeowners_pattern(text, pattern):
+            missing_lines.append(f"{pattern} {owner}")
+    if not missing_lines:
+        return text
+    block = "\n# Added by auctelis init\n" + "\n".join(missing_lines) + "\n"
     return text.rstrip() + block
+
+
+def _workflow_locked_state(body: str) -> tuple[bool, bool, str]:
+    """Return ``(has_gate_action, locked, pin)`` from an existing workflow body."""
+    has_gate = "auctelis-gate" in body and (
+        "roham-amd/auctelis" in body or "./.github/actions/auctelis-gate" in body
+    )
+    locked = bool(re.search(r"locked:\s*[\"']?true[\"']?", body, flags=re.IGNORECASE))
+    pin_m = re.search(
+        r"(?:roham-amd/auctelis/\.github/actions/auctelis-gate@|auctelis-gate@)([^\s#]+)",
+        body,
+    )
+    pin = pin_m.group(1) if pin_m else "(unpinned)"
+    return has_gate, locked, pin
 
 
 def _resolve_action_pin_ref() -> str:
@@ -652,7 +750,10 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     policy_path = root / ".auctelis.yml"
     workflow_dir = root / ".github" / "workflows"
     workflow_path = workflow_dir / "auctelis-gate.yml"
-    codeowners_path = root / ".github" / "CODEOWNERS"
+    # Prefer an existing CODEOWNERS (root/docs/.github) — never shadow root with
+    # a new .github/CODEOWNERS. --force merges; it never wipes other rules.
+    existing_codeowners = _find_existing_codeowners(root)
+    codeowners_path = existing_codeowners or (root / ".github" / "CODEOWNERS")
     policy_body, workflow_body, codeowners_body = _init_gate_templates()
     if advisory:
         policy_body = policy_body.replace("mode: enforce", "mode: advisory")
@@ -667,6 +768,8 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     accept_gated = bool(getattr(args, "accept_gated", False))
     wrote: list[str] = []
     warnings: list[str] = []
+    reported_locked = not advisory
+    reported_mode = "advisory" if advisory else "enforce"
     if policy_path.exists() and not args.force:
         print(f"Exists (use --force): {policy_path}")
     else:
@@ -679,27 +782,38 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     elif workflow_path.exists() and apply and not args.force:
         # Still refresh the Action pin so consumer HEAD never sticks around.
         existing = workflow_path.read_text(encoding="utf-8")
+        has_gate, existing_locked, existing_pin = _workflow_locked_state(existing)
+        reported_locked = existing_locked
+        reported_mode = "enforce" if existing_locked else "advisory"
+        if not has_gate:
+            warnings.append(
+                f"Existing {workflow_path.name} has no auctelis-gate action "
+                f"(pin={existing_pin}). Re-run with --force to rewrite."
+            )
         refreshed = _pin_workflow_to_release(existing)
         if refreshed != existing:
             workflow_path.write_text(refreshed, encoding="utf-8")
             wrote.append(f"{workflow_path} (pin refreshed)")
         else:
-            print(f"Exists (skipped workflow rewrite without --force): {workflow_path}")
+            print(
+                f"Exists (skipped workflow rewrite without --force): {workflow_path} "
+                f"[gate={'yes' if has_gate else 'no'}, locked={str(existing_locked).lower()}]"
+            )
     else:
         workflow_dir.mkdir(parents=True, exist_ok=True)
         workflow_path.write_text(workflow_body, encoding="utf-8")
         wrote.append(str(workflow_path))
-    if codeowners_path.exists() and not args.force:
-        if apply:
-            current = codeowners_path.read_text(encoding="utf-8")
-            merged = _merge_codeowners_authority(current, owner)
-            if merged != current:
-                codeowners_path.write_text(merged, encoding="utf-8")
-                wrote.append(f"{codeowners_path} (merged)")
-            else:
-                print(f"CODEOWNERS already covers AUTHORITY.lock: {codeowners_path}")
+        has_gate, reported_locked, _pin = _workflow_locked_state(workflow_body)
+        reported_mode = "enforce" if reported_locked else "advisory"
+    if codeowners_path.exists():
+        # Always merge — never overwrite existing CODEOWNERS (including --force).
+        current = codeowners_path.read_text(encoding="utf-8")
+        merged = _merge_codeowners_authority(current, owner)
+        if merged != current:
+            codeowners_path.write_text(merged, encoding="utf-8")
+            wrote.append(f"{codeowners_path} (merged)")
         else:
-            print(f"Exists (use --force or --apply to merge): {codeowners_path}")
+            print(f"CODEOWNERS already covers protection paths: {codeowners_path}")
     else:
         codeowners_path.parent.mkdir(parents=True, exist_ok=True)
         codeowners_path.write_text(codeowners_body, encoding="utf-8")
@@ -717,7 +831,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     print(msg)
     if lock_code != 0:
         warnings.append(
-            "AUTHORITY.lock not sealed — remediate or re-run with --accept-gated "
+            "AUTHORITY.lock not sealed — remediate configs (unparsed/gated) then re-run. "
             "(CODEOWNERS remains the approval system)."
         )
     else:
@@ -726,11 +840,13 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         print("Wrote:")
         for path in wrote:
             print(f"  {path}")
-    mode = "advisory" if advisory else "enforce"
     pin = _resolve_action_pin_ref()
     print(f"Action pin: roham-amd/auctelis/.github/actions/auctelis-gate@{pin}")
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
-    print(f"CODEOWNERS owner: {owner}. Mode: {mode} (locked: {'false' if advisory else 'true'}).")
+    print(
+        f"CODEOWNERS owner: {owner}. "
+        f"Actual workflow: mode={reported_mode} (locked: {str(reported_locked).lower()})."
+    )
     if apply:
         from auctelis.gate import check_code_owner_ruleset
 

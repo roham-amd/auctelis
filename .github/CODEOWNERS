@@ -1,4 +1,7 @@
-# Protect the agent-authority lockfile like dependency locks.
-# Owner is set by `auctelis ci init --owner @team` (placeholder replaced at write time).
+# Protect the agent-authority lockfile and the gate that enforces it.
 AUTHORITY.lock @roham-amd
 .auctelis.yml @roham-amd
+.github/workflows/ @roham-amd
+.github/actions/ @roham-amd
+CODEOWNERS @roham-amd
+.github/CODEOWNERS @roham-amd

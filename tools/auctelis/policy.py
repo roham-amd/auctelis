@@ -170,8 +170,8 @@ def load_policy(path: Path) -> AuctelisPolicy:
     fail_on = str(policy_block.get("fail_on") or "never").lower()
     if fail_on not in {"never", "high", "any"}:
         raise ValueError("policy.fail_on must be never, high, or any")
-    if mode == "enforce" and fail_on == "never":
-        fail_on = "high"
+    # Honor fail_on literally. Lock-only product path must not promote
+    # mode=enforce + fail_on=never into a research-findings gate.
     output_raw = policy_block.get("output_dir")
     baseline_raw = policy_block.get("baseline")
     require_review = policy_block.get("require_review") or []

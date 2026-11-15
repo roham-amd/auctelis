@@ -10,7 +10,7 @@
 | ≤ 0.5.x | No |
 | 1.0.x | No (yanked / superseded pre-1.0 `authdiff` line; do not use) |
 
-Tooling package version (`auctelis`, currently **0.8.1**) is tracked in
+Tooling package version (`auctelis`, currently **0.8.2**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 

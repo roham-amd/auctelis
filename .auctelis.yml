@@ -1,9 +1,9 @@
 version: 1
 
 policy:
-  # Day-one default is advisory — promote to enforce after precision holds.
-  mode: advisory
+  # Lock-only product: mode labels the Action; fail_on is never promoted.
+  # Research findings use auctelis-dev scan — not the required gate.
+  mode: enforce
   fail_on: never
   output_dir: auctelis-out
-  # baseline: .auctelis/baseline.json
   ignore: []

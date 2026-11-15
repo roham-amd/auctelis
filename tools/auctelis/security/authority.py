@@ -172,8 +172,11 @@ def _capabilities(
         caps.add("invoke_tools")
     if ctype in {"CI Workflow", "Workflow"}:
         caps.add("unattended_operation")
+        caps.add("access_secrets")
     if ctype == "Hook":
         caps.add("unattended_operation")
+    if ctype in {"Skill", "Rule / instruction file", "Rule pack", "Claude slash command"}:
+        caps.add("modify_agent_instructions")
     return sorted(caps)
 
 

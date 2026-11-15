@@ -256,9 +256,11 @@ def _record_from_component(
         "url_host": host_from_url or (destinations[0] if destinations else ""),
         "script_digest": script_digest,
         "evidence_strength": evidence,
+        # Preserve TYPE_DEFAULT when present — never flatten to DECLARED.
         "capability_origin": str(
-            raw.get("capability_origin") or comp.get("capability_origin") or "DECLARED"
-        ),
+            raw.get("capability_origin") or comp.get("capability_origin") or ""
+        )
+        or "DECLARED",
         "parser_version": str(raw.get("parser_version") or comp.get("parser_version") or ""),
     }
 
@@ -278,12 +280,41 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
         for c in (scan.inventory.get("components") or [])
         if isinstance(c, dict)
     }
+    # Prefer the strongest origin actually present on scan capabilities for
+    # this component — never invent DECLARED when every cap is TYPE_DEFAULT.
+    origin_by_cid: dict[str, set[str]] = {}
+    for cap in scan.capabilities or []:
+        cid = str(getattr(cap, "component_id", "") or "")
+        origin = str(getattr(cap, "origin", "") or "").upper()
+        if cid and origin:
+            origin_by_cid.setdefault(cid, set()).add(origin)
+
+    def _origin_for(comp: dict[str, Any], raw: dict[str, Any]) -> str:
+        explicit = (
+            str(raw.get("capability_origin") or comp.get("capability_origin") or "").strip().upper()
+        )
+        if explicit in {"DECLARED", "POTENTIAL", "TYPE_DEFAULT", "EFFECTIVE", "VERIFIED"}:
+            return explicit
+        cid = str(raw.get("component_id") or comp.get("id") or "")
+        origins = origin_by_cid.get(cid) or set()
+        if not origins:
+            return "DECLARED"
+        if origins <= {"TYPE_DEFAULT"}:
+            return "TYPE_DEFAULT"
+        if "DECLARED" in origins:
+            return "DECLARED"
+        if "POTENTIAL" in origins:
+            return "POTENTIAL"
+        return sorted(origins)[0]
+
     records: list[dict[str, Any]] = []
     for comp in snapshot.get("components") or []:
         if not isinstance(comp, dict):
             continue
         raw = by_fp.get(str(comp.get("fingerprint") or ""), {})
-        records.append(_record_from_component(comp, raw))
+        record = _record_from_component(comp, raw)
+        record["capability_origin"] = _origin_for(comp, raw)
+        records.append(record)
     records.sort(key=lambda r: (r["kind"], r["path"], r["name"], r["id"]))
 
     body: dict[str, Any] = {
@@ -338,6 +369,14 @@ def _gated_lock_blockers(scan: ScanResult) -> list[str]:
     return blockers
 
 
+def _unparsed_agent_config_count(scan: ScanResult) -> int:
+    coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
+    try:
+        return int(coverage.get("unparsed_agent_config_count") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def write_authority_lock(
     root: Path,
     *,
@@ -350,6 +389,13 @@ def write_authority_lock(
     if scan is None:
         # Product lock is inventory-only — rule findings are auctelis-dev research.
         scan = run_authority_inventory(root)
+    unparsed = _unparsed_agent_config_count(scan)
+    if unparsed:
+        raise ValueError(
+            f"refusing to seal AUTHORITY.lock: {unparsed} agent config file(s) "
+            "could not be parsed. Fix the configs first — do not baseline over "
+            "unparsed authority."
+        )
     blockers = _gated_lock_blockers(scan)
     if blockers and not accept_gated:
         preview = "; ".join(blockers[:3])
@@ -397,6 +443,9 @@ def normalize_lock_for_compare(lock: dict[str, Any]) -> dict[str, Any]:
             "args_digest": str(rec.get("args_digest") or ""),
             "url_host": str(rec.get("url_host") or ""),
             "script_digest": str(rec.get("script_digest") or ""),
+            # Survive normalize so PR cards keep LITERAL_CONFIG / TYPE_DEFAULT.
+            "evidence_strength": str(rec.get("evidence_strength") or ""),
+            "capability_origin": str(rec.get("capability_origin") or ""),
         }
         records.append(normalized)
     records.sort(
@@ -728,17 +777,26 @@ def check_locked(
             "hint": "Run `auctelis lock` and commit AUTHORITY.lock.",
             "lines": [],
         }, 1
+    if scan is None:
+        scan = run_authority_inventory(root)
+    unparsed = _unparsed_agent_config_count(scan)
     on_disk = load_authority_lock(path)
     current = build_authority_lock(root, scan=scan)
     delta = diff_authority_locks(on_disk, current)
-    ok = not delta["summary"]["authority_changed"]
+    ok = not delta["summary"]["authority_changed"] and unparsed == 0
     report = {
         "ok": ok,
         "lock": str(path),
         "delta": delta,
         "lines": delta["lines"],
+        "unparsed": unparsed,
         "verdict": "LOCKED" if ok else "NEEDS_REVIEW",
     }
+    if unparsed:
+        report["error"] = (
+            f"{unparsed} agent config file(s) could not be parsed — lock match "
+            "is not evidence of no authority."
+        )
     return report, 0 if ok else 1
 
 

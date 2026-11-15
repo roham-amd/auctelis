@@ -118,14 +118,17 @@ def render_authority_diff_comment(
     policy_mode: str | None = None,
     needs_approval_from: list[str] | None = None,
     verdict: str | None = None,
-    max_lines: int = 12,
+    max_lines: int = 20,
 ) -> str:
-    """Render a short PR body: one verdict, at most three old → new lines.
+    """Render a short PR body: complete compact reach table (≤10 delta lines).
 
     Finding IDs and rule IDs stay out of the comment body. The line carries
-    name, destination/launcher, capabilities, and evidence strength only.
+    name, destination/launcher, env, pin, capabilities, and evidence strength.
+    Advisory and enforce comments share this authority section shape.
     """
-    del authority_snapshot, policy_mode  # reserved / not part of the public dialect
+    del authority_snapshot  # reserved
+    # policy_mode no longer changes the authority section (lock-only contract).
+    del policy_mode
     findings = list(findings_doc.get("findings") or [])
     coverage = findings_doc.get("coverage") or {}
     summary = (risk_delta or {}).get("summary") if risk_delta else None
@@ -202,20 +205,20 @@ def render_authority_diff_comment(
     visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
 
     visible.append("**Authority delta:**")
-    cards = delta_cards(lock_delta, limit=3, include_overflow_summary=True)
+    cards = delta_cards(lock_delta, limit=10, include_overflow_summary=True)
     if not cards and isinstance(lock_delta, dict):
         cards = [
             f"- {line.lstrip('+-~ ')}"
             for line in (lock_delta.get("lines") or [])
             if " representation " not in f" {line} "
-        ][:3]
+        ][:10]
     if not cards and component_lines:
-        cards = [f"- {line.lstrip('+-~ ')}" for line in component_lines[:3]]
+        cards = [f"- {line.lstrip('+-~ ')}" for line in component_lines[:10]]
     if not cards and new_powers:
         cards = [
             f"- {escape_markdown(_sev(finding), max_len=12)} "
             f"{escape_markdown(_title(finding), max_len=120)}"
-            for finding in new_powers[:3]
+            for finding in new_powers[:10]
         ]
     if not cards:
         unparsed = int((findings_doc.get("coverage") or {}).get("unparsed_agent_config_count") or 0)
