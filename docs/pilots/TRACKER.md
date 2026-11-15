@@ -36,8 +36,8 @@ Log rows in [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv):
 ## Recruitment checklist
 
 - [ ] Confirm unrelated org/repo (not this product dogfood)
-- [ ] Path: `check` → `lock --update` → `ci init --owner @team` under 10 minutes
+- [ ] Path: `check` → `lock --update` → `ci init --apply --owner @team` under 10 minutes
 - [ ] Enforce Action (`locked=true`) + CODEOWNERS on `AUTHORITY.lock`
-- [ ] Pin Action to git tag `v0.8.0` or commit SHA; `strict-ruleset: true`
+- [ ] Pin Action to git tag `v0.8.1` or commit SHA; `strict-ruleset: true`
 - [ ] File labeled findings into `eval/holdout-labels.csv` / `eval/configs/`
 - [ ] Re-check day 30 and update this tracker

@@ -20,7 +20,7 @@ from auctelis.authority_lock import (
 from auctelis.check import SCHEMA_VERSION
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
-from auctelis.security.engine import run_security_scan
+from auctelis.security.engine import run_authority_inventory
 
 
 def _git_show(repo: Path, ref: str, relpath: str) -> str | None:
@@ -82,7 +82,7 @@ def run_diff_base(
             }
             return f"auctelis diff --base: {payload['error']}", payload, 2
 
-    scan = run_security_scan(repo)
+    scan = run_authority_inventory(repo)
     head = build_authority_lock(repo, scan=scan)
     delta = diff_authority_locks(base, head)
     summary = dict(delta.get("summary") or {})

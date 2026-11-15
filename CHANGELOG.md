@@ -5,6 +5,36 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.8.1] — 2026-11-15
+
+### Fixed
+
+- **Consumer Action pin** — `init` / `ci init --apply` pin the Action and pip
+  install to the auctelis **release tag** (`v0.8.1`), never consumer-repo HEAD
+  (which returned GitHub 422 outside the dogfood repo).
+- **Empty-baseline growth** — a 0-record base lock + head authority is `GROWTH`
+  needing CODEOWNERS, not permanent `FAIL_CLOSED`.
+- **`strict-ruleset: false`** — Action now passes `--no-strict-ruleset` (CLI
+  default is already true; omitting the flag was a no-op).
+- **`ci init` exit** — ruleset probe failures are warnings; exit 0 after writes.
+- **Post-init relock** — generated workflow/policy changes refresh `AUTHORITY.lock`.
+
+### Added
+
+- **`auctelis init --owner @team`** — one-command setup (preferred front door).
+- **`auctelis status`** — lock / workflow / CODEOWNERS / protection summary.
+- Consumer-repo + empty-baseline recovery tests (`tests/test_recovery_081.py`).
+
+### Changed
+
+- Product `check` / `lock` / `gate` / `diff` use **inventory-only** scans; the
+  22-rule research scanner stays on `auctelis-dev scan` and is not a gate input.
+- Evidence strength derived from declared-config kind + path (not adapter maturity).
+- `"Claude slash command"` sealed in authority kinds (cfg-024).
+- `MCP Server Implementation` source files excluded from the lock by default.
+- PR cards risk-ranked; overflow can summarize bypass/execute/secrets.
+- `check` inventory line includes `other` / `host`; "Gated findings" → advisory.
+
 ## [0.8.0] — 2026-11-15
 
 ### Added

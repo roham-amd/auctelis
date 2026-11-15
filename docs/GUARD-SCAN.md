@@ -1,16 +1,18 @@
-# auctelis scan — annotation layer (hidden)
+# auctelis-dev scan — annotation layer (maintainer)
 
-Guard scan path for **0.8.0**: deterministic discovery plus evidence-backed
-observations via `auctelis scan` / `check`, with capability / exposure / finding
-separation. This is an annotation layer behind the product, not the first
-screen. Default terminal output is ≤15 lines (`--full` for the long report).
-Artifacts land in cwd `./auctelis-out` (not inside the target tree).
+> **Maintainer research surface (`auctelis-dev`). Not part of the product gate.**
+> Product path: [`PRODUCT.md`](PRODUCT.md) — check → lock --update →
+> ci init --apply → gate / diff / why.
+
+Guard scan path for maintainers: deterministic discovery plus evidence-backed
+observations via `auctelis-dev scan` / `annotate`, with capability / exposure /
+finding separation. This is an annotation layer behind the product, not the
+first screen. Default terminal output is ≤15 lines (`--full` for the long
+report). Artifacts land in cwd `./auctelis-out` (not inside the target tree).
 
 Product front door: `auctelis check` → `auctelis lock --update` →
-`auctelis ci init --owner @team` → PR `gate`. `scan` / `check` naming:
-`check` is the authority preflight; `scan` is this annotation layer.
-
-Archived local host path: `watch` / `allow` / `hook` (callable, not required).
+`auctelis ci init --apply --owner @team` → PR `gate`. Public `scan` / `vet` /
+`explain` / `watch` / `allow` / `hook` CLIs are **removed**.
 
 Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md),
 [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md), [`CLI-REFERENCE.md`](CLI-REFERENCE.md),
@@ -21,7 +23,7 @@ Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK
 
 ## What Guard scan is
 
-`auctelis scan` answers, for a local repository tree:
+`auctelis-dev scan` answers, for a local repository tree:
 
 1. What agent-ecosystem components exist?
 2. What security-relevant **capabilities** do they appear to have?
@@ -53,7 +55,7 @@ Repository (untrusted data)
         │
         ▼
 ┌───────────────────┐
-│  auctelis scan    │  Deterministic facts + OBSERVED/POTENTIAL findings
+│  auctelis-dev scan│  Deterministic facts + OBSERVED/POTENTIAL findings
 │  (core engine)    │
 └─────────┬─────────┘
           │ auctelis-out/
@@ -78,11 +80,10 @@ Principle: never ask an LLM to establish a fact the CLI can establish; never let
 # Product front door (git-tag install — see INSTALL.md):
 auctelis check
 auctelis lock --update
-auctelis ci init --owner @security
+auctelis ci init --apply --owner @security
 
-# Hidden annotation layer, when you explicitly want findings on a tree:
-auctelis scan /path/to/target-repo
-auctelis explain F-001 -o ./auctelis-out   # if findings exist
+# Maintainer annotation only (not the product gate):
+auctelis-dev scan /path/to/target-repo -o ./auctelis-out
 ```
 
 From a checkout:
@@ -103,7 +104,7 @@ Docker is not the Authority Diff install path. Prefer the git-tag / release whee
 2. **Capability extraction** — map hints/types to capability kinds with explicit `origin` (`DECLARED` / `POTENTIAL` / `TYPE_DEFAULT`; never claim effective host permissions from type defaults alone).
 3. **Rule engine** — apply versioned rules `AUCTELIS-RULE-001`…`022` (pack **1.6**) classifying each hit as `CAPABILITY`, `EXPOSURE`, or `SECURITY_FINDING` (see [`SECURITY-RULES.md`](SECURITY-RULES.md)).
 4. **Evidence registry** — each finding references evidence with path, optional line span, content digest, and audited commit when known.
-5. **Reporting** — authority snapshot + Markdown + JSON + SARIF; `auctelis explain` for one finding.
+5. **Reporting** — authority snapshot + Markdown + JSON + SARIF (maintainer artifacts).
 6. **Optional baseline delta** — fingerprint-aware comparison; CI `--fail-on` ignores pure capability observations.
 
 ---
@@ -156,7 +157,7 @@ With `--full`, add `ecosystem-graph.json`, `capabilities.json`,
 
 ## Scan vs inventory
 
-| Concern | `auctelis scan` | `auctelis-dev inventory` |
+| Concern | `auctelis-dev scan` | `auctelis-dev inventory` |
 | --- | --- | --- |
 | Deterministic findings | Yes | No (components only) |
 | SARIF | Yes (artifact) | No |
@@ -165,8 +166,8 @@ With `--full`, add `ecosystem-graph.json`, `capabilities.json`,
 | Recommended first command | **No** — hidden annotation layer | Maintainer discovery only |
 
 Prefer `auctelis check` for the weekly delta, and `auctelis lock` + `auctelis gate`
-+ the CI Authority Diff for the team path. Archived host commands (`watch`) are
-not the product path — use `auctelis-dev scan` in CI only.
++ the CI Authority Diff for the team path. Host tripwires and public scanner CLIs
+are removed — use `auctelis-dev scan` in CI / maintainer workflows only.
 
 ---
 
@@ -213,14 +214,13 @@ Never `uv sync` a PR-controlled `tools/` directory as the scanner.
 
 ---
 
-## Optional AI explanation after scan
+## Optional AI explanation after check / gate
 
 1. Attach [`../skills/auctelis-auditor/SKILL.md`](../skills/auctelis-auditor/SKILL.md).
-2. Run `auctelis scan <target> --agent -o <OUT>/auctelis-out`.
-3. Point the agent at `agent-digest.json` first, then `findings.json`.
-4. Agent may run `auctelis explain` / dry-run `harden` only — never approve locks or edit policy.
-5. Research/archive trees were removed in 0.3.0 — product path is
-   `watch → watch --seal → watch --arm`, with `lock` + `gate` for the team path.
+2. Run `auctelis check` / `auctelis diff --base <ref>` / `auctelis gate` (read-only).
+3. Point the agent at the Authority Diff cards (`--json` or PR comment).
+4. Agent may explain the delta only — never run `lock`, never mutate policy.
+5. Product path: `check → lock --update → ci init --apply → gate / diff / why`.
 
 ---
 

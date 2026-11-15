@@ -1,8 +1,12 @@
 # auctelis deterministic security rules
 
-Rules live in `tools/auctelis/security/rules.py` and are applied by `auctelis scan`.
+> **Maintainer research surface (`auctelis-dev`). Not part of the product gate.**
+> Product path: [`PRODUCT.md`](PRODUCT.md).
 
-**Version:** rule pack **1.6** (tooling **0.8.0** / product **0.8.0**). Twenty-two rules (001-022), annotations behind `scan` / the PR Authority Diff. Install from the git tag in [`INSTALL.md`](INSTALL.md) until PyPI returns the package.
+Rules live in `tools/auctelis/security/rules.py` and are applied by
+`auctelis-dev scan` (CI / maintainer annotation only).
+
+**Version:** rule pack **1.6** (tooling **0.8.1** / product **0.8.1**). Twenty-two rules (001-022), annotations behind `auctelis-dev scan` / the PR Authority Diff. Install from the git tag in [`INSTALL.md`](INSTALL.md) until PyPI returns the package.
 
 **Discipline:** rules emit findings with confidence `OBSERVED` or `POTENTIAL`. They never claim confirmed runtime exploitation. Every finding references evidence and lists missing controls. Each finding also carries `evidence_strength` (`LITERAL_CONFIG` / `INFERRED_HINT` / `NAME_MARKER`). Severity and confidence stay separate. `NAME_MARKER` must not alone create a critical CI gate. See [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md).
 
@@ -154,7 +158,7 @@ Absent a matching hint/type, a rule does nothing for that component.
 
 - **Class:** EXPOSURE / MEDIUM (`NAME_MARKER`) — proximity is not proof of malice
 - **Incident class:** typosquat / social-engineering install
-- **Recommended action:** Confirm spelling vs canonical name; pin publisher + version; `auctelis vet` before install
+- **Recommended action:** Confirm spelling vs canonical name; pin publisher + version before install
 - **Gate:** `NAME_MARKER` never fails CI alone
 
 ---

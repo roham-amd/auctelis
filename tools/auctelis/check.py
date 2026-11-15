@@ -26,7 +26,7 @@ from auctelis.authority_lock import (
     diff_authority_locks,
 )
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
-from auctelis.security.engine import ScanResult, run_security_scan
+from auctelis.security.engine import ScanResult, run_authority_inventory
 
 _EMPTY_LOCK: dict[str, Any] = {
     "version": 1,
@@ -129,7 +129,7 @@ def build_check_report(
         "coverage_line": "",
     }
 
-    scan = run_security_scan(repo)
+    scan = run_authority_inventory(repo)
     head = build_authority_lock(repo, scan=scan)
     head_records = list(head.get("records") or [])
     sealable = sealable_records(head_records)
@@ -195,7 +195,7 @@ def why_repo(
     from auctelis.authority_card import find_records_by_name, why_record
 
     repo = (root or Path.cwd()).expanduser().resolve()
-    scan = run_security_scan(repo)
+    scan = run_authority_inventory(repo)
     head = build_authority_lock(repo, scan=scan)
     matches = find_records_by_name(list(head.get("records") or []), query)
     if not matches:
@@ -222,6 +222,8 @@ def _inventory_line(report: dict[str, Any]) -> str:
         ("plugin", "plugins"),
         ("subagent", "subagents"),
         ("ci", "CI"),
+        ("host", "host"),
+        ("other", "other"),
     ):
         n = int(counts.get(key) or 0)
         if n:
@@ -252,7 +254,15 @@ def render_check(
         out: list[str] = []
         if coverage_line:
             out.append(coverage_line)
-        out.append(f"Gated findings: {gated}" + (f" · NOT PARSED: {unparsed}" if unparsed else ""))
+        # Inventory-only product path: findings are advisory research, not a gate.
+        if gated:
+            out.append(
+                f"Advisory findings: {gated}"
+                + (f" · NOT PARSED: {unparsed}" if unparsed else "")
+                + " (not a gate input; see auctelis-dev scan)"
+            )
+        elif unparsed:
+            out.append(f"NOT PARSED: {unparsed}")
         out.append(f"{LOCK_NAME} match is declared-config only — not a security clearance.")
         return out
 

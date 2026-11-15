@@ -228,8 +228,8 @@ def decision_sentences(
                 "fully established — review coverage gaps before treating this as clean."
             )
     action = (
-        "Next: `auctelis explain F-00N` for evidence, or `auctelis harden` for dry-run patches. "
-        "Product delta: `auctelis watch`."
+        "Next: `auctelis check` / `auctelis why <name>` for the lock delta; "
+        "`auctelis-dev scan --full` for research annotations (not a gate input)."
     )
     return [lead, delta, action]
 

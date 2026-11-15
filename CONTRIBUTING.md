@@ -29,11 +29,14 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
 - Docker: [`Dockerfile`](Dockerfile) pins `python:3.12.16-slim-trixie@sha256:…` + `ghcr.io/astral-sh/uv:…@sha256:…`; `uv sync --locked --no-dev`.
 - Actions: full commit SHAs with version comments; CI uses `uv python install 3.12.16` + `uv sync --locked` + `uv run --locked …`.
 - Product CLI name is **`auctelis`**; keep **`auctelis`** as a console-script alias. Maintainer commands live on **`auctelis-dev`**.
-- Keep the product path lean: `check` → `lock --update` → `ci init --owner` → `gate`.
-  `watch` / `allow` / `hook` / `doctor` stay callable (archived). The `docs/pilots/`
-  tracker is intentional for the five-slot kill criterion.
-- Passive scans must remain read-only. Opt-in execute paths (`run`, `snapshot --execute`) scrub env only and must document sandbox limits.
-- Lock I/O lives in `auctelis.lock_io`; lock build/diff in `auctelis.authority_lock`. Do not pull the scanner into the broker path.
+- Keep the product path lean: `check` → `lock --update` → `ci init --apply --owner` → `gate` / `diff` / `why`.
+  Host tripwires and public `scan` / `vet` / `explain` CLIs are removed; annotation
+  helpers live on `auctelis-dev`. The `docs/pilots/` tracker is intentional for
+  the five-slot kill criterion.
+- Passive inventory must remain read-only. Maintainer opt-in execute paths
+  (`auctelis-dev run`, `snapshot --execute`) scrub env only and must document
+  sandbox limits.
+- Lock I/O lives in `auctelis.lock_io`; lock build/diff in `auctelis.authority_lock`. Do not pull the scanner into the product gate path.
 
 ## Pull requests
 

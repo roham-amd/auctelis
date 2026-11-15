@@ -172,18 +172,18 @@ def test_build_authority_lock_reuses_scan(tmp_path: Path, monkeypatch):
     root = tmp_path / "repo"
     _repo_with_mcp(root, {"x": {"command": "node", "args": ["x.js"]}})
     calls = {"n": 0}
-    real = engine_mod.run_security_scan
+    real = engine_mod.run_authority_inventory
 
-    def counted(path):
+    def counted(path, **kwargs):
         calls["n"] += 1
-        return real(path)
+        return real(path, **kwargs)
 
-    monkeypatch.setattr(engine_mod, "run_security_scan", counted)
+    monkeypatch.setattr(engine_mod, "run_authority_inventory", counted)
     # Import after patch so authority_lock sees the same module attribute.
     from auctelis import authority_lock as lock_mod
 
-    monkeypatch.setattr(lock_mod, "run_security_scan", counted)
-    scan = lock_mod.run_security_scan(root)
+    monkeypatch.setattr(lock_mod, "run_authority_inventory", counted)
+    scan = lock_mod.run_authority_inventory(root)
     assert calls["n"] == 1
     lock_a = lock_mod.build_authority_lock(root, scan=scan)
     lock_b = lock_mod.build_authority_lock(root, scan=scan)

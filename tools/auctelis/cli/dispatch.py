@@ -66,6 +66,10 @@ def dispatch(args: argparse.Namespace) -> int:
             return cmd_check(args)
         case "why":
             return cmd_why(args)
+        case "init":
+            return _cmd_init(args)
+        case "status":
+            return _cmd_status(args)
         case "scan":
             return _cmd_scan(args)
         case "demo":
@@ -500,8 +504,77 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     print(f"Findings: {len(scan.findings)}")
     from auctelis.cli.parser import PUBLIC_PATH
 
-    print(f"Next: auctelis {PUBLIC_PATH}")
+    print("Next: auctelis lock --update  # or lock --accept-gated for intentional imperfect seals")
+    print(f"Then: auctelis {PUBLIC_PATH}")
     # First-run aha always exits 0 so install scripts and tutorials succeed.
+    return 0
+
+
+def _cmd_init(args: argparse.Namespace) -> int:
+    """One-command setup: policy + workflow + CODEOWNERS + lock; exit 0 after writes."""
+    refused = refuse_agent_mutation("init")
+    if refused is not None:
+        return refused
+    # Prefer apply semantics (merge CODEOWNERS, pin release, probe ruleset).
+    args.apply = True
+    args.advisory = bool(getattr(args, "advisory", False))
+    args.force = bool(getattr(args, "force", False))
+    args.accept_gated = bool(getattr(args, "accept_gated", False))
+    args.ci_command = "init"
+    return _cmd_init_gate(args)
+
+
+def _cmd_status(args: argparse.Namespace) -> int:
+    """Show whether the authority gate is armed in this repo."""
+    from auctelis.gate import check_code_owner_ruleset, codeowners_covers_lock, load_codeowners_text
+    from auctelis.lock_io import AuthorityLockError, load_authority_lock
+    from auctelis.versioning import product_version
+
+    root = args.path.resolve()
+    lock_path = root / "AUTHORITY.lock"
+    workflow_path = root / ".github" / "workflows" / "auctelis-gate.yml"
+    policy_path = root / ".auctelis.yml"
+    lines: list[str] = [f"auctelis status · {root}", f"Product: {product_version()}"]
+
+    if lock_path.is_file():
+        try:
+            lock = load_authority_lock(lock_path)
+            n = len(lock.get("records") or [])
+            audited = lock.get("audited_commit") or "(none)"
+            lines.append(f"Lock: present ({n} records) · audited_commit {audited}")
+        except AuthorityLockError as exc:
+            lines.append(f"Lock: INVALID — {exc}")
+    else:
+        lines.append("Lock: missing — run `auctelis init --owner @team`")
+
+    if policy_path.is_file():
+        lines.append(f"Policy: {policy_path.name}")
+    else:
+        lines.append("Policy: missing (.auctelis.yml)")
+
+    if workflow_path.is_file():
+        body = workflow_path.read_text(encoding="utf-8")
+        locked = 'locked: "true"' in body or "locked: 'true'" in body or "locked: true" in body
+        pin_m = re.search(
+            r"roham-amd/auctelis/\.github/actions/auctelis-gate@([^\s#]+)",
+            body,
+        )
+        pin = pin_m.group(1) if pin_m else "(unpinned)"
+        lines.append(f"Workflow: present · locked={'true' if locked else 'false'} · Action @{pin}")
+    else:
+        lines.append("Workflow: missing — run `auctelis init --owner @team`")
+
+    co_text = load_codeowners_text(root)
+    if co_text and codeowners_covers_lock(co_text):
+        lines.append("CODEOWNERS: covers AUTHORITY.lock")
+    elif co_text:
+        lines.append("CODEOWNERS: present but does not cover AUTHORITY.lock")
+    else:
+        lines.append("CODEOWNERS: missing")
+
+    status, detail = check_code_owner_ruleset()
+    lines.append(f"Protection: {status} — {detail}")
+    print("\n".join(lines))
     return 0
 
 
@@ -522,25 +595,41 @@ def _merge_codeowners_authority(existing: str, owner: str) -> str:
     return text.rstrip() + block
 
 
-def _resolve_action_pin_sha(root: Path) -> str | None:
-    """Best-effort HEAD SHA for pinning the composite Action."""
-    import subprocess
+def _resolve_action_pin_ref() -> str:
+    """Pin the composite Action to this auctelis release tag — never consumer HEAD.
 
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-    except OSError:
-        return None
-    if proc.returncode != 0:
-        return None
-    sha = (proc.stdout or "").strip()
-    return sha if len(sha) == 40 else None
+    Consumer-repo ``git rev-parse HEAD`` produced 422s when the SHA does not
+    exist in ``roham-amd/auctelis``. The release tag is always valid there.
+    """
+    from auctelis.versioning import product_version
+
+    return f"v{product_version()}"
+
+
+def _pin_workflow_to_release(workflow_body: str) -> str:
+    """Rewrite Action uses: and pip install pin to the installed product version."""
+    pin = _resolve_action_pin_ref()
+    body = re.sub(
+        r"(roham-amd/auctelis/\.github/actions/auctelis-gate@)[^\s#]+",
+        rf"\g<1>{pin}",
+        workflow_body,
+    )
+    body = re.sub(
+        r"(git\+https://github\.com/roham-amd/auctelis\.git@)[^#\s\"]+",
+        rf"\g<1>{pin}",
+        body,
+    )
+    body = re.sub(
+        r"# Pin to an immutable commit SHA[^\n]*",
+        f"# Pinned by auctelis to release {pin} (never consumer-repo HEAD)",
+        body,
+    )
+    body = re.sub(
+        r"# Pinned by ci init --apply to [^\n]*",
+        f"# Pinned by auctelis to release {pin} (never consumer-repo HEAD)",
+        body,
+    )
+    return body
 
 
 def _cmd_init_gate(args: argparse.Namespace) -> int:
@@ -573,20 +662,11 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             "# Advisory mode: Authority Diff posts; does not fail on lock drift.",
         )
     codeowners_body = codeowners_body.replace("@YOUR_TEAM", owner)
-    if apply:
-        pin = _resolve_action_pin_sha(root)
-        if pin:
-            workflow_body = re.sub(
-                r"(roham-amd/auctelis/\.github/actions/auctelis-gate@)[^\s#]+",
-                rf"\g<1>{pin}",
-                workflow_body,
-            )
-            workflow_body = re.sub(
-                r"# Pin to an immutable commit SHA[^\n]*",
-                f"# Pinned by ci init --apply to {pin}",
-                workflow_body,
-            )
+    # Always pin to the installed auctelis release tag — never consumer HEAD.
+    workflow_body = _pin_workflow_to_release(workflow_body)
+    accept_gated = bool(getattr(args, "accept_gated", False))
     wrote: list[str] = []
+    warnings: list[str] = []
     if policy_path.exists() and not args.force:
         print(f"Exists (use --force): {policy_path}")
     else:
@@ -597,7 +677,14 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     if workflow_path.exists() and not args.force and not apply:
         print(f"Exists (use --force): {workflow_path}")
     elif workflow_path.exists() and apply and not args.force:
-        print(f"Exists (skipped workflow rewrite without --force): {workflow_path}")
+        # Still refresh the Action pin so consumer HEAD never sticks around.
+        existing = workflow_path.read_text(encoding="utf-8")
+        refreshed = _pin_workflow_to_release(existing)
+        if refreshed != existing:
+            workflow_path.write_text(refreshed, encoding="utf-8")
+            wrote.append(f"{workflow_path} (pin refreshed)")
+        else:
+            print(f"Exists (skipped workflow rewrite without --force): {workflow_path}")
     else:
         workflow_dir.mkdir(parents=True, exist_ok=True)
         workflow_path.write_text(workflow_body, encoding="utf-8")
@@ -618,36 +705,30 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         codeowners_path.write_text(codeowners_body, encoding="utf-8")
         wrote.append(str(codeowners_path))
     lock_path = root / "AUTHORITY.lock"
-    if lock_path.exists() and not args.force:
-        print(f"Exists (use --force): {lock_path}")
-    else:
-        # Never auto-attest gated findings — human must pass --accept-gated explicitly.
-        msg, lock_code = run_lock_command(
-            root,
-            lock_path=lock_path,
-            check=False,
-            approval=None,
-            accept_gated=False,
+    # Always (re)seal after generated workflow/policy so CI authority is in the lock.
+    msg, lock_code = run_lock_command(
+        root,
+        lock_path=lock_path,
+        check=False,
+        update=True,
+        approval=None,
+        accept_gated=accept_gated,
+    )
+    print(msg)
+    if lock_code != 0:
+        warnings.append(
+            "AUTHORITY.lock not sealed — remediate or re-run with --accept-gated "
+            "(CODEOWNERS remains the approval system)."
         )
-        print(msg)
-        if lock_code != 0:
-            print(
-                "ci init wrote policy/workflow/CODEOWNERS but did not seal AUTHORITY.lock.\n"
-                "Review the gated findings and remediate, or seal explicitly with:\n"
-                "  auctelis lock --accept-gated\n"
-                "The lock records no approval; GitHub CODEOWNERS is the approval system."
-            )
-            if wrote:
-                print("Wrote:")
-                for path in wrote:
-                    print(f"  {path}")
-            return lock_code
-        wrote.append(str(lock_path))
+    else:
+        wrote.append(f"{lock_path} (sealed)")
     if wrote:
         print("Wrote:")
         for path in wrote:
             print(f"  {path}")
     mode = "advisory" if advisory else "enforce"
+    pin = _resolve_action_pin_ref()
+    print(f"Action pin: roham-amd/auctelis/.github/actions/auctelis-gate@{pin}")
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
     print(f"CODEOWNERS owner: {owner}. Mode: {mode} (locked: {'false' if advisory else 'true'}).")
     if apply:
@@ -657,21 +738,26 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         print(f"Ruleset probe: {status} — {detail}")
         if status != "OK":
             repo = os.environ.get("GITHUB_REPOSITORY") or "<owner>/<repo>"
+            warnings.append(
+                "Ruleset/branch protection not verified — enable require_code_owner_review "
+                f"(https://github.com/{repo}/settings/rules). Files were still written."
+            )
             print(
                 "Ruleset/branch protection is not verified. Create a ruleset that:\n"
                 "  • targets the default branch\n"
                 "  • enforcement = active\n"
                 "  • require_code_owner_review = true\n"
                 f"Settings: https://github.com/{repo}/settings/rules\n"
-                f"API: POST /repos/{repo}/rulesets\n"
-                "ci init --apply will not pretend the growth gate is ready."
+                "Warning only — setup files were written; exit 0."
             )
-            return 1
-        print("Ruleset verified — growth gate can enforce CODEOWNER review.")
+        else:
+            print("Ruleset verified — growth gate can enforce CODEOWNER review.")
     else:
         print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
         print("Or re-run with --apply to merge CODEOWNERS and verify the ruleset.")
-    print("Pin the Action + tools install to an immutable git tag/SHA (or PyPI once published).")
+    for warning in warnings:
+        print(f"Warning: {warning}")
+    # Files on disk are the success criterion; protection gaps are warnings.
     return 0
 
 

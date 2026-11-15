@@ -24,7 +24,7 @@ from auctelis.security.authority import (
     build_authority_snapshot,
     logical_authority_id,
 )
-from auctelis.security.engine import ScanResult, run_security_scan
+from auctelis.security.engine import ScanResult, run_authority_inventory
 from auctelis.versioning import product_version
 
 # Re-export for callers that historically imported from authority_lock.
@@ -210,13 +210,27 @@ def _record_from_component(
         if str(a).strip()
     ]
     maturity = str(raw.get("adapter_maturity") or comp.get("adapter_maturity") or "PARTIAL").upper()
-    # Declared config adapters with a path are LITERAL_CONFIG; heuristics are
-    # INFERRED_HINT; name-only markers stay NAME_MARKER when adapters say so.
+    # Evidence strength is about field origin, not adapter maturity: a literal
+    # MCP URL / CI workflow / hook command is LITERAL_CONFIG even when the
+    # adapter is PARTIAL; heuristic source discovery stays INFERRED_HINT.
     evidence = (
         str(raw.get("evidence_strength") or comp.get("evidence_strength") or "").strip().upper()
     )
+    _LITERAL_KINDS = {
+        "mcp server registration",
+        "ci workflow",
+        "hook",
+        "skill",
+        "rule / instruction file",
+        "rule pack",
+        "claude slash command",
+        "host settings",
+        "plugin",
+        "plugin / connector",
+        "subagent",
+    }
     if evidence not in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"}:
-        if maturity == "SUPPORTED" and path:
+        if kind_l in _LITERAL_KINDS and path:
             evidence = "LITERAL_CONFIG"
         elif maturity in {"MANUAL_ONLY", "UNSUPPORTED"} or not path:
             evidence = "NAME_MARKER"
@@ -257,7 +271,7 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
     """
     root = root.resolve()
     if scan is None:
-        scan = run_security_scan(root)
+        scan = run_authority_inventory(root)
     snapshot = build_authority_snapshot(scan)
     by_fp = {
         str(c.get("fingerprint") or ""): c
@@ -334,7 +348,8 @@ def write_authority_lock(
 ) -> tuple[Path, dict[str, Any]]:
     root = root.resolve()
     if scan is None:
-        scan = run_security_scan(root)
+        # Product lock is inventory-only — rule findings are auctelis-dev research.
+        scan = run_authority_inventory(root)
     blockers = _gated_lock_blockers(scan)
     if blockers and not accept_gated:
         preview = "; ".join(blockers[:3])
@@ -346,8 +361,8 @@ def write_authority_lock(
     del approval_owner  # deprecated: CODEOWNERS is the approval system
     lock = build_authority_lock(root, scan=scan)
     # Lock-only product: approval fields are never written. GitHub CODEOWNERS /
-    # rulesets enforce review; `--accept-gated` is only an explicit human
-    # override to seal the current (imperfect) state.
+    # rulesets enforce review; `--accept-gated` remains for findings-bearing
+    # scans passed explicitly (auctelis-dev) and is a no-op on inventory-only.
     lock["approvals"] = []
     lock["approved_findings"] = []
     dest = path or default_lock_path(root)

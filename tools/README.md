@@ -1,13 +1,16 @@
-# auctelis tooling (`auctelis`)
+# auctelis tooling
 
-Authority Diff CLI: `check` → `lock --update` → `ci init --owner` → `gate`.
-`watch` / `allow` / `hook` are archived. `scan` / `vet` are hidden annotation layers.
+**Product CLI (`auctelis`):** `check` → `lock --update` → `ci init --apply --owner` → `gate` / `diff` / `why` / `demo`.
+
+**Maintainer CLI (`auctelis-dev`):** `scan`, `annotate`, `build`, `lint`, `deps`, `corpus`, `validate`, `inventory`, … — not the product gate.
+
+Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs were **removed**.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.8.0** · Product: auctelis **0.8.0**
+Package: `auctelis` **0.8.1** · Product: auctelis **0.8.1** (install pin: `@v0.8.1` — see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -23,7 +26,7 @@ Package: `auctelis` **0.8.0** · Product: auctelis **0.8.0**
 | Tests | Pytest (+ pytest-cov) |
 | Vuln scan | pip-audit |
 | CI | GitHub Actions + `uv sync --locked` |
-| Optional container | Docker scan image only (`uv sync --locked --no-dev`) — not the Authority Diff install |
+| Optional container | Deferred — not the Authority Diff install |
 
 Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
@@ -35,10 +38,10 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools
-# PyPI not published yet — git tag/SHA only.
+  git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools
+# PyPI coming — git tag until the index returns the package.
 auctelis check                             # repo authority vs AUTHORITY.lock
-auctelis lock --update                     # seal AUTHORITY.lock
+auctelis lock --update                     # seal AUTHORITY.lock (empty baseline OK)
 auctelis ci init --apply --owner @security # CODEOWNERS + ruleset verify
 auctelis diff --base origin/main           # local PR Authority Diff
 auctelis why <name>                        # exact config path
@@ -50,16 +53,12 @@ Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 **Local development:**
 
 ```bash
-# https://docs.astral.sh/uv/getting-started/installation/
 cd tools
-uv sync --locked          # creates .venv from uv.lock
+uv sync --locked
 uv run auctelis --help
 uv run auctelis check .
-uv run auctelis scan /path/to/target-repo   # hidden annotation layer
+uv run auctelis-dev lint --check-format   # maintainer
 ```
-
-Primary path: **`check` / `lock` / `ci init` / `gate`**.
-`watch` / `allow` / `hook` are archived; `scan` / `vet` are hidden.
 
 `.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`) and the Docker base (`python:3.12.16-slim-trixie@sha256:…`).
 
@@ -85,15 +84,12 @@ auctelis-dev deps outdated
 
 ### Docker
 
-Root [`Dockerfile`](../Dockerfile) uses digest-pinned `python:3.12.16-slim-trixie` and `ghcr.io/astral-sh/uv`, then `uv sync --locked --no-dev`.
+Root [`Dockerfile`](../Dockerfile) uses digest-pinned `python:3.12.16-slim-trixie` and `ghcr.io/astral-sh/uv`, then `uv sync --locked --no-dev`. Docker is optional / deferred.
 
 ```bash
 docker compose build
-TARGET=/path/to/repo docker compose run --rm auctelis \
-  scan /work -o /work/auctelis-out
+TARGET=/path/to/repo docker compose run --rm auctelis check /work
 ```
-
-Operator guide: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 
 ### Pre-commit (optional)
 
@@ -121,27 +117,24 @@ uv run --locked auctelis-dev corpus run
 
 ## Commands (summary)
 
+### Product (`auctelis`)
+
 ```bash
-# Primary product surface
 uv run auctelis check [PATH] [--json]
 uv run auctelis lock [PATH] [--check] [--update] [--accept-gated]
-uv run auctelis ci init --owner @TEAM [PATH] [--force] [--advisory] [--apply]
+uv run auctelis ci init --apply --owner @TEAM [PATH] [--force] [--advisory]
 uv run auctelis gate [PATH] --base-lock PATH
 uv run auctelis diff --base REF [--repo PATH]
+uv run auctelis diff lock <base.lock> <head.lock>
 uv run auctelis why NAME [PATH]
+uv run auctelis demo [-o DIR]
+```
 
-# Archived host/tripwire (callable)
-uv run auctelis watch [--home DIR] [--seal] [--accept DIGEST] [--arm]
-uv run auctelis hook install|status [--probe]
+### Maintainer (`auctelis-dev`)
 
-# Hidden annotation layer
-uv run auctelis scan PATH [-o DIR] [--baseline B] [--fail-on never|high|any] [--agent]
-uv run auctelis vet SOURCE [-o DIR] [--agent]
-uv run auctelis harden [--findings PATH]
-uv run auctelis explain F-001 -o DIR [--agent]
-uv run auctelis annotate FINDINGS.json --format github|text|pr-comment
-
-# Maintainer (auctelis-dev)
+```bash
+uv run auctelis-dev scan PATH [-o DIR] [--fail-on never|high|any]
+uv run auctelis-dev annotate FINDINGS.json --format github|text|pr-comment
 uv run auctelis-dev validate report PATH
 uv run auctelis-dev inventory PATH
 uv run auctelis-dev export sarif REPORT.json
@@ -159,34 +152,22 @@ uv run auctelis-dev lint [--fix] [--format] [--check-format]
 | Module / package | Responsibility |
 | --- | --- |
 | `cli/` | argparse construction + command dispatch |
-| `security/` | Guard engine: capabilities, rules, scan, baseline, report |
-| `security/rules.py` | Deterministic rules AUCTELIS-RULE-001…022 (pack 1.6) |
 | `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
-| `authority_card.py` | One-line authority cards for watch / PR comment |
-| `watch.py` / `host_scan.py` | Authority Watch screen + host discovery/staging |
-| `hooks.py` / `templates/` | Cursor + Claude hook installation and status |
+| `authority_card.py` | One-line authority cards for PR comment |
 | `gate.py` | Base-lock growth labels + CODEOWNERS / ruleset check |
-| `security/scan.py` | Artifact writer + policy fail-on + PR comment |
-| `security/decision.py` | Internal BLOCK / REVIEW / NO-GATED-FINDINGS annotation |
-| `harden.py` | Dry-run least-privilege patch proposals |
-| `doctor.py` | Alias for the watch screen |
-| `vet.py` | Hidden pre-install annotation layer |
+| `security/` | Maintainer Guard engine: capabilities, rules, scan, baseline, report |
+| `security/rules.py` | Deterministic rules AUCTELIS-RULE-001…022 (pack 1.6) |
 | `inventory/` | Bounded I/O, adapter registry, collector, coverage |
 | `inventory/adapters/` | Skills, MCP, hooks, plugins, subagents, automations, A2A, workflows |
-| `preflight.py` | Graph seed + audit-context helpers |
 | `export/` | SARIF, annotations, PR comment, agent digest |
 | `validate_report.py` / `semantic.py` | Schema + semantic validation |
-| `graph/analysis.py` | Graph path helpers |
 | `corpus/` | Tooling corpus runner |
-| `supply_chain/` | Digest helpers |
 | `build.py` | Consistency checks (schemas, versions, links, pins) |
 | `versioning.py` | Product/package version resolution |
 | `deps.py` / `pins.py` / `lint.py` | Engineering helpers |
-| `jsonio.py` | Shared JSON/text I/O |
-| `textutil.py` | Markdown/terminal escaping shared by rules and exports |
-| `broker.py` / `mcp_snapshot.py` / `process_env.py` | Advanced run/snapshot surfaces |
+| `jsonio.py` / `textutil.py` | Shared I/O and escaping |
 
-Library entry points are documented in the package docstring and [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md).
+Library entry points: package docstring and [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md).
 
 ---
 
@@ -200,7 +181,7 @@ Adapters register in `inventory/adapters/registry.py`. Maturity appears on each 
 | Instruction rules | SUPPORTED | AGENTS.md / rule packs |
 | MCP client config | PARTIAL | mcpServers registrations |
 | MCP server source | PARTIAL | Heuristic source markers |
-| Hooks | PARTIAL | hooks.json / hooks dirs |
+| Hooks | PARTIAL | hooks.json / hooks dirs (inventory only) |
 | Plugins / subagents / automations | PARTIAL | Host-component heuristics |
 | A2A agent cards | PARTIAL | agent-card.json style |
 | GitHub workflows | PARTIAL | `.github/workflows` |

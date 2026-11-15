@@ -175,7 +175,17 @@ class ScanResult:
         return None
 
 
-def run_security_scan(target: Path, *, default_excludes: bool = True) -> ScanResult:
+def run_security_scan(
+    target: Path,
+    *,
+    default_excludes: bool = True,
+    apply_rules: bool = True,
+) -> ScanResult:
+    """Inventory a tree and optionally apply the research rule pack.
+
+    Product path (``check`` / ``lock`` / ``gate``) uses ``apply_rules=False`` —
+    the gate is lock-only. ``auctelis-dev scan`` keeps ``apply_rules=True``.
+    """
     target = target.resolve()
     result = collect_inventory(target, default_excludes=default_excludes)
     commit = resolve_git_commit(target)
@@ -202,7 +212,12 @@ def run_security_scan(target: Path, *, default_excludes: bool = True) -> ScanRes
         source_commit=commit,
         observed_at=collected_at,
     )
-    evidences, findings = apply_all_rules(components, ctx=ctx)
+    if apply_rules:
+        evidences, findings = apply_all_rules(components, ctx=ctx)
+        rules_applied = [r.rule_id for r in RULES] + list(CROSS_COMPONENT_RULE_IDS)
+    else:
+        evidences, findings = [], []
+        rules_applied = []
 
     # Attach inventory evidence stubs for capability references.
     for comp in components:
@@ -245,6 +260,11 @@ def run_security_scan(target: Path, *, default_excludes: bool = True) -> ScanRes
         external_destination_count=external,
         product_version=product_version(),
         package_version=package_version(),
-        rules_applied=[r.rule_id for r in RULES] + list(CROSS_COMPONENT_RULE_IDS),
+        rules_applied=rules_applied,
         relationships=relationships,
     )
+
+
+def run_authority_inventory(target: Path, *, default_excludes: bool = True) -> ScanResult:
+    """Product inventory: adapters + capabilities, no rule findings."""
+    return run_security_scan(target, default_excludes=default_excludes, apply_rules=False)

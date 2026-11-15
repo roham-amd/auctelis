@@ -6,16 +6,19 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are on the kill list.
 
-**Current:** **0.8.0** (Gate Zero) · lock schema 1 · tooling 0.8.0
+**Current:** **0.8.1** (activation recovery) · lock schema 1 · tooling 0.8.1
 
 ## North star (Gate Zero)
 
 1. One extractor, one lock, one diff, one PR comment, one Action
-2. `ci init --apply` configures CODEOWNERS + verifies ruleset protection
+2. `auctelis init --owner @team` configures CODEOWNERS + pins release tag
 3. Adoption ceremony is `BASELINE_ADOPTED`, never false `PASS`
-4. Coverage and evidence strength are visible on every match and card
+4. Empty baseline is fine: first growth is CODEOWNERS review — not hollow /
+   forever `FAIL_CLOSED`
+5. Coverage and evidence strength are visible on every match and card
+6. Product path is lock-only; research scanner stays on `auctelis-dev`
 
-## 30-day build (Gate Zero)
+## 30-day build (Gate Zero → 0.8.1)
 
 | Window | Work | Status |
 | --- | --- | --- |
@@ -24,6 +27,8 @@ are on the kill list.
 | Week 2 | `ci init --apply`; `diff --base`; pin Action to commit SHA | done |
 | Week 3 | Effective-rules endpoint; base CODEOWNERS trust; gate trust tests | done |
 | Week 4 | Ship 0.8.0; host stack + public scanner removed; 25-config fixture suite | done |
+| **0.8.1** | Consumer Action pin; empty-baseline growth; `strict-ruleset:false`; `init`/`status`; inventory-only product path | **done** |
+| Next | PyPI Trusted Publishing; five outside pilots; CODEOWNERS glob harden; 0.9.0 docs collapse | open |
 
 ## 90-day decision gate
 
@@ -43,7 +48,7 @@ broker before five outside repos retain the gate.
 - PyPI ceremony until five pilots retain the gate
 - Marketplace / badge / “Authority Watch” product copy
 
-Keep: `check`, `lock`, `ci`, `gate`, `why`, `demo`, `diff --base`.
+Keep: `init`, `status`, `check`, `lock`, `ci`, `gate`, `why`, `demo`, `diff --base`.
 
 ## Success metrics
 

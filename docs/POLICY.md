@@ -1,6 +1,6 @@
 # auctelis policy file (`.auctelis.yml`)
 
-Repository-level defaults for the auctelis scan and CI gate.
+Repository-level defaults for the auctelis CI gate and maintainer annotations.
 
 | Item | Value |
 | --- | --- |
@@ -9,7 +9,7 @@ Repository-level defaults for the auctelis scan and CI gate.
 | Discovery (when trusted) | Look for `.auctelis.yml` **inside the scan target tree only** (never parent dirs outside the target) |
 | CI trust | Action `trusted-policy=true` loads `.auctelis.yml` from the **PR base ref** and fails if an *existing* policy file is edited (first-time add is allowed) |
 | Override | Explicit CLI flags always win |
-| Disable | `auctelis scan --no-policy` |
+| Disable | `auctelis-dev scan --no-policy` (maintainer) |
 | Suppressions | Matching findings are marked `suppressed: true` and retained in artifacts (never deleted) |
 
 ## Example
@@ -69,8 +69,10 @@ Suppressions must not become permanent blind spots: require owner, justification
 ## CLI
 
 ```bash
-auctelis scan . --policy .auctelis.yml --fail-on high
-auctelis scan . --no-policy
+# Product path uses .auctelis.yml via the Action / gate (trusted-policy).
+# Maintainer annotation:
+auctelis-dev scan . --policy .auctelis.yml --fail-on high
+auctelis-dev scan . --no-policy
 ```
 
 ## Gate integrity

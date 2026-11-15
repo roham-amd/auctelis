@@ -90,7 +90,7 @@ Agents must not mutate locks (`AUCTELIS_AGENT=1`).
 auctelis check                             # repo authority vs AUTHORITY.lock
 auctelis lock --update                     # write / refresh repo AUTHORITY.lock
 auctelis lock --check                      # exit 1 on drift
-auctelis ci init --owner @you              # workflow + CODEOWNERS + lock
+auctelis ci init --apply --owner @you      # workflow + CODEOWNERS + ruleset verify
 auctelis gate --base-lock base.lock        # PR Authority Diff + CODEOWNERS gate
 auctelis why <name>                        # exact config path for one record
 ```
@@ -105,7 +105,7 @@ Protect the file:
 AUTHORITY.lock  @security-owner
 ```
 
-`auctelis ci init --owner @you` writes a CODEOWNERS stub for this path.
+`auctelis ci init --apply --owner @you` merges a CODEOWNERS stub for this path.
 
 ### Pinned facts
 
@@ -122,17 +122,20 @@ Each record may also seal:
 Same identity with a different launcher/args/host is a **`replacement`** (needs approval).
 Opt-in: `auctelis lock --snapshot tools.json` merges `mcp_tools` description pins.
 
-Archived host commands (`watch` / `allow` / `hook` / `lock --home`) remain
-callable for compatibility but are not the product path.
+Host tripwires (`watch` / `allow` / `hook`) and public scanner CLIs are
+**removed**. Product path: check → lock --update → ci init --apply → gate.
 
 ---
 
 ## Unknown / unparseable components
 
 - Components the adapters cannot parse are **not** silently approved by a lock.
-- Unparsed agent configs fail closed in scan decisions (`REVIEW`).
+- Unparsed agent configs surface as coverage gaps / `REVIEW` in maintainer
+  annotations (`auctelis-dev`); they do not silently pass the product gate.
 - Families with `MANUAL_ONLY` / `UNSUPPORTED` maturity appear in coverage, not
   as lock records of “safe absence”.
+- An empty baseline is normal: first growth is CODEOWNERS review of the lock,
+  not forever `FAIL_CLOSED`.
 
 See [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md).
 

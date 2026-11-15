@@ -37,7 +37,7 @@ settings, or agent CI steps:
 12. **Subagent tool inheritance broader than parent intent?**
 
 If any answer is unknown, mark **NOT VERIFIED** — do not treat absence of a
-scanner finding on `MANUAL_ONLY` surfaces as safety.
+finding on `MANUAL_ONLY` surfaces as safety.
 
 ## PR template (snippet)
 
@@ -67,19 +67,17 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# Git install only today — PyPI not published yet
+# Git install only today — PyPI coming; pin the 0.8.1 tag
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
 
-auctelis check              # repo authority vs AUTHORITY.lock
-auctelis lock --update      # seal AUTHORITY.lock (no approval fields are written)
-auctelis ci init --owner @you   # enforce workflow + CODEOWNERS
-auctelis demo               # canned fixture + PR comment (exits 0)
-# gate is the authority-growth verdict:
-auctelis gate --base-lock AUTHORITY.lock
+auctelis init --owner @you                  # preferred: policy + workflow + CODEOWNERS + lock
+auctelis check                              # repo authority vs AUTHORITY.lock
+auctelis status                             # lock / workflow / CODEOWNERS / protection
+auctelis demo                               # canned fixture + PR comment (exits 0)
+auctelis gate --base-lock AUTHORITY.lock    # authority-growth verdict
 ```
 
-If the tree already has high/critical annotations, fix them first. Sealing with
-`--accept-gated` is an explicit human override; it records **no** approval —
-CODEOWNERS and rulesets are the approval system.
-
+Empty baseline is expected: first growth is a CODEOWNERS review, not forever
+`FAIL_CLOSED`. Product lock is inventory-only (findings are `auctelis-dev`
+research). CODEOWNERS and rulesets remain the approval system.

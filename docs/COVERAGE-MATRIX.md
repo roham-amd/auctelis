@@ -1,10 +1,11 @@
 # auctelis coverage matrix
 
 Authoritative runtime source: `tools/auctelis/inventory/coverage.py` → `ADAPTER_COVERAGE`  
-Emitted on every scan as `inventory.json` / `findings.json` → `coverage.adapter_matrix`.
+Emitted on inventory / maintainer annotation as `inventory.json` /
+`findings.json` → `coverage.adapter_matrix` (also summarized on Authority Diff).
 
-A clean scan means **nothing risky was detected in the supported subset**, not
-that the ecosystem was comprehensively examined. Coverage is a first-class
+A clean inventory means **nothing risky was detected in the supported subset**,
+not that the ecosystem was comprehensively examined. Coverage is a first-class
 product output.
 
 **Authority layers:** Declared → Configured → Effective → Verified. Passive
@@ -47,8 +48,8 @@ per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 
 | Host | Status |
 | --- | --- |
-| Cursor | Partial profile; session + tool hooks wired by `watch --arm` |
-| Claude Code | Partial profile; SessionStart + `.*` PreToolUse hooks |
+| Cursor | Partial profile (inventory of hooks / MCP / skills) |
+| Claude Code | Partial profile (inventory of settings / hooks / skills) |
 | Codex | Partial profile |
 | VS Code / Copilot markers | Partial / manual |
 

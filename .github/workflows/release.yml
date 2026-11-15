@@ -82,6 +82,8 @@ jobs:
           /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis check --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis init --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis status --help >/dev/null
           set +e
           /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
           demo_rc=$?

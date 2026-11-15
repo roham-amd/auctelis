@@ -65,8 +65,8 @@ def render_agent_digest(
     next_actions = [
         "Treat findings.json as source of truth; do not invent security facts.",
         "Prefer LITERAL_CONFIG evidence; demote NAME_MARKER to triage only.",
-        "Run `auctelis explain F-00N` before proposing a fix PR.",
-        "Offer `auctelis harden --dry-run` for high-confidence patch templates.",
+        "Run `auctelis why <name>` and quote the card path before proposing a fix PR.",
+        "Use `auctelis-dev scan` only for research annotations — never as a merge gate.",
         "Never edit AUTHORITY.lock, .auctelis.yml, or CODEOWNERS without explicit human approval.",
     ]
     if decision == "BLOCK":

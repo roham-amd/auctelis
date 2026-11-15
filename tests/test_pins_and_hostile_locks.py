@@ -71,7 +71,8 @@ def test_schema_rejects_malformed_lock(tmp_path: Path):
         pass
 
 
-def test_hollow_base_fails_closed(tmp_path: Path):
+def test_empty_baseline_growth_needs_review(tmp_path: Path):
+    """0-record base lock + head authority is GROWTH, not permanent FAIL_CLOSED."""
     root = tmp_path / "repo"
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     (root / ".github").mkdir(parents=True)
@@ -82,9 +83,11 @@ def test_hollow_base_fails_closed(tmp_path: Path):
     hollow_body = {"version": 1, "records": [], "mcp_tools": {}}
     hollow_body["lock_hash"] = compute_lock_hash(hollow_body)
     hollow.write_text(json.dumps(hollow_body), encoding="utf-8")
-    report, code = run_gate(root, base_lock=hollow)
-    assert code == 1
-    assert report["verdict"] == "FAIL_CLOSED"
+    report, _code = run_gate(root, base_lock=hollow, check_ruleset=False)
+    assert report["label"] == "GROWTH"
+    assert report.get("empty_baseline_growth") is True
+    assert report["verdict"] != "FAIL_CLOSED"
+    assert "Empty-baseline growth" in str(report.get("error") or "")
 
 
 def test_reordered_records_not_meaningful(tmp_path: Path):

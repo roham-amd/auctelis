@@ -47,9 +47,9 @@ body:
     attributes:
       label: Pilot path
       options:
-        - Host hook (watch --seal / watch --arm)
-        - Team repo (lockless Action)
+        - Team repo (ci init --apply + CODEOWNERS)
         - Team repo (locked gate + CODEOWNERS)
+        - Advisory Action only
     validations:
       required: true
   - type: input
@@ -70,4 +70,4 @@ body:
     id: notes
     attributes:
       label: Setup notes / FP-FN observations
-      description: Link PRs, note hook status at week 4, UNVERIFIED share, usefulness of the delta line
+      description: Link PRs, note CODEOWNERS reviews at week 4, UNVERIFIED share, usefulness of the delta line

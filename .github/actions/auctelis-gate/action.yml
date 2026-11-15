@@ -423,6 +423,10 @@ runs:
         if [[ "${AUCTELIS_STRICT_RULESET}" == "true" ]]; then
           gate_args+=(--strict-ruleset)
           echo "Strict ruleset: UNVERIFIED fails growth"
+        else
+          # CLI defaults --strict-ruleset on; must pass the negative form explicitly.
+          gate_args+=(--no-strict-ruleset)
+          echo "Strict ruleset: off (best-effort)"
         fi
         # AUCTELIS_HEAD_SHA is available for diagnostics; gate is lock-only
         # (growth label + CODEOWNERS/ruleset) and does not count PR reviews.

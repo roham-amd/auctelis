@@ -10,7 +10,7 @@
 | ≤ 0.5.x | No |
 | 1.0.x | No (yanked / superseded pre-1.0 `authdiff` line; do not use) |
 
-Tooling package version (`auctelis`, currently **0.8.0**) is tracked in
+Tooling package version (`auctelis`, currently **0.8.1**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
@@ -55,7 +55,7 @@ Do **not** include production secrets, customer data, or live exploit payloads a
 
 ## Auditor safety expectations
 
-Operators and audit agents must treat target repositories as **untrusted data**. Passive audits must remain read-only: no install, no execution, and no contact with target-controlled services. `vet` shallow-clones the Git source you explicitly name; `gate` may query GitHub rulesets with a token. Neither executes target code.
+Operators and audit agents must treat target repositories as **untrusted data**. Passive audits must remain read-only: no install, no execution, and no contact with target-controlled services. `check` / `gate` inventory the local tree; `gate` may query GitHub rulesets with a token. Neither executes target code.
 
 Deterministic collectors apply resource limits (`max_files`, `max_depth`, `max_file_bytes`). Limits reduce abuse risk; they are not a full sandbox.
 
@@ -63,7 +63,7 @@ Composite GitHub Action inputs must be passed via environment variables into she
 
 ## Gate trust notes
 
-- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `auctelis gate`, not by scan heuristics.
+- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `auctelis gate`, not by annotation heuristics.
 - Prefer GitHub-native CODEOWNERS / rulesets (including team owners and stale-review dismissal) as the approval source of truth.
 - `auctelis gate` is lock-only: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — auctelis does not count PR approvals.
 - `AUCTELIS_AGENT=1` is a speed bump that refuses lock writes for agents; it is not a security control.

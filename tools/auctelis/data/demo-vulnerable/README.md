@@ -3,24 +3,23 @@
 Seeded fixtures that **should** produce gated findings. Not for production use.
 
 ```bash
-# Preferred first screen: repo authority preflight
-auctelis check examples/demo-vulnerable
-
-# The canned repo fixture (for the PR-comment shape):
+# Packaged walkthrough (preferred):
 auctelis demo
 
-# Hidden annotation layer, when you explicitly want findings:
-auctelis scan examples/demo-vulnerable -o auctelis-out-demo --fail-on high
-auctelis explain F-001 -o auctelis-out-demo
-auctelis harden --findings auctelis-out-demo/findings.json
+# Or inventory this tree against AUTHORITY.lock:
+auctelis check examples/demo-vulnerable
+
+# Seal an intentional demo tree despite HIGH/CRITICAL annotations:
+auctelis lock --update examples/demo-vulnerable --accept-gated
 ```
 
 The same fixture is packaged at `auctelis/data/demo-vulnerable` so `auctelis demo`
 does not require this repository tree.
 
-Expected rule hits include: RULE-011 (unpinned), RULE-012 (literal secret),
-RULE-013 (HTTP MCP), RULE-015 (curl|sh), RULE-016 (`pull_request_target` + agent),
-RULE-017 (permission bypass), and content-based RULE-010.
+Expected rule hits (maintainer annotation / demo fixture) include: RULE-011
+(unpinned), RULE-012 (literal secret), RULE-013 (HTTP MCP), RULE-015 (curl|sh),
+RULE-016 (`pull_request_target` + agent), RULE-017 (permission bypass), and
+content-based RULE-010.
 
-The valuable output is `pr-comment.md` (Authority Diff), not the long report.
-Use `auctelis scan --full` only when you need inventory graph / capabilities dumps.
+The valuable output is the Authority Diff / `pr-comment.md` shape, not a long
+scanner report. Product path: check → lock --update → ci init --apply → gate.

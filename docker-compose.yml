@@ -2,9 +2,8 @@
 #
 #   docker compose build
 #   TARGET=/path/to/repo docker compose run --rm auctelis check /work
-#   TARGET=/path/to/repo docker compose run --rm auctelis scan /work -o /tmp/auctelis-out
 #
-# Prefer writing artifacts outside the mounted target (e.g. /tmp/auctelis-out).
+# Prefer the git-tag CLI (docs/INSTALL.md). Product path: check → lock → ci init --apply.
 
 services:
   auctelis:

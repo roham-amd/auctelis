@@ -1242,7 +1242,7 @@ def rule_typosquat_known_name(
         ],
         recommended_action=(
             f"Confirm the name is intentional (not `{hit['known']}`); pin version; "
-            "vet with `auctelis vet` before install."
+            "verify publisher provenance before install."
         ),
         finding_class="EXPOSURE",
         exposure="TYPOSQUAT_NAME",

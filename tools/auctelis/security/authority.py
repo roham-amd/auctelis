@@ -119,9 +119,23 @@ def _identity(component: dict[str, Any]) -> list[str]:
     return out
 
 
-def _capabilities(component: dict[str, Any], findings: list[Any]) -> list[str]:
+def _capabilities(
+    component: dict[str, Any],
+    findings: list[Any],
+    *,
+    declared: list[Any] | None = None,
+) -> list[str]:
     caps: set[str] = set()
     cid = str(component.get("component_id") or "")
+    for cap in declared or []:
+        cap_cid = (
+            cap.component_id if hasattr(cap, "component_id") else (cap.get("component_id") or "")
+        )
+        if cid and str(cap_cid) != cid:
+            continue
+        kind = cap.kind if hasattr(cap, "kind") else cap.get("kind")
+        if kind:
+            caps.add(str(kind))
     for finding in findings:
         ids = (
             finding.component_ids
@@ -152,6 +166,14 @@ def _capabilities(component: dict[str, Any], findings: list[Any]) -> list[str]:
     if "permission_bypass_flag" in hints or "wildcard_bash_permission" in hints:
         caps.add("modify_approvals")
         caps.add("unattended_operation")
+    # Type defaults so inventory-only locks still surface MCP tools / CI posture.
+    ctype = str(component.get("type") or component.get("kind") or "")
+    if ctype == "MCP Server Registration":
+        caps.add("invoke_tools")
+    if ctype in {"CI Workflow", "Workflow"}:
+        caps.add("unattended_operation")
+    if ctype == "Hook":
+        caps.add("unattended_operation")
     return sorted(caps)
 
 
@@ -168,6 +190,10 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
             continue
         # Skip pure inventory hosts with no authority signal unless they carry hints.
         hints = list(raw.get("priority_hints") or [])
+        # Implementation source is inventory, not declared repo reach — never seal
+        # by default (hints alone must not pull mcp.py into AUTHORITY.lock).
+        if kind == "MCP Server Implementation":
+            continue
         authority_kinds = {
             "MCP Server Registration",
             "Hook",
@@ -179,6 +205,7 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
             "Plugin",
             "Plugin / Connector",
             "Subagent",
+            "Claude slash command",
         }
         if kind not in authority_kinds and not hints:
             continue
@@ -192,7 +219,7 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
             path=str(raw.get("repository_path") or raw.get("name") or ""),
             fingerprint=fp,
             name=name,
-            capabilities=_capabilities(raw, scan.findings),
+            capabilities=_capabilities(raw, scan.findings, declared=scan.capabilities),
             destinations=_destinations(raw),
             identity=_identity(raw),
             approval_posture=_approval_posture(raw),

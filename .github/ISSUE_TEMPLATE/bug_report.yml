@@ -1,5 +1,5 @@
 name: Bug report
-description: Report incorrect scan/lock/CI behavior or a tooling crash
+description: Report incorrect check/lock/gate/CI behavior or a tooling crash
 title: "[bug] "
 labels: ["bug"]
 body:
@@ -20,7 +20,7 @@ body:
     attributes:
       label: Command / workflow
       description: Exact CLI or GitHub Action invocation
-      placeholder: auctelis watch --delta-only
+      placeholder: auctelis check
     validations:
       required: true
   - type: textarea

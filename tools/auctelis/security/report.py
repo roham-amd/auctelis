@@ -139,8 +139,11 @@ def render_short_terminal_report(
             + (f" ({path})" if path else "")
         )
     if len(gated) > 3:
-        lines.append(f"  … +{len(gated) - 3} more gated (auctelis scan --full)")
-    lines.append("Next: auctelis watch | auctelis explain F-00N | auctelis scan --full")
+        lines.append(f"  … +{len(gated) - 3} more gated (auctelis-dev scan --full)")
+    lines.append(
+        "Next: auctelis check | auctelis why <name> | auctelis-dev scan --full "
+        "(annotations are research, not the product gate)"
+    )
     return "\n".join(lines)
 
 
@@ -258,8 +261,9 @@ def render_full_terminal_report(
             "",
             "RESIDUAL RISK / NEXT ACTIONS",
             "  1. Review AUTHORITY SURFACES above before install/merge/deploy.",
-            "  2. `auctelis lock` then protect AUTHORITY.lock with CODEOWNERS.",
-            "  3. `auctelis explain F-00N` for evidence, attack path, and remediation.",
+            "  2. `auctelis lock --update` then protect AUTHORITY.lock with CODEOWNERS.",
+            "  3. `auctelis why <name>` for the exact config path; full annotations via "
+            "`auctelis-dev scan`.",
             "  4. Optional AI deep review: skills/auctelis-auditor (consumes this evidence).",
             "",
             "IMPORTANT",
@@ -331,7 +335,7 @@ def render_finding_explanation(scan: ScanResult, finding: Finding) -> str:
             "## Verification requirements",
             "",
             "- Do not promote this to CONFIRMED / Verified impact without independent evidence.",
-            "- Optional: `auctelis harden` for dry-run patches; `auctelis watch` for host authority.",
+            "- Product gate: `auctelis check` / `auctelis gate --base-lock <base.lock>`.",
             "",
         ]
     )

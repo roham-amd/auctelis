@@ -1,7 +1,7 @@
 # Auctelis product contract
 
-**Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR review for what AI agents can reach  
-**Release:** 0.8.0 · **Package:** `auctelis` 0.8.0 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
+**Release:** 0.8.1 · **Package:** `auctelis` 0.8.1 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis-dev` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -39,25 +39,28 @@ One question drives the workflow:
 
 ## Primary commands
 
-Public path: **check → lock --update → ci init --apply --owner @team → gate**
+Public path: **init --owner @team → check → lock --update → gate**
 
 | Command | Job |
 | --- | --- |
-| `auctelis check` | Repo authority vs `AUTHORITY.lock` (front door; no host scan) |
+| `auctelis init --owner @team` | One-command setup: policy + workflow + CODEOWNERS + lock |
+| `auctelis check` | Repo authority vs `AUTHORITY.lock` (front door; inventory-only) |
+| `auctelis status` | Lock / workflow / CODEOWNERS / protection summary |
 | `auctelis lock --update` | Write the committed lock from the current tree |
-| `auctelis ci init --apply --owner @team` | Enforce workflow + merge CODEOWNERS + verify ruleset |
+| `auctelis ci init --apply --owner @team` | Legacy alias of init (apply + ruleset probe) |
 | `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |
 | `auctelis diff --base <ref>` | Local PR Authority Diff simulator |
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Optional packaged fixture |
 
 Host stack (`watch` / `allow` / `hook` / `doctor`) and public `vet` / `harden` /
-`explain` CLIs are **removed**. Annotation helpers live on `auctelis-dev`
-(`scan` / `annotate`) for CI only. Reach: [`REACH.md`](REACH.md).
+`explain` CLIs are **removed**. The product gate is **lock-only**; the research
+scanner lives on `auctelis-dev` (`scan` / `annotate`) only. Reach: [`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  
-**Verdicts:** `LOCKED` | `BASELINE_NEEDED` | `NEEDS_REVIEW` | `BASELINE_ADOPTED` | `FAIL_CLOSED`
+**Verdicts:** `LOCKED` | `BASELINE_NEEDED` | `NEEDS_REVIEW` | `BASELINE_ADOPTED` | `FAIL_CLOSED`  
+(`FAIL_CLOSED` = unusable / missing base lock for gate — not the empty-baseline state. First growth after an empty seal is CODEOWNERS review.)
 
 ---
 

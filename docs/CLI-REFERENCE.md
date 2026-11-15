@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.8.0** · product **0.8.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.8.1** · product **0.8.1** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -66,8 +66,8 @@ auctelis lock [PATH] [--check] [--update] [--lock-file PATH]
 Writes or verifies repo `AUTHORITY.lock`. `--check` is read-only. Writes are
 refused when `AUCTELIS_AGENT=1` (speed bump, not a security control).
 `--accept-gated` seals despite HIGH/CRITICAL annotations (records no approval —
-CODEOWNERS governs). Archived `--home` / `--snapshot` remain callable but are
-hidden from help.
+CODEOWNERS governs). Empty baseline is normal: first growth is CODEOWNERS
+review, not forever `FAIL_CLOSED`.
 
 ---
 

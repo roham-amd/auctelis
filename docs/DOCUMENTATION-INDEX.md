@@ -1,4 +1,4 @@
-# Documentation index (auctelis 0.8.0)
+# Documentation index (auctelis 0.8.1)
 
 Keep the public surface near ten pages. Everything else is maintainer depth.
 
@@ -22,11 +22,11 @@ Keep the public surface near ten pages. Everything else is maintainer depth.
 | Doc | Purpose |
 | --- | --- |
 | [`CLI-REFERENCE.md`](CLI-REFERENCE.md) | Full CLI (`auctelis-dev` for maintainer) |
-| [`GUARD-SCAN.md`](GUARD-SCAN.md) | Hidden annotation layer (`scan`) |
+| [`GUARD-SCAN.md`](GUARD-SCAN.md) | Maintainer annotation (`auctelis-dev`; not product gate) |
 | [`POLICY.md`](POLICY.md) | `.auctelis.yml` |
 | [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) | Adapter maturity |
 | [`adapters/`](adapters/) | Per-surface maturity specs |
-| [`SECURITY-RULES.md`](SECURITY-RULES.md) | Rules 001–022 (annotations) |
+| [`SECURITY-RULES.md`](SECURITY-RULES.md) | Rules 001–022 (maintainer / auctelis-dev) |
 | [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) | Evidence classes |
 | [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust |
 | [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling |

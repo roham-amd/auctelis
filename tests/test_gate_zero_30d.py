@@ -32,7 +32,8 @@ def test_check_match_prints_coverage_not_clearance(tmp_path: Path):
     assert "matches" in text
     assert "SUPPORTED" in text or "PARTIAL" in text
     assert "not a security clearance" in text.lower()
-    assert "Gated findings:" in text
+    # Product check is inventory-only; advisory findings only appear when non-zero.
+    assert "Gated findings:" not in text or "Advisory findings:" in text
 
 
 def test_cards_include_path_and_evidence():

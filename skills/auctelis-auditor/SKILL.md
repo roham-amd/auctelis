@@ -1,10 +1,10 @@
 ---
 name: auctelis-auditor
 description: >-
-  Explain the last auctelis Authority Diff (check / diff lock / gate) line by
+  Explain the last auctelis Authority Diff (check / diff / why / gate) line by
   line. Use when a PR or local check shows new MCP, skill, instruction, hook,
-  or CI reach. Never approve a lock, never invent findings, never run the
-  scanner as a substitute for the lock delta.
+  or CI reach. Never approve a lock, never invent findings, never mutate the
+  lock or policy.
 ---
 
 # auctelis explainer
@@ -12,31 +12,32 @@ description: >-
 `AUTHORITY.lock` and `auctelis check` are the source of truth. Your job is to
 read the delta and answer one question: **what should the human do next?**
 
-You may explain; you may not approve. Never run `lock`, `ci init`,
-`watch --seal`, `allow`, `watch --arm`, or `hook install`. Never edit
-`.auctelis.yml`, `AUTHORITY.lock`, CODEOWNERS, or hooks.
+You may explain; you may not approve. Never run `lock`, `init`, `ci init`, or any
+mutation. Never edit `.auctelis.yml`, `AUTHORITY.lock`, or CODEOWNERS.
+Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
+`hook`) or `auctelis-dev` annotation tools as a substitute for the lock delta.
 
 ## Run
 
 ```bash
-# Install once (git tag; PyPI is not live yet):
+# Install once (git tag; PyPI coming — see docs/INSTALL.md):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
 ```
 
 ```bash
 export AUCTELIS_AGENT=1
 auctelis check                # repo authority vs AUTHORITY.lock
 auctelis check --json         # authority-diff/1
+auctelis diff --base <ref>    # local PR Authority Diff simulator
 auctelis diff lock <base> <head>
 auctelis why <name>
+auctelis gate --base-lock <base.lock>   # read-only growth labels
 ```
 
-Archived host path (optional): `auctelis watch --delta-only`, `hook status`.
-
-Do **not** run `lock`, `watch --seal`, `allow`, `watch --arm`, `hook install`,
-`ci init`, `run`, `snapshot --execute`, or `auctelis-dev` commands. Do not add
-`--trust-target-policy`.
+Do **not** run `lock`, `init`, `ci init`, `run`, `snapshot --execute`, or
+`auctelis-dev` commands. Do not add `--trust-target-policy`. Never mutate
+`AUTHORITY.lock`.
 
 ## How to read one line
 
@@ -58,7 +59,8 @@ Do **not** run `lock`, `watch --seal`, `allow`, `watch --arm`, `hook install`,
 | --- | --- |
 | `LOCKED` | Matches committed lock |
 | `BASELINE_NEEDED` | No lock yet — human should `lock --update` |
+| `BASELINE_ADOPTED` | First seal / empty baseline ceremony (not forever `FAIL_CLOSED`) |
 | `NEEDS_REVIEW` | Growth — CODEOWNER must approve |
-| `FAIL_CLOSED` | Unusable lock / coverage gap |
+| `FAIL_CLOSED` | Unusable lock / missing base for gate (not the empty-baseline state) |
 
 Absence of a finding is not a clearance. Prefer exact file paths from the cards.

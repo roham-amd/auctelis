@@ -3,31 +3,34 @@
 ## Requirements
 
 - Python **3.12+** (uv can fetch a managed interpreter)
-- Git (for a remote `vet`, if you use the hidden scanner)
+- Git (for the pinned tag install)
 
 ## Canonical install (current supported path)
 
-PyPI is not live yet, so the first command is always the pinned git tag:
+PyPI is not live yet (coming). Until the index returns the package, install from
+the **0.8.1** git tag:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
 
-auctelis check                         # repo authority vs AUTHORITY.lock
-auctelis lock --update                 # seal AUTHORITY.lock in the repo
-auctelis ci init --owner @security     # enforce workflow + CODEOWNERS
-auctelis why <name>                    # exact config path for one record
+auctelis init --owner @security             # preferred: policy + workflow + CODEOWNERS + lock
+auctelis check                              # repo authority vs AUTHORITY.lock
+auctelis status                             # lock / workflow / CODEOWNERS / protection
+auctelis why <name>                         # exact config path for one record
 ```
 
-Bare `auctelis` runs `check` (repo-only). Use `auctelis scan <path>` only when
-you explicitly want the hidden annotation layer. `auctelis demo` is packaged
-inside the wheel.
+Bare `auctelis` runs `check` (repo-only). Product path:
+**init --owner @team → check → lock --update → gate**.
+
+An empty baseline is normal: the first growth PR is a CODEOWNERS review of
+`AUTHORITY.lock`, not a forever `FAIL_CLOSED`. Use `auctelis demo` for the
+canned fixture; product lock is inventory-only (no findings gate).
 
 ### Once the package is on PyPI
 
-PyPI is not live yet. When the index returns the package, this section will
-document the `uv tool install auctelis` path; until then the git tag above is
-the only supported install.
+When the index returns the package, prefer `uv tool install auctelis`. Until
+then the git tag above is the only supported install.
 
 Trusted Publishing workflow:
 [`.github/workflows/publish-pypi.yml`](../.github/workflows/publish-pypi.yml).
@@ -43,12 +46,11 @@ uv run auctelis demo -o /tmp/auctelis-demo
 
 ## Docker (optional / deferred)
 
-Docker remains available for the hidden scan path but is **not** part of the
-Authority Diff install. Prefer the git-tag CLI above.
+Docker is **not** part of the Authority Diff install. Prefer the git-tag CLI.
 
 ```bash
 docker compose build
-TARGET=/path/to/repo docker compose run --rm auctelis scan /work -o /tmp/auctelis-out
+TARGET=/path/to/repo docker compose run --rm auctelis check /work
 ```
 
 ## Verify
@@ -66,5 +68,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.8.0 |
-| Package `auctelis` | 0.8.0 |
+| Product (`VERSION`) | 0.8.1 |
+| Package `auctelis` | 0.8.1 |

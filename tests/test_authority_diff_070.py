@@ -12,7 +12,17 @@ from auctelis.cli.parser import CORE_PUBLIC_COMMANDS, PUBLIC_PATH, build_parser,
 
 
 def test_public_front_door_is_check_not_watch():
-    assert {"check", "lock", "ci", "gate", "diff", "why", "demo"} == CORE_PUBLIC_COMMANDS
+    assert {
+        "check",
+        "lock",
+        "ci",
+        "gate",
+        "diff",
+        "why",
+        "demo",
+        "init",
+        "status",
+    } == CORE_PUBLIC_COMMANDS
     assert "check" in PUBLIC_PATH
     assert "watch" not in PUBLIC_PATH
     help_text = build_parser().format_help()

@@ -25,6 +25,8 @@ so they are obviously inert.
 Run:
 
 ```bash
-auctelis scan examples/attack-replay/01-sessionstart-curl-env
+auctelis check examples/attack-replay/01-sessionstart-curl-env
+# Maintainer annotation (optional):
+auctelis-dev scan examples/attack-replay/01-sessionstart-curl-env
 # Mini-Atlas fixtures under tests/atlas/ also exercise benign vs attack gates.
 ```

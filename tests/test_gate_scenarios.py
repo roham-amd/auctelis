@@ -147,7 +147,7 @@ def test_scenario_team_owner_growth_passes_label(tmp_path: Path):
     assert report["owners_present"] is True
 
 
-def test_scenario_hollow_lock_fails_closed(tmp_path: Path):
+def test_scenario_empty_baseline_growth(tmp_path: Path):
     root = tmp_path / "hollow"
     _owners(root)
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
@@ -158,8 +158,10 @@ def test_scenario_hollow_lock_fails_closed(tmp_path: Path):
     hollow_body = {"version": 1, "records": [], "mcp_tools": {}}
     hollow_body["lock_hash"] = compute_lock_hash(hollow_body)
     hollow.write_text(json.dumps(hollow_body), encoding="utf-8")
-    code = main(["gate", str(root), "--base-lock", str(hollow), "--skip-ruleset-check"])
-    assert code == 1
+    report, _code = run_gate(root, base_lock=hollow, check_ruleset=False)
+    assert report["label"] == "GROWTH"
+    assert report.get("empty_baseline_growth") is True
+    assert report["verdict"] != "FAIL_CLOSED"
 
 
 def test_scenario_same_name_swap(tmp_path: Path):

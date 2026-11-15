@@ -79,6 +79,7 @@ jobs:
           ../tests/test_authority_lock.py
           ../tests/test_gate.py
           ../tests/test_cli_authority.py
+          ../tests/test_recovery_081.py
 
       - name: Pytest (gate zero / product path)
         run: >
@@ -111,6 +112,8 @@ jobs:
           /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis check --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis init --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis status --help >/dev/null
           # Demo must work from the installed wheel without the repo examples/ tree.
           # demo always exits 0 (aha walkthrough). Public front door is check.
           set +e

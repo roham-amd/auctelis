@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from auctelis.authority_card import count_cards, delta_cards
+from auctelis.authority_card import delta_cards
 from auctelis.authority_lock import delta_label
 from auctelis.security.authority import render_component_delta_lines
 from auctelis.security.gating import is_gate_finding
@@ -202,7 +202,7 @@ def render_authority_diff_comment(
     visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
 
     visible.append("**Authority delta:**")
-    cards = delta_cards(lock_delta, limit=3)
+    cards = delta_cards(lock_delta, limit=3, include_overflow_summary=True)
     if not cards and isinstance(lock_delta, dict):
         cards = [
             f"- {line.lstrip('+-~ ')}"
@@ -222,9 +222,6 @@ def render_authority_diff_comment(
         cards = ["- NOT PARSED (coverage gap)" if unparsed else "- (no authority change)"]
     for card in cards:
         visible.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
-    total_cards = count_cards(lock_delta)
-    if total_cards > len(cards):
-        visible.append(f"- +{total_cards - len(cards)} more")
 
     visible.append(escape_markdown(_unknowns_line(coverage), max_len=200))
 

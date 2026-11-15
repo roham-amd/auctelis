@@ -19,5 +19,5 @@ Semantic contract: [`../docs/AUTHORITY-LOCK.md`](../docs/AUTHORITY-LOCK.md)
 | [`audit-report.schema.json`](audit-report.schema.json) | Maintainer/corpus narrative (canonical edit under `canonical/schemas/`) |
 | [`ecosystem-graph.schema.json`](ecosystem-graph.schema.json) | Inventory graph seed — not a public claim |
 
-`auctelis scan` may still write `findings.json` / SARIF; those are annotation
-artifacts, not the Authority Diff product (`check` / `lock` / `gate`).
+`auctelis-dev scan` may write `findings.json` / SARIF; those are maintainer
+annotation artifacts, not the Authority Diff product (`check` / `lock` / `gate`).

@@ -21,12 +21,12 @@ jobs:
       - name: Install auctelis (git tag; PyPI not published yet)
         run: >
           pip install
-          "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
+          "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
 
       - name: auctelis Authority Diff
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.0
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.1
         with:
           path: .
           mode: scan

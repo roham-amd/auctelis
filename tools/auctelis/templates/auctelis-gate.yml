@@ -17,15 +17,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install auctelis (git tag; PyPI not published yet)
+      - name: Install auctelis (git tag; prefer PyPI when published)
         run: >
           pip install
-          "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
+          "git+https://github.com/roham-amd/auctelis.git@v0.8.1#subdirectory=tools"
 
       - name: auctelis Authority Diff
-        # Pin to an immutable commit SHA in production (ci init --apply resolves it).
-        # uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.0
+        # Pin to the auctelis release tag (init never uses consumer-repo HEAD).
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.1
         with:
           path: .
           mode: scan

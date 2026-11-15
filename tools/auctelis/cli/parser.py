@@ -9,17 +9,17 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "check → lock --update → ci init --apply --owner @team → gate (PR Authority Diff)"
+PUBLIC_PATH = "init --owner @team → check → lock --update → gate (PR Authority Diff)"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
-local:        diff --base <ref> | why <name> | demo
+local:        status | diff --base <ref> | why <name> | demo
 maintainer:   auctelis-dev (scan | annotate | build | lint | corpus | deps)
 
 Bare `auctelis` → check (repo authority vs AUTHORITY.lock).
 Labels: GROWTH | REDUCTION | NONE.
 Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED.
-Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init
+Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init
 (AUCTELIS_AGENT is a speed bump, not a security control).
 """
 
@@ -27,7 +27,9 @@ Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — GitHub-native Authority Diff front door.
-CORE_PUBLIC_COMMANDS = frozenset({"check", "lock", "ci", "gate", "diff", "why", "demo"})
+CORE_PUBLIC_COMMANDS = frozenset(
+    {"check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status"}
+)
 
 _PRODUCT_COMMANDS = frozenset(CORE_PUBLIC_COMMANDS)
 
@@ -121,6 +123,35 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Emit authority-diff/1 JSON",
     )
 
+    init_cmd = sub.add_parser(
+        "init",
+        help="One-command setup: policy + workflow + CODEOWNERS + lock (preferred)",
+    )
+    init_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
+    init_cmd.add_argument("--force", action="store_true")
+    init_cmd.add_argument(
+        "--owner",
+        metavar="@TEAM",
+        required=True,
+        help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners)",
+    )
+    init_cmd.add_argument(
+        "--advisory",
+        action="store_true",
+        help="Write advisory mode (locked=false); default is enforce",
+    )
+    init_cmd.add_argument(
+        "--accept-gated",
+        action="store_true",
+        help="Allow sealing when a findings-bearing scan is passed (usually unused)",
+    )
+
+    status_cmd = sub.add_parser(
+        "status",
+        help="Show lock / workflow / CODEOWNERS / protection status",
+    )
+    status_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
+
     ci = sub.add_parser("ci", help="Write enforce workflow + CODEOWNERS + lock")
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
     ci_init = ci_sub.add_parser(
@@ -144,9 +175,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Merge AUTHORITY.lock into existing CODEOWNERS, pin the Action to "
-            "the current commit SHA when resolvable, and verify ruleset/"
-            "branch-protection (prints exact remediation on failure)"
+            "the auctelis release tag (never consumer HEAD), and probe ruleset/"
+            "branch-protection (warnings only; exit 0 after writes)"
         ),
+    )
+    ci_init.add_argument(
+        "--accept-gated",
+        action="store_true",
+        help="Allow sealing when a findings-bearing scan blocks the lock write",
     )
     ci_init.set_defaults(command="ci")
 

@@ -433,31 +433,96 @@ def find_records_by_name(
     return out
 
 
-def delta_cards(delta: dict[str, Any] | None, *, limit: int = 3) -> list[str]:
-    """Changed (old → new) first, then additions, then removals."""
+def _risk_score(record: dict[str, Any] | None) -> int:
+    """Higher = show earlier when truncating PR cards."""
+    if not isinstance(record, dict):
+        return 0
+    score = 0
+    if _posture(record) == "bypassPermissions":
+        score += 100
+    caps = set(_capabilities(record))
+    if caps & {"execute", "approvals", "unattended"}:
+        score += 50
+    if "secrets" in caps:
+        score += 40
+    if caps & {"network", "tools"}:
+        score += 30
+    if _pin_bit(record) == "unpinned":
+        score += 20
+    if record.get("env_keys"):
+        score += 10
+    return score
+
+
+def _risk_summary(records: list[dict[str, Any]], *, hidden: int) -> str | None:
+    if hidden <= 0:
+        return None
+    flags: list[str] = []
+    for record in records:
+        bits: list[str] = []
+        kind = kind_label(record.get("kind"))
+        if _posture(record) == "bypassPermissions":
+            bits.append("bypass")
+        caps = set(_capabilities(record))
+        if "execute" in caps:
+            bits.append("execute")
+        if "secrets" in caps:
+            bits.append("secrets")
+        if bits:
+            flags.append(f"{kind} with {'/'.join(bits)}")
+    if flags:
+        return f"+{hidden} more ({', '.join(flags[:2])})"
+    return f"+{hidden} more"
+
+
+def delta_cards(
+    delta: dict[str, Any] | None,
+    *,
+    limit: int = 3,
+    include_overflow_summary: bool = False,
+) -> list[str]:
+    """Risk-ranked cards: bypass/execute/secrets before quieter additions."""
     if not isinstance(delta, dict):
         return []
     changes = delta.get("changes") or {}
-    cards: list[str] = []
+    ranked: list[tuple[int, int, str, dict[str, Any] | None]] = []
+    order = 0
     for item in changes.get("changed") or []:
         if str(item.get("change_class") or "") == "representation":
             continue
-        if not _is_renderable(item.get("after") or item.get("before") or {}):
+        after = item.get("after") or item.get("before") or {}
+        if not _is_renderable(after):
             continue
-        cards.append(changed_card(item))
+        ranked.append((_risk_score(after), order, changed_card(item), after))
+        order += 1
     for record in changes.get("added") or []:
         if _is_renderable(record):
-            cards.append(record_card(record))
+            ranked.append((_risk_score(record), order, record_card(record), record))
+            order += 1
     for record in changes.get("removed") or []:
         if _is_renderable(record):
-            cards.append(removed_card(record))
+            ranked.append((0, order, removed_card(record), record))
+            order += 1
     for name in changes.get("mcp_tools_added") or []:
-        cards.append(f'+ mcp tool "{name}" · pin added · publisher NOT VERIFIED')
+        ranked.append(
+            (15, order, f'+ mcp tool "{name}" · pin added · publisher NOT VERIFIED', None)
+        )
+        order += 1
     for name in changes.get("mcp_tools_removed") or []:
-        cards.append(f'- mcp tool "{name}" · pin removed')
+        ranked.append((0, order, f'- mcp tool "{name}" · pin removed', None))
+        order += 1
     for name in changes.get("mcp_tools_changed") or []:
-        cards.append(f'~ mcp tool "{name}" · pin digest changed')
-    return cards[:limit]
+        ranked.append((10, order, f'~ mcp tool "{name}" · pin digest changed', None))
+        order += 1
+    ranked.sort(key=lambda row: (-row[0], row[1]))
+    shown = ranked[:limit]
+    cards = [row[2] for row in shown]
+    if include_overflow_summary and len(ranked) > limit:
+        hidden_records = [row[3] for row in ranked[limit:] if isinstance(row[3], dict)]
+        summary = _risk_summary(hidden_records, hidden=len(ranked) - limit)
+        if summary:
+            cards.append(summary)
+    return cards
 
 
 def count_cards(delta: dict[str, Any] | None) -> int:

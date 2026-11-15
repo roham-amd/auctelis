@@ -306,7 +306,7 @@ NEW → TRIAGED → INVESTIGATING
 
 Preserve rejected findings and reasons. Revalidate after changes. Prefer
 `auctelis check` / `auctelis diff --base` / `auctelis gate` for recurring repo
-work ([`GUARD-SCAN.md`](GUARD-SCAN.md)). Archived `watch` is host-only.
+work. Maintainer annotation depth: [`GUARD-SCAN.md`](GUARD-SCAN.md).
 
 ---
 

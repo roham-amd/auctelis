@@ -55,7 +55,7 @@ def test_ci_init_requires_owner_and_writes_loadable_policy(tmp_path: Path):
     assert (root / "AUTHORITY.lock").is_file()
 
 
-def test_lock_refuses_gated_without_accept(tmp_path: Path):
+def test_lock_seals_vulnerable_tree_without_approval_theater(tmp_path: Path):
     root = tmp_path / "vuln"
     # Minimal copy: mcp with literal secret + floating launcher.
     mcp = root / ".cursor"
@@ -74,10 +74,11 @@ def test_lock_refuses_gated_without_accept(tmp_path: Path):
         ),
         encoding="utf-8",
     )
-    assert main(["lock", str(root)]) == 1
-    assert not (root / "AUTHORITY.lock").exists()
-    assert main(["lock", str(root), "--accept-gated", "--approval", "@owner"]) == 0
+    # Inventory-only product lock seals without rule findings as a blocker.
+    assert main(["lock", str(root)]) == 0
     assert (root / "AUTHORITY.lock").is_file()
+    lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
+    assert lock.get("approvals") in ([], None)
 
 
 def test_lock_hash_stable_across_path_and_commit(tmp_path: Path, monkeypatch):
@@ -93,17 +94,17 @@ def test_lock_hash_stable_across_path_and_commit(tmp_path: Path, monkeypatch):
     # Re-lock with a fake commit change must keep the sealed hash.
     from auctelis.security import engine as engine_mod
 
-    real = engine_mod.run_security_scan
+    real = engine_mod.run_authority_inventory
 
-    def with_commit(path):
-        scan = real(path)
+    def with_commit(path, **kwargs):
+        scan = real(path, **kwargs)
         object.__setattr__(scan, "commit", "deadbeef")
         return scan
 
-    monkeypatch.setattr(engine_mod, "run_security_scan", with_commit)
+    monkeypatch.setattr(engine_mod, "run_authority_inventory", with_commit)
     from auctelis import authority_lock as lock_mod
 
-    monkeypatch.setattr(lock_mod, "run_security_scan", with_commit)
+    monkeypatch.setattr(lock_mod, "run_authority_inventory", with_commit)
     lock_b = build_authority_lock(root)
     assert lock_a["lock_hash"] == lock_b["lock_hash"]
     assert lock_b.get("audited_commit") == "deadbeef"

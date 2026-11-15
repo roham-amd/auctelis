@@ -3,7 +3,7 @@
 Product contract (lock-only): GitHub CODEOWNERS / rulesets enforce human
 review. auctelis owns the authority diff:
 
-1. Schema-validate / reject hollow base locks when head has authority
+1. Schema-validate locks; empty (0-record) base locks are empty-baseline growth
 2. Require CODEOWNERS coverage for AUTHORITY.lock (from base ref when provided)
 3. On meaningful growth, fail closed unless CODEOWNERS covers the lock; label
    growth vs reduction. Do **not** re-implement PR approval matching — that is
@@ -28,7 +28,7 @@ from auctelis.authority_lock import (
     diff_authority_locks,
 )
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
-from auctelis.security.engine import ScanResult, run_security_scan
+from auctelis.security.engine import ScanResult, run_authority_inventory
 
 # Authority-bearing path globs that CODEOWNERS should cover (docs + ci init).
 AUTHORITY_PATH_HINTS = (
@@ -354,7 +354,7 @@ def run_gate(
             head = load_authority_lock(head_lock)
         else:
             if scan is None:
-                scan = run_security_scan(root)
+                scan = run_authority_inventory(root)
             head = build_authority_lock(root, scan=scan)
     except (AuthorityLockError, FileNotFoundError, OSError) as exc:
         return {
@@ -370,7 +370,7 @@ def run_gate(
     # Coverage matters even when a trusted head lock is supplied: an unparsed
     # config means the lock's absence of a record is not evidence of no authority.
     if scan is None:
-        scan = run_security_scan(root)
+        scan = run_authority_inventory(root)
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
     try:
         unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
@@ -379,22 +379,11 @@ def run_gate(
 
     base_records = list(base.get("records") or [])
     head_records = list(head.get("records") or [])
-    hollow_base = not base_records and not (base.get("mcp_tools") or {})
-    if hollow_base and head_records:
-        return {
-            "ok": False,
-            "verdict": "FAIL_CLOSED",
-            "error": (
-                "hollow base AUTHORITY.lock (no records); refuse to gate growth. "
-                "Commit a real lock on the base ref first."
-            ),
-            "needs_approval": True,
-            "required_owners": [],
-            "label": "GROWTH",
-            "ruleset": "UNVERIFIED",
-            "meaningful_authority_change": True,
-            "lines": [],
-        }, 1
+    # Empty (0-record) base locks are a valid seal of a clean tree. First real
+    # authority is GROWTH that needs CODEOWNERS — never a permanent FAIL_CLOSED.
+    empty_baseline_growth = (
+        not base_records and not (base.get("mcp_tools") or {}) and bool(head_records)
+    )
 
     delta = diff_authority_locks(base, head)
     summary = delta.get("summary") or {}
@@ -489,15 +478,23 @@ def run_gate(
         detail = f"{unparsed} agent config file(s) could not be parsed on head"
         error = f"{error} {detail}." if error else f"{detail} — review before merge."
 
+    if empty_baseline_growth:
+        note = (
+            "Empty-baseline growth: base AUTHORITY.lock has 0 records; "
+            "first sealed authority requires CODEOWNERS review (not FAIL_CLOSED)."
+        )
+        error = f"{error} {note}".strip() if error else note
+
     protection = protection_status(ruleset_status, needs_approval=needs_approval)
     report: dict[str, Any] = {
         "ok": ok,
         "verdict": verdict,
-        "ceremony": "growth_gate",
+        "ceremony": "empty_baseline_growth" if empty_baseline_growth else "growth_gate",
         "protection": protection,
         "strict_ruleset": strict_ruleset,
         "meaningful_authority_change": meaningful,
         "needs_approval": needs_approval,
+        "empty_baseline_growth": empty_baseline_growth,
         "label": label,
         "required_owners": owners,
         "owners_present": owners_present,

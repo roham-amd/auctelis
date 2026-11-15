@@ -15,7 +15,7 @@ from auctelis.security.models import Finding
 
 
 def test_public_path_constant_and_version_flag():
-    assert "check" in PUBLIC_PATH and "gate" in PUBLIC_PATH and "ci init" in PUBLIC_PATH
+    assert "check" in PUBLIC_PATH and "gate" in PUBLIC_PATH and "init" in PUBLIC_PATH
     assert "--version" in normalize_argv(["--version"])
     assert normalize_argv(["--version"]) == ["--version"]
     # argparse version action exits; ensure the flag is registered.
@@ -63,7 +63,11 @@ def test_inferred_hint_high_is_not_high_gate():
     assert is_high_gate_finding(finding) is False
 
 
-def test_ci_init_refuses_auto_accept_on_gated_tree(tmp_path: Path):
+def test_ci_init_seals_inventory_without_approval_theater(tmp_path: Path):
+    """Product lock is inventory-only; findings are not a seal blocker.
+
+    CODEOWNERS remains the approval system — no approval fields are written.
+    """
     root = tmp_path / "repo"
     mcp = root / ".cursor"
     mcp.mkdir(parents=True)
@@ -82,12 +86,11 @@ def test_ci_init_refuses_auto_accept_on_gated_tree(tmp_path: Path):
         encoding="utf-8",
     )
     code = main(["ci", "init", str(root), "--owner", "@sec-owners"])
-    assert code != 0
-    # Templates may be written, but lock must not invent a human review.
-    if (root / "AUTHORITY.lock").is_file():
-        lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
-        assert lock.get("approvals") in ([], None)
-        assert not lock.get("approvals")
+    assert code == 0
+    lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
+    assert lock.get("approvals") in ([], None)
+    assert not lock.get("approvals")
+    assert not lock.get("approved_findings")
 
 
 def test_lock_accept_writes_no_approval_fields(tmp_path: Path):

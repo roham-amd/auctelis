@@ -9,29 +9,11 @@
 | Fixtures | Claude settings RULE-017/018/019 fixtures; `eval/configs/cfg-005-hooks-sessionstart` |
 | Unknown / report | Host-global hooks outside the repository |
 
-## Cursor hook contract
+## Product note
 
-`auctelis watch --arm` / `auctelis hook install` writes
-`~/.cursor/hooks.json` with these events:
+auctelis **inventories** hook configs as authority-bearing surfaces (reach in
+`AUTHORITY.lock`, growth on the PR Authority Diff). It does **not** install or
+arm host tripwires. Public `watch` / `allow` / `hook` CLIs were removed.
 
-| Event | auctelis script | Behaviour |
-| --- | --- | --- |
-| `sessionStart` | `auctelis-session-delta.py` | Prints the one-screen delta; quiet when nothing changed |
-| `beforeMCPExecution` | `auctelis_cursor_hook.py` | Denies a server absent from `AUTHORITY.lock`; empty allowlist is deny-all |
-| `beforeShellExecution` | `auctelis_cursor_hook.py` | Denies shell commands that touch authority-bearing paths |
-| `beforeFileEdit` | `auctelis_cursor_hook.py` | Denies edits to authority-bearing paths |
-
-Cursor passes JSON on stdin and expects a JSON decision on stdout:
-`{"permission": "allow" | "deny", "user_message": "..."}`. Unknown events fail
-open. This is a **tripwire**, not a sandbox: it does not verify publisher
-identity, effective host permissions, or runtime behaviour.
-
-`auctelis hook status` reports, for Cursor and Claude Code:
-
-| State | Meaning |
-| --- | --- |
-| `not_wired` | No auctelis entries in host settings |
-| `not_firing` | Wired but script missing or CLI not on PATH |
-| `not_armed` | Wired, but no `~/.auctelis/AUTHORITY.lock` yet |
-| `wired, not yet observed` | Armed; no heartbeat from a session yet |
-| `firing (last: …)` | Session hook wrote a heartbeat |
+Review hook files the same way as MCP and skills: seal with `lock --update`,
+require CODEOWNERS on growth, use `auctelis why <name>` for the exact path.
