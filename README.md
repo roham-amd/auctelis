@@ -18,16 +18,18 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 ```bash
 # Git tag is the supported install until PyPI returns 200.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
 
 auctelis check                  # repo authority vs AUTHORITY.lock
 auctelis lock --update          # seal the current tree into AUTHORITY.lock
-auctelis ci init --owner @security   # workflow + CODEOWNERS (enforce by default)
+auctelis ci init --apply --owner @security   # merge CODEOWNERS + verify ruleset
+auctelis diff --base origin/main             # local PR Authority Diff simulator
 auctelis why linear             # exact config path for one name
 ```
 
-On a PR, the Action posts the base→head Authority Diff. Growth fails until a
-CODEOWNER reviews the lock. Locally, `auctelis check` is the pre-push preflight.
+On a PR, the Action posts the base→head Authority Diff. First lock is
+`BASELINE_ADOPTED` (not `PASS`). Growth fails until a CODEOWNER reviews the lock.
+Locally, `auctelis check` is the pre-push preflight.
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
@@ -46,8 +48,9 @@ Agents must export `AUCTELIS_AGENT=1`; `lock` and `ci init` are refused for agen
 | --- | --- |
 | `auctelis` / `check` | Repo authority vs `AUTHORITY.lock` (front door) |
 | `auctelis lock --update` | Write / refresh the committed lock |
-| `auctelis ci init --owner @team` | Enforce workflow + CODEOWNERS + lock |
-| `auctelis gate --base-lock …` | PR Authority Diff + CODEOWNERS gate |
+| `auctelis ci init --apply --owner @team` | Enforce workflow + CODEOWNERS + ruleset verify |
+| `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS gate |
+| `auctelis diff --base <ref>` | Local PR Authority Diff simulator |
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Packaged fixture (optional) |
 

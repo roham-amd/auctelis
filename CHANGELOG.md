@@ -5,6 +5,39 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.8.0] — 2026-11-15
+
+### Added
+
+- **`auctelis diff --base <ref>`** — local PR Authority Diff simulator (same
+  comment dialect as the Action).
+- **`ci init --apply`** — merge `AUTHORITY.lock` into existing CODEOWNERS, pin
+  the Action to a commit SHA when resolvable, and verify ruleset protection
+  (prints exact GitHub remediation when unverified).
+- **`evidence_strength`** / `capability_origin` / `parser_version` on lock
+  records; cards and `why` render the real value (no hardcoded `LITERAL_CONFIG`).
+- **`gate --trust-head-codeowners`** — explicit unsafe flag; growth without a
+  base-ref CODEOWNERS copy fails closed otherwise (CI passes `--codeowners`).
+- Effective-rules probe via `/repos/{repo}/rules/branches/{branch}`.
+- Adoption sticky comment overwrites scan `PASS` with **`BASELINE_ADOPTED`**.
+- `check` always prints family coverage + gated findings; match is not a clearance.
+- `lock_hash` verified on load.
+
+### Changed
+
+- One vocabulary: meaningful lock drift is `NEEDS_REVIEW` (`AUTHORITY_CHANGED`
+  retired).
+- Host/changed/removed cards always include `@ path` + evidence tag.
+- Generated consumer workflow no longer requests `security-events: write`
+  (no SARIF upload).
+- Build guard covers `SECURITY.md`, `CONTRIBUTING.md`, `AUTHORITY-LOCK.md`.
+- Docs truth reset: no Authority Watch front door; `gate --base-lock base.lock`.
+
+### Security
+
+- Disabled rulesets are not treated as protection.
+- Classic branch-protection 403 documented as UNVERIFIED (Administration scope).
+
 ## [0.7.0] — 2026-11-15
 
 ### Added

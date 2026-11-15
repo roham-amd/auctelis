@@ -21,7 +21,7 @@ You may explain; you may not approve. Never run `lock`, `ci init`,
 ```bash
 # Install once (git tag; PyPI is not live yet):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
 ```
 
 ```bash

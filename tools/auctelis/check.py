@@ -74,6 +74,32 @@ def _unparsed_count(scan: ScanResult | None) -> int:
         return 0
 
 
+def _gated_finding_count(scan: ScanResult | None) -> int:
+    if scan is None:
+        return 0
+    from auctelis.security.gating import is_gate_finding
+
+    return sum(1 for f in scan.findings if is_gate_finding(f))
+
+
+def _family_coverage_line(scan: ScanResult | None) -> str:
+    """Honest maturity counts — never present supported_ratio as a clearance %."""
+    if scan is None:
+        return "Coverage: (unavailable)"
+    coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
+    by = coverage.get("component_counts_by_maturity") or {}
+    supported = int(by.get("SUPPORTED") or 0)
+    partial = int(by.get("PARTIAL") or 0)
+    manual = int(by.get("MANUAL_ONLY") or 0)
+    unsupported = int(by.get("UNSUPPORTED") or 0)
+    unparsed = _unparsed_count(scan)
+    return (
+        f"Coverage: SUPPORTED {supported} · PARTIAL {partial} · "
+        f"MANUAL_ONLY {manual} · UNSUPPORTED {unsupported}"
+        + (f" · NOT PARSED {unparsed}" if unparsed else "")
+    )
+
+
 def build_check_report(
     root: Path | None = None,
     *,
@@ -94,11 +120,13 @@ def build_check_report(
         "verdict": "QUIET",
         "meaningful": False,
         "unparsed": 0,
+        "gated_findings": 0,
         "empty": False,
         "first_run": False,
         "inventory_total": 0,
         "highlight_total": 0,
         "error": None,
+        "coverage_line": "",
     }
 
     scan = run_security_scan(repo)
@@ -107,6 +135,8 @@ def build_check_report(
     sealable = sealable_records(head_records)
     report["counts"] = _counts(head_records)
     report["unparsed"] = _unparsed_count(scan)
+    report["gated_findings"] = _gated_finding_count(scan)
+    report["coverage_line"] = _family_coverage_line(scan)
     report["inventory_total"] = len(sealable)
     report["empty"] = len(sealable) == 0
 
@@ -148,7 +178,9 @@ def build_check_report(
     report["label"] = delta_label(summary) if meaningful else "NONE"
     report["meaningful"] = meaningful
     if meaningful:
-        report["verdict"] = "NEEDS_REVIEW" if report["label"] == "GROWTH" else "AUTHORITY_CHANGED"
+        # One vocabulary: any meaningful lock drift needing human review is
+        # NEEDS_REVIEW (GROWTH / REDUCTION / mixed). AUTHORITY_CHANGED is retired.
+        report["verdict"] = "NEEDS_REVIEW"
     else:
         report["verdict"] = "LOCKED"
     return report, cards, scan
@@ -213,6 +245,17 @@ def render_check(
     label = report.get("label") or "NONE"
     unparsed = int(report.get("unparsed") or 0)
 
+    coverage_line = str(report.get("coverage_line") or "")
+    gated = int(report.get("gated_findings") or 0)
+
+    def _coverage_footer() -> list[str]:
+        out: list[str] = []
+        if coverage_line:
+            out.append(coverage_line)
+        out.append(f"Gated findings: {gated}" + (f" · NOT PARSED: {unparsed}" if unparsed else ""))
+        out.append(f"{LOCK_NAME} match is declared-config only — not a security clearance.")
+        return out
+
     if report.get("first_run"):
         lines.append(f"auctelis check · {repo}")
         lines.append(_inventory_line(report))
@@ -225,14 +268,12 @@ def render_check(
         lines.append("")
         lines.append(f"Verdict: {verdict} · label {label}")
         lines.append(f"Next: auctelis lock --update  # write {LOCK_NAME}, then commit")
-        if unparsed:
-            lines.append(f"Coverage gap: {unparsed} unparsed agent config(s)")
+        lines.extend(_coverage_footer())
         return "\n".join(lines)
 
     if not report.get("meaningful"):
         lines.append(f"auctelis check · {LOCK_NAME} matches · {label}")
-        if unparsed:
-            lines.append(f"Coverage gap: {unparsed} unparsed agent config(s)")
+        lines.extend(_coverage_footer())
         return "\n".join(lines)
 
     lines.append(f"auctelis check · {verdict} · {label}")
@@ -244,8 +285,7 @@ def render_check(
             lines.append("~ policy: .auctelis.yml changed")
     lines.append("")
     lines.append(f"Next: review the delta, then `auctelis lock --update` and commit {LOCK_NAME}")
-    if unparsed:
-        lines.append(f"Coverage gap: {unparsed} unparsed agent config(s)")
+    lines.extend(_coverage_footer())
     return "\n".join(lines)
 
 

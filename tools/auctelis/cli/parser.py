@@ -9,25 +9,27 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "check → lock --update → ci init --owner @team → gate (PR Authority Diff)"
+PUBLIC_PATH = "check → lock --update → ci init --apply --owner @team → gate (PR Authority Diff)"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
-local:        why <name> | demo
-archived:     watch | allow | hook | doctor  (callable; not the product)
+local:        diff --base <ref> | why <name> | demo
+archived:     watch | allow | hook | doctor  (callable; kill list)
 review:       scan | vet | explain | diff lock | annotate | harden  (hidden)
 maintainer:   auctelis-dev (build | lint | corpus | deps)
 
 Bare `auctelis` → check (repo authority vs AUTHORITY.lock).
-Labels: GROWTH | REDUCTION | NONE. Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW.
-Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init.
+Labels: GROWTH | REDUCTION | NONE.
+Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED.
+Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init
+(AUCTELIS_AGENT is a speed bump, not a security control).
 """
 
 # Hidden from default --help; still fully callable.
 _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — GitHub-native Authority Diff front door.
-CORE_PUBLIC_COMMANDS = frozenset({"check", "lock", "ci", "gate", "why", "demo"})
+CORE_PUBLIC_COMMANDS = frozenset({"check", "lock", "ci", "gate", "diff", "why", "demo"})
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -159,6 +161,15 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--advisory",
         action="store_true",
         help="Write advisory mode (locked=false); default is enforce",
+    )
+    ci_init.add_argument(
+        "--apply",
+        action="store_true",
+        help=(
+            "Merge AUTHORITY.lock into existing CODEOWNERS, pin the Action to "
+            "the current commit SHA when resolvable, and verify ruleset/"
+            "branch-protection (prints exact remediation on failure)"
+        ),
     )
     ci_init.set_defaults(command="ci")
     scan.add_argument("path", type=Path, nargs="?", default=Path("."))
@@ -435,23 +446,17 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     lock_cmd.add_argument(
         "--home",
         action="store_true",
-        help=(
-            "Lock host authority under ~/.auctelis/AUTHORITY.lock "
-            "(scans Cursor/Claude/VS Code configs under $HOME)."
-        ),
+        help=argparse.SUPPRESS,  # archived host path — kill list
     )
     lock_cmd.add_argument(
         "--snapshot",
         type=Path,
-        help="Merge mcp_tools pins from a tools/list snapshot JSON into the lock",
+        help=argparse.SUPPRESS,  # opt-in broker pin path — not product
     )
     lock_cmd.add_argument(
         "--resolve",
         action="store_true",
-        help=(
-            "Opt-in: after locking, remind to run `auctelis-dev snapshot --execute` "
-            "for live tools/list pins (no network from lock itself)."
-        ),
+        help=argparse.SUPPRESS,
     )
 
     gate_cmd = sub.add_parser(
@@ -487,6 +492,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help=(
             "Fail growth when ruleset status is UNVERIFIED "
             "(default: on; use --no-strict-ruleset for best-effort)"
+        ),
+    )
+    gate_cmd.add_argument(
+        "--trust-head-codeowners",
+        action="store_true",
+        help=(
+            "Unsafe: accept CODEOWNERS from the head tree when no base-ref "
+            "copy was supplied (default: require --codeowners from base)"
         ),
     )
     gate_cmd.add_argument(
@@ -596,8 +609,28 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     if include_dev:
         _add_dev_commands(sub)
 
-    diff_parser = sub.add_parser("diff", help=_ADV)
-    diff_sub = diff_parser.add_subparsers(dest="diff_kind", required=True)
+    diff_parser = sub.add_parser(
+        "diff",
+        help="Local PR Authority Diff simulator (`--base <ref>` or `lock`)",
+    )
+    diff_parser.add_argument(
+        "--base",
+        metavar="REF",
+        help="Git ref whose AUTHORITY.lock is the approved base (git show)",
+    )
+    diff_parser.add_argument(
+        "--repo",
+        type=Path,
+        default=Path("."),
+        help="Repository root for --base mode (default: .)",
+    )
+    diff_parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="diff_json",
+        help="Emit JSON (authority-diff/1 + comment body)",
+    )
+    diff_sub = diff_parser.add_subparsers(dest="diff_kind", required=False)
     diff_lock = diff_sub.add_parser(
         "lock",
         help="Diff two AUTHORITY.lock files (record-level authority)",

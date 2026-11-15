@@ -304,7 +304,9 @@ NEW → TRIAGED → INVESTIGATING
         → REMEDIATED → REVALIDATED
 ```
 
-Preserve rejected findings and reasons. Revalidate after changes. Prefer `auctelis watch` for host deltas and `auctelis diff lock` / `auctelis gate` for recurring repo work ([`GUARD-SCAN.md`](GUARD-SCAN.md)).
+Preserve rejected findings and reasons. Revalidate after changes. Prefer
+`auctelis check` / `auctelis diff --base` / `auctelis gate` for recurring repo
+work ([`GUARD-SCAN.md`](GUARD-SCAN.md)). Archived `watch` is host-only.
 
 ---
 

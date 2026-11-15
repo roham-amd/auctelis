@@ -4,51 +4,54 @@
 
 **Positioning:** GitHub-native Authority Diff + enforcement gate. Locally,
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
-are archived.
+are on the kill list.
 
-**Current:** 0.7.0 → shipping **0.7.0** · lock schema 1 · tooling 0.7.0
+**Current:** **0.8.0** (Gate Zero) · lock schema 1 · tooling 0.8.0
 
-## North star (direction #1)
+## North star (Gate Zero)
 
 1. One extractor, one lock, one diff, one PR comment, one Action
-2. Enforce-by-default (`locked=true`); `--advisory` opt-out
-3. Full project discovery (MCP, skills, instructions, rules, agents, hooks)
+2. `ci init --apply` configures CODEOWNERS + verifies ruleset protection
+3. Adoption ceremony is `BASELINE_ADOPTED`, never false `PASS`
+4. Coverage and evidence strength are visible on every match and card
 
-## 30-day build (Authority Diff)
+## 30-day build (Gate Zero)
 
 | Window | Work | Status |
 | --- | --- | --- |
-| Days 1–3 | Freeze front door; `check` repo-only; archive allow/hooks; fix 0.5.0 docs | done |
-| Week 1 | Full project discovery; `authority-diff/1`; dogfood lock | done |
-| Week 2 | `ci init` enforce + CODEOWNERS; Action `locked` default true | done |
-| Week 3 | PR cards with file path; eval scaffold; recruit five outside repos | in progress |
-| Week 4 | Ship 0.7.0; shrink public docs; kill-list cleanup | in progress |
+| Days 1–3 | Truth reset: stale docs, vocabulary, build guard, dogfood `main` | done |
+| Week 1 | Adoption sticky comment; evidence strength; `@ path` on all cards; coverage truth | done |
+| Week 2 | `ci init --apply`; `diff --base`; pin Action to commit SHA | done |
+| Week 3 | Effective-rules endpoint; base CODEOWNERS trust; gate trust tests | done |
+| Week 4 | Ship 0.8.0; host stack archived + migration note; benchmark honesty | done |
 
 ## 90-day decision gate
 
 | Signal at day 60 | Action |
 | --- | --- |
-| ≥5 repos with the check enabled weekly, or ≥3 growth PRs reviewed | Continue; consider GitHub App only on pull |
-| Fewer than five repos / three reviewed growth PRs | Stop feature work; publish [`PLAYBOOK.md`](PLAYBOOK.md) + benchmark; archive CLI |
+| ≥5 outside repos retain the gate weekly, and ≥3 growth PRs were code-owner-reviewed | Continue; consider GitHub App only on pull |
+| Kill criterion fails | Stop feature work; publish [`PLAYBOOK.md`](PLAYBOOK.md) + benchmark; archive CLI |
 
-Do not add a 23rd rule, a badge, a web app, or an egress broker before five
-outside repos run the check.
+Do not add a web app, MCP server, certification badge, marketplace, or egress
+broker before five outside repos retain the gate.
 
 ## Kill list (product path)
 
-- Host hooks / heartbeat / `hook status` / plugin bundles as the front door
-- `allow` store / Project Trust as the headline
-- Scanner / SARIF / 22-rule gate as the public product
-- Audit / ecosystem-graph schemas in the public story
-- Docker / PyPI ceremony until 10 active teams (git-tag install stays honest)
-- Calling anything a sandbox, broker, or certification
+- Host `watch` / `allow` / `hook` / `doctor` / `ledger` / `host_scan` / plugins
+- Public 22-rule scanner, `vet`, `harden`, `explain`, audit/ecosystem-graph schemas
+- Docker as the Authority Diff install story
+- PyPI ceremony until five pilots retain the gate
+- Marketplace / badge / “Authority Watch” product copy
+
+Keep: `check`, `lock`, `ci`, `gate`, `why`, `demo`, `diff --base`.
 
 ## Success metrics
 
-- Minutes from install → first PR Authority Diff (target under 10)
-- Repos with the check enabled weekly
-- Share of growth PRs with CODEOWNER review
-- False-positive rate on 25 real repos
-- Unparsed gaps fixed
+- Five outside repos with the Action required on the default branch for 30 days
+- Median install → first PR Authority Diff under 10 minutes
+- ≥3 growth PRs actually code-owner-reviewed
+- Zero false `PASS` on the adoption / ruleset / coverage test matrix
+- 25 independently labeled configs with published precision/recall and limitations
+- Not stars, downloads, or “scans run”
 
 Detail: [`PRODUCT.md`](PRODUCT.md) · [`REACH.md`](REACH.md) · [`CHANGELOG.md`](../CHANGELOG.md)

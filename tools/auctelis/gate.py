@@ -132,6 +132,11 @@ def check_code_owner_ruleset(
     """Best-effort: return ``(status, detail)``.
 
     status is one of ``OK``, ``MISSING``, ``UNVERIFIED``.
+
+    Prefers GitHub's effective rules endpoint
+    (``/repos/{repo}/rules/branches/{branch}``) so disabled or non-applicable
+    rulesets are not treated as ``OK``. Falls back to ruleset list + classic
+    branch protection.
     """
     repo = repository or os.environ.get("GITHUB_REPOSITORY")
     tok = token or os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
@@ -143,7 +148,33 @@ def check_code_owner_ruleset(
         or os.environ.get("GITHUB_BASE_REF")
         or os.environ.get("AUCTELIS_DEFAULT_BRANCH")
     )
-    # Rulesets (preferred).
+    if not branch:
+        meta, mstatus = _api_get_json(f"{base}/repos/{repo}", token=tok)
+        if mstatus == 200 and isinstance(meta, dict):
+            branch = str(meta.get("default_branch") or "") or None
+
+    # Effective rules for the branch (preferred — respects enforcement=active).
+    if branch:
+        effective, estatus = _api_get_json(
+            f"{base}/repos/{repo}/rules/branches/{branch}", token=tok
+        )
+        if estatus in {401, 403}:
+            return "UNVERIFIED", f"effective-rules API returned HTTP {estatus} (token scope?)"
+        if estatus == 200 and isinstance(effective, list):
+            for rule in effective:
+                if not isinstance(rule, dict):
+                    continue
+                if str(rule.get("type") or "") != "pull_request":
+                    continue
+                params = rule.get("parameters") or {}
+                if isinstance(params, dict) and params.get("require_code_owner_review"):
+                    return (
+                        "OK",
+                        f"effective rules on {branch} require code-owner review",
+                    )
+            # Effective rules listed but none require code owners — try classic.
+
+    # Rulesets list (legacy path / when effective rules unavailable).
     payload, status = _api_get_json(f"{base}/repos/{repo}/rulesets", token=tok)
     if status in {401, 403}:
         return "UNVERIFIED", f"rulesets API returned HTTP {status} (token scope?)"
@@ -151,16 +182,22 @@ def check_code_owner_ruleset(
         for item in payload:
             if not isinstance(item, dict):
                 continue
+            # Disabled rulesets are not protection.
+            if str(item.get("enforcement") or "").lower() == "disabled":
+                continue
             rules = item.get("rules") or []
-            if not isinstance(rules, list):
-                # Need detail fetch for full rules.
+            detail_doc = item
+            if not isinstance(rules, list) or not rules:
                 rid = item.get("id")
                 if rid is None:
                     continue
                 detail, dstatus = _api_get_json(f"{base}/repos/{repo}/rulesets/{rid}", token=tok)
                 if dstatus != 200 or not isinstance(detail, dict):
                     continue
-                rules = detail.get("rules") or []
+                detail_doc = detail
+                if str(detail_doc.get("enforcement") or "").lower() == "disabled":
+                    continue
+                rules = detail_doc.get("rules") or []
             for rule in rules if isinstance(rules, list) else []:
                 if not isinstance(rule, dict):
                     continue
@@ -172,24 +209,20 @@ def check_code_owner_ruleset(
                         "OK",
                         f"ruleset {item.get('name') or item.get('id')} requires code-owner review",
                     )
-        # Listed rulesets but none require code owners.
-        if payload:
-            # Fall through to classic protection before declaring MISSING.
-            pass
-        elif payload == []:
-            pass
 
     # Classic branch protection fallback.
-    if not branch:
-        meta, mstatus = _api_get_json(f"{base}/repos/{repo}", token=tok)
-        if mstatus == 200 and isinstance(meta, dict):
-            branch = str(meta.get("default_branch") or "") or None
+    # Note: github.token has no Administration scope — classic protection often
+    # returns 403 and surfaces as UNVERIFIED under strict mode.
     if branch:
         prot, pstatus = _api_get_json(
             f"{base}/repos/{repo}/branches/{branch}/protection", token=tok
         )
         if pstatus in {401, 403}:
-            return "UNVERIFIED", f"branch protection API returned HTTP {pstatus}"
+            return (
+                "UNVERIFIED",
+                f"branch protection API returned HTTP {pstatus} "
+                "(classic protection needs Administration scope; prefer a ruleset)",
+            )
         if pstatus == 404:
             return "MISSING", f"no branch protection on {branch} and no code-owner ruleset found"
         if pstatus == 200 and isinstance(prot, dict):
@@ -266,13 +299,32 @@ def run_gate(
     codeowners_text: str | None = None,
     check_ruleset: bool = True,
     strict_ruleset: bool = True,
+    trust_head_codeowners: bool = False,
+    codeowners_from_base: bool = False,
 ) -> tuple[dict[str, Any], int]:
     """Compare base→head lock; fail on growth without CODEOWNERS protection.
 
-    ``strict_ruleset`` defaults to True (Authority Watch): UNVERIFIED protection
-    on growth is NEEDS_REVIEW, not a green PASS. Pass False for best-effort.
+    ``strict_ruleset`` defaults to True: UNVERIFIED protection on growth is
+    NEEDS_REVIEW, not a green PASS. Pass False for best-effort.
+
+    When CODEOWNERS is loaded from the head tree (not a trusted base-ref copy),
+    growth requires ``trust_head_codeowners=True`` — otherwise NEEDS_REVIEW.
     """
     root = root.resolve()
+    if base_lock.is_dir():
+        return {
+            "ok": False,
+            "verdict": "FAIL_CLOSED",
+            "error": (
+                f"--base-lock expects an AUTHORITY.lock file, not a directory "
+                f"({base_lock}). Pass the lock path (e.g. /tmp/base.lock)."
+            ),
+            "needs_approval": True,
+            "required_owners": [],
+            "label": "GROWTH",
+            "ruleset": "UNVERIFIED",
+            "lines": [],
+        }, 2
     try:
         base = load_authority_lock(base_lock)
     except (AuthorityLockError, FileNotFoundError, OSError) as exc:
@@ -358,6 +410,18 @@ def run_gate(
     )
     owners_present = codeowners_covers_lock(co_text) if co_text else bool(owners)
     needs_approval = label == "GROWTH"
+    # Head CODEOWNERS alone is attacker-writable on a PR. Trust it only when:
+    # - caller passed a base-ref copy (--codeowners / codeowners_text), or
+    # - --trust-head-codeowners, or
+    # - ruleset probe is skipped (local --skip-ruleset-check).
+    trusted_codeowners = bool(
+        codeowners_from_base
+        or trust_head_codeowners
+        or codeowners_path is not None
+        or codeowners_text is not None
+        or not check_ruleset
+    )
+    head_codeowners_untrusted = needs_approval and owners_present and not trusted_codeowners
     ruleset_status, ruleset_detail = "UNVERIFIED", "not checked"
     if check_ruleset and needs_approval:
         ruleset_status, ruleset_detail = check_code_owner_ruleset(
@@ -367,7 +431,15 @@ def run_gate(
     ok = True
     verdict = "PASS"
     error: str | None = None
-    if needs_approval and not owners_present:
+    if needs_approval and head_codeowners_untrusted:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        error = (
+            "CODEOWNERS was read from the head tree (not a trusted base ref). "
+            "Pass --codeowners <base-ref-copy> or --trust-head-codeowners "
+            "(unsafe) to accept head CODEOWNERS for this growth gate."
+        )
+    elif needs_approval and not owners_present:
         ok = False
         verdict = "NEEDS_REVIEW"
         error = (

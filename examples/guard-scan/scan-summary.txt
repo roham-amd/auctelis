@@ -6,4 +6,4 @@ Coverage: 20% SUPPORTED (1/5); PARTIAL=4 MANUAL_ONLY=0 — clean result ≠ safe
   [CRITICAL] AUCTELIS-RULE-012: Literal secret-like value in MCP env (.cursor/mcp.json:6)
   [CRITICAL] AUCTELIS-RULE-021: Unpinned MCP launcher with secret-bearing env (.cursor/mcp.json:4)
   … +8 more gated (auctelis scan --full)
-Next: auctelis watch | auctelis explain F-00N | auctelis scan --full
+Next: auctelis check | auctelis explain F-00N | auctelis scan --full

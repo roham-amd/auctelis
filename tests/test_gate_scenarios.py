@@ -152,11 +152,12 @@ def test_scenario_hollow_lock_fails_closed(tmp_path: Path):
     _owners(root)
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     assert main(["lock", str(root)]) == 0
+    from auctelis.lock_io import compute_lock_hash
+
     hollow = tmp_path / "hollow.lock"
-    hollow.write_text(
-        json.dumps({"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}),
-        encoding="utf-8",
-    )
+    hollow_body = {"version": 1, "records": [], "mcp_tools": {}}
+    hollow_body["lock_hash"] = compute_lock_hash(hollow_body)
+    hollow.write_text(json.dumps(hollow_body), encoding="utf-8")
     code = main(["gate", str(root), "--base-lock", str(hollow), "--skip-ruleset-check"])
     assert code == 1
 

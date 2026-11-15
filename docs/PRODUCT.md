@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR review for what AI agents can reach  
-**Release:** 0.7.0 · **Package:** `auctelis` 0.7.0 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
+**Release:** 0.8.0 · **Package:** `auctelis` 0.8.0 · **Lock:** v1 · **Rules:** pack 1.6 (001–022)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -39,14 +39,15 @@ One question drives the workflow:
 
 ## Primary commands
 
-Public path: **check → lock --update → ci init --owner @team → gate**
+Public path: **check → lock --update → ci init --apply --owner @team → gate**
 
 | Command | Job |
 | --- | --- |
 | `auctelis check` | Repo authority vs `AUTHORITY.lock` (front door; no host scan) |
 | `auctelis lock --update` | Write the committed lock from the current tree |
-| `auctelis ci init --owner @team` | Enforce workflow + CODEOWNERS + lock (`--advisory` optional) |
-| `auctelis gate --base-lock …` | PR Authority Diff + CODEOWNERS / ruleset gate |
+| `auctelis ci init --apply --owner @team` | Enforce workflow + merge CODEOWNERS + verify ruleset |
+| `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |
+| `auctelis diff --base <ref>` | Local PR Authority Diff simulator |
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Optional packaged fixture |
 

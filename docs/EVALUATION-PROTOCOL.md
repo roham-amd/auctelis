@@ -5,6 +5,11 @@ How to judge auctelis quality without mistaking one demo scan for proof.
 Related: [`ROADMAP.md`](ROADMAP.md), [`tests/rules/`](../tests/rules/),
 [`tests/atlas/`](../tests/atlas/) (fixture corpus).
 
+**Honesty:** the five labeled configs under `eval/` are a **fixture regression
+suite** (4 TP / 0 FP / 0 FN / 1 TN). They are not published precision/recall.
+`eval/repos-25.txt` is a seed list until 25 independently labeled external
+configs exist — do not cite it as a completed benchmark.
+
 ---
 
 ## Goals

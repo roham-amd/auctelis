@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -375,6 +376,8 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         codeowners_path=getattr(args, "codeowners", None),
         check_ruleset=not bool(getattr(args, "skip_ruleset_check", False)),
         strict_ruleset=bool(getattr(args, "strict_ruleset", True)),
+        trust_head_codeowners=bool(getattr(args, "trust_head_codeowners", False)),
+        codeowners_from_base=bool(getattr(args, "codeowners", None)),
     )
     if getattr(args, "agent", False):
         print_json(report)
@@ -586,6 +589,44 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def _merge_codeowners_authority(existing: str, owner: str) -> str:
+    """Ensure AUTHORITY.lock / .auctelis.yml lines exist without wiping other rules."""
+    from auctelis.gate import codeowners_covers_lock
+
+    text = existing if existing.endswith("\n") else existing + "\n"
+    lines = text.splitlines()
+    has_policy = any("auctelis.yml" in ln and not ln.strip().startswith("#") for ln in lines)
+    if codeowners_covers_lock(text):
+        if has_policy:
+            return text
+        return text.rstrip() + f"\n.auctelis.yml {owner}\n"
+    block = (
+        f"\n# Added by auctelis ci init --apply\nAUTHORITY.lock {owner}\n.auctelis.yml {owner}\n"
+    )
+    return text.rstrip() + block
+
+
+def _resolve_action_pin_sha(root: Path) -> str | None:
+    """Best-effort HEAD SHA for pinning the composite Action."""
+    import subprocess
+
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    sha = (proc.stdout or "").strip()
+    return sha if len(sha) == 40 else None
+
+
 def _cmd_init_gate(args: argparse.Namespace) -> int:
     refused = refuse_agent_mutation("ci init")
     if refused is not None:
@@ -600,6 +641,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     if not owner.startswith("@"):
         owner = f"@{owner}"
     advisory = bool(getattr(args, "advisory", False))
+    apply = bool(getattr(args, "apply", False))
     root = args.path.resolve()
     root.mkdir(parents=True, exist_ok=True)
     policy_path = root / ".auctelis.yml"
@@ -615,6 +657,19 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             "# Advisory mode: Authority Diff posts; does not fail on lock drift.",
         )
     codeowners_body = codeowners_body.replace("@YOUR_TEAM", owner)
+    if apply:
+        pin = _resolve_action_pin_sha(root)
+        if pin:
+            workflow_body = re.sub(
+                r"(roham-amd/auctelis/\.github/actions/auctelis-gate@)[^\s#]+",
+                rf"\g<1>{pin}",
+                workflow_body,
+            )
+            workflow_body = re.sub(
+                r"# Pin to an immutable commit SHA[^\n]*",
+                f"# Pinned by ci init --apply to {pin}",
+                workflow_body,
+            )
     wrote: list[str] = []
     if policy_path.exists() and not args.force:
         print(f"Exists (use --force): {policy_path}")
@@ -623,14 +678,25 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         wrote.append(str(policy_path))
         # Round-trip guard: generated policy must load.
         load_policy(policy_path)
-    if workflow_path.exists() and not args.force:
+    if workflow_path.exists() and not args.force and not apply:
         print(f"Exists (use --force): {workflow_path}")
+    elif workflow_path.exists() and apply and not args.force:
+        print(f"Exists (skipped workflow rewrite without --force): {workflow_path}")
     else:
         workflow_dir.mkdir(parents=True, exist_ok=True)
         workflow_path.write_text(workflow_body, encoding="utf-8")
         wrote.append(str(workflow_path))
     if codeowners_path.exists() and not args.force:
-        print(f"Exists (use --force): {codeowners_path}")
+        if apply:
+            current = codeowners_path.read_text(encoding="utf-8")
+            merged = _merge_codeowners_authority(current, owner)
+            if merged != current:
+                codeowners_path.write_text(merged, encoding="utf-8")
+                wrote.append(f"{codeowners_path} (merged)")
+            else:
+                print(f"CODEOWNERS already covers AUTHORITY.lock: {codeowners_path}")
+        else:
+            print(f"Exists (use --force or --apply to merge): {codeowners_path}")
     else:
         codeowners_path.parent.mkdir(parents=True, exist_ok=True)
         codeowners_path.write_text(codeowners_body, encoding="utf-8")
@@ -668,7 +734,27 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     mode = "advisory" if advisory else "enforce"
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
     print(f"CODEOWNERS owner: {owner}. Mode: {mode} (locked: {'false' if advisory else 'true'}).")
-    print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
+    if apply:
+        from auctelis.gate import check_code_owner_ruleset
+
+        status, detail = check_code_owner_ruleset()
+        print(f"Ruleset probe: {status} — {detail}")
+        if status != "OK":
+            repo = os.environ.get("GITHUB_REPOSITORY") or "<owner>/<repo>"
+            print(
+                "Ruleset/branch protection is not verified. Create a ruleset that:\n"
+                "  • targets the default branch\n"
+                "  • enforcement = active\n"
+                "  • require_code_owner_review = true\n"
+                f"Settings: https://github.com/{repo}/settings/rules\n"
+                f"API: POST /repos/{repo}/rulesets\n"
+                "ci init --apply will not pretend the growth gate is ready."
+            )
+            return 1
+        print("Ruleset verified — growth gate can enforce CODEOWNER review.")
+    else:
+        print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
+        print("Or re-run with --apply to merge CODEOWNERS and verify the ruleset.")
     print("Pin the Action + tools install to an immutable git tag/SHA (or PyPI once published).")
     return 0
 
@@ -742,22 +828,42 @@ def _cmd_verify(args: argparse.Namespace) -> int:
 
 
 def _cmd_diff(args: argparse.Namespace) -> int:
-    if args.diff_kind != "lock":
-        return 2
-    delta = diff_authority_locks(
-        load_authority_lock(args.base),
-        load_authority_lock(args.head),
-    )
-    if getattr(args, "agent", False):
-        print_json(delta)
-    else:
-        if not delta["lines"]:
-            print("No authority lock changes.")
+    """File lock diff (``diff lock``) or local PR simulator (``diff --base``)."""
+    if getattr(args, "diff_kind", None) == "lock":
+        delta = diff_authority_locks(
+            load_authority_lock(args.base),
+            load_authority_lock(args.head),
+        )
+        if getattr(args, "agent", False):
+            print_json(delta)
         else:
-            print("\n".join(delta["lines"]))
-        if delta["summary"].get("policy_changed"):
-            print("~ policy_hash changed")
-    return 1 if delta["summary"]["authority_changed"] else 0
+            if not delta["lines"]:
+                print("No authority lock changes.")
+            else:
+                print("\n".join(delta["lines"]))
+            if delta["summary"].get("policy_changed"):
+                print("~ policy_hash changed")
+        return 1 if delta["summary"]["authority_changed"] else 0
+
+    base_ref = getattr(args, "base", None)
+    if not base_ref:
+        print(
+            "Usage:\n"
+            "  auctelis diff --base <git-ref> [--repo PATH] [--json]\n"
+            "  auctelis diff lock <base.lock> <head.lock>"
+        )
+        return 2
+    from auctelis.diff_base import run_diff_base
+
+    text, payload, code = run_diff_base(
+        getattr(args, "repo", Path(".")),
+        base_ref=str(base_ref),
+    )
+    if getattr(args, "diff_json", False):
+        print_json(payload)
+    else:
+        print(text)
+    return code
 
 
 def _cmd_export(args: argparse.Namespace) -> int:

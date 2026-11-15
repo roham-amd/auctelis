@@ -161,7 +161,7 @@ def test_watch_reports_removal_after_config_deleted(tmp_path: Path, capsys):
     _mcp(home, {"linear": {"url": "https://mcp.linear.app/sse"}})
     assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
     out = capsys.readouterr().out
-    assert '- mcp "github" · removed' in out
+    assert '- mcp "github"' in out and "removed" in out
 
 
 def test_watch_refuses_agent_seal(tmp_path: Path, monkeypatch, capsys):

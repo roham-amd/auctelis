@@ -292,13 +292,25 @@ def check_bare_command_docs() -> None:
         r"bare\s+`auctelis`[^.?\n]{0,100}runs\s+`watch`",
         re.IGNORECASE,
     )
+    # SECURITY.md / GUARD-SCAN must not sell Authority Watch as the product.
+    stale_product = re.compile(
+        r"(?:is\s+\*\*Authority Watch\*\*|Recommended first command[^\n]*:\s*\n\s*auctelis watch)",
+        re.IGNORECASE,
+    )
+    stale_rebrand = re.compile(
+        r"formerly branded",
+        re.IGNORECASE,
+    )
     for rel in (
         "docs/INSTALL.md",
         "docs/CLI-REFERENCE.md",
         "docs/GUARD-SCAN.md",
         "docs/AUCTELIS-GATE.md",
+        "docs/AUTHORITY-LOCK.md",
         "tools/README.md",
         "README.md",
+        "SECURITY.md",
+        "CONTRIBUTING.md",
     ):
         path = root / rel
         text = path.read_text(encoding="utf-8")
@@ -312,6 +324,13 @@ def check_bare_command_docs() -> None:
                 f"{rel} still claims bare auctelis runs watch; "
                 "document check (repo authority) as the front door"
             )
+        if rel in {"SECURITY.md", "docs/GUARD-SCAN.md"} and stale_product.search(text):
+            raise SystemExit(
+                f"{rel} still describes Authority Watch / watch-first as the product; "
+                "document check → lock → ci init → gate"
+            )
+        if rel == "CONTRIBUTING.md" and stale_rebrand.search(text):
+            raise SystemExit(f"{rel} still contains rebrand residue ('formerly branded')")
 
 
 def check_policy_schema_contract() -> None:

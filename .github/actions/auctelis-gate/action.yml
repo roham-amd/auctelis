@@ -458,6 +458,10 @@ runs:
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
+        AUCTELIS_LOCKED: ${{ inputs.locked }}
+        AUCTELIS_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
+        AUCTELIS_PATH: ${{ inputs.path }}
+        AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
@@ -468,7 +472,24 @@ runs:
           echo "No findings.json; skipping PR comment."
           exit 0
         fi
-        if [[ ! -f "$COMMENT" ]]; then
+        # Adoption ceremony: no base lock + head lock must never sticky-comment as PASS.
+        head_lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
+        head_lock_path="${AUCTELIS_PATH%/}/${head_lock_rel}"
+        head_lock_path="${head_lock_path#./}"
+        if [[ "${AUCTELIS_LOCKED}" == "true" && -z "${AUCTELIS_BASE_LOCK}" && -f "$head_lock_path" ]]; then
+          {
+            echo "<!-- auctelis-authority-diff -->"
+            echo "### auctelis Authority Diff"
+            echo "**Verdict:** \`BASELINE_ADOPTED\` · label \`NONE\`"
+            echo ""
+            echo "First \`AUTHORITY.lock\` on head with no trusted base lock."
+            echo "This is an adoption ceremony — not a growth-gate PASS."
+            echo "Require CODEOWNERS review of the new lock before merge."
+            echo ""
+            echo "**Action:** CODEOWNERS review AUTHORITY.lock + protection config"
+          } >"$COMMENT"
+          echo "Overwrote sticky comment with BASELINE_ADOPTED (adoption ceremony)."
+        elif [[ ! -f "$COMMENT" ]]; then
           if [[ -f "$DELTA" ]]; then
             auctelis annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
           else

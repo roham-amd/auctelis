@@ -1,6 +1,6 @@
 # auctelis scan — annotation layer (hidden)
 
-Guard scan path for **0.7.0**: deterministic discovery plus evidence-backed
+Guard scan path for **0.8.0**: deterministic discovery plus evidence-backed
 observations via `auctelis scan` / `check`, with capability / exposure / finding
 separation. This is an annotation layer behind the product, not the first
 screen. Default terminal output is ≤15 lines (`--full` for the long report).
@@ -75,14 +75,13 @@ Principle: never ask an LLM to establish a fact the CLI can establish; never let
 ## First-run workflow (target: under 10 minutes)
 
 ```bash
-# Recommended first command (git-tag install — see INSTALL.md):
-auctelis watch
-auctelis watch --seal
-auctelis watch --arm
+# Product front door (git-tag install — see INSTALL.md):
+auctelis check
+auctelis lock --update
+auctelis ci init --owner @security
 
 # Hidden annotation layer, when you explicitly want findings on a tree:
-auctelis /path/to/target-repo
-auctelis lock /path/to/target-repo
+auctelis scan /path/to/target-repo
 auctelis explain F-001 -o ./auctelis-out   # if findings exist
 ```
 
@@ -91,16 +90,10 @@ From a checkout:
 ```bash
 cd tools && uv sync --locked
 uv run auctelis demo
-uv run auctelis scan /path/to/target-repo
+uv run auctelis check /path/to/target-repo
 ```
 
-Docker:
-
-```bash
-docker compose build
-TARGET=/path/to/target-repo docker compose run --rm auctelis \
-  scan /work -o /tmp/auctelis-out
-```
+Docker is not the Authority Diff install path. Prefer the git-tag / release wheel.
 
 ---
 
@@ -171,18 +164,19 @@ With `--full`, add `ecosystem-graph.json`, `capabilities.json`,
 | `--full` extras | Graph, capabilities, long reports | — |
 | Recommended first command | **No** — hidden annotation layer | Maintainer discovery only |
 
-Prefer `auctelis watch` for the weekly delta, and `auctelis lock` + `auctelis gate`
-+ the CI Authority Diff for the team path.
+Prefer `auctelis check` for the weekly delta, and `auctelis lock` + `auctelis gate`
++ the CI Authority Diff for the team path. Archived host commands (`watch`) are
+not the product path — see [`MIGRATION-HOST.md`](MIGRATION-HOST.md).
 
 ---
 
 ## Baselines and continuous assessment
 
-1. First assessment: `auctelis watch` then `auctelis watch --seal`.
-2. After changes: `auctelis watch --delta-only` (or `auctelis check --locked .`).
+1. First assessment: `auctelis check` then `auctelis lock --update`.
+2. After changes: `auctelis check` (or `auctelis diff --base origin/main`).
 3. Inspect `pr-comment.md` / lock delta for authority expansions.
-4. CI: Action with `authority-diff: true` and `locked: false` (lockless-first);
-   set `locked: true` after sealing `AUTHORITY.lock` (see
+4. CI: Action with `authority-diff: true` and `locked: true` after sealing
+   `AUTHORITY.lock` (see
    [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)).
 
 Baseline identity is **fingerprint-first** (content digest of authority-bearing
