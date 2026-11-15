@@ -81,6 +81,7 @@ jobs:
           /tmp/auctelis-wheel-smoke/bin/auctelis --version
           /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis check --help >/dev/null
           set +e
           /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
           demo_rc=$?
@@ -89,7 +90,8 @@ jobs:
           set -e
           test "$demo_rc" -eq 0
           test "$check_rc" -eq 0
-          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH' /tmp/auctelis-wheel-demo/pr-comment.md
+          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|NEEDS_REVIEW' /tmp/auctelis-wheel-demo/pr-comment.md
+          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable | grep -E 'BASELINE_NEEDED|Inventory'
 
   release:
     needs: [validate, wheel-smoke]

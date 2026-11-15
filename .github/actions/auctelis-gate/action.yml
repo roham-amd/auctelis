@@ -84,7 +84,8 @@ inputs:
     required: false
     default: "true"
   lock-file:
-    description: Path to AUTHORITY.lock relative to the scan target (default: AUTHORITY.lock)
+    description: >-
+      Path to AUTHORITY.lock relative to the scan target (default: AUTHORITY.lock)
     required: false
     default: ""
   strict-ruleset:
@@ -115,9 +116,13 @@ runs:
             echo "::error::install-tools-from=${chosen} but auctelis is not on PATH. pip/uv install auctelis first."
             exit 1
           fi
+          if ! command -v auctelis-dev >/dev/null 2>&1; then
+            echo "::error::install-tools-from=${chosen} but auctelis-dev is not on PATH (needed for scan/annotate)."
+            exit 1
+          fi
           echo "mode=path" >> "$GITHUB_OUTPUT"
           echo "dir=" >> "$GITHUB_OUTPUT"
-          echo "Using preinstalled auctelis on PATH."
+          echo "Using preinstalled auctelis + auctelis-dev on PATH."
           exit 0
         fi
         bundled="$(cd "$AUCTELIS_ACTION_PATH/../../.." && pwd)/tools"
@@ -125,10 +130,10 @@ runs:
           if [[ -f "${bundled}/pyproject.toml" ]]; then
             chosen="${bundled}"
             echo "Using Action-bundled auctelis tools: ${chosen}"
-          elif command -v auctelis >/dev/null 2>&1; then
+          elif command -v auctelis >/dev/null 2>&1 && command -v auctelis-dev >/dev/null 2>&1; then
             echo "mode=path" >> "$GITHUB_OUTPUT"
             echo "dir=" >> "$GITHUB_OUTPUT"
-            echo "install-tools-from empty; using preinstalled auctelis on PATH."
+            echo "install-tools-from empty; using preinstalled auctelis + auctelis-dev on PATH."
             exit 0
           elif [[ -f tools/pyproject.toml ]]; then
             echo "::error::install-tools-from is empty and Action-bundled tools were not found. Refusing to default to workspace ./tools (PR-controlled code execution risk). Pass install-tools-from explicitly to a pinned auctelis checkout, or install auctelis and set install-tools-from: path."
