@@ -4,28 +4,28 @@
 
 | Project version | Supported |
 | --- | --- |
-| 0.4.x | Yes |
-| 0.3.x | Yes (security fixes backported when practical) |
-| 0.2.x | Security fixes only when practical |
-| 1.0.x | No (yanked / superseded pre-1.0 line; do not use) |
-| < 0.2.0 | No |
+| 0.8.x | Yes |
+| 0.7.x | Security fixes when practical |
+| 0.6.x | Security fixes when practical |
+| ≤ 0.5.x | No |
+| 1.0.x | No (yanked / superseded pre-1.0 `authdiff` line; do not use) |
 
-Tooling package version (`auctelis`, currently **0.7.0**) is tracked in
+Tooling package version (`auctelis`, currently **0.8.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
 ## What this project is
 
-`auctelis` is **Authority Watch**: a declared-config inventory plus a sealed
-`AUTHORITY.lock` and a one-screen delta. `auctelis watch` prints what your agents
-can reach and what changed since the last human seal; `watch --arm` installs
-Cursor/Claude hooks; the optional team path is a lockless PR Authority Diff and
-`auctelis gate`. `doctor` is an alias for `watch`; `scan` / `vet` are hidden
-annotation layers, not the first screen.
+`auctelis` is the **authority lockfile and PR review for what AI agents can
+reach**. Locally, `auctelis check` inventories a repository's agent configs
+against `AUTHORITY.lock`. On a PR, the Action posts one Authority Diff and
+`auctelis gate` labels growth vs reduction under CODEOWNERS / ruleset review.
 
 It is **not** an automated vulnerability scanner that proves systems are safe,
 a penetration-testing tool, runtime sandbox, marketplace certification authority,
-or substitute for organizational risk acceptance.
+host consent broker, or substitute for organizational risk acceptance.
+`watch` / `allow` / `hook` / `doctor` remain callable for compatibility but are
+archived. `scan` / `vet` are hidden annotation layers, not the front door.
 
 Operator and contributor documentation map: [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md).  
 Deterministic rule catalog: [`docs/SECURITY-RULES.md`](docs/SECURITY-RULES.md).
@@ -62,6 +62,7 @@ Composite GitHub Action inputs must be passed via environment variables into she
 
 ## Gate trust notes
 
-- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `auctelis gate`, not by `scan --base-lock` (advisory delta only).
+- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `auctelis gate`, not by scan heuristics.
 - Prefer GitHub-native CODEOWNERS / rulesets (including team owners and stale-review dismissal) as the approval source of truth.
 - `auctelis gate` is lock-only: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — auctelis does not count PR approvals.
+- `AUCTELIS_AGENT=1` is a speed bump that refuses lock writes for agents; it is not a security control.

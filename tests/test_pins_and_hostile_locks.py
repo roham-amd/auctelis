@@ -76,17 +76,20 @@ def test_hollow_base_fails_closed(tmp_path: Path):
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     (root / ".github").mkdir(parents=True)
     (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
+    from auctelis.lock_io import compute_lock_hash
+
     hollow = tmp_path / "hollow.lock"
-    hollow.write_text(
-        json.dumps({"version": 1, "records": [], "lock_hash": "deadbeef", "mcp_tools": {}}),
-        encoding="utf-8",
-    )
+    hollow_body = {"version": 1, "records": [], "mcp_tools": {}}
+    hollow_body["lock_hash"] = compute_lock_hash(hollow_body)
+    hollow.write_text(json.dumps(hollow_body), encoding="utf-8")
     report, code = run_gate(root, base_lock=hollow)
     assert code == 1
     assert report["verdict"] == "FAIL_CLOSED"
 
 
 def test_reordered_records_not_meaningful(tmp_path: Path):
+    from auctelis.lock_io import compute_lock_hash
+
     root = tmp_path / "repo"
     _mcp(
         root,
@@ -98,6 +101,7 @@ def test_reordered_records_not_meaningful(tmp_path: Path):
     lock = build_authority_lock(root)
     reordered = dict(lock)
     reordered["records"] = list(reversed(list(lock["records"])))
+    reordered["lock_hash"] = compute_lock_hash(reordered)
     validate_authority_lock(reordered)
     delta = diff_authority_locks(lock, reordered)
     assert delta["summary"]["meaningful_authority_change"] is False

@@ -20,4 +20,4 @@ Semantic contract: [`../docs/AUTHORITY-LOCK.md`](../docs/AUTHORITY-LOCK.md)
 | [`ecosystem-graph.schema.json`](ecosystem-graph.schema.json) | Inventory graph seed — not a public claim |
 
 `auctelis scan` may still write `findings.json` / SARIF; those are annotation
-artifacts, not the Authority Watch product.
+artifacts, not the Authority Diff product (`check` / `lock` / `gate`).

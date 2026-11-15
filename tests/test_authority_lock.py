@@ -57,7 +57,7 @@ def test_lock_write_check_and_diff(tmp_path: Path):
     )
     report2, code2 = check_locked(root)
     assert code2 == 1
-    assert report2["verdict"] == "AUTHORITY_CHANGED"
+    assert report2["verdict"] == "NEEDS_REVIEW"
     assert any("addition" in line for line in report2["lines"])
 
     head = build_authority_lock(root)

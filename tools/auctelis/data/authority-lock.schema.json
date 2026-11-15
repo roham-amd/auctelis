@@ -75,6 +75,23 @@
             "type": "string",
             "description": "Content digest for hook scripts / skill trees"
           },
+          "evidence_strength": {
+            "type": "string",
+            "enum": ["LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"],
+            "description": "How strongly the record is grounded in declared config"
+          },
+          "capability_origin": {
+            "type": "string",
+            "description": "Capability provenance (DECLARED / POTENTIAL / TYPE_DEFAULT)"
+          },
+          "parser_version": {
+            "type": "string",
+            "description": "Optional adapter/parser version that produced the record"
+          },
+          "source_commit": {
+            "type": "string",
+            "description": "Optional commit when the source file was observed"
+          },
           "first_seen": {
             "type": "string",
             "description": "Optional local ISO-8601 first observation (not a gate input)"

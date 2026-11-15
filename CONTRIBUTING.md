@@ -1,6 +1,6 @@
 # Contributing to auctelis
 
-Thanks for helping improve **auctelis** (product line formerly branded auctelis).
+Thanks for helping improve **auctelis**.
 
 Product contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Roadmap:
 [`docs/ROADMAP.md`](docs/ROADMAP.md) · Docs index:

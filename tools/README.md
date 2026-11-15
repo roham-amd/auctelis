@@ -7,7 +7,7 @@ Authority Diff CLI: `check` → `lock --update` → `ci init --owner` → `gate`
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.7.0** · Product: auctelis **0.7.0**
+Package: `auctelis` **0.8.0** · Product: auctelis **0.8.0**
 
 ---
 
@@ -23,7 +23,7 @@ Package: `auctelis` **0.7.0** · Product: auctelis **0.7.0**
 | Tests | Pytest (+ pytest-cov) |
 | Vuln scan | pip-audit |
 | CI | GitHub Actions + `uv sync --locked` |
-| Deploy | Docker (`uv sync --locked --no-dev`) |
+| Optional container | Docker scan image only (`uv sync --locked --no-dev`) — not the Authority Diff install |
 
 Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
@@ -35,11 +35,12 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
 auctelis check                             # repo authority vs AUTHORITY.lock
 auctelis lock --update                     # seal AUTHORITY.lock
-auctelis ci init --owner @security         # enforce workflow + CODEOWNERS
+auctelis ci init --apply --owner @security # CODEOWNERS + ruleset verify
+auctelis diff --base origin/main           # local PR Authority Diff
 auctelis why <name>                        # exact config path
 auctelis demo                              # optional
 ```
@@ -124,8 +125,9 @@ uv run --locked auctelis-dev corpus run
 # Primary product surface
 uv run auctelis check [PATH] [--json]
 uv run auctelis lock [PATH] [--check] [--update] [--accept-gated]
-uv run auctelis ci init --owner @TEAM [PATH] [--force] [--advisory]
+uv run auctelis ci init --owner @TEAM [PATH] [--force] [--advisory] [--apply]
 uv run auctelis gate [PATH] --base-lock PATH
+uv run auctelis diff --base REF [--repo PATH]
 uv run auctelis why NAME [PATH]
 
 # Archived host/tripwire (callable)

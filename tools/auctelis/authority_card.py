@@ -144,15 +144,31 @@ def _permission_allows(record: dict[str, Any]) -> list[str]:
     return [str(a) for a in (record.get("permission_allows") or []) if str(a).strip()]
 
 
+def evidence_label(record: dict[str, Any]) -> str:
+    """Evidence strength for cards / why — never invent LITERAL_CONFIG."""
+    raw = str(record.get("evidence_strength") or "").strip().upper()
+    if raw in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"}:
+        return raw
+    return "INFERRED_HINT"
+
+
+def _path_bit(record: dict[str, Any]) -> str:
+    path = str(record.get("path") or "").replace("\\", "/")
+    if not path:
+        return ""
+    return f" @ {_short(path, width=56)}"
+
+
 def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
     """Render one added/current authority record as a single card line."""
     kind = kind_label(record.get("kind"))
     name = str(record.get("name") or record.get("id") or "?").strip()
-    path = str(record.get("path") or "").replace("\\", "/")
+    path_bit = _path_bit(record)
     host = destination(record)
     launch = launcher(record)
     posture = _posture(record)
     allows = _permission_allows(record)
+    evidence = evidence_label(record)
 
     # First-class permission-posture card for host settings / bypass.
     if kind == "host" or posture == "bypassPermissions" or allows:
@@ -169,7 +185,8 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
         if host:
             bits.append(f"→ {host}")
         bits.append(_PUBLISHER)
-        return f'{prefix} {kind} "{name}" · ' + " · ".join(bits)
+        bits.append(evidence)
+        return f'{prefix} {kind} "{name}"{path_bit} · ' + " · ".join(bits)
 
     bits = []
     target = ""
@@ -177,9 +194,7 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
         target = f" → {host}"
     elif launch:
         target = f" launcher {_short(launch)}"
-    if path and f" @ {path}" not in target:
-        # Always surface the config file so PR reviewers can jump to the change.
-        target += f" @ {_short(path, width=56)}"
+    target += path_bit
 
     caps = _capabilities(record)
     bits.append(" · ".join(caps) if caps else "authority")
@@ -187,6 +202,7 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
     if kind in _MCP_KINDS and pin:
         bits.append(pin)
     bits.append(_PUBLISHER)
+    bits.append(evidence)
     return f'{prefix} {kind} "{name}"{target} · ' + " · ".join(bits)
 
 
@@ -210,6 +226,7 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
     after = item.get("after") or {}
     kind = kind_label(after.get("kind") or before.get("kind"))
     name = str(after.get("name") or before.get("name") or item.get("id") or "?").strip()
+    path_bit = _path_bit(after if after.get("path") else before)
     bits: list[str] = []
 
     old_posture, new_posture = _posture(before), _posture(after)
@@ -276,13 +293,16 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
             bits.append(f"{changed_fields[0]} changed")
         else:
             bits.append("record identity changed")
-    return f'{prefix} {kind} "{name}" · ' + " · ".join(bits)
+    evidence = evidence_label(after if after else before)
+    bits.append(evidence)
+    return f'{prefix} {kind} "{name}"{path_bit} · ' + " · ".join(bits)
 
 
 def removed_card(record: dict[str, Any], *, prefix: str = "-") -> str:
     kind = kind_label(record.get("kind"))
     name = str(record.get("name") or record.get("id") or "?").strip()
-    return f'{prefix} {kind} "{name}" · removed'
+    path_bit = _path_bit(record)
+    return f'{prefix} {kind} "{name}"{path_bit} · removed'
 
 
 def _is_renderable(record: dict[str, Any]) -> bool:
@@ -392,7 +412,8 @@ def why_record(record: dict[str, Any]) -> list[str]:
     if pin:
         lines.append(f"  pin: {pin}")
     lines.append(f"  {_PUBLISHER}")
-    lines.append("  evidence: LITERAL_CONFIG (declared config only; not runtime proof)")
+    evidence = evidence_label(record)
+    lines.append(f"  evidence: {evidence} (declared config only; not runtime proof)")
     return lines
 
 

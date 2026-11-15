@@ -87,18 +87,16 @@ Agents must not mutate locks (`AUCTELIS_AGENT=1`).
 ## Commands
 
 ```bash
-auctelis watch                             # every sealable record + Accept digest
-auctelis watch --seal --accept <digest>    # seal ~/.auctelis/AUTHORITY.lock
-auctelis allow --accept <digest>           # allow project authority hash
-auctelis watch --arm                       # Cursor + Claude session/tripwire hooks
-auctelis watch --delta-only                # changed lines only (session hook)
-auctelis why <name>                        # exact config path for one record
-auctelis hook status --probe               # wired / firing; prove tripwires deny
-auctelis lock                              # write / update repo AUTHORITY.lock
+auctelis check                             # repo authority vs AUTHORITY.lock
+auctelis lock --update                     # write / refresh repo AUTHORITY.lock
 auctelis lock --check                      # exit 1 on drift
-auctelis gate --base-lock base.lock        # optional team upsell (hidden help)
-auctelis diff lock A.lock B.lock           # hidden
+auctelis ci init --owner @you              # workflow + CODEOWNERS + lock
+auctelis gate --base-lock base.lock        # PR Authority Diff + CODEOWNERS gate
+auctelis why <name>                        # exact config path for one record
 ```
+
+Pass a lock **file** to `--base-lock` (for example `base.lock` or the path
+extracted from the base ref). A directory such as `.` fails closed.
 
 Protect the file:
 
@@ -109,7 +107,7 @@ AUTHORITY.lock  @security-owner
 
 `auctelis ci init --owner @you` writes a CODEOWNERS stub for this path.
 
-### Pinned facts (0.3.0)
+### Pinned facts
 
 Each record may also seal:
 
@@ -119,10 +117,13 @@ Each record may also seal:
 | `args_digest` | SHA-256 of canonical JSON argv |
 | `url_host` | Hostname for URL MCP transports |
 | `script_digest` | Content digest for hooks / skill trees |
+| `evidence_strength` | `LITERAL_CONFIG` / `INFERRED_HINT` / `NAME_MARKER` |
 
 Same identity with a different launcher/args/host is a **`replacement`** (needs approval).
-Opt-in: `auctelis lock --snapshot tools.json` merges `mcp_tools` description pins;
-`auctelis lock --home` seals `~/.auctelis/AUTHORITY.lock`.
+Opt-in: `auctelis lock --snapshot tools.json` merges `mcp_tools` description pins.
+
+Archived host commands (`watch` / `allow` / `hook` / `lock --home`) remain
+callable for compatibility but are not the product path.
 
 ---
 

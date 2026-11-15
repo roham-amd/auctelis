@@ -131,7 +131,16 @@ def test_gate_strict_ruleset_default_on(tmp_path: Path, monkeypatch):
     assert code == 1
     assert report["verdict"] == "NEEDS_REVIEW"
 
-    soft_code = main(["gate", str(root), "--base-lock", str(base), "--no-strict-ruleset"])
+    soft_code = main(
+        [
+            "gate",
+            str(root),
+            "--base-lock",
+            str(base),
+            "--no-strict-ruleset",
+            "--trust-head-codeowners",
+        ]
+    )
     assert soft_code == 0
 
 

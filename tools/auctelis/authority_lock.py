@@ -106,7 +106,15 @@ _AUTHORITY_FIELDS = (
     "url_host",
     "script_digest",
 )
-_REPRESENTATION_FIELDS = ("path", "digest", "fingerprint")
+_REPRESENTATION_FIELDS = (
+    "path",
+    "digest",
+    "fingerprint",
+    "evidence_strength",
+    "capability_origin",
+    "parser_version",
+    "source_commit",
+)
 _PIN_IDENTITY_FIELDS = ("launcher", "args_digest", "url_host", "script_digest")
 
 
@@ -201,6 +209,19 @@ def _record_from_component(
         )
         if str(a).strip()
     ]
+    maturity = str(raw.get("adapter_maturity") or comp.get("adapter_maturity") or "PARTIAL").upper()
+    # Declared config adapters with a path are LITERAL_CONFIG; heuristics are
+    # INFERRED_HINT; name-only markers stay NAME_MARKER when adapters say so.
+    evidence = (
+        str(raw.get("evidence_strength") or comp.get("evidence_strength") or "").strip().upper()
+    )
+    if evidence not in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"}:
+        if maturity == "SUPPORTED" and path:
+            evidence = "LITERAL_CONFIG"
+        elif maturity in {"MANUAL_ONLY", "UNSUPPORTED"} or not path:
+            evidence = "NAME_MARKER"
+        else:
+            evidence = "INFERRED_HINT"
     return {
         "id": logical,
         "identity_key": key,
@@ -220,6 +241,11 @@ def _record_from_component(
         "args_digest": args_digest(args_list) if (launcher or args_list) else "",
         "url_host": host_from_url or (destinations[0] if destinations else ""),
         "script_digest": script_digest,
+        "evidence_strength": evidence,
+        "capability_origin": str(
+            raw.get("capability_origin") or comp.get("capability_origin") or "DECLARED"
+        ),
+        "parser_version": str(raw.get("parser_version") or comp.get("parser_version") or ""),
     }
 
 
@@ -696,7 +722,7 @@ def check_locked(
         "lock": str(path),
         "delta": delta,
         "lines": delta["lines"],
-        "verdict": "LOCKED" if ok else "AUTHORITY_CHANGED",
+        "verdict": "LOCKED" if ok else "NEEDS_REVIEW",
     }
     return report, 0 if ok else 1
 

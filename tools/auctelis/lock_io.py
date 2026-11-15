@@ -7,10 +7,13 @@ on load (fail closed on hollow / malformed documents).
 
 from __future__ import annotations
 
+import hashlib
 import json
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+_SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
 
 
 class AuthorityLockError(ValueError):
@@ -59,6 +62,16 @@ def _lock_schema() -> dict[str, Any]:
     return data
 
 
+def compute_lock_hash(data: dict[str, Any]) -> str:
+    """Canonical seal hash (excludes volatile / decorative fields)."""
+    canonical = json.dumps(
+        {k: v for k, v in data.items() if k not in _SEAL_EXCLUDE},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+
+
 def validate_authority_lock(data: dict[str, Any], *, path: Path | None = None) -> None:
     """Fail closed on schema violations and hollow locks (no records, no tools)."""
     try:
@@ -81,6 +94,16 @@ def validate_authority_lock(data: dict[str, Any], *, path: Path | None = None) -
     # Full JSON locks must include records[] (may be empty for a clean tree).
     if "mcp_tools" not in data and records is None:
         raise AuthorityLockError("AUTHORITY.lock missing records[]")
+    # When lock_hash is present, verify it — otherwise it is decorative theater.
+    stored = data.get("lock_hash")
+    if stored is not None and str(stored).strip():
+        expected = compute_lock_hash(data)
+        if str(stored) != expected:
+            where = f" ({path})" if path else ""
+            raise AuthorityLockError(
+                f"AUTHORITY.lock lock_hash mismatch{where}: "
+                f"stored {stored!r} != computed {expected!r}"
+            )
 
 
 def load_authority_lock(path: Path) -> dict[str, Any]:

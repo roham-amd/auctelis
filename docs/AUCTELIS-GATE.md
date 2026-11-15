@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.7.0** |
-| Tooling package | **0.7.0** (`auctelis`) |
+| Product release | **0.8.0** |
+| Tooling package | **0.8.0** (`auctelis`) |
 | Rule pack | **1.6** (rules 001–022) |
 | Primary path | `check` → `lock --update` → `ci init --owner` → Action / `gate` |
 | Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) |
@@ -40,7 +40,7 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ```bash
 # Git tag is the supported install until PyPI returns the package.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
 
 auctelis check                           # repo authority vs AUTHORITY.lock
 auctelis lock --update                   # seal AUTHORITY.lock

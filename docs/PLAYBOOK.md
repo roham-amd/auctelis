@@ -69,7 +69,7 @@ AUTHORITY.lock  @security-owner
 ```bash
 # Git install only today — PyPI not published yet
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
 
 auctelis check              # repo authority vs AUTHORITY.lock
 auctelis lock --update      # seal AUTHORITY.lock (no approval fields are written)

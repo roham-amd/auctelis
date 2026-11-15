@@ -110,7 +110,9 @@ def test_strict_ruleset_fails_unverified_growth(tmp_path: Path, monkeypatch):
     assert report["protection"] == "unverified"
     assert report["strict_ruleset"] is True
 
-    soft, soft_code = run_gate(root, base_lock=base, strict_ruleset=False)
+    soft, soft_code = run_gate(
+        root, base_lock=base, strict_ruleset=False, trust_head_codeowners=True
+    )
     assert soft_code == 0
     assert soft["verdict"] == "PASS"
     assert soft["protection"] == "unverified"
@@ -132,7 +134,7 @@ def test_ruleset_missing_fails_growth(tmp_path: Path):
         },
     )
     with patch("auctelis.gate.check_code_owner_ruleset", return_value=("MISSING", "no ruleset")):
-        report, code = run_gate(root, base_lock=base)
+        report, code = run_gate(root, base_lock=base, trust_head_codeowners=True)
     assert code == 1
     assert report["verdict"] == "NEEDS_REVIEW"
     assert report["protection"] == "missing"
@@ -156,7 +158,7 @@ def test_ruleset_ok_marks_protection_verified(tmp_path: Path):
         "auctelis.gate.check_code_owner_ruleset",
         return_value=("OK", "ruleset requires code-owner review"),
     ):
-        report, code = run_gate(root, base_lock=base)
+        report, code = run_gate(root, base_lock=base, trust_head_codeowners=True)
     assert code == 0
     assert report["protection"] == "verified"
     assert "PASS / protection verified" in render_gate_report(report)

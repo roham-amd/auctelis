@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.7.0** · product **0.7.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.8.0** · product **0.8.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -25,8 +25,9 @@ hidden `scan`. Advanced commands remain callable but are omitted from brief
 | --- | --- | --- |
 | Core | `check` | Repo authority vs `AUTHORITY.lock` (front door; no host scan) |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
-| Core | `ci init --owner @team` | Enforce workflow + CODEOWNERS + lock (`--advisory` opt-out) |
-| Core | `gate --base-lock …` | PR Authority Diff + CODEOWNERS / ruleset gate |
+| Core | `ci init --apply --owner @team` | Enforce workflow + merge CODEOWNERS + verify ruleset |
+| Core | `gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |
+| Core | `diff --base <ref>` | Local PR Authority Diff simulator |
 | Core | `why <name>` | Exact config path / reach fields for one authority record |
 | Core | `demo` | Packaged fixture walkthrough |
 | Archived | `watch` | Host (+ project) sealable delta vs `~/.auctelis/AUTHORITY.lock` |
@@ -57,7 +58,7 @@ rules, subagents, plugins, CI) and diffs them against the committed
 
 - No lock yet → inventory + `BASELINE_NEEDED`; next step `auctelis lock --update`
 - Lock matches → quiet `LOCKED`
-- Lock drifts → cards with `@ path` + `NEEDS_REVIEW` / `AUTHORITY_CHANGED`
+- Lock drifts → cards with `@ path` + `NEEDS_REVIEW`
 
 `--json` emits `schema_version: authority-diff/1`.
 
@@ -69,25 +70,29 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta; `2` unusable lock.
 
 ```bash
 auctelis lock [PATH] [--check] [--update] [--lock-file PATH]
-              [--accept-gated] [--home] [--snapshot PATH] [--resolve]
+              [--accept-gated]
 ```
 
 Writes or verifies repo `AUTHORITY.lock`. `--check` is read-only. Writes are
-refused when `AUCTELIS_AGENT=1`. `--accept-gated` seals despite HIGH/CRITICAL
-annotations (records no approval — CODEOWNERS governs). `--home` seals host
-authority under `~/.auctelis/AUTHORITY.lock` (archived personal path).
+refused when `AUCTELIS_AGENT=1` (speed bump, not a security control).
+`--accept-gated` seals despite HIGH/CRITICAL annotations (records no approval —
+CODEOWNERS governs). Archived `--home` / `--snapshot` remain callable but are
+hidden from help.
 
 ---
 
 ## `auctelis ci init`
 
 ```bash
-auctelis ci init [PATH] --owner @TEAM [--force] [--advisory]
+auctelis ci init [PATH] --owner @TEAM [--force] [--advisory] [--apply]
 ```
 
 Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml`,
 `.github/CODEOWNERS`, and attempts to seal `AUTHORITY.lock`. Default mode is
 **enforce** (`locked: true`). Pass `--advisory` for warn-only.
+`--apply` merges `AUTHORITY.lock` into an existing CODEOWNERS file, pins the
+Action to a commit SHA when resolvable, and verifies ruleset protection
+(exits `1` with the GitHub settings link when unverified).
 
 ---
 
@@ -96,11 +101,27 @@ Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml`,
 ```bash
 auctelis gate [PATH] --base-lock PATH [--head-lock PATH]
               [--codeowners PATH] [--strict-ruleset | --no-strict-ruleset]
-              [--skip-ruleset-check] [--agent]
+              [--skip-ruleset-check] [--trust-head-codeowners] [--agent]
 ```
 
-Compares base→head authority. Growth with missing CODEOWNERS / unverified
-ruleset fails closed when `--strict-ruleset` is on (default).
+Compares base→head authority. Pass a lock **file** to `--base-lock` (not a
+directory). Growth with missing CODEOWNERS / unverified ruleset fails closed
+when `--strict-ruleset` is on (default). Without a trusted base-ref CODEOWNERS
+copy, pass `--trust-head-codeowners` (unsafe) or `--skip-ruleset-check` for
+local use. CI should pass `--codeowners` from the base ref.
+
+---
+
+## `auctelis diff --base`
+
+```bash
+auctelis diff --base <git-ref> [--repo PATH] [--json]
+auctelis diff lock <base.lock> <head.lock>
+```
+
+Local PR Authority Diff simulator: reads `AUTHORITY.lock` from the git ref via
+`git show`, regenerates head from the working tree, and prints the same comment
+dialect as the Action.
 
 ---
 

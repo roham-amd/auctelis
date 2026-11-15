@@ -11,7 +11,7 @@ PyPI is not live yet, so the first command is always the pinned git tag:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.8.0#subdirectory=tools"
 
 auctelis check                         # repo authority vs AUTHORITY.lock
 auctelis lock --update                 # seal AUTHORITY.lock in the repo
@@ -66,5 +66,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.7.0 |
-| Package `auctelis` | 0.7.0 |
+| Product (`VERSION`) | 0.8.0 |
+| Package `auctelis` | 0.8.0 |
