@@ -23,8 +23,13 @@ def _owners(root: Path, owner: str = "@sec-owners") -> None:
     gh = root / ".github"
     gh.mkdir(parents=True, exist_ok=True)
     (gh / "CODEOWNERS").write_text(
-        f"AUTHORITY.lock {owner}\n.auctelis.yml {owner}\n", encoding="utf-8"
+        f"AUTHORITY.lock {owner}\n.auctelis.yml {owner}\n.cursor/mcp.json {owner}\n",
+        encoding="utf-8",
     )
+
+
+def _reseal(root: Path) -> None:
+    assert main(["lock", str(root), "--update"]) == 0
 
 
 def _lock_base(root: Path, tmp: Path) -> Path:
@@ -61,6 +66,7 @@ def test_scenario_add_labeled_growth(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
+    _reseal(root)
     assert _scan_base(root, tmp_path / "out-add", base) == 0
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0 and report["needs_approval"] is True
@@ -85,6 +91,7 @@ def test_scenario_expand_labeled_growth(tmp_path: Path):
             }
         },
     )
+    _reseal(root)
     assert _scan_base(root, tmp_path / "out-expand", base) == 0
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0
@@ -105,6 +112,7 @@ def test_scenario_reduce_does_not_need_approval(tmp_path: Path):
     )
     base = _lock_base(root, tmp_path)
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    _reseal(root)
     assert _scan_base(root, tmp_path / "out-reduce", base) == 0
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0
@@ -141,6 +149,7 @@ def test_scenario_team_owner_growth_passes_label(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
+    _reseal(root)
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0
     assert report["label"] == "GROWTH"
@@ -170,6 +179,7 @@ def test_scenario_same_name_swap(tmp_path: Path):
     _mcp(root, {"svc": {"command": "npx", "args": ["-y", "pkg@1.0.0"]}})
     base = _lock_base(root, tmp_path)
     _mcp(root, {"svc": {"command": "npx", "args": ["-y", "evil@9.9.9"]}})
+    _reseal(root)
     assert _scan_base(root, tmp_path / "out-swap", base) == 0
     report, code = run_gate(root, base_lock=base, check_ruleset=False)
     assert code == 0 and report["needs_approval"] is True

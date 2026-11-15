@@ -1,8 +1,9 @@
 name: auctelis Authority Diff
 description: >-
-  Passive auctelis scan with optional baseline Authority Diff, trusted
-  .auctelis.yml policy loading, and sticky PR annotations. Does not execute target
-  application code or contact MCP endpoints.
+  Tree-truth Authority Diff gate: extract base/head agent reach, fail on
+  unapproved growth or lock↔tree drift, post a sticky PR comment. Optional
+  research scan/annotate stays advisory. Does not execute target application
+  code or contact MCP endpoints.
 
 inputs:
   path:
@@ -64,9 +65,12 @@ inputs:
     required: false
     default: "false"
   annotate:
-    description: If true (scan mode), emit GitHub Actions annotations from findings
+    description: >-
+      If true (scan mode), emit research findings annotations and regenerate the
+      sticky comment from findings. Default false — the gate verdict is the
+      product signal; research findings are not a gate input.
     required: false
-    default: "true"
+    default: "false"
   authority-diff:
     description: >-
       On pull_request events, scan the base ref and pass its baseline into the
@@ -291,12 +295,20 @@ runs:
         if [[ "$rel" != "." && -d "$work/$rel" ]]; then
           target="$work/$rel"
         fi
-        # Extract the approved lock from the base ref (product gate input).
+        # Tree-truth base: extract authority from the base worktree (not the
+        # committed lock alone — lock↔tree drift on base is still useful later).
         lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         lock_rel="${lock_rel#./}"
-        if [[ -f "$target/$lock_rel" ]]; then
+        set +e
+        auctelis lock "$target" --lock-file "$base_lock" --accept-gated
+        base_lock_rc=$?
+        set -e
+        if [[ "$base_lock_rc" -eq 0 && -f "$base_lock" ]]; then
+          echo "Base-ref authority extracted from tree: $base_lock"
+          echo "lock=${base_lock}" >> "$GITHUB_OUTPUT"
+        elif [[ -f "$target/$lock_rel" ]]; then
           cp "$target/$lock_rel" "$base_lock"
-          echo "Base-ref AUTHORITY.lock copied: $base_lock"
+          echo "Base-ref AUTHORITY.lock copied (tree extract failed): $base_lock"
           echo "lock=${base_lock}" >> "$GITHUB_OUTPUT"
         elif git show "${base}:${lock_rel}" >"$base_lock" 2>/dev/null; then
           echo "Base-ref AUTHORITY.lock extracted from ${base}:${lock_rel}"
@@ -433,12 +445,15 @@ runs:
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
+        # Head authority is always tree-derived. --head-lock is drift-only when
+        # a committed lock exists (never trusted as the head snapshot).
         head_lock="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         head_path="${AUCTELIS_PATH%/}/${head_lock}"
         head_path="${head_path#./}"
         gate_args=(gate "$AUCTELIS_PATH" --base-lock "$AUCTELIS_BASE_LOCK")
         if [[ -f "$head_path" ]]; then
           gate_args+=(--head-lock "$head_path")
+          echo "Drift-checking committed lock against tree: $head_path"
         fi
         if [[ -n "${AUCTELIS_BASE_CODEOWNERS:-}" && -f "${AUCTELIS_BASE_CODEOWNERS}" ]]; then
           gate_args+=(--codeowners "$AUCTELIS_BASE_CODEOWNERS")
@@ -452,8 +467,6 @@ runs:
           gate_args+=(--no-strict-ruleset)
           echo "Strict ruleset: off (best-effort)"
         fi
-        # AUCTELIS_HEAD_SHA is available for diagnostics; gate is lock-only
-        # (growth label + CODEOWNERS/ruleset) and does not count PR reviews.
         if [[ -n "${AUCTELIS_HEAD_SHA:-}" ]]; then
           echo "PR head: ${AUCTELIS_HEAD_SHA}"
         fi
@@ -462,6 +475,19 @@ runs:
         gate_code=$?
         set -e
         echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
+        # Explicit lock↔tree check (same dialect as local `lock --check`).
+        set +e
+        auctelis lock --check "$AUCTELIS_PATH" ${AUCTELIS_LOCK_FILE:+--lock-file "$AUCTELIS_LOCK_FILE"}
+        lock_check_code=$?
+        set -e
+        echo "lock_check_code=${lock_check_code}" >> "$GITHUB_OUTPUT"
+        if [[ "$lock_check_code" -ne 0 ]]; then
+          echo "::warning::auctelis lock --check exited ${lock_check_code} (committed lock ≠ tree)."
+          if [[ "$gate_code" -eq 0 ]]; then
+            gate_code="$lock_check_code"
+            echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
+          fi
+        fi
         if [[ -f "$AUCTELIS_OUTPUT_DIR/gate-report.txt" ]]; then
           echo "## auctelis growth gate" >> "$GITHUB_STEP_SUMMARY"
           cat "$AUCTELIS_OUTPUT_DIR/gate-report.txt" >> "$GITHUB_STEP_SUMMARY"

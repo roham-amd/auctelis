@@ -26,10 +26,10 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
 ## Conventions
 
 - Python: declare constraints in [`tools/pyproject.toml`](tools/pyproject.toml) via `uv add` / `uv add --dev`; lock exact versions + hashes in [`tools/uv.lock`](tools/uv.lock); interpreter minor in [`tools/.python-version`](tools/.python-version) (`3.12`). Commit all three; ignore `.venv/`.
-- Docker: [`Dockerfile`](Dockerfile) pins `python:3.12.16-slim-trixie@sha256:…` + `ghcr.io/astral-sh/uv:…@sha256:…`; `uv sync --locked --no-dev`.
 - Actions: full commit SHAs with version comments; CI uses `uv python install 3.12.16` + `uv sync --locked` + `uv run --locked …`.
+  Docker install images were removed in 0.9.0 — use the git-tag / PyPI install story.
 - Product CLI name is **`auctelis`**; keep **`auctelis`** as a console-script alias. Maintainer commands live on **`auctelis-dev`**.
-- Keep the product path lean: `check` → `lock --update` → `ci init --apply --owner` → `gate` / `diff` / `why`.
+- Keep the product path lean: `init --owner` → `check` → `lock --update` → `gate` / `diff` / `why`.
   Host tripwires and public `scan` / `vet` / `explain` CLIs are removed; annotation
   helpers live on `auctelis-dev`. The `docs/pilots/` tracker is intentional for
   the five-slot kill criterion.

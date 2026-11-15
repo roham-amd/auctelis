@@ -1,6 +1,6 @@
 # auctelis tooling
 
-**Product CLI (`auctelis`):** `check` → `lock --update` → `ci init --apply --owner` → `gate` / `diff` / `why` / `demo`.
+**Product CLI (`auctelis`):** `init --owner` → `check` → `lock --update` → `gate` / `diff` / `why` / `demo`.
 
 **Maintainer CLI (`auctelis-dev`):** `scan`, `annotate`, `build`, `lint`, `deps`, `corpus`, `validate`, `inventory`, … — not the product gate.
 
@@ -10,7 +10,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.8.2** · Product: auctelis **0.8.2** (install pin: `@v0.8.2` — see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.9.0** · Product: auctelis **0.9.0** (install pin: `@v0.9.0` — see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -18,7 +18,7 @@ Package: `auctelis` **0.8.2** · Product: auctelis **0.8.2** (install pin: `@v0.
 
 | Responsibility | Choice |
 | --- | --- |
-| Runtime | CPython ≥3.12 (`.python-version` = `3.12`; CI/Docker pin `3.12.16`) |
+| Runtime | CPython ≥3.12 (`.python-version` = `3.12`; CI pin `3.12.16`) |
 | Project / venv / lock | **uv** + `pyproject.toml` + `uv.lock` |
 | Dev deps | PEP 735 `[dependency-groups]` |
 | Lint / format | Ruff |
@@ -38,11 +38,11 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.8.2#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools
 # PyPI coming — git tag until the index returns the package.
+auctelis init --owner security             # policy + workflow + CODEOWNERS + lock
 auctelis check                             # repo authority vs AUTHORITY.lock
 auctelis lock --update                     # seal AUTHORITY.lock (empty baseline OK)
-auctelis ci init --apply --owner @security # CODEOWNERS + ruleset verify
 auctelis diff --base origin/main           # local PR Authority Diff
 auctelis why <name>                        # exact config path
 auctelis demo                              # optional
@@ -60,7 +60,7 @@ uv run auctelis check .
 uv run auctelis-dev lint --check-format   # maintainer
 ```
 
-`.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`) and the Docker base (`python:3.12.16-slim-trixie@sha256:…`).
+`.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`).
 
 ### Dependency layout
 
@@ -80,15 +80,6 @@ uv lock --upgrade
 uv sync --locked
 uv tree
 auctelis-dev deps outdated
-```
-
-### Docker
-
-Root [`Dockerfile`](../Dockerfile) uses digest-pinned `python:3.12.16-slim-trixie` and `ghcr.io/astral-sh/uv`, then `uv sync --locked --no-dev`. Docker is optional / deferred.
-
-```bash
-docker compose build
-TARGET=/path/to/repo docker compose run --rm auctelis check /work
 ```
 
 ### Pre-commit (optional)

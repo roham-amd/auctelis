@@ -45,9 +45,8 @@ def test_lock_records_launcher_args_digest_and_url_host(tmp_path: Path):
     assert rec["args_digest"] == args_digest(["-y", "@scope/pkg@1.2.3"])
     assert rec["url_host"] == "api.example.com"
     assert "api.example.com" in rec["destinations"]
-    server = lock["mcp_servers"]["svc"]
-    assert server["command"] == "npx"
-    assert server["args_digest"] == rec["args_digest"]
+    # Legacy mcp_servers map is no longer emitted (0.9.0 kill list).
+    assert "mcp_servers" not in lock
 
 
 def test_same_name_package_swap_is_replacement(tmp_path: Path):

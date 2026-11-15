@@ -1,12 +1,13 @@
-"""Authority gate: base-lock diff + CODEOWNERS + best-effort ruleset check.
+"""Authority gate: tree-truth base→head diff + CODEOWNERS + ruleset check.
 
-Product contract (lock-only): GitHub CODEOWNERS / rulesets enforce human
-review. auctelis owns the authority diff:
+Product contract: GitHub CODEOWNERS / rulesets enforce human review. auctelis
+owns the authority diff:
 
-1. Schema-validate locks; empty (0-record) base locks are empty-baseline growth
-2. Require CODEOWNERS coverage for AUTHORITY.lock (from base ref when provided)
-3. On meaningful growth, fail closed unless CODEOWNERS covers the lock; label
-   growth vs reduction. Do **not** re-implement PR approval matching — that is
+1. Derive head authority from the working tree (never trust a committed lock
+   as head). Compare an optional committed lock for drift only.
+2. Schema-validate the base lock; empty (0-record) bases are empty-baseline growth.
+3. On growth, require CODEOWNERS coverage for the lock and for grown authority
+   paths; label growth vs reduction. Do **not** count PR reviews — that is
    GitHub's job.
 4. Best-effort check that a code-owner-review ruleset (or classic branch
    protection) exists when ``GITHUB_TOKEN`` + repository context are present.
@@ -413,6 +414,79 @@ def protection_status(ruleset: str | None, *, needs_approval: bool) -> str:
     return "unverified"
 
 
+def committed_lock_drift(
+    root: Path,
+    tree_head: dict[str, Any],
+    *,
+    head_lock: Path | None = None,
+) -> tuple[bool, list[str], str | None]:
+    """Compare a committed AUTHORITY.lock to tree-derived head authority.
+
+    Returns ``(drifted, lines, error)``. ``--head-lock`` is comparison-only —
+    never the gate's head authority source.
+    """
+    path = head_lock
+    if path is None:
+        candidate = root / LOCK_NAME
+        path = candidate if candidate.is_file() else None
+    if path is None:
+        return False, [], None
+    if not path.is_file():
+        return True, [], f"head lock not found: {path}"
+    try:
+        committed = load_authority_lock(path)
+    except (AuthorityLockError, FileNotFoundError, OSError) as exc:
+        return True, [], f"cannot read committed head lock {path}: {exc}"
+    delta = diff_authority_locks(committed, tree_head)
+    summary = delta.get("summary") or {}
+    if not bool(summary.get("authority_changed")):
+        return False, [], None
+    lines = [str(line) for line in (delta.get("lines") or [])]
+    return True, lines, None
+
+
+def uncovered_authority_paths(
+    head: dict[str, Any],
+    codeowners_text: str,
+    *,
+    delta: dict[str, Any] | None = None,
+) -> list[str]:
+    """Authority paths that grew on head and are not CODEOWNERS-covered.
+
+    When ``delta`` is provided, only added/changed record paths are required —
+    stable baseline paths already sealed under lock-only CODEOWNERS are not
+    retroactively failing every green gate.
+    """
+    if not codeowners_text.strip():
+        return []
+    paths: list[str] = []
+    seen: set[str] = set()
+
+    def _add(rec: dict[str, Any] | None) -> None:
+        if not isinstance(rec, dict):
+            return
+        path = str(rec.get("path") or "").replace("\\", "/")
+        if path.startswith("./"):
+            path = path[2:]
+        if not path or path in seen:
+            return
+        seen.add(path)
+        paths.append(path)
+
+    if delta:
+        changes = delta.get("changes") or {}
+        for rec in changes.get("added") or []:
+            _add(rec if isinstance(rec, dict) else None)
+        for item in changes.get("changed") or []:
+            if isinstance(item, dict):
+                _add(item.get("after") if isinstance(item.get("after"), dict) else item)
+    else:
+        for rec in head.get("records") or []:
+            _add(rec if isinstance(rec, dict) else None)
+
+    return [p for p in paths if not codeowners_covers_path(codeowners_text, p)]
+
+
 def run_gate(
     root: Path,
     *,
@@ -428,7 +502,11 @@ def run_gate(
     trust_head_codeowners: bool = False,
     codeowners_from_base: bool = False,
 ) -> tuple[dict[str, Any], int]:
-    """Compare base→head lock; fail on growth without CODEOWNERS protection.
+    """Compare base→head tree authority; fail on growth without CODEOWNERS.
+
+    Head authority is **always** derived from the working tree. A committed
+    ``AUTHORITY.lock`` (or ``--head-lock``) is compared for drift only — never
+    trusted as the head snapshot.
 
     ``strict_ruleset`` defaults to True: UNVERIFIED protection on growth is
     NEEDS_REVIEW, not a green PASS. Pass False for best-effort.
@@ -464,25 +542,23 @@ def run_gate(
             "ruleset": "UNVERIFIED",
             "lines": [],
         }, 2
+    # Explicit --head-lock that is missing still fails closed (caller promised a file).
+    if head_lock is not None and not head_lock.is_file():
+        return {
+            "ok": False,
+            "verdict": "FAIL_CLOSED",
+            "error": f"head lock not found: {head_lock}",
+            "needs_approval": True,
+            "required_owners": [],
+            "label": "GROWTH",
+            "ruleset": "UNVERIFIED",
+            "lines": [],
+        }, 2
     try:
-        if head_lock is not None:
-            if not head_lock.is_file():
-                return {
-                    "ok": False,
-                    "verdict": "FAIL_CLOSED",
-                    "error": f"head lock not found: {head_lock}",
-                    "needs_approval": True,
-                    "required_owners": [],
-                    "label": "GROWTH",
-                    "ruleset": "UNVERIFIED",
-                    "lines": [],
-                }, 2
-            head = load_authority_lock(head_lock)
-        else:
-            if scan is None:
-                scan = run_authority_inventory(root)
-            head = build_authority_lock(root, scan=scan)
-    except (AuthorityLockError, FileNotFoundError, OSError) as exc:
+        if scan is None:
+            scan = run_authority_inventory(root)
+        head = build_authority_lock(root, scan=scan)
+    except (AuthorityLockError, FileNotFoundError, OSError, ValueError) as exc:
         return {
             "ok": False,
             "verdict": "FAIL_CLOSED",
@@ -493,15 +569,13 @@ def run_gate(
             "ruleset": "UNVERIFIED",
             "lines": [],
         }, 2
-    # Coverage matters even when a trusted head lock is supplied: an unparsed
-    # config means the lock's absence of a record is not evidence of no authority.
-    if scan is None:
-        scan = run_authority_inventory(root)
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
     try:
         unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
     except (TypeError, ValueError):
         unparsed = 0
+
+    lock_drift, drift_lines, drift_error = committed_lock_drift(root, head, head_lock=head_lock)
 
     base_records = list(base.get("records") or [])
     head_records = list(head.get("records") or [])
@@ -514,6 +588,8 @@ def run_gate(
     delta = diff_authority_locks(base, head)
     summary = delta.get("summary") or {}
     meaningful = bool(summary.get("meaningful_authority_change"))
+    # Align with check / lock --check: representation / body drift is reviewable.
+    authority_changed = bool(summary.get("authority_changed"))
     label = growth_label(summary if isinstance(summary, dict) else {})
     owners = load_lock_owners(
         root, codeowners_path=codeowners_path, codeowners_text=codeowners_text
@@ -527,6 +603,7 @@ def run_gate(
     protection_ok, missing_protection = (
         codeowners_covers_protection(co_text, root=root) if co_text else (False, [LOCK_NAME])
     )
+    uncovered_paths = uncovered_authority_paths(head, co_text, delta=delta) if co_text else []
     needs_approval = label == "GROWTH"
     # Head CODEOWNERS alone is attacker-writable on a PR. Trust it only when:
     # - caller passed a base-ref copy (--codeowners / codeowners_text), or
@@ -616,6 +693,38 @@ def run_gate(
         detail = f"{unparsed} agent config file(s) could not be parsed on head"
         error = f"{error} {detail}." if error else f"{detail} — review before merge."
 
+    # Committed lock must match the tree; otherwise the gate would green-light
+    # authority that never entered the lock (the classic bypass).
+    if lock_drift or drift_error:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        if drift_error:
+            detail = drift_error
+        else:
+            shown = "; ".join(drift_lines[:8]) if drift_lines else "authority fields differ"
+            detail = f"committed AUTHORITY.lock ≠ tree ({shown})"
+        error = f"{error} {detail}." if error else f"{detail} — run `auctelis lock` and review."
+
+    # Representation / body-only churn: check and lock --check already fail;
+    # gate must not print PASS / NONE as "no authority change".
+    if ok and authority_changed and label == "NONE":
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        detail = (
+            "authority body/representation changed on head "
+            "(digest or packaging drift — not analyzed as new reach)"
+        )
+        error = f"{error} {detail}." if error else f"{detail}."
+
+    # Every discovered authority path should be CODEOWNERS-covered.
+    if uncovered_paths and (needs_approval or authority_changed or lock_drift):
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        shown = ", ".join(uncovered_paths[:8])
+        more = f" (+{len(uncovered_paths) - 8} more)" if len(uncovered_paths) > 8 else ""
+        detail = f"CODEOWNERS missing coverage for authority paths: {shown}{more}"
+        error = f"{error} {detail}." if error else f"{detail}."
+
     if empty_baseline_growth:
         note = (
             "Empty-baseline growth: base AUTHORITY.lock has 0 records; "
@@ -624,6 +733,9 @@ def run_gate(
         error = f"{error} {note}".strip() if error else note
 
     protection = protection_status(ruleset_status, needs_approval=needs_approval)
+    report_lines = list(delta.get("lines") or [])
+    if drift_lines:
+        report_lines = [*report_lines, *[f"! lock↔tree {line}" for line in drift_lines]]
     report: dict[str, Any] = {
         "ok": ok,
         "verdict": verdict,
@@ -631,6 +743,8 @@ def run_gate(
         "protection": protection,
         "strict_ruleset": strict_ruleset,
         "meaningful_authority_change": meaningful,
+        "authority_changed": authority_changed,
+        "lock_tree_drift": lock_drift,
         "needs_approval": needs_approval,
         "empty_baseline_growth": empty_baseline_growth,
         "label": label,
@@ -638,11 +752,13 @@ def run_gate(
         "owners_present": owners_present,
         "protection_paths_covered": protection_ok,
         "missing_protection_paths": missing_protection,
+        "uncovered_authority_paths": uncovered_paths,
         "ruleset": ruleset_status,
         "ruleset_detail": ruleset_detail,
         "delta": delta,
-        "lines": delta.get("lines") or [],
+        "lines": report_lines,
         "authority_path_hints": list(AUTHORITY_PATH_HINTS),
+        "head_source": "tree",
     }
     if error:
         report["error"] = error

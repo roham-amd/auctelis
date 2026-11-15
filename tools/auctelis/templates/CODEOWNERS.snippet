@@ -1,8 +1,17 @@
-# Protect the agent-authority lockfile and the gate that enforces it.
+# Protect the agent-authority lockfile, the gate, and common authority surfaces.
 # Owner is set by `auctelis init --owner team` (placeholder replaced at write time).
+# init also merges paths discovered in the repo on top of this set.
 AUTHORITY.lock @YOUR_TEAM
 .auctelis.yml @YOUR_TEAM
 .github/workflows/ @YOUR_TEAM
 .github/actions/ @YOUR_TEAM
 CODEOWNERS @YOUR_TEAM
 .github/CODEOWNERS @YOUR_TEAM
+.mcp.json @YOUR_TEAM
+.cursor/mcp.json @YOUR_TEAM
+.claude/settings.json @YOUR_TEAM
+**/hooks.json @YOUR_TEAM
+**/SKILL.md @YOUR_TEAM
+AGENTS.md @YOUR_TEAM
+CLAUDE.md @YOUR_TEAM
+.claude/commands/ @YOUR_TEAM

@@ -95,12 +95,13 @@ def _destinations(component: dict[str, Any]) -> list[str]:
         vals = component.get(key)
         if isinstance(vals, list):
             out.extend(str(v) for v in vals if v)
-    # curl|sh / wget|sh hosts embedded in hook command strings.
-    cmd = str(component.get("command") or "")
-    if cmd:
-        from auctelis.inventory.hints import extract_url_hosts_from_command
+    from auctelis.inventory.hints import extract_url_hosts_from_command
 
-        out.extend(extract_url_hosts_from_command(cmd))
+    # curl|sh / wget|bash hosts embedded in hook commands and skill/instruction prose.
+    for blob_key in ("command", "declared_description", "body", "raw_text"):
+        blob = str(component.get(blob_key) or "")
+        if blob:
+            out.extend(extract_url_hosts_from_command(blob))
     return sorted(set(out))
 
 

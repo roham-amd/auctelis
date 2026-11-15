@@ -272,6 +272,10 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
     if old_pin != new_pin:
         bits.append(f"pin: {old_pin or '∅'} → {new_pin or '∅'}")
 
+    if before.get("script_digest") != after.get("script_digest") and "body changed" not in " ".join(
+        bits
+    ):
+        bits.append("body changed (digest; line diff not analyzed)")
     # Always name a concrete field — never a bare "fields changed".
     if not bits:
         changed_fields = []
@@ -284,12 +288,13 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
             "capabilities",
             "env_keys",
             "pin_state",
-            "script_digest",
             "args_digest",
         ):
             if before.get(field) != after.get(field):
                 changed_fields.append(field)
-        if changed_fields:
+        if before.get("script_digest") != after.get("script_digest"):
+            bits.append("body changed (digest; line diff not analyzed)")
+        elif changed_fields:
             bits.append(f"{changed_fields[0]} changed")
         else:
             bits.append("record identity changed")

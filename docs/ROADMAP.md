@@ -4,9 +4,9 @@
 
 **Positioning:** GitHub-native Authority Diff + enforcement gate. Locally,
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
-are on the kill list.
+are removed.
 
-**Current:** **0.8.2** (trust reset) · lock schema 1 · tooling 0.8.2
+**Current:** **0.9.0** (tree-truth gate) · lock schema 1 · tooling 0.9.0
 
 ## North star (Gate Zero)
 
@@ -16,9 +16,9 @@ are on the kill list.
 4. Empty baseline is fine: first growth is CODEOWNERS review — not hollow /
    forever `FAIL_CLOSED`
 5. Coverage and evidence strength are visible on every match and card
-6. Product path is lock-only; research scanner stays on `auctelis-dev`
+6. Product path is **tree-truth**; research scanner stays on `auctelis-dev`
 
-## 30-day build (Gate Zero → 0.8.2)
+## 30-day build (Gate Zero → 0.9.0)
 
 | Window | Work | Status |
 | --- | --- | --- |
@@ -29,7 +29,8 @@ are on the kill list.
 | Week 4 | Ship 0.8.0; host stack + public scanner removed; 25-config fixture suite | done |
 | **0.8.1** | Consumer Action pin; empty-baseline growth; `init`/`status`; inventory-only product path | **done** |
 | **0.8.2** | Trust reset: no fail_on promotion; Action inventory-only; CODEOWNERS protection; unparsed fail-closed; evidence through diff; PyPI-ready docs | **done** |
-| Next | PyPI Trusted Publishing; five outside pilots; 0.9.0 docs collapse | open |
+| **0.9.0** | Tree-truth gate; lock↔tree drift; prose hosts; init CODEOWNERS for authority paths; Docker removed | **done** |
+| Next | PyPI Trusted Publishing; five outside pilots; further docs collapse; physical scanner delete | open |
 
 ## 90-day decision gate
 
@@ -45,7 +46,7 @@ broker before five outside repos retain the gate.
 
 - Host `watch` / `allow` / `hook` / `doctor` / `ledger` / `host_scan` / plugins
 - Public 22-rule scanner, `vet`, `harden`, `explain`, audit/ecosystem-graph schemas
-- Docker as the Authority Diff install story
+- Docker as the Authority Diff install story (removed in 0.9.0)
 - PyPI ceremony until five pilots retain the gate
 - Marketplace / badge / “Authority Watch” product copy
 
@@ -54,10 +55,6 @@ Keep: `init`, `status`, `check`, `lock`, `ci`, `gate`, `why`, `demo`, `diff --ba
 ## Success metrics
 
 - Five outside repos with the Action required on the default branch for 30 days
-- Median install → first PR Authority Diff under 10 minutes
-- ≥3 growth PRs actually code-owner-reviewed
-- Zero false `PASS` on the adoption / ruleset / coverage test matrix
-- 25 independently labeled configs with published precision/recall and limitations
-- Not stars, downloads, or “scans run”
-
-Detail: [`PRODUCT.md`](PRODUCT.md) · [`REACH.md`](REACH.md) · [`CHANGELOG.md`](../CHANGELOG.md)
+- ≥3 growth PRs code-owner-reviewed outside this repository
+- Median time-to-first-delta under 10 minutes
+- Known open gate bypasses: 0

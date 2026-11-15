@@ -39,5 +39,5 @@ jobs:
           authority-diff: "true"
           locked: "true"
           install-tools-from: path
-          annotate: true
+          annotate: false
           output-dir: auctelis-out

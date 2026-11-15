@@ -187,9 +187,20 @@ def _record_from_component(
     args_list = list(raw_args) if isinstance(raw_args, list) else []
     digest = str(raw.get("content_digest") or "")
     kind_l = kind.lower()
-    # Hooks/skills: content digest is the script/tree pin.
-    script_digest = digest if ("hook" in kind_l or "skill" in kind_l) else ""
+    # Hooks / skills / instructions / slash commands: body digest is the pin.
+    _BODY_KINDS = (
+        "hook",
+        "skill",
+        "rule / instruction",
+        "rule pack",
+        "claude slash command",
+    )
+    script_digest = digest if any(token in kind_l for token in _BODY_KINDS) else ""
     destinations = list(comp.get("destinations") or [])
+    # Prose-extracted hosts (skills / instructions) land here via adapters.
+    for item in raw.get("destinations") or []:
+        if item and item not in destinations:
+            destinations.append(item)
     host_from_url = url_host(str(raw.get("url") or ""))
     if host_from_url and host_from_url not in destinations:
         destinations = [*destinations, host_from_url]
@@ -216,21 +227,28 @@ def _record_from_component(
     evidence = (
         str(raw.get("evidence_strength") or comp.get("evidence_strength") or "").strip().upper()
     )
+    prose_inferred = bool(raw.get("prose_inferred") or comp.get("prose_inferred"))
     _LITERAL_KINDS = {
         "mcp server registration",
         "ci workflow",
         "hook",
-        "skill",
-        "rule / instruction file",
-        "rule pack",
-        "claude slash command",
         "host settings",
         "plugin",
         "plugin / connector",
         "subagent",
     }
-    if evidence not in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"}:
-        if kind_l in _LITERAL_KINDS and path:
+    # Skills / instruction bodies are declared files, but capability/host
+    # extraction from prose is INFERRED_HINT — never LITERAL_CONFIG confidence.
+    _PROSE_KINDS = {
+        "skill",
+        "rule / instruction file",
+        "rule pack",
+        "claude slash command",
+    }
+    if evidence not in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER", "NOT_ANALYZED"}:
+        if prose_inferred or kind_l in _PROSE_KINDS:
+            evidence = "INFERRED_HINT"
+        elif kind_l in _LITERAL_KINDS and path:
             evidence = "LITERAL_CONFIG"
         elif maturity in {"MANUAL_ONLY", "UNSUPPORTED"} or not path:
             evidence = "NAME_MARKER"
@@ -323,37 +341,22 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
         "product_version": product_version(),
         "policy_hash": _policy_hash(root),
         "records": records,
-        # Broker / snapshot compatibility (tool pins filled by `snapshot`).
+        # Opt-in tools/list pins (filled by `auctelis-dev snapshot`).
         "mcp_tools": {},
-        "mcp_servers": {
-            r["name"] or r["id"]: {
-                "command": r.get("launcher") or "",
-                "args_digest": r.get("args_digest") or "",
-                "path": r["path"],
-                "digest": r["digest"],
-                "pin_state": r["pin_state"],
-                "allowed": True,
-            }
-            for r in records
-            if r["kind"] == "MCP Server Registration"
-        },
     }
     # Seal authority state only. Absolute `repository` path and `audited_commit`
     # are volatile across clones / no-op re-locks and must not churn lock_hash
     # (merge conflicts on hash alone with identical records).
-    _SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
+    # Legacy decorative fields (approvals / approved_findings / mcp_servers) are
+    # no longer emitted — CODEOWNERS / rulesets are the approval system.
+    _SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit"}
     canonical = json.dumps(
         {k: v for k, v in body.items() if k not in _SEAL_EXCLUDE},
         sort_keys=True,
         separators=(",", ":"),
     )
     body["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
-    # Non-sealed metadata for humans / tooling (ignored by normalize_lock_for_compare).
     body["audited_commit"] = scan.commit
-    # Legacy decorative fields: never a gate input and never written. GitHub
-    # CODEOWNERS / rulesets are the approval system.
-    body["approvals"] = []
-    body["approved_findings"] = []
     return body
 
 
@@ -688,11 +691,15 @@ def field_level_change_bits(
             continue
         width = 16 if field == "args_digest" else 28
         bits.append(f"{field}: {_short(b_val, max_len=width)} → {_short(a_val, max_len=width)}")
+    if str(before.get("script_digest") or "") != str(after.get("script_digest") or ""):
+        bits.append("body changed (digest; line diff not analyzed)")
     # Representation-only: surface path when no authority field bits.
     if not bits and before.get("path") != after.get("path"):
         bits.append(
             f"path: {_short(before.get('path'), max_len=36)} → {_short(after.get('path'), max_len=36)}"
         )
+    if not bits and before.get("digest") != after.get("digest"):
+        bits.append("body changed, content not analyzed")
     return bits[:limit]
 
 

@@ -4,13 +4,13 @@
 
 | Project version | Supported |
 | --- | --- |
-| 0.8.x | Yes |
+| 0.9.x | Yes |
+| 0.8.x | Security fixes when practical |
 | 0.7.x | Security fixes when practical |
-| 0.6.x | Security fixes when practical |
-| ≤ 0.5.x | No |
+| ≤ 0.6.x | No |
 | 1.0.x | No (yanked / superseded pre-1.0 `authdiff` line; do not use) |
 
-Tooling package version (`auctelis`, currently **0.8.2**) is tracked in
+Tooling package version (`auctelis`, currently **0.9.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
@@ -63,7 +63,8 @@ Composite GitHub Action inputs must be passed via environment variables into she
 
 ## Gate trust notes
 
-- Authority growth vs the base-ref `AUTHORITY.lock` is decided by `auctelis gate`, not by annotation heuristics.
+- Head authority is always derived from the working tree; a committed
+  `AUTHORITY.lock` is drift-checked only (never trusted as head).
 - Prefer GitHub-native CODEOWNERS / rulesets (including team owners and stale-review dismissal) as the approval source of truth.
-- `auctelis gate` is lock-only: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — auctelis does not count PR approvals.
+- `auctelis gate` is tree-truth: it labels GROWTH vs REDUCTION and requires CODEOWNERS coverage for the lock and grown authority paths, plus a best-effort code-owner-review ruleset check. GitHub enforces the actual human review — auctelis does not count PR approvals.
 - `AUCTELIS_AGENT=1` is a speed bump that refuses lock writes for agents; it is not a security control.

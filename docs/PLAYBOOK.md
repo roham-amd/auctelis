@@ -67,9 +67,9 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# Git install only today — PyPI coming; pin the 0.8.2 tag
+# Git install only today — PyPI coming; pin the 0.9.0 tag
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.8.2#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools"
 
 auctelis init --owner @you                  # preferred: policy + workflow + CODEOWNERS + lock
 auctelis check                              # repo authority vs AUTHORITY.lock

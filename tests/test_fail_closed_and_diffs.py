@@ -47,7 +47,8 @@ def test_gate_unparsed_head_is_needs_review(tmp_path: Path):
     assert "could not be parsed" in str(report.get("error") or "")
 
 
-def test_gate_unparsed_head_fails_even_with_trusted_head_lock(tmp_path: Path):
+def test_gate_unparsed_head_fails_even_when_head_lock_passed(tmp_path: Path):
+    """--head-lock is drift-only; unparsed tree configs still fail closed."""
     root, base = _sealed_repo(tmp_path)
     (root / ".cursor" / "mcp.json").write_text('{"mcpServers": {', encoding="utf-8")
     report, code = run_gate(root, base_lock=base, head_lock=base, check_ruleset=False)

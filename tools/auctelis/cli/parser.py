@@ -282,7 +282,10 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     gate_cmd.add_argument(
         "--head-lock",
         type=Path,
-        help="Head AUTHORITY.lock (default: regenerate from the scan target)",
+        help=(
+            "Committed AUTHORITY.lock to compare against the tree (drift check only). "
+            "Head authority is always derived from the working tree."
+        ),
     )
     gate_cmd.add_argument(
         "--codeowners",

@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from auctelis.inventory.hints import extract_url_hosts_from_command
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.limits import CollectorLimits
 
@@ -147,6 +148,10 @@ def discover_skills(
         if set(hints).intersection(_EXECUTABLE_EVIDENCE):
             hints.append("executable_evidence")
 
+        destinations = extract_url_hosts_from_command(raw)
+        if destinations and "external_url_reference" not in hints:
+            hints.append("external_url_reference")
+
         results.append(
             {
                 "name": name,
@@ -159,6 +164,9 @@ def discover_skills(
                 "instruction_content_present": True,
                 "declared_description": description,
                 "priority_hints": hints,
+                "destinations": destinations,
+                "prose_inferred": True,
+                "evidence_strength": "INFERRED_HINT",
             }
         )
     return results

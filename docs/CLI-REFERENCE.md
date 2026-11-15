@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.8.2** · product **0.8.2** · rule pack **1.6** (001–022).
+Package `auctelis` **0.9.0** · product **0.9.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -20,14 +20,16 @@ Install: [`INSTALL.md`](INSTALL.md).
 
 | Tier | Command | Purpose |
 | --- | --- | --- |
+| Core | `init --owner team` | One-command setup (policy + workflow + CODEOWNERS + lock) |
 | Core | `check` | Repo authority vs `AUTHORITY.lock` (front door) |
+| Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
-| Core | `ci init --apply --owner @team` | Enforce workflow + merge CODEOWNERS + verify ruleset |
-| Core | `gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |
+| Core | `gate --base-lock base.lock` | Tree-truth PR Authority Diff + CODEOWNERS gate |
 | Core | `diff --base <ref>` | Local PR Authority Diff simulator |
 | Core | `why <name>` | Exact config path / reach fields for one authority record |
 | Core | `demo` | Packaged fixture walkthrough |
 | Core | `diff lock` | Record-level diff of two `AUTHORITY.lock` files |
+| Legacy | `ci init` | Alias of `init` |
 
 Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 `corpus`, `hosts`, `validate`, `inventory`, `verify`, `export`, `run`,
@@ -71,18 +73,19 @@ review, not forever `FAIL_CLOSED`.
 
 ---
 
-## `auctelis ci init`
+## `auctelis init` (preferred) / `ci init` (legacy alias)
 
 ```bash
-auctelis ci init [PATH] --owner @TEAM [--force] [--advisory] [--apply]
+auctelis init [PATH] --owner @TEAM [--force] [--advisory] [--apply]
+# legacy: auctelis ci init …
 ```
 
-Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml`,
-`.github/CODEOWNERS`, and attempts to seal `AUTHORITY.lock`. Default mode is
-**enforce** (`locked: true`). Pass `--advisory` for warn-only.
-`--apply` merges `AUTHORITY.lock` into an existing CODEOWNERS file, pins the
-Action to a commit SHA when resolvable, and verifies ruleset protection
-(exits `1` with the GitHub settings link when unverified).
+Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml`, CODEOWNERS
+(including discovered authority paths), and seals `AUTHORITY.lock`. Default
+mode is **enforce** (`locked: true`). Pass `--advisory` for warn-only.
+`--apply` merges protection paths into an existing CODEOWNERS file, pins the
+Action to the release tag, and probes ruleset protection (warning only;
+exit 0 after writes).
 
 ---
 
@@ -94,7 +97,8 @@ auctelis gate [PATH] --base-lock PATH [--head-lock PATH]
               [--skip-ruleset-check] [--trust-head-codeowners] [--agent]
 ```
 
-Compares base→head authority. Pass a lock **file** to `--base-lock` (not a
+Compares base→**tree-derived** head authority. `--head-lock` is drift-check
+only (never the head snapshot). Pass a lock **file** to `--base-lock` (not a
 directory). Growth with missing CODEOWNERS / unverified ruleset fails closed
 when `--strict-ruleset` is on (default). Without a trusted base-ref CODEOWNERS
 copy, pass `--trust-head-codeowners` (unsafe) or `--skip-ruleset-check` for

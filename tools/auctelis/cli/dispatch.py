@@ -654,16 +654,36 @@ def _has_explicit_codeowners_pattern(text: str, pattern: str) -> bool:
     return False
 
 
-def _merge_codeowners_authority(existing: str, owner: str) -> str:
-    """Ensure lock / policy / workflow / action / CODEOWNERS lines without wiping."""
+def _merge_codeowners_authority(
+    existing: str,
+    owner: str,
+    *,
+    extra_paths: list[str] | None = None,
+) -> str:
+    """Ensure lock / policy / workflow / action / CODEOWNERS / discovered paths."""
     text = existing if existing.endswith("\n") else existing + "\n"
-    required = (
+    required = [
         "AUTHORITY.lock",
         ".auctelis.yml",
         ".github/workflows/",
         ".github/actions/",
         ".github/CODEOWNERS",
-    )
+        # Common authority surfaces (init always covers these globs).
+        ".mcp.json",
+        ".cursor/mcp.json",
+        ".claude/settings.json",
+        "**/hooks.json",
+        "**/SKILL.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".claude/commands/",
+    ]
+    for path in extra_paths or []:
+        normalized = str(path).replace("\\", "/")
+        if normalized.startswith("./"):
+            normalized = normalized[2:]
+        if normalized and normalized not in required:
+            required.append(normalized)
     missing_lines: list[str] = []
     for pattern in required:
         if pattern == ".github/CODEOWNERS" and (
@@ -805,10 +825,30 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         wrote.append(str(workflow_path))
         has_gate, reported_locked, _pin = _workflow_locked_state(workflow_body)
         reported_mode = "enforce" if reported_locked else "advisory"
+    # Inventory first so CODEOWNERS covers discovered authority paths.
+    from auctelis.authority_lock import build_authority_lock
+    from auctelis.security.engine import run_authority_inventory
+
+    init_scan = run_authority_inventory(root)
+    init_lock = build_authority_lock(root, scan=init_scan)
+    discovered_paths = sorted(
+        {
+            str(rec.get("path") or "").replace("\\", "/").lstrip("./")
+            for rec in (init_lock.get("records") or [])
+            if isinstance(rec, dict) and rec.get("path")
+        }
+    )
+    if discovered_paths:
+        print("Authority surfaces found:")
+        for path in discovered_paths[:20]:
+            print(f"  · {path}")
+        if len(discovered_paths) > 20:
+            print(f"  · … +{len(discovered_paths) - 20} more")
+
     if codeowners_path.exists():
         # Always merge — never overwrite existing CODEOWNERS (including --force).
         current = codeowners_path.read_text(encoding="utf-8")
-        merged = _merge_codeowners_authority(current, owner)
+        merged = _merge_codeowners_authority(current, owner, extra_paths=discovered_paths)
         if merged != current:
             codeowners_path.write_text(merged, encoding="utf-8")
             wrote.append(f"{codeowners_path} (merged)")
@@ -816,7 +856,8 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             print(f"CODEOWNERS already covers protection paths: {codeowners_path}")
     else:
         codeowners_path.parent.mkdir(parents=True, exist_ok=True)
-        codeowners_path.write_text(codeowners_body, encoding="utf-8")
+        seeded = _merge_codeowners_authority(codeowners_body, owner, extra_paths=discovered_paths)
+        codeowners_path.write_text(seeded, encoding="utf-8")
         wrote.append(str(codeowners_path))
     lock_path = root / "AUTHORITY.lock"
     # Always (re)seal after generated workflow/policy so CI authority is in the lock.

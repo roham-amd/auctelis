@@ -14,7 +14,10 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
     mcp = root / ".cursor"
     mcp.mkdir(parents=True)
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
+    (root / ".github" / "CODEOWNERS").write_text(
+        "AUTHORITY.lock @sec\n.cursor/mcp.json @sec\n",
+        encoding="utf-8",
+    )
     (mcp / "mcp.json").write_text(
         json.dumps({"mcpServers": {"a": {"command": "node", "args": ["a.js"]}}}),
         encoding="utf-8",
@@ -34,8 +37,10 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
         ),
         encoding="utf-8",
     )
+    # Tree-truth: reseal so lock↔tree drift is not the fail reason — growth is.
+    assert main(["lock", str(root), "--update"]) == 0
     out = tmp_path / "out-add"
-    # scan --base-lock is advisory; gate labels growth when CODEOWNERS covers the lock.
+    # scan --base-lock is advisory; gate labels growth when CODEOWNERS covers paths.
     assert (
         main_dev(
             [

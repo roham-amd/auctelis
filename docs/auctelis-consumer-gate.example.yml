@@ -22,7 +22,7 @@ jobs:
         # Tools are bundled in the Action — no pip install required.
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.8.2
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.9.0
         with:
           path: .
           mode: scan
@@ -30,5 +30,5 @@ jobs:
           authority-diff: "true"
           locked: "true"
           strict-ruleset: "true"
-          annotate: true
+          annotate: false
           output-dir: auctelis-out

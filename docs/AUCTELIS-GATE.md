@@ -4,10 +4,10 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.8.2** |
-| Tooling package | **0.8.2** (`auctelis`) |
+| Product release | **0.9.0** |
+| Tooling package | **0.9.0** (`auctelis`) |
 | Rule pack | **1.6** (rules 001–022) |
-| Primary path | `check` → `lock --update` → `ci init --apply --owner` → Action / `gate` |
+| Primary path | `init --owner` → `check` → `lock --update` → Action / `gate` (tree-truth) |
 | Policy file | `.auctelis.yml` + `AUTHORITY.lock` (CODEOWNERS) |
 | Action | `.github/actions/auctelis-gate` — **enforce** default (`locked=true`); `--advisory` for warn-only |
 | Verdict | `PASS` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` / `FAIL_CLOSED` |
@@ -40,12 +40,12 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ```bash
 # Git tag is the supported install until PyPI returns the package.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.8.2#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools"
 
+auctelis init --owner security-owner            # policy + workflow + CODEOWNERS + lock
 auctelis check                                  # repo authority vs AUTHORITY.lock
 auctelis lock --update                          # seal (empty baseline OK)
-auctelis ci init --apply --owner @security-owner  # CODEOWNERS + ruleset verify
-# auctelis gate --base-lock <base.lock>         # strict-ruleset default on
+# auctelis gate --base-lock <base.lock>         # tree-truth; strict-ruleset default on
 ```
 
 Empty baseline is normal: first growth is CODEOWNERS review, not forever

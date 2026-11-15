@@ -5,6 +5,38 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.9.0] — 2026-11-16
+
+### Security
+- **Tree-truth gate:** head authority is always derived from the working tree.
+  A committed `AUTHORITY.lock` is drift-checked only — never trusted as head
+  (fixes the growth-without-touching-lock bypass).
+- Gate Action extracts base authority from the base worktree and runs
+  `lock --check`; dogfood CI targets `$GITHUB_WORKSPACE` explicitly.
+
+### Added
+- Prose host extraction for skills, instructions, slash commands, and hooks
+  (`curl|sh` / `wget|bash` → destinations as `INFERRED_HINT`).
+- `init` merges CODEOWNERS for discovered authority paths and common globs.
+- Gate flags uncovered authority paths on growth deltas.
+- Adversarial tree-truth replay tests (`tests/test_tree_truth_weeks.py`).
+
+### Changed
+- Instruction / skill body digests participate in authority identity
+  (`script_digest`); cards say "body changed" instead of "script_digest changed".
+- Diff/check/gate agree on body/representation drift (`NEEDS_REVIEW`).
+- README leads with the working git-tag install; verdicts list includes
+  `FAIL_CLOSED`.
+- Docs/Action defaults align to tree-truth: `init` preferred, research
+  `annotate` defaults off, consumer pin `@v0.9.0`.
+
+### Removed
+- Docker / compose install story.
+- Decorative lock fields `approvals[]`, `approved_findings[]`, and legacy
+  `mcp_servers` map (no longer emitted).
+- Stale `hook_status_week4` pilot-metrics column.
+- Redundant `skills/cursor` prompts (auditor skill remains).
+
 ## [0.8.2] — 2026-11-15
 
 ### Fixed

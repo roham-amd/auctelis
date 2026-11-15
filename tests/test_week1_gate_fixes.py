@@ -163,7 +163,10 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
     base = tmp_path / "base.lock"
     base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
     (root / ".github").mkdir(parents=True)
-    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec-owners\n", encoding="utf-8")
+    (root / ".github" / "CODEOWNERS").write_text(
+        "AUTHORITY.lock @sec-owners\n.cursor/mcp.json @sec-owners\n",
+        encoding="utf-8",
+    )
     (mcp / "mcp.json").write_text(
         json.dumps(
             {
@@ -175,6 +178,7 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
         ),
         encoding="utf-8",
     )
+    assert main(["lock", str(root), "--update"]) == 0
     code = main_dev(
         [
             "scan",

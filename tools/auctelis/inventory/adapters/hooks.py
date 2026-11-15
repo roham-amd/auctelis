@@ -7,6 +7,7 @@ from typing import Any
 from auctelis.inventory.hints import (
     download_and_execute_hint,
     execution_boundary_hint,
+    extract_url_hosts_from_command,
     hook_lifecycle_event_hint,
     permission_bypass_hint,
     pre_execution_lifecycle_hint,
@@ -73,6 +74,14 @@ def discover_hooks(
                 for hook_name, hook_body in data["hooks"].items():
                     body_text = json.dumps(hook_body, default=str) if hook_body is not None else ""
                     item_hints = _lifecycle_hints(str(hook_name), body_text)
+                    destinations = extract_url_hosts_from_command(body_text)
+                    # Prefer an explicit command string when present on a list entry.
+                    if isinstance(hook_body, list):
+                        for entry in hook_body:
+                            if isinstance(entry, dict) and entry.get("command"):
+                                destinations.extend(
+                                    extract_url_hosts_from_command(str(entry.get("command")))
+                                )
                     results.append(
                         {
                             "name": str(hook_name),
@@ -84,6 +93,8 @@ def discover_hooks(
                             "discovery_status": "IDENTIFIED",
                             "priority_hints": list(dict.fromkeys(item_hints)),
                             "lifecycle_event": str(hook_name),
+                            "destinations": list(dict.fromkeys(destinations)),
+                            "command": body_text[:500],
                             "authority_layer": "CONFIGURED",
                             "limitations": [
                                 "Hook discovery does not prove the host loads this file.",

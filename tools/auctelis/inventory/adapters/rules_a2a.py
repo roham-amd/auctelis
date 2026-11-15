@@ -5,6 +5,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+from auctelis.inventory.hints import (
+    DOWNLOAD_EXEC_RE,
+    extract_url_hosts_from_command,
+    permission_bypass_hint,
+)
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.limits import CollectorLimits
 
@@ -88,7 +93,39 @@ def _instruction_hints(raw: str) -> list[str]:
         hints.append("hidden_unicode_in_instructions")
     if any(marker in lowered for marker in _INSTRUCTION_ABUSE_MARKERS):
         hints.append("instruction_abuse_content")
+    if "http://" in lowered or "https://" in lowered:
+        hints.append("external_url_reference")
+    if DOWNLOAD_EXEC_RE.search(raw) or any(
+        token in lowered for token in ("curl ", "wget ", "| sh", "| bash")
+    ):
+        hints.append("download_and_execute")
+    if permission_bypass_hint(raw):
+        hints.append("permission_bypass_flag")
     return hints
+
+
+def _instruction_record(
+    *,
+    name: str,
+    kind: str,
+    rel: str,
+    raw: str,
+) -> dict[str, Any]:
+    destinations = extract_url_hosts_from_command(raw)
+    return {
+        "name": name,
+        "type": kind,
+        "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
+        "repository_path": rel,
+        "adapter": "instruction_rules",
+        "adapter_maturity": "SUPPORTED",
+        "discovery_status": "IDENTIFIED",
+        "instruction_content_present": True,
+        "priority_hints": _instruction_hints(raw),
+        "destinations": destinations,
+        "prose_inferred": True,
+        "evidence_strength": "INFERRED_HINT",
+    }
 
 
 def _is_claude_command(path: Path) -> bool:
@@ -136,19 +173,13 @@ def discover_instruction_rules(
             )
             if raw is None:
                 continue
-            hints = _instruction_hints(raw)
             results.append(
-                {
-                    "name": path.name,
-                    "type": "Rule / instruction file",
-                    "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
-                    "repository_path": rel,
-                    "adapter": "instruction_rules",
-                    "adapter_maturity": "SUPPORTED",
-                    "discovery_status": "IDENTIFIED",
-                    "instruction_content_present": True,
-                    "priority_hints": hints,
-                }
+                _instruction_record(
+                    name=path.name,
+                    kind="Rule / instruction file",
+                    rel=rel,
+                    raw=raw,
+                )
             )
             rules_dir = None
             parts = path.relative_to(root).parts
@@ -179,16 +210,11 @@ def discover_instruction_rules(
             continue
         kind = "Claude slash command" if _is_claude_command(path) else "Rule / instruction file"
         results.append(
-            {
-                "name": path.stem if _is_claude_command(path) else path.name,
-                "type": kind,
-                "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
-                "repository_path": rel,
-                "adapter": "instruction_rules",
-                "adapter_maturity": "SUPPORTED",
-                "discovery_status": "IDENTIFIED",
-                "instruction_content_present": True,
-                "priority_hints": _instruction_hints(raw),
-            }
+            _instruction_record(
+                name=path.stem if _is_claude_command(path) else path.name,
+                kind=kind,
+                rel=rel,
+                raw=raw,
+            )
         )
     return results

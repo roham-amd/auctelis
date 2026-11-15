@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.8.2 · **Package:** `auctelis` 0.8.2 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis-dev` only)
+**Release:** 0.9.0 · **Package:** `auctelis` 0.9.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis-dev` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -15,7 +15,7 @@ primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
 The product is a **GitHub-native Authority Diff + enforcement gate**: one
 extractor, one lock schema, one diff engine, one PR comment, one Action.
 Locally, `auctelis check` is the repo preflight. Host hooks, the allow store,
-and tripwire heartbeats are archived — not the weekly habit.
+and tripwire heartbeats are **removed** — not the weekly habit.
 
 One question drives the workflow:
 
@@ -54,12 +54,14 @@ Public path: **init --owner team → check → lock --update → gate**
 | `auctelis demo` | Optional packaged fixture |
 
 Host stack (`watch` / `allow` / `hook` / `doctor`) and public `vet` / `harden` /
-`explain` CLIs are **removed**. The product gate is **lock-only**; the research
-scanner lives on `auctelis-dev` (`scan` / `annotate`) only. Reach: [`REACH.md`](REACH.md).
+`explain` CLIs are **removed**. The product gate is **tree-truth**: head
+authority is always derived from the working tree; a committed `AUTHORITY.lock`
+is drift-checked only. Research scan/annotate live on `auctelis-dev` only.
+Reach: [`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  
-**Verdicts:** `LOCKED` | `BASELINE_NEEDED` | `NEEDS_REVIEW` | `BASELINE_ADOPTED` | `FAIL_CLOSED`  
+**Verdicts:** `LOCKED` | `BASELINE_NEEDED` | `NEEDS_REVIEW` | `BASELINE_ADOPTED` | `FAIL_CLOSED` | `PASS`  
 (`FAIL_CLOSED` = unusable / missing base lock for gate — not the empty-baseline state. First growth after an empty seal is CODEOWNERS review.)
 
 ---

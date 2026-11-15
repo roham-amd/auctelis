@@ -30,7 +30,14 @@ def _mcp(root: Path, servers: dict) -> None:
 
 def _owners(root: Path) -> None:
     (root / ".github").mkdir(parents=True, exist_ok=True)
-    (root / ".github" / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
+    (root / ".github" / "CODEOWNERS").write_text(
+        "AUTHORITY.lock @sec\n.cursor/mcp.json @sec\n",
+        encoding="utf-8",
+    )
+
+
+def _reseal(root: Path) -> None:
+    assert main(["lock", str(root), "--update"]) == 0
 
 
 def _rec(
@@ -99,6 +106,7 @@ def test_strict_ruleset_fails_unverified_growth(tmp_path: Path, monkeypatch):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
+    _reseal(root)
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GH_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
@@ -133,6 +141,7 @@ def test_ruleset_missing_fails_growth(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
+    _reseal(root)
     with patch("auctelis.gate.check_code_owner_ruleset", return_value=("MISSING", "no ruleset")):
         report, code = run_gate(root, base_lock=base, trust_head_codeowners=True)
     assert code == 1
@@ -154,6 +163,7 @@ def test_ruleset_ok_marks_protection_verified(tmp_path: Path):
             "b": {"command": "node", "args": ["b.js"]},
         },
     )
+    _reseal(root)
     with patch(
         "auctelis.gate.check_code_owner_ruleset",
         return_value=("OK", "ruleset requires code-owner review"),
@@ -243,4 +253,5 @@ def test_pilot_tracker_files_exist():
     assert "retained_30d" in tracker
     metrics = (root / "eval" / "pilot-metrics.csv").read_text(encoding="utf-8")
     assert "install_to_first_delta_minutes" in metrics
-    assert "hook_status_week4" in metrics
+    assert "hook_status_week4" not in metrics
+    assert "action_still_enabled_day30" in metrics
