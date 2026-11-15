@@ -166,7 +166,7 @@ With `--full`, add `ecosystem-graph.json`, `capabilities.json`,
 
 Prefer `auctelis check` for the weekly delta, and `auctelis lock` + `auctelis gate`
 + the CI Authority Diff for the team path. Archived host commands (`watch`) are
-not the product path — see [`MIGRATION-HOST.md`](MIGRATION-HOST.md).
+not the product path — use `auctelis-dev scan` in CI only.
 
 ---
 

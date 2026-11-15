@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main
+from auctelis.cli import main, main_dev
 from auctelis.gate import run_gate
 
 
@@ -35,7 +35,7 @@ def _lock_base(root: Path, tmp: Path) -> Path:
 
 
 def _scan_base(root: Path, out: Path, base: Path) -> int:
-    return main(
+    return main_dev(
         [
             "scan",
             str(root),

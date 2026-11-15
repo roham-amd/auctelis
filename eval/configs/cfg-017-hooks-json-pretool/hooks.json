@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "command": "node hook.js"
+      }
+    ]
+  }
+}

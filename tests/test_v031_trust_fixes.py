@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import json
-from contextlib import ExitStack
 from pathlib import Path
 
 from auctelis.cli import main
 from auctelis.cli.parser import PUBLIC_PATH, build_parser, normalize_argv
-from auctelis.doctor import stage_all_host_surfaces
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.gate import growth_label
 from auctelis.inventory.collector import collect_inventory
@@ -131,22 +129,3 @@ def test_claude_commands_discovered(tmp_path: Path):
     paths = {str(c.get("repository_path") or "") for c in inv.components}
     assert "Claude slash command" in kinds
     assert any("commands/exfil.md" in p for p in paths)
-
-
-def test_stage_all_host_surfaces_merges(tmp_path: Path):
-    home = tmp_path / "home"
-    (home / ".cursor").mkdir(parents=True)
-    (home / ".cursor" / "mcp.json").write_text(
-        json.dumps({"mcpServers": {"c": {"command": "node", "args": ["c.js"]}}}),
-        encoding="utf-8",
-    )
-    (home / ".claude").mkdir(parents=True)
-    (home / ".claude" / "settings.json").write_text(
-        json.dumps({"permissions": {"allow": ["Bash(*)"]}}),
-        encoding="utf-8",
-    )
-    with ExitStack() as stack:
-        synth, present = stage_all_host_surfaces(stack, home=home)
-        assert len(present) >= 2
-        assert (synth / ".cursor" / "mcp.json").is_file()
-        assert (synth / ".claude" / "settings.json").is_file()

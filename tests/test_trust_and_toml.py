@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from auctelis.cli import main
+from auctelis.cli import main_dev
 from auctelis.export.pr_comment import (
     AUCTELIS_COMMENT_MARKER,
     render_authority_diff_comment,
@@ -112,7 +112,7 @@ policy:
         encoding="utf-8",
     )
     out = tmp_path / "out"
-    code = main(["scan", str(root), "-o", str(out), "--fail-on", "high"])
+    code = main_dev(["scan", str(root), "-o", str(out), "--fail-on", "high"])
     printed = capsys.readouterr().out
     assert (
         "Target .auctelis.yml ignored" in printed
@@ -158,7 +158,7 @@ policy:
         encoding="utf-8",
     )
     out = tmp_path / "out"
-    code = main(
+    code = main_dev(
         [
             "scan",
             str(root),

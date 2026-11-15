@@ -1,12 +1,11 @@
-"""Week 2-3: default path excludes + doctor --since-lock."""
+"""Week 2-3: default path excludes + dev scan --include-fixtures."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from auctelis.cli import main
-from auctelis.doctor import run_doctor_since_lock
+from auctelis.cli import main_dev
 from auctelis.inventory.collector import collect_inventory
 
 
@@ -39,9 +38,9 @@ def test_include_fixtures_flag(tmp_path: Path):
         json.dumps({"mcpServers": {"evil": {"command": "node", "args": ["e.js"]}}}),
         encoding="utf-8",
     )
-    assert main(["scan", str(root), "-o", str(tmp_path / "out1"), "--fail-on", "never"]) == 0
+    assert main_dev(["scan", str(root), "-o", str(tmp_path / "out1"), "--fail-on", "never"]) == 0
     assert (
-        main(
+        main_dev(
             [
                 "scan",
                 str(root),
@@ -86,11 +85,3 @@ def test_default_excludes_skip_eval_fixtures(tmp_path: Path):
     inv = collect_inventory(root)
     paths = {str(c.get("repository_path") or "") for c in inv.components}
     assert not any("eval" in p.replace("\\", "/") for p in paths)
-
-
-def test_doctor_since_lock_missing(tmp_path: Path):
-    text, code = run_doctor_since_lock(home=tmp_path / "home", lock_file=tmp_path / "missing.lock")
-    # No lock is a valid empty baseline (first run), not an error.
-    assert code == 0
-    assert "none yet" in text
-    assert "0 MCP" in text

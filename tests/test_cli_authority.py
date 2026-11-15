@@ -1,10 +1,10 @@
-"""CLI surface tests for doctor / vet / ci init / scan policy discovery."""
+"""CLI surface tests for product front door / ci init / dev scan policy."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from auctelis.cli import main
+from auctelis.cli import main, main_dev
 from auctelis.cli.parser import build_parser, normalize_argv
 
 
@@ -18,8 +18,7 @@ def test_normalize_argv_defaults_check_or_scan(tmp_path: Path):
     # Bare is always repo check, even inside a locked repo.
     assert normalize_argv([], cwd=locked) == ["check"]
     assert normalize_argv(["."]) == ["check", "."]
-    assert normalize_argv(["--locked"]) == ["scan", "--locked"]
-    assert normalize_argv(["doctor"]) == ["doctor"]
+    assert normalize_argv(["--locked"]) == ["--locked"]
     assert normalize_argv(["--help"]) == ["--help"]
     assert normalize_argv(["check", "."]) == ["check", "."]
     assert normalize_argv(["scan", "--locked", "."]) == ["scan", "--locked", "."]
@@ -61,16 +60,6 @@ def test_product_help_hides_advanced_shows_core():
     assert not any(line.strip().startswith("baseline") for line in listed)
 
 
-def test_cli_doctor_help_and_empty_home(tmp_path: Path, capsys):
-    home = tmp_path / "empty-home"
-    home.mkdir()
-    code = main(["doctor", "--home", str(home)])
-    out = capsys.readouterr().out
-    assert code == 0
-    assert "auctelis doctor" in out
-    assert "no host config" in out.lower() or "absent" in out.lower()
-
-
 def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     root = tmp_path / "repo"
     code = main(["ci", "init", str(root), "--owner", "@sec-owners"])
@@ -92,18 +81,6 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     assert "Exists" in out2
 
 
-def test_cli_vet_local(tmp_path: Path, capsys):
-    root = tmp_path / "pkg"
-    skill = root / "skills" / "ok"
-    skill.mkdir(parents=True)
-    (skill / "SKILL.md").write_text("---\nname: ok\n---\nRead-only helper.\n", encoding="utf-8")
-    code = main(["vet", str(root), "-o", str(tmp_path / "out")])
-    out = capsys.readouterr().out
-    assert "auctelis vet" in out
-    assert "verdict:" in out
-    assert code in {0, 1}
-
-
 def test_cli_scan_ignores_parent_policy(tmp_path: Path, capsys):
     parent = tmp_path / "parent"
     child = parent / "repo"
@@ -113,7 +90,7 @@ def test_cli_scan_ignores_parent_policy(tmp_path: Path, capsys):
         encoding="utf-8",
     )
     (child / "README.md").write_text("x\n", encoding="utf-8")
-    code = main(["scan", str(child), "-o", str(tmp_path / "out"), "--fail-on", "never"])
+    code = main_dev(["scan", str(child), "-o", str(tmp_path / "out"), "--fail-on", "never"])
     out = capsys.readouterr().out
     assert code == 0
     assert "Policy:" not in out

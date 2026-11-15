@@ -84,7 +84,8 @@ inputs:
     required: false
     default: "true"
   lock-file:
-    description: Path to AUTHORITY.lock relative to the scan target (default: AUTHORITY.lock)
+    description: >-
+      Path to AUTHORITY.lock relative to the scan target (default: AUTHORITY.lock)
     required: false
     default: ""
   strict-ruleset:
@@ -115,9 +116,13 @@ runs:
             echo "::error::install-tools-from=${chosen} but auctelis is not on PATH. pip/uv install auctelis first."
             exit 1
           fi
+          if ! command -v auctelis-dev >/dev/null 2>&1; then
+            echo "::error::install-tools-from=${chosen} but auctelis-dev is not on PATH (needed for scan/annotate)."
+            exit 1
+          fi
           echo "mode=path" >> "$GITHUB_OUTPUT"
           echo "dir=" >> "$GITHUB_OUTPUT"
-          echo "Using preinstalled auctelis on PATH."
+          echo "Using preinstalled auctelis + auctelis-dev on PATH."
           exit 0
         fi
         bundled="$(cd "$AUCTELIS_ACTION_PATH/../../.." && pwd)/tools"
@@ -125,10 +130,10 @@ runs:
           if [[ -f "${bundled}/pyproject.toml" ]]; then
             chosen="${bundled}"
             echo "Using Action-bundled auctelis tools: ${chosen}"
-          elif command -v auctelis >/dev/null 2>&1; then
+          elif command -v auctelis >/dev/null 2>&1 && command -v auctelis-dev >/dev/null 2>&1; then
             echo "mode=path" >> "$GITHUB_OUTPUT"
             echo "dir=" >> "$GITHUB_OUTPUT"
-            echo "install-tools-from empty; using preinstalled auctelis on PATH."
+            echo "install-tools-from empty; using preinstalled auctelis + auctelis-dev on PATH."
             exit 0
           elif [[ -f tools/pyproject.toml ]]; then
             echo "::error::install-tools-from is empty and Action-bundled tools were not found. Refusing to default to workspace ./tools (PR-controlled code execution risk). Pass install-tools-from explicitly to a pinned auctelis checkout, or install auctelis and set install-tools-from: path."
@@ -307,7 +312,7 @@ runs:
         elif [[ -n "${AUCTELIS_TRUSTED_POLICY:-}" ]]; then
           base_args+=(--policy "$AUCTELIS_TRUSTED_POLICY")
         fi
-        auctelis "${base_args[@]}"
+        auctelis-dev "${base_args[@]}"
         echo "Base-ref baseline written: $baseline"
         echo "path=${baseline}" >> "$GITHUB_OUTPUT"
         git worktree remove --force "$work" || true
@@ -375,7 +380,7 @@ runs:
         # Capture exit so comment/artifact steps can still run; gate is the
         # authority-growth verdict. Re-fail after reporting when scan itself failed.
         set +e
-        auctelis "${args[@]}"
+        auctelis-dev "${args[@]}"
         scan_code=$?
         set -e
         echo "code=${scan_code}" >> "$GITHUB_OUTPUT"
@@ -451,7 +456,7 @@ runs:
           echo "No findings.json; skipping annotations."
           exit 0
         fi
-        auctelis annotate "$FINDINGS" --format github
+        auctelis-dev annotate "$FINDINGS" --format github
 
     - name: Authority Diff PR comment
       if: always() && inputs.mode == 'scan' && inputs.annotate == 'true' && github.event_name == 'pull_request'
@@ -491,9 +496,9 @@ runs:
           echo "Overwrote sticky comment with BASELINE_ADOPTED (adoption ceremony)."
         elif [[ ! -f "$COMMENT" ]]; then
           if [[ -f "$DELTA" ]]; then
-            auctelis annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
+            auctelis-dev annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
           else
-            auctelis annotate "$FINDINGS" --format pr-comment >"$COMMENT"
+            auctelis-dev annotate "$FINDINGS" --format pr-comment >"$COMMENT"
           fi
         fi
         echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"

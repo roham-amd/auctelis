@@ -24,8 +24,9 @@ against `AUTHORITY.lock`. On a PR, the Action posts one Authority Diff and
 It is **not** an automated vulnerability scanner that proves systems are safe,
 a penetration-testing tool, runtime sandbox, marketplace certification authority,
 host consent broker, or substitute for organizational risk acceptance.
-`watch` / `allow` / `hook` / `doctor` remain callable for compatibility but are
-archived. `scan` / `vet` are hidden annotation layers, not the front door.
+Host tripwires (`watch` / `allow` / `hook` / `doctor`) and public `vet` /
+`harden` / `explain` CLIs are removed. CI annotation helpers live on
+`auctelis-dev` only.
 
 Operator and contributor documentation map: [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md).  
 Deterministic rule catalog: [`docs/SECURITY-RULES.md`](docs/SECURITY-RULES.md).

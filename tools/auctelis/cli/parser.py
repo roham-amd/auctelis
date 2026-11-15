@@ -14,9 +14,7 @@ PUBLIC_PATH = "check → lock --update → ci init --apply --owner @team → gat
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
 local:        diff --base <ref> | why <name> | demo
-archived:     watch | allow | hook | doctor  (callable; kill list)
-review:       scan | vet | explain | diff lock | annotate | harden  (hidden)
-maintainer:   auctelis-dev (build | lint | corpus | deps)
+maintainer:   auctelis-dev (scan | annotate | build | lint | corpus | deps)
 
 Bare `auctelis` → check (repo authority vs AUTHORITY.lock).
 Labels: GROWTH | REDUCTION | NONE.
@@ -31,29 +29,12 @@ _ADV = argparse.SUPPRESS
 # Enforceable public mental model — GitHub-native Authority Diff front door.
 CORE_PUBLIC_COMMANDS = frozenset({"check", "lock", "ci", "gate", "diff", "why", "demo"})
 
-_PRODUCT_COMMANDS = frozenset(
-    {
-        "scan",
-        "check",
-        "ci",
-        "doctor",
-        "watch",
-        "why",
-        "vet",
-        "demo",
-        "harden",
-        "lock",
-        "gate",
-        "hook",
-        "allow",
-        "explain",
-        "diff",
-        "annotate",
-    }
-)
+_PRODUCT_COMMANDS = frozenset(CORE_PUBLIC_COMMANDS)
 
 _DEV_COMMANDS = frozenset(
     {
+        "scan",
+        "annotate",
         "build",
         "validate",
         "inventory",
@@ -81,7 +62,6 @@ def normalize_argv(
 
     ``auctelis`` → ``check`` (repo authority vs AUTHORITY.lock)
     ``auctelis /repo`` → ``check /repo``
-    ``auctelis --locked`` → ``scan --locked`` (hidden scanner flags)
     Known subcommands and ``-h`` / ``--help`` are left unchanged.
 
     ``cwd`` is accepted for call-site compatibility (reserved for path defaults).
@@ -96,9 +76,11 @@ def normalize_argv(
     head = raw[0]
     if head in ("-h", "--help", "-V", "--version") or head in known:
         return raw
-    # Scanner-only flags still route to the hidden scan command.
-    if head.startswith("-") and head not in {"-h", "--help", "-V", "--version"}:
-        return ["scan", *raw]
+    if head.startswith("-"):
+        return raw
+    # Maintainer-only commands must not become ``check <cmd>`` on the product CLI.
+    if not include_dev and head in (_DEV_COMMANDS - _PRODUCT_COMMANDS):
+        return raw
     return ["check", *raw]
 
 
@@ -139,11 +121,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Emit authority-diff/1 JSON",
     )
 
-    scan = sub.add_parser(
-        "scan",
-        help=_ADV,
-    )
-
     ci = sub.add_parser("ci", help="Write enforce workflow + CODEOWNERS + lock")
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
     ci_init = ci_sub.add_parser(
@@ -172,125 +149,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         ),
     )
     ci_init.set_defaults(command="ci")
-    scan.add_argument("path", type=Path, nargs="?", default=Path("."))
-    scan.add_argument(
-        "-o",
-        "--output-dir",
-        type=Path,
-        help="Output directory (default: ./auctelis-out in the current working directory)",
-    )
-    scan.add_argument(
-        "--baseline",
-        type=Path,
-        help="Prior baseline.json for risk delta",
-    )
-    scan.add_argument(
-        "--save-baseline",
-        type=Path,
-        help="Write baseline.json after scan",
-    )
-    scan.add_argument(
-        "--fail-on",
-        choices=["never", "high", "any"],
-        default=None,
-        help="Exit non-zero when findings match policy (default: never, or .auctelis.yml)",
-    )
-    scan.add_argument(
-        "--policy",
-        type=Path,
-        help="Path to .auctelis.yml (default: only inside the scan target tree)",
-    )
-    scan.add_argument(
-        "--no-policy",
-        action="store_true",
-        help="Ignore .auctelis.yml even if present",
-    )
-    scan.add_argument(
-        "--trust-target-policy",
-        action="store_true",
-        help=(
-            "Load <target>/.auctelis.yml (including suppressions). "
-            "Default is to ignore target policy so audited repos cannot blind the scanner."
-        ),
-    )
-    scan.add_argument(
-        "--locked",
-        action="store_true",
-        help="Fail when observed authority drifts from committed AUTHORITY.lock",
-    )
-    scan.add_argument(
-        "--lock-file",
-        type=Path,
-        help="AUTHORITY.lock path for --locked (default: <target>/AUTHORITY.lock)",
-    )
-    scan.add_argument(
-        "--base-lock",
-        type=Path,
-        help=(
-            "Approved AUTHORITY.lock (typically from the PR base ref). "
-            "Diffed against observed head authority (advisory; gate is the verdict)."
-        ),
-    )
-    scan.add_argument(
-        "--include-fixtures",
-        action="store_true",
-        help="Include tests/examples/docs/fixtures dirs (excluded by default)",
-    )
-    scan.add_argument(
-        "--full",
-        action="store_true",
-        help="Print the long terminal report (default is ≤15 lines)",
-    )
-    scan.add_argument(
-        "--agent",
-        action="store_true",
-        help="Emit compact agent JSON digest (fenced evidence; token-bounded)",
-    )
-
-    watch = sub.add_parser(
-        "watch",
-        help=_ADV,  # archived: host+project seal; use `check` for repos
-    )
-    watch.add_argument(
-        "--home",
-        type=Path,
-        help="Override home directory (default: user home; local-only)",
-    )
-    watch.add_argument(
-        "--lock-file",
-        type=Path,
-        help="Baseline lock path (default: ~/.auctelis/AUTHORITY.lock)",
-    )
-    watch.add_argument(
-        "--seal",
-        action="store_true",
-        help="Seal current host authority as the baseline (human only)",
-    )
-    watch.add_argument(
-        "--accept",
-        metavar="DIGEST",
-        help="Required with --seal: digest printed on the watch screen",
-    )
-    watch.add_argument(
-        "--project",
-        type=Path,
-        help="Project root to include (default: cwd)",
-    )
-    watch.add_argument(
-        "--arm",
-        action="store_true",
-        help="Install session + tool hooks for Cursor and Claude Code",
-    )
-    watch.add_argument(
-        "--delta-only",
-        action="store_true",
-        help="Print only changed authority lines (used by session hooks)",
-    )
-    watch.add_argument(
-        "--json",
-        action="store_true",
-        help="Emit the watch report as JSON (schema_version: watch-report/1)",
-    )
 
     why = sub.add_parser(
         "why",
@@ -303,75 +161,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         nargs="?",
         default=Path("."),
         help="Repository root (default: cwd)",
-    )
-    why.add_argument(
-        "--home",
-        type=Path,
-        help=_ADV,  # archived host why
-    )
-
-    doctor = sub.add_parser(
-        "doctor",
-        help=_ADV,  # archived alias for watch
-    )
-    doctor.add_argument(
-        "--home",
-        type=Path,
-        help="Override home directory (default: user home; local-only)",
-    )
-    doctor.add_argument(
-        "-o",
-        "--output-dir",
-        type=Path,
-        help="Optional directory for watch-report.json",
-    )
-    doctor.add_argument(
-        "--fail-on",
-        choices=["never", "high", "any"],
-        default=None,
-        help="Optional exit policy across host surfaces",
-    )
-    doctor.add_argument(
-        "--since-lock",
-        action="store_true",
-        help="Same one-screen delta (kept for compatibility)",
-    )
-    doctor.add_argument(
-        "--lock-file",
-        type=Path,
-        help="AUTHORITY.lock path for --since-lock (default: ~/.auctelis/AUTHORITY.lock)",
-    )
-    doctor.add_argument(
-        "--delta-only",
-        action="store_true",
-        help="Print only changed authority lines",
-    )
-    doctor.add_argument(
-        "--agent",
-        action="store_true",
-        help="Emit compact agent JSON digest instead of the text map",
-    )
-
-    vet = sub.add_parser(
-        "vet",
-        help=_ADV,
-    )
-    vet.add_argument("source", help="Local path, Git URL, or owner/repo GitHub shorthand")
-    vet.add_argument(
-        "-o",
-        "--output-dir",
-        type=Path,
-        help="Optional output directory for scan artifacts",
-    )
-    vet.add_argument(
-        "--keep-clone",
-        action="store_true",
-        help="Keep the temporary clone directory (remote sources only)",
-    )
-    vet.add_argument(
-        "--agent",
-        action="store_true",
-        help="Emit compact agent JSON digest (verdict + gated findings)",
     )
 
     demo = sub.add_parser(
@@ -389,22 +178,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         choices=["never", "high", "any"],
         default="never",
         help="Ignored for exit code (demo always exits 0); kept for compatibility",
-    )
-
-    harden = sub.add_parser(
-        "harden",
-        help=_ADV,
-    )
-    harden.add_argument(
-        "--findings",
-        type=Path,
-        default=Path("auctelis-out/findings.json"),
-        help="Path to findings.json (default: auctelis-out/findings.json)",
-    )
-    harden.add_argument(
-        "--apply",
-        action="store_true",
-        help="Request automatic apply (disabled; always dry-run in this release)",
     )
 
     lock_cmd = sub.add_parser(
@@ -442,11 +215,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
             "Allow writing a lock when the tree has HIGH/CRITICAL gated findings. "
             "Use for intentional baseline seals; prefer remediating first."
         ),
-    )
-    lock_cmd.add_argument(
-        "--home",
-        action="store_true",
-        help=argparse.SUPPRESS,  # archived host path — kill list
     )
     lock_cmd.add_argument(
         "--snapshot",
@@ -508,104 +276,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Emit JSON gate report",
     )
 
-    hook_cmd = sub.add_parser(
-        "hook",
-        help=_ADV,  # archived tripwire install; not the product
-    )
-    hook_sub = hook_cmd.add_subparsers(dest="hook_command", required=True)
-    hook_install = hook_sub.add_parser(
-        "install",
-        help="Copy hooks to ~/.auctelis/hooks and wire Claude Code + Cursor",
-    )
-    hook_install.add_argument(
-        "--home",
-        type=Path,
-        help="Override home directory (default: user home)",
-    )
-    hook_install.add_argument(
-        "--hooks-dir",
-        type=Path,
-        help="Where to write hook scripts (default: ~/.auctelis/hooks)",
-    )
-    hook_install.add_argument(
-        "--session-only",
-        action="store_true",
-        help="Install only the session-start delta hook",
-    )
-    hook_install.add_argument(
-        "--pretool-only",
-        action="store_true",
-        help="Install only the PreToolUse tripwire hook",
-    )
-    hook_install.add_argument(
-        "--no-wire",
-        action="store_true",
-        help="Copy scripts only; do not edit Claude/Cursor settings",
-    )
-    hook_install.add_argument(
-        "--no-cursor",
-        action="store_true",
-        help="Wire Claude Code only (skip ~/.cursor/hooks.json)",
-    )
-
-    hook_status = hook_sub.add_parser(
-        "status",
-        help="Report wired / not yet observed / firing (heartbeat) for Claude + Cursor",
-    )
-    hook_status.add_argument("--home", type=Path, help="Override home directory")
-    hook_status.add_argument("--hooks-dir", type=Path, help="Hook script directory")
-    hook_status.add_argument("--settings-file", type=Path, help="Claude settings.json path")
-    hook_status.add_argument(
-        "--cursor-hooks-file",
-        type=Path,
-        help="Cursor hooks.json path",
-    )
-    hook_status.add_argument("--json", action="store_true", help="Emit JSON")
-    hook_status.add_argument(
-        "--probe",
-        action="store_true",
-        help="Fire a synthetic unknown-MCP event through each wired tripwire",
-    )
-
-    allow = sub.add_parser(
-        "allow",
-        help=_ADV,  # archived project-allow store; decorative, not enforced
-    )
-    allow.add_argument(
-        "path",
-        nargs="?",
-        type=Path,
-        default=None,
-        help="Project root (default: cwd)",
-    )
-    allow.add_argument("--home", type=Path, help="Override home for the allow store")
-    allow.add_argument(
-        "--accept",
-        metavar="DIGEST",
-        help="Required when the project has records: digest of current project authority",
-    )
-    allow.add_argument("--json", action="store_true", help="Emit JSON")
-    allow.add_argument(
-        "--status",
-        action="store_true",
-        help="Show allow status without writing",
-    )
-
-    explain = sub.add_parser("explain", help=_ADV)
-    explain.add_argument("finding_id", help="Finding id such as F-001")
-    explain.add_argument(
-        "-o",
-        "--output-dir",
-        type=Path,
-        default=Path("auctelis-out"),
-        help="Directory containing findings.json (default: auctelis-out)",
-    )
-    explain.add_argument(
-        "--agent",
-        action="store_true",
-        help="Emit structured remediation JSON for agents",
-    )
-
     if include_dev:
         _add_dev_commands(sub)
 
@@ -643,30 +313,6 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Emit JSON instead of line-oriented text",
     )
 
-    annotate = sub.add_parser(
-        "annotate",
-        help=_ADV,
-    )
-    annotate.add_argument(
-        "findings",
-        type=Path,
-        nargs="?",
-        default=Path("auctelis-out/findings.json"),
-        help="Path to findings.json (default: auctelis-out/findings.json)",
-    )
-    annotate.add_argument(
-        "--format",
-        choices=["github", "text", "pr-comment"],
-        default="github",
-        dest="annotate_format",
-        help="Annotation format (default: github; pr-comment = ≤12-line Authority Diff)",
-    )
-    annotate.add_argument(
-        "--risk-delta",
-        type=Path,
-        help="Optional risk-delta.json for delta-first PR comments",
-    )
-
     # argparse still registers help=SUPPRESS choices; drop them from --help listing.
     sub._choices_actions = [a for a in sub._choices_actions if a.help != _ADV]
 
@@ -675,6 +321,9 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
 def _add_dev_commands(sub: Any) -> None:
     """Maintainer commands — only on ``auctelis-dev`` (research surface removed)."""
+    _add_scan_parser(sub)
+    _add_annotate_parser(sub)
+
     build = sub.add_parser("build", help="Run build and consistency checks")
     build.add_argument(
         "target",
@@ -772,4 +421,113 @@ def _add_dev_commands(sub: Any) -> None:
         "--output",
         type=Path,
         help="Write artifact report JSON",
+    )
+
+
+def _add_scan_parser(sub: Any) -> None:
+    """Hidden scanner — CI / maintainer only (``auctelis-dev scan``)."""
+    scan = sub.add_parser(
+        "scan",
+        help="Passive repo scan for findings (maintainer / GitHub Action)",
+    )
+    scan.add_argument("path", type=Path, nargs="?", default=Path("."))
+    scan.add_argument(
+        "-o",
+        "--output-dir",
+        type=Path,
+        help="Output directory (default: ./auctelis-out in the current working directory)",
+    )
+    scan.add_argument(
+        "--baseline",
+        type=Path,
+        help="Prior baseline.json for risk delta",
+    )
+    scan.add_argument(
+        "--save-baseline",
+        type=Path,
+        help="Write baseline.json after scan",
+    )
+    scan.add_argument(
+        "--fail-on",
+        choices=["never", "high", "any"],
+        default=None,
+        help="Exit non-zero when findings match policy (default: never, or .auctelis.yml)",
+    )
+    scan.add_argument(
+        "--policy",
+        type=Path,
+        help="Path to .auctelis.yml (default: only inside the scan target tree)",
+    )
+    scan.add_argument(
+        "--no-policy",
+        action="store_true",
+        help="Ignore .auctelis.yml even if present",
+    )
+    scan.add_argument(
+        "--trust-target-policy",
+        action="store_true",
+        help=(
+            "Load <target>/.auctelis.yml (including suppressions). "
+            "Default is to ignore target policy so audited repos cannot blind the scanner."
+        ),
+    )
+    scan.add_argument(
+        "--locked",
+        action="store_true",
+        help="Fail when observed authority drifts from committed AUTHORITY.lock",
+    )
+    scan.add_argument(
+        "--lock-file",
+        type=Path,
+        help="AUTHORITY.lock path for --locked (default: <target>/AUTHORITY.lock)",
+    )
+    scan.add_argument(
+        "--base-lock",
+        type=Path,
+        help=(
+            "Approved AUTHORITY.lock (typically from the PR base ref). "
+            "Diffed against observed head authority (advisory; gate is the verdict)."
+        ),
+    )
+    scan.add_argument(
+        "--include-fixtures",
+        action="store_true",
+        help="Include tests/examples/docs/fixtures dirs (excluded by default)",
+    )
+    scan.add_argument(
+        "--full",
+        action="store_true",
+        help="Print the long terminal report (default is ≤15 lines)",
+    )
+    scan.add_argument(
+        "--agent",
+        action="store_true",
+        help="Emit compact agent JSON digest (fenced evidence; token-bounded)",
+    )
+
+
+def _add_annotate_parser(sub: Any) -> None:
+    """Findings annotations — CI only (``auctelis-dev annotate``)."""
+    annotate = sub.add_parser(
+        "annotate",
+        help="Emit GitHub / PR-comment annotations from findings.json",
+    )
+    annotate.add_argument(
+        "findings",
+        type=Path,
+        nargs="?",
+        default=Path("auctelis-out/findings.json"),
+        help="Path to findings.json (default: auctelis-out/findings.json)",
+    )
+    annotate.add_argument(
+        "--format",
+        choices=["github", "text", "pr-comment"],
+        default="github",
+        dest="annotate_format",
+        help="Annotation format (default: github; pr-comment = ≤12-line Authority Diff)",
+    )
+    annotate.add_argument(
+        "--risk-delta",
+        type=Path,
+        help="Optional risk-delta.json for delta-first PR comments",
     )

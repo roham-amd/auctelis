@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import build_authority_lock, write_authority_lock
-from auctelis.cli import main
+from auctelis.cli import main, main_dev
 from auctelis.cli.dispatch import _init_gate_templates
 from auctelis.export.pr_comment import escape_markdown, render_authority_diff_comment
 from auctelis.policy import load_policy
@@ -174,7 +174,7 @@ def test_base_lock_advisory_on_addition(tmp_path: Path):
         ),
         encoding="utf-8",
     )
-    code = main(
+    code = main_dev(
         [
             "scan",
             str(root),

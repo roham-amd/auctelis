@@ -23,7 +23,7 @@ are on the kill list.
 | Week 1 | Adoption sticky comment; evidence strength; `@ path` on all cards; coverage truth | done |
 | Week 2 | `ci init --apply`; `diff --base`; pin Action to commit SHA | done |
 | Week 3 | Effective-rules endpoint; base CODEOWNERS trust; gate trust tests | done |
-| Week 4 | Ship 0.8.0; host stack archived + migration note; benchmark honesty | done |
+| Week 4 | Ship 0.8.0; host stack + public scanner removed; 25-config fixture suite | done |
 
 ## 90-day decision gate
 

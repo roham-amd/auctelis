@@ -33,7 +33,7 @@ def test_public_front_door_is_check_not_watch():
 def test_bare_auctelis_is_check(tmp_path: Path):
     assert normalize_argv([], cwd=tmp_path) == ["check"]
     assert normalize_argv(["."], cwd=tmp_path) == ["check", "."]
-    assert normalize_argv(["--locked"], cwd=tmp_path) == ["scan", "--locked"]
+    assert normalize_argv(["--locked"], cwd=tmp_path) == ["--locked"]
 
 
 def test_check_discovers_skills_and_instructions(tmp_path: Path):
