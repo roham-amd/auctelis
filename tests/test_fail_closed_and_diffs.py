@@ -15,7 +15,6 @@ from auctelis.authority_lock import (
 from auctelis.cli import main
 from auctelis.gate import run_gate
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
-from auctelis.watch import build_watch_report
 
 _EMPTY = {"version": 1, "records": [], "policy_hash": None, "mcp_tools": {}}
 
@@ -101,18 +100,6 @@ def test_legacy_yaml_mcp_tools_lock_still_loads(tmp_path: Path):
     assert lock["mcp_tools"]["read"] == "sha256:abc"
 
 
-def test_watch_reports_unusable_lock(tmp_path: Path, capsys):
-    home = tmp_path / "home"
-    (home / ".auctelis").mkdir(parents=True)
-    _mcp(home)
-    (home / ".auctelis" / "AUTHORITY.lock").write_text('{"records": [', encoding="utf-8")
-    report, _cards, _scan = build_watch_report(home=home)
-    assert report["error"]
-    assert main(["watch", "--home", str(home), "--delta-only"]) == 2
-    out = capsys.readouterr().out
-    assert out.startswith("auctelis:")
-
-
 def test_mcp_tools_diff_is_meaningful():
     base = {**_EMPTY, "mcp_tools": {"read": "sha256:a"}}
     head = {**_EMPTY, "mcp_tools": {"read": "sha256:a", "write": "sha256:b"}}
@@ -145,64 +132,3 @@ def test_gate_policy_change_is_growth(tmp_path: Path):
     report, _code = run_gate(root, base_lock=base, check_ruleset=False)
     assert report["label"] == "GROWTH"
     assert report["delta"]["summary"]["policy_changed"] is True
-
-
-def _seal_home(home: Path, project: Path) -> None:
-    report, _cards, _scan = build_watch_report(home=home, project=project)
-    assert (
-        main(
-            [
-                "watch",
-                "--home",
-                str(home),
-                "--project",
-                str(project),
-                "--seal",
-                "--accept",
-                report["screen_digest"],
-            ]
-        )
-        == 0
-    )
-
-
-def test_watch_changed_card_shows_old_to_new(tmp_path: Path, capsys):
-    home = tmp_path / "home"
-    project = tmp_path / "project"
-    project.mkdir()
-    _mcp(home, "linear")
-    _seal_home(home, project)
-    capsys.readouterr()
-    (home / ".cursor" / "mcp.json").write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "linear": {
-                        "command": "node",
-                        "args": ["linear.js"],
-                        "env": {"LINEAR_TOKEN": "${LINEAR_TOKEN}"},
-                        "url": "https://mcp.linear.app/sse",
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
-    out = capsys.readouterr().out
-    assert out.startswith('~ mcp "linear"')
-    assert "host:" in out or "launcher:" in out
-    assert "env: +LINEAR_TOKEN" in out
-
-
-def test_watch_removal_after_surface_deleted(tmp_path: Path, capsys):
-    home = tmp_path / "home"
-    project = tmp_path / "project"
-    project.mkdir()
-    _mcp(home)
-    _seal_home(home, project)
-    capsys.readouterr()
-    (home / ".cursor" / "mcp.json").unlink()
-    assert main(["watch", "--home", str(home), "--project", str(project), "--delta-only"]) == 1
-    out = capsys.readouterr().out
-    assert "removed" in out

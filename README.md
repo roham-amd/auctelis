@@ -54,8 +54,8 @@ Agents must export `AUCTELIS_AGENT=1`; `lock` and `ci init` are refused for agen
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Packaged fixture (optional) |
 
-`watch` / `allow` / `hook` / `doctor` remain callable for compatibility but are
-archived from the product path. `scan` is a hidden annotation layer.
+Host tripwires and the public scanner CLIs were removed in 0.8.0. Annotation
+helpers for CI live on `auctelis-dev` (`scan` / `annotate`).
 
 Public docs: [`INSTALL`](docs/INSTALL.md) · [`PRODUCT`](docs/PRODUCT.md) ·
 [`REACH`](docs/REACH.md) · [`AUTHORITY-LOCK`](docs/AUTHORITY-LOCK.md) ·

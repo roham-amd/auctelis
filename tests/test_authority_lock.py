@@ -200,8 +200,10 @@ def test_lock_cli_roundtrip(tmp_path: Path):
     assert (root / "AUTHORITY.lock").is_file()
     assert main(["lock", str(root), "--check"]) == 0
     assert main(["check", str(root)]) == 0
+    from auctelis.cli import main_dev
+
     assert (
-        main(
+        main_dev(
             [
                 "scan",
                 str(root),
@@ -225,7 +227,7 @@ def test_lock_cli_roundtrip(tmp_path: Path):
     assert main(["lock", str(root), "--check"]) == 1
     assert main(["check", str(root)]) == 1
     assert (
-        main(
+        main_dev(
             [
                 "scan",
                 str(root),

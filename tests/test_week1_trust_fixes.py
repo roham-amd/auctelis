@@ -1,12 +1,11 @@
-"""Week-1 trust fixes: record identity, fail-closed exit, agent fencing, doctor redact."""
+"""Week-1 trust fixes: record identity, fail-closed exit, agent fencing."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from auctelis.cli import main
-from auctelis.doctor import run_doctor
+from auctelis.cli import main_dev
 from auctelis.export.agent_digest import render_agent_digest
 from auctelis.security.authority import (
     build_authority_snapshot,
@@ -16,7 +15,6 @@ from auctelis.security.baseline import diff_against_baseline, save_baseline
 from auctelis.security.decision import compute_decision
 from auctelis.security.engine import run_security_scan
 from auctelis.security.gating import compute_exit_code
-from auctelis.vet import _verdict
 
 
 def _write_multi_mcp(root: Path, servers: dict) -> Path:
@@ -120,7 +118,7 @@ def test_authority_delta_keeps_both_servers(tmp_path: Path):
     assert added_names == {"alpha", "beta"}
 
 
-def test_unparsed_config_fails_closed_exit_and_vet(tmp_path: Path):
+def test_unparsed_config_fails_closed_exit(tmp_path: Path):
     coverage = {
         "unparsed_agent_config_count": 1,
         "parser_events": [{"type": "unparsed_agent_config", "path": ".cursor/mcp.json"}],
@@ -129,9 +127,6 @@ def test_unparsed_config_fails_closed_exit_and_vet(tmp_path: Path):
     assert compute_exit_code("high", findings=[], coverage=coverage) == 1
     assert compute_exit_code("any", findings=[], coverage=coverage) == 1
     assert compute_exit_code(None, findings=[], coverage=coverage) == 0
-
-    scan = type("Scan", (), {"findings": [], "coverage": coverage})()
-    assert _verdict(scan) == "REVIEW"
 
 
 def test_agent_digest_cli_keeps_fenced_gated(tmp_path: Path, capsys):
@@ -145,7 +140,7 @@ def test_agent_digest_cli_keeps_fenced_gated(tmp_path: Path, capsys):
             }
         },
     )
-    code = main(
+    code = main_dev(
         [
             "scan",
             str(root),
@@ -166,36 +161,6 @@ def test_agent_digest_cli_keeps_fenced_gated(tmp_path: Path, capsys):
         assert title.startswith("<untrusted_evidence>")
         # Raw finding dicts must not replace the fenced list.
         assert "description" not in digest["gated"][0]
-
-
-def test_doctor_output_has_no_secret_literals(tmp_path: Path):
-    home = tmp_path / "home"
-    home.mkdir()
-    secret = "sk-live-SUPERSECRETVALUE999"
-    (home / ".claude.json").write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "leak": {
-                        "command": "npx",
-                        "args": ["-y", "demo"],
-                        "env": {"API_TOKEN": secret, "GITHUB_TOKEN": secret},
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
-    out = tmp_path / "doctor-out"
-    text, _code = run_doctor(home=home, output_dir=out)
-    assert "auctelis doctor" in text or "doctor" in text.lower()
-    # Durable -o tree must not contain the raw secret or a raw .claude.json copy.
-    assert not (out / "_surface_claude-code" / ".claude.json").exists()
-    blob = ""
-    for path in out.rglob("*"):
-        if path.is_file():
-            blob += path.read_text(encoding="utf-8", errors="replace")
-    assert secret not in blob
 
 
 def test_render_digest_fences_suppression_justification():

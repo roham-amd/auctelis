@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "float": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "some-mcp-server"
+      ]
+    }
+  }
+}

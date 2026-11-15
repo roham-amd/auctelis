@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import write_authority_lock
-from auctelis.cli import main
+from auctelis.cli import main, main_dev
 from auctelis.cli.parser import build_parser
 
 
@@ -60,11 +60,13 @@ def test_scan_full_flag(tmp_path: Path):
         encoding="utf-8",
     )
     out = tmp_path / "out"
-    assert main(["scan", str(root), "-o", str(out), "--fail-on", "never"]) == 0
+    assert main_dev(["scan", str(root), "-o", str(out), "--fail-on", "never"]) == 0
     short = (out / "scan-summary.txt").read_text(encoding="utf-8")
     assert "DECISION:" in short
     assert len(short.splitlines()) <= 15
-    assert main(["scan", str(root), "-o", str(out / "full"), "--full", "--fail-on", "never"]) == 0
+    assert (
+        main_dev(["scan", str(root), "-o", str(out / "full"), "--full", "--fail-on", "never"]) == 0
+    )
     full = (out / "full" / "scan-summary-full.txt").read_text(encoding="utf-8")
     assert "AUTHORITY SURFACES" in full or "DECISION SUMMARY" in full
     # The short artifact stays short even after --full.

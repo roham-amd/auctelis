@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main
+from auctelis.cli import main, main_dev
 from auctelis.policy import load_policy
 
 
@@ -37,7 +37,7 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
     out = tmp_path / "out-add"
     # scan --base-lock is advisory; gate labels growth when CODEOWNERS covers the lock.
     assert (
-        main(
+        main_dev(
             [
                 "scan",
                 str(root),
@@ -57,7 +57,7 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
     out_ok = tmp_path / "out-ok"
     fresh_base = root / "AUTHORITY.lock"
     assert (
-        main(
+        main_dev(
             [
                 "scan",
                 str(root),

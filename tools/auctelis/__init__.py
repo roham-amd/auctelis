@@ -1,12 +1,12 @@
 """auctelis — the authority lockfile and PR review for AI agent reach.
 
-Public entry points:
-- CLI: ``auctelis`` / ``python -m auctelis``
-  (``check`` / ``lock`` / ``ci`` / ``gate`` / ``diff`` / ``why`` / ``demo``)
-- Library: ``auctelis.check``, ``auctelis.authority_lock``,
-  ``auctelis.gate``, ``auctelis.inventory.collector.collect_inventory``
-- Archived (callable): ``watch`` / ``allow`` / ``hook`` / ``doctor``
-- Hidden annotation: ``auctelis.security.scan``
+Product CLI (``auctelis``): ``check``, ``lock``, ``ci``, ``gate``, ``diff``,
+``why``, ``demo``. Bare invocation defaults to ``check``.
+
+Maintainer CLI (``auctelis-dev``): passive ``scan`` / ``annotate`` for CI,
+plus build, lint, corpus, and other toolkit commands.
+
+Libraries: ``auctelis.check``, ``auctelis.authority_lock``, ``auctelis.gate``.
 """
 
 __version__ = "0.8.0"

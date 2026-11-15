@@ -12,7 +12,6 @@ from auctelis.security.authority import (
 from auctelis.security.baseline import diff_against_baseline, save_baseline
 from auctelis.security.decision import compute_decision
 from auctelis.security.scan import run_scan
-from auctelis.vet import resolve_vet_source
 
 
 def test_package_pin_semantics():
@@ -23,11 +22,6 @@ def test_package_pin_semantics():
     assert not _package_looks_pinned("@scope/pkg")
     assert not _package_looks_pinned("git@github.com:org/repo.git")
     assert _package_looks_pinned("pkg@sha256:deadbeef")
-
-
-def test_open_parser_readme_example():
-    _, url = resolve_vet_source("github.com/org/some-skill")
-    assert url == "https://github.com/org/some-skill.git"
 
 
 def test_authority_snapshot_and_new_only_decision(tmp_path: Path):

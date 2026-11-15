@@ -20,7 +20,7 @@ def _ensure_utf8_stdout() -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Product entry: bare → ``watch``; a path → hidden ``scan``."""
+    """Product entry: bare invocation → ``check``; path → ``check <path>``."""
     _ensure_utf8_stdout()
     parser = build_parser(include_dev=False)
     args = parser.parse_args(normalize_argv(argv, include_dev=False))

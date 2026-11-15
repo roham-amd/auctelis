@@ -2,7 +2,6 @@ from pathlib import Path
 
 from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
 from auctelis.export.pr_comment import escape_markdown, render_authority_diff_comment
-from auctelis.harden import propose_patches, run_harden
 from auctelis.security.scan import run_scan
 
 
@@ -74,17 +73,6 @@ def test_agent_digest_fences_titles(tmp_path: Path):
     assert digest["safety"]["evidence_fenced"] is True
     if digest["gated_findings"]:
         assert "<untrusted_evidence>" in digest["gated_findings"][0]["title"]
-
-
-def test_harden_proposes_for_demo(tmp_path: Path):
-    demo = _demo_root()
-    assert demo.is_dir()
-    scan, payload, _code = run_scan(demo, output_dir=tmp_path / "out")
-    proposals = propose_patches(scan.to_findings_doc())
-    assert proposals
-    text, code = run_harden(findings_path=Path(payload["output_dir"]) / "findings.json")
-    assert code == 0
-    assert "auctelis harden" in text
 
 
 def test_rule_017_permission_bypass(tmp_path: Path):

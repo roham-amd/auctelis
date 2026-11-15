@@ -30,10 +30,12 @@ def _labels() -> dict[str, dict[str, str]]:
 
 
 def _fixture_dirs() -> list[Path]:
+    """Include fixtures whose files live only in nested dirs (e.g. .cursor/)."""
     return [
         path
         for path in sorted((_ROOT / "eval" / "configs").iterdir())
-        if path.is_dir() and any(item.is_file() for item in path.iterdir())
+        if path.is_dir() and any(path.rglob("*"))
+        and any(item.is_file() for item in path.rglob("*"))
     ]
 
 

@@ -51,8 +51,9 @@ Public path: **check → lock --update → ci init --apply --owner @team → gat
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Optional packaged fixture |
 
-`watch` / `allow` / `hook` / `doctor` are archived (callable, hidden from help).
-`scan` remains a hidden annotation layer. Reach: [`REACH.md`](REACH.md).
+Host stack (`watch` / `allow` / `hook` / `doctor`) and public `vet` / `harden` /
+`explain` CLIs are **removed**. Annotation helpers live on `auctelis-dev`
+(`scan` / `annotate`) for CI only. Reach: [`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  

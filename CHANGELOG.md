@@ -32,6 +32,17 @@ and this project uses semantic versioning.
   (no SARIF upload).
 - Build guard covers `SECURITY.md`, `CONTRIBUTING.md`, `AUTHORITY-LOCK.md`.
 - Docs truth reset: no Authority Watch front door; `gate --base-lock base.lock`.
+- GitHub Action annotation steps use `auctelis-dev scan` / `annotate`.
+- Eval suite expanded to **25 labeled fixtures** (`eval/configs/cfg-001`…
+  `cfg-025`); score with `python eval/score_configs.py`
+  (21 TP / 0 FP / 1 FN / 3 TN — fixture regression, not external precision).
+
+### Removed
+
+- Host stack CLIs and modules: `watch`, `allow`, `hook`, `doctor`, `ledger`,
+  `host_scan`, Cursor/Claude tripwire plugins and hook templates.
+- Public product CLIs: `vet`, `harden`, `explain` (and product `scan` /
+  `annotate` — moved to `auctelis-dev` only).
 
 ### Security
 

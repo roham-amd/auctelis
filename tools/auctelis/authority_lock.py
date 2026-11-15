@@ -746,17 +746,6 @@ def merge_mcp_tools_into_lock(
     return merged
 
 
-def home_lock_path(home: Path | None = None, *, lock_file: Path | None = None) -> Path:
-    """Per-user lock of host authority (``~/.auctelis/AUTHORITY.lock``).
-
-    ``lock_file`` overrides the default path when the caller already resolved one.
-    """
-    if lock_file is not None:
-        return lock_file.expanduser().resolve()
-    base = (home or Path.home()).expanduser().resolve()
-    return base / ".auctelis" / LOCK_NAME
-
-
 def run_lock_command(
     root: Path,
     *,

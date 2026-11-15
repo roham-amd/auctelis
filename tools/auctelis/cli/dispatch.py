@@ -15,31 +15,23 @@ from auctelis.authority_lock import (
     run_lock_command,
 )
 from auctelis.cli.authority_commands import (
-    cmd_allow,
     cmd_check,
-    cmd_doctor,
-    cmd_hook,
-    cmd_watch,
     cmd_why,
 )
 from auctelis.cli.guards import refuse_agent_mutation
-from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
+from auctelis.export.agent_digest import render_agent_digest
 from auctelis.export.annotate import render_github_annotations, render_text_annotations
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.export.sarif import report_to_sarif
 from auctelis.gate import load_lock_owners, render_gate_report, run_gate
-from auctelis.harden import run_harden
 from auctelis.hosts.profiles import get_host_profile, list_host_profiles
 from auctelis.inventory.collector import collect_inventory, inventory_to_json
 from auctelis.jsonio import print_json, read_json, write_json, write_text
 from auctelis.lock_io import load_authority_lock
 from auctelis.policy import apply_policy_defaults, discover_policy_file, load_policy
-from auctelis.security.engine import ScanResult
-from auctelis.security.report import render_finding_explanation
 from auctelis.security.scan import run_scan
 from auctelis.supply_chain.digest import sha256_file, verify_file_digest
 from auctelis.validate_report import validate_report_file
-from auctelis.vet import run_vet
 
 # Maintainer modules (build/deps/corpus/lint) import packaging and other
 # dev-only deps. Keep them lazy so the product wheel starts with jsonschema alone.
@@ -68,36 +60,20 @@ def dispatch(args: argparse.Namespace) -> int:
     command = args.command
     if args.command == "ci":
         return _cmd_init_gate(args) if getattr(args, "ci_command", None) == "init" else 2
-    if args.command == "hook":
-        return cmd_hook(args)
 
     match command:
         case "check":
             return cmd_check(args)
-        case "watch":
-            return cmd_watch(args)
         case "why":
             return cmd_why(args)
-        case "allow":
-            return cmd_allow(args)
         case "scan":
             return _cmd_scan(args)
-        case "doctor":
-            return cmd_doctor(args)
-        case "vet":
-            return _cmd_vet(args)
         case "demo":
             return _cmd_demo(args)
-        case "harden":
-            return _cmd_harden(args)
         case "lock":
             return _cmd_lock(args)
         case "gate":
             return _cmd_gate(args)
-        case "hook":
-            return cmd_hook(args)
-        case "explain":
-            return _cmd_explain(args)
         case "build":
             return _cmd_build(args)
         case "validate":
@@ -304,31 +280,9 @@ def _cmd_lock(args: argparse.Namespace) -> int:
         refused = refuse_agent_mutation("lock")
         if refused is not None:
             return refused
-    from contextlib import ExitStack
-
-    from auctelis.authority_lock import home_lock_path
-    from auctelis.host_scan import discover_host_surfaces, stage_all_host_surfaces
 
     root = args.path
     lock_path = getattr(args, "lock_file", None)
-    home_stack: ExitStack | None = None
-    if bool(getattr(args, "home", False)):
-        home = Path.home()
-        lock_path = lock_path or home_lock_path(home)
-        lock_path.parent.mkdir(parents=True, exist_ok=True)
-        surfaces = discover_host_surfaces(home=home)
-        present = [s for s in surfaces if s.exists]
-        if present:
-            home_stack = ExitStack()
-            home_stack.__enter__()
-            root, staged = stage_all_host_surfaces(home_stack, home=home)
-            print(
-                f"lock --home: sealing {len(staged)} host surface(s): "
-                + ", ".join(f"{s.host_id}:{s.path.name}" for s in staged)
-            )
-        else:
-            root = home
-
     mcp_tools: dict[str, str] | None = None
     snap = getattr(args, "snapshot", None)
     if snap is not None:
@@ -344,20 +298,15 @@ def _cmd_lock(args: argparse.Namespace) -> int:
             }
         mcp_tools = {str(k): str(v) for k, v in frag.items()}
 
-    try:
-        text, code = run_lock_command(
-            root,
-            check=bool(getattr(args, "check", False)),
-            update=bool(getattr(args, "update", False)),
-            lock_path=lock_path,
-            approval=getattr(args, "approval", None),
-            accept_gated=bool(getattr(args, "accept_gated", False))
-            or bool(getattr(args, "home", False)),
-            mcp_tools=mcp_tools,
-        )
-    finally:
-        if home_stack is not None:
-            home_stack.close()
+    text, code = run_lock_command(
+        root,
+        check=bool(getattr(args, "check", False)),
+        update=bool(getattr(args, "update", False)),
+        lock_path=lock_path,
+        approval=getattr(args, "approval", None),
+        accept_gated=bool(getattr(args, "accept_gated", False)),
+        mcp_tools=mcp_tools,
+    )
     print(text)
     if code == 0 and bool(getattr(args, "resolve", False)):
         print(
@@ -407,26 +356,6 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     return code
 
 
-def _cmd_vet(args: argparse.Namespace) -> int:
-    text, code = run_vet(
-        args.source,
-        output_dir=getattr(args, "output_dir", None),
-        keep_clone=bool(getattr(args, "keep_clone", False)),
-    )
-    if getattr(args, "agent", False):
-        out = getattr(args, "output_dir", None)
-        findings_path = Path(out) / "findings.json" if out else None
-        doc = (
-            read_json(findings_path)
-            if findings_path and findings_path.is_file()
-            else {"findings": []}
-        )
-        _emit_agent_digest(doc)
-        return code
-    print(text)
-    return code
-
-
 def _emit_agent_digest(
     findings_doc: dict[str, Any],
     *,
@@ -453,19 +382,6 @@ def _emit_agent_digest(
         write_json(write_to, digest)
     print_json(digest)
     return 0
-
-
-def _cmd_harden(args: argparse.Namespace) -> int:
-    if bool(getattr(args, "apply", False)):
-        refused = refuse_agent_mutation("harden --apply")
-        if refused is not None:
-            return refused
-    text, code = run_harden(
-        findings_path=args.findings,
-        apply=bool(getattr(args, "apply", False)),
-    )
-    print(text)
-    return code
 
 
 def _init_gate_templates() -> tuple[str, str, str]:
@@ -542,7 +458,7 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     if target is None:
         print(
             "demo fixture not found. Reinstall auctelis, or from a checkout: "
-            "auctelis scan examples/demo-vulnerable --fail-on high"
+            "auctelis-dev scan examples/demo-vulnerable --fail-on high"
         )
         return 2
     out = (args.output_dir or Path("auctelis-out-demo")).resolve()
@@ -756,38 +672,6 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
         print("Or re-run with --apply to merge CODEOWNERS and verify the ruleset.")
     print("Pin the Action + tools install to an immutable git tag/SHA (or PyPI once published).")
-    return 0
-
-
-def _cmd_explain(args: argparse.Namespace) -> int:
-    findings_path = args.output_dir / "findings.json"
-    if not findings_path.is_file():
-        print(f"Missing findings.json at {findings_path}. Run `auctelis scan` first.")
-        return 1
-    doc = read_json(findings_path)
-    scan = ScanResult.from_findings_doc(doc)
-    finding = scan.finding_by_id(args.finding_id)
-    if finding is None:
-        print(f"Finding {args.finding_id} not found in {findings_path}")
-        return 1
-    if getattr(args, "agent", False):
-        print_json(
-            {
-                "finding_id": finding.finding_id,
-                "rule_id": finding.rule_id,
-                "decision_hint": finding.severity,
-                "title": fence_untrusted(finding.title),
-                "who_gains": fence_untrusted(finding.attacker_control or finding.entry_point),
-                "reach": fence_untrusted(finding.impact),
-                "recommended_action": fence_untrusted(finding.recommended_action),
-                "fix_snippet": fence_untrusted(finding.fix_snippet),
-                "what_would_change_verdict": fence_untrusted(finding.verify_in_60s),
-                "evidence_strength": finding.evidence_strength,
-                "safety": {"target_is_untrusted_data": True, "evidence_fenced": True},
-            }
-        )
-        return 0
-    print(render_finding_explanation(scan, finding))
     return 0
 
 
