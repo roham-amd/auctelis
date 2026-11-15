@@ -1,7 +1,14 @@
 # External repo manifest for the labeled authority dataset (one repo per line).
-# Format: owner/name[@ref] — shallow clone, run the hidden scanner, then label
-# findings into holdout-labels.csv.
+# Format: owner/name[@ref] — shallow clone, run `auctelis check` / gate harness,
+# then label findings into holdout-labels.csv.
 #
 # Add real outside repositories for the pilot matrix (docs/pilots/TRACKER.md).
 # Do not add roham-amd/auctelis dogfood; it does not count toward the five-slot
-# kill criterion. The manifest is intentionally empty until a pilot exists.
+# kill criterion.
+#
+# Seed candidates (unlabeled until a pilot confirms — replace/remove freely):
+# modelcontextprotocol/servers
+# anthropics/anthropic-quickstarts
+# cursor/cursor
+# ContinueDev/continue
+# open-webui/open-webui

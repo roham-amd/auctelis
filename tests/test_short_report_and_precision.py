@@ -56,11 +56,11 @@ def test_product_cli_hides_maintainer_commands(tmp_path: Path):
     except SystemExit:
         product_has_adv = False
     assert product_has_adv is False
-    # Bare argv → watch when no repo config.
+    # Bare argv → check (repo authority front door).
     empty = tmp_path / "no-config"
     empty.mkdir()
     args_bare = product.parse_args(normalize_argv([], cwd=empty))
-    assert args_bare.command == "watch"
+    assert args_bare.command == "check"
     try:
         product.parse_args(["build", "all"])
         ok = True

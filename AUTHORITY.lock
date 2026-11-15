@@ -1,13 +1,13 @@
 {
   "approvals": [],
   "approved_findings": [],
-  "audited_commit": "5f72f8b241e87a6461bd05224f338ef14261d01c",
-  "lock_hash": "92b361ccef05b1033c301d579191a997",
+  "audited_commit": "5daccea3d14b7fc0eee387f07486a8183d31f748",
+  "lock_hash": "c432b58072d98ba1756eb01cf3a0fd8b",
   "mcp_servers": {},
   "mcp_tools": {},
   "policy_hash": "sha256:745d70cb4cfec399f4dd8f4a35de56ac95829530f0d02acb72ade38653145c63",
   "product": "auctelis",
-  "product_version": "0.5.0",
+  "product_version": "0.7.0",
   "records": [
     {
       "approval_posture": "unknown",
@@ -26,6 +26,7 @@
       "launcher": "",
       "name": "auctelis-gate",
       "path": ".github/workflows/auctelis-gate.yml",
+      "permission_allows": [],
       "pin_state": "n/a",
       "script_digest": "",
       "url_host": ""
@@ -37,9 +38,9 @@
         "unattended_operation"
       ],
       "destinations": [],
-      "digest": "sha256:850415a4ae14fd3a142ca704b4b204eacaece4afe4790e35f7b9b41ab62cdceb",
+      "digest": "sha256:86bda86f75e300f4b30ff27b693222496fbae5a4be10f4b20154feade945cd40",
       "env_keys": [],
-      "fingerprint": "38fc3aaebeaa12d3",
+      "fingerprint": "3bc8a3a57692399e",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/auctelis-validate@.github/workflows/auctelis-validate.yml",
       "identity_key": "github_workflows|ci workflow|auctelis-validate",
@@ -47,6 +48,7 @@
       "launcher": "",
       "name": "auctelis-validate",
       "path": ".github/workflows/auctelis-validate.yml",
+      "permission_allows": [],
       "pin_state": "n/a",
       "script_digest": "",
       "url_host": ""
@@ -68,6 +70,7 @@
       "launcher": "",
       "name": "publish-pypi",
       "path": ".github/workflows/publish-pypi.yml",
+      "permission_allows": [],
       "pin_state": "n/a",
       "script_digest": "",
       "url_host": ""
@@ -80,9 +83,9 @@
         "unattended_operation"
       ],
       "destinations": [],
-      "digest": "sha256:d7a8d6d6f229c177fd34ff679e8a99036b7e59413c3e902be19cbb36a31440f2",
+      "digest": "sha256:f0577ab2b34b8652fcb49a488edfa9de0b80f98c7eeee5aaff97919e3fce9fa0",
       "env_keys": [],
-      "fingerprint": "7e9074f418aea2ab",
+      "fingerprint": "06c88f0f6f58fa4e",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/release@.github/workflows/release.yml",
       "identity_key": "github_workflows|ci workflow|release",
@@ -90,6 +93,7 @@
       "launcher": "",
       "name": "release",
       "path": ".github/workflows/release.yml",
+      "permission_allows": [],
       "pin_state": "n/a",
       "script_digest": "",
       "url_host": ""
@@ -109,6 +113,7 @@
       "launcher": "",
       "name": "mcp",
       "path": "tools/auctelis/inventory/adapters/mcp.py",
+      "permission_allows": [],
       "pin_state": "n/a",
       "script_digest": "",
       "url_host": ""
@@ -128,6 +133,27 @@
       "launcher": "",
       "name": "mcp_snapshot",
       "path": "tools/auctelis/mcp_snapshot.py",
+      "permission_allows": [],
+      "pin_state": "n/a",
+      "script_digest": "",
+      "url_host": ""
+    },
+    {
+      "approval_posture": "unknown",
+      "args_digest": "",
+      "capabilities": [],
+      "destinations": [],
+      "digest": "sha256:96fc6df52fe43c7fde63b486ba5570000b3eefedf6b0c06f0db0ec5b64220eb2",
+      "env_keys": [],
+      "fingerprint": "2dfb45f369e1fdf9",
+      "host": "plugins",
+      "id": "plugins/Plugin / Connector/plugin@plugins/claude/.claude-plugin/plugin.json",
+      "identity_key": "plugins|plugin / connector|plugin",
+      "kind": "Plugin / Connector",
+      "launcher": "",
+      "name": "plugin",
+      "path": "plugins/claude/.claude-plugin/plugin.json",
+      "permission_allows": [],
       "pin_state": "n/a",
       "script_digest": "",
       "url_host": ""
@@ -142,9 +168,9 @@
         "modify_agent_instructions"
       ],
       "destinations": [],
-      "digest": "sha256:6d5721d8a7d136499b918acb8ba2559c276afea4736e39ea51f3df9239802a0f",
+      "digest": "sha256:cd0c931cccc6fa5d8cd8148daa238c07a51357a7d95c2cc1320a7cc4791a1ae7",
       "env_keys": [],
-      "fingerprint": "906b405fe4b47bc4",
+      "fingerprint": "f38c5c9ba0e44386",
       "host": "skill_md",
       "id": "skill_md/Skill/auctelis-auditor@skills/auctelis-auditor/SKILL.md",
       "identity_key": "skill_md|skill|auctelis-auditor",
@@ -152,8 +178,9 @@
       "launcher": "",
       "name": "auctelis-auditor",
       "path": "skills/auctelis-auditor/SKILL.md",
+      "permission_allows": [],
       "pin_state": "n/a",
-      "script_digest": "sha256:6d5721d8a7d136499b918acb8ba2559c276afea4736e39ea51f3df9239802a0f",
+      "script_digest": "sha256:cd0c931cccc6fa5d8cd8148daa238c07a51357a7d95c2cc1320a7cc4791a1ae7",
       "url_host": ""
     }
   ],

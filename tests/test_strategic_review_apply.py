@@ -19,19 +19,17 @@ from auctelis.security.scan import run_scan
 
 
 def test_core_public_commands_are_the_first_screen():
-    # The first screen is Authority Watch. scan/check/vet/gate/ci remain callable
-    # but are hidden from default help (the framework is not the page).
+    # Front door is repo Authority Diff. watch/allow/hook are archived.
     assert {
-        "demo",
-        "watch",
-        "why",
-        "doctor",
+        "check",
         "lock",
-        "hook",
-        "allow",
+        "ci",
+        "gate",
+        "why",
+        "demo",
     } == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in ("demo", "watch", "why", "doctor", "lock", "hook", "allow"):
+    for name in ("check", "lock", "ci", "gate", "why", "demo"):
         assert name in help_text
     listed = [
         line.strip()
@@ -40,8 +38,9 @@ def test_core_public_commands_are_the_first_screen():
     ]
     assert not any(line.startswith("scan") for line in listed)
     assert not any(line.startswith("vet") for line in listed)
-    assert not any(line.startswith("gate") for line in listed)
-    assert not any(line.startswith("ci") for line in listed)
+    assert not any(line.startswith("watch") for line in listed)
+    assert not any(line.startswith("allow") for line in listed)
+    assert not any(line.startswith("hook") for line in listed)
     # Review / advanced stay omitted from brief help.
     assert "Propose least-privilege" not in help_text
     assert "Explain a finding" not in help_text

@@ -1,5 +1,5 @@
-# Lockless-first quickstart. Upgrade: seal AUTHORITY.lock, set locked=true,
-# run `auctelis ci init --owner @team`, protect with CODEOWNERS/rulesets.
+# Enforce-by-default quickstart. For warn-only: locked=false or
+# `auctelis ci init --advisory --owner @team`.
 # Prefer an immutable Action commit SHA in high-assurance repos.
 name: auctelis
 on:
@@ -21,18 +21,18 @@ jobs:
       - name: Install auctelis (git tag; PyPI not published yet)
         run: >
           pip install
-          "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
+          "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
 
       - name: auctelis Authority Diff
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.5.0
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.7.0
         with:
           path: .
           mode: scan
           trusted-policy: "true"
           authority-diff: "true"
-          locked: "false"
+          locked: "true"
           strict-ruleset: "true"
           install-tools-from: path
           annotate: true

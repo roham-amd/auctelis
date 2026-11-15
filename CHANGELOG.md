@@ -5,6 +5,49 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.7.0] — 2026-11-15
+
+### Added
+
+- **`auctelis check`** — repo-only authority vs `AUTHORITY.lock` (product front
+  door). JSON schema `authority-diff/1` via `--json`.
+- **Full project discovery in the lock path** — skills (`.claude/skills`,
+  `skills/`), instructions (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.clinerules`,
+  `.cursor/rules`), subagents, and plugins become sealable records.
+- **`ci init --advisory`** — opt out of enforce; default is enforce
+  (`locked=true`, `policy.mode: enforce`).
+- Authority cards always show `@ path` so PR reviewers can jump to the file.
+
+### Changed
+
+- **North star:** GitHub-native Authority Diff + enforcement gate (not Project
+  Trust / host hooks). Positioning: “the authority lockfile and PR review for
+  what AI agents can reach.”
+- Public path: `check → lock --update → ci init --owner → gate`.
+- Bare `auctelis` → `check` (was `watch`).
+- Action `locked` default is **true**.
+- Stale 0.5.0 docs / dogfood lock bumped.
+
+### Archived (callable, hidden from help)
+
+- `watch` / `allow` / `hook` / `doctor` — host seal, project-allow store, and
+  tripwire install remain for compatibility but are not the product path.
+
+### Fixed
+
+- Docs / skills / plugins / CI matrix aligned to the Authority Diff front door
+  (no more bare-`watch` as the documented default).
+- `dispatch` imports host staging from `host_scan` (not via `doctor` re-exports).
+- Build guard rejects stale “bare auctelis runs watch” copy in public docs.
+
+### Compatibility
+
+- Existing locks remain valid; regenerate after upgrading to pick up new
+  instruction/skill surfaces.
+- `scan --locked` still works for the hidden annotation layer.
+- Git-tag install remains the supported path until PyPI returns 200.
+- Archived `watch` / `allow` / `hook` / `doctor` remain callable.
+
 ## [0.6.0] — 2026-11-15
 
 ### Added

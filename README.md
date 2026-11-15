@@ -1,46 +1,42 @@
 # Auctelis
 
-**Package-lock for agent authority**
+**The authority lockfile and PR review for what AI agents can reach.**
 
-> See what your agents can reach, and what changed since you last said OK.
+> See what a repo’s agent configs can reach, and what changed since you last said OK.
 
-Auctelis inventories the MCP servers, skills, hooks, and commands your agents
-can use, seals what you approved in `AUTHORITY.lock`, and prints one line when
-that reach changes — at session start. It is a **consent ledger**, not a
-certification, runtime sandbox, or marketplace badge.
+Auctelis inventories MCP servers, skills, hooks, instructions, and commands in a
+repository, seals what you approved in `AUTHORITY.lock`, and posts one Authority
+Diff on every PR. It is a **consent ledger for agent reach**, not a sandbox,
+certification, or marketplace badge.
 
 Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/REACH.md)
 
 ---
 
-## First three minutes
+## First ten minutes
 
 ```bash
-# Git tag is the supported install until the PyPI package returns 200.
+# Git tag is the supported install until PyPI returns 200.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.6.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
 
-auctelis                        # every sealable record + Accept digest
-auctelis watch --seal --accept <digest>   # human baseline (digest from the screen)
-auctelis allow                  # allow this project's authority hash
-auctelis watch --arm            # session + tripwire hooks (absolute paths)
-auctelis hook status --probe    # prove each wired tripwire denies
+auctelis check                  # repo authority vs AUTHORITY.lock
+auctelis lock --update          # seal the current tree into AUTHORITY.lock
+auctelis ci init --owner @security   # workflow + CODEOWNERS (enforce by default)
 auctelis why linear             # exact config path for one name
 ```
 
-First run shows **every record that will be sealed** (including host permission
-posture) and an Accept digest. After you seal, a new MCP server or permission
-escalation prints one line. Unchanged hosts stay quiet.
+On a PR, the Action posts the base→head Authority Diff. Growth fails until a
+CODEOWNER reviews the lock. Locally, `auctelis check` is the pre-push preflight.
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
 ```
 
-**Labels:** `GROWTH` | `REDUCTION` | `NONE` (what the lock delta is).
+**Labels:** `GROWTH` | `REDUCTION` | `NONE`  
+**Verdicts:** `LOCKED` | `BASELINE_NEEDED` | `NEEDS_REVIEW` | `BASELINE_ADOPTED`
 
-Hooks are **tripwires**, not a sandbox — an agent can still route around them.
-Agents must export `AUCTELIS_AGENT=1`; `watch --seal`, `watch --arm`,
-`hook install`, and `lock` are refused for agents.
+Agents must export `AUCTELIS_AGENT=1`; `lock` and `ci init` are refused for agents.
 
 ---
 
@@ -48,21 +44,19 @@ Agents must export `AUCTELIS_AGENT=1`; `watch --seal`, `watch --arm`,
 
 | Command | Purpose |
 | --- | --- |
-| `auctelis` / `watch` | One-screen declared authority (front door) |
-| `auctelis watch --seal --accept <digest>` | Seal the human baseline (digest from screen) |
-| `auctelis allow` | Allow current project authority hash |
-| `auctelis watch --arm` | Install session + tripwire hooks |
+| `auctelis` / `check` | Repo authority vs `AUTHORITY.lock` (front door) |
+| `auctelis lock --update` | Write / refresh the committed lock |
+| `auctelis ci init --owner @team` | Enforce workflow + CODEOWNERS + lock |
+| `auctelis gate --base-lock …` | PR Authority Diff + CODEOWNERS gate |
 | `auctelis why <name>` | Exact config path / fields for one record |
-| `auctelis hook status [--probe]` | Wired / firing per host; optional tripwire probe |
 | `auctelis demo` | Packaged fixture (optional) |
 
-`scan` / `gate` / `ci` / `vet` / `explain` / `harden` remain callable for
-existing scripts but are hidden from default help. The scanner is an annotation
-layer, not the product.
+`watch` / `allow` / `hook` / `doctor` remain callable for compatibility but are
+archived from the product path. `scan` is a hidden annotation layer.
 
 Public docs: [`INSTALL`](docs/INSTALL.md) · [`PRODUCT`](docs/PRODUCT.md) ·
 [`REACH`](docs/REACH.md) · [`AUTHORITY-LOCK`](docs/AUTHORITY-LOCK.md) ·
-[index](docs/DOCUMENTATION-INDEX.md).
+[`AUCTELIS-GATE`](docs/AUCTELIS-GATE.md) · [index](docs/DOCUMENTATION-INDEX.md).
 
 Pilots: [`docs/pilots/`](docs/pilots/).
 

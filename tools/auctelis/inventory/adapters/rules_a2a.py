@@ -28,6 +28,7 @@ _RULE_FILE_NAMES = {
     "CODEX.md",
     ".cursorrules",
     ".windsurfrules",
+    ".clinerules",
     "copilot-instructions.md",
 }
 

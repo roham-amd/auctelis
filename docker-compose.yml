@@ -1,8 +1,8 @@
-# Local auctelis container - kit baked into the image; mount a target repo at /work.
+# Optional / deferred local container (not part of the Authority Diff install).
 #
 #   docker compose build
+#   TARGET=/path/to/repo docker compose run --rm auctelis check /work
 #   TARGET=/path/to/repo docker compose run --rm auctelis scan /work -o /tmp/auctelis-out
-#   docker compose run --rm auctelis watch --home /work
 #
 # Prefer writing artifacts outside the mounted target (e.g. /tmp/auctelis-out).
 

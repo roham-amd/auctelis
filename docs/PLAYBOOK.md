@@ -1,9 +1,9 @@
 # Agent authority review playbook
 
 One page for humans reviewing agent-config diffs. The weekly habit is the
-`auctelis watch` delta in Cursor or Claude; graduate to a repo
-`AUTHORITY.lock` + CODEOWNERS when a team needs the merge gate. This is the
-fallback if hook retention is zero at week 4 — not a substitute for the delta.
+PR Authority Diff (CODEOWNERS review of `AUTHORITY.lock`). Locally,
+`auctelis check` is the pre-push preflight. This playbook is the fallback if
+pilot adoption fails the day-60 kill criterion.
 
 ## Report questions (every Authority Diff)
 
@@ -69,14 +69,13 @@ AUTHORITY.lock  @security-owner
 ```bash
 # Git install only today — PyPI not published yet
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.5.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools"
 
-auctelis watch              # one-screen declared authority delta
-auctelis watch --seal --accept <digest>  # human baseline (no approval fields are written)
-auctelis watch --arm        # Cursor + Claude session/tool hooks
-auctelis ci init --owner @you   # lockless workflow + CODEOWNERS
+auctelis check              # repo authority vs AUTHORITY.lock
+auctelis lock --update      # seal AUTHORITY.lock (no approval fields are written)
+auctelis ci init --owner @you   # enforce workflow + CODEOWNERS
 auctelis demo               # canned fixture + PR comment (exits 0)
-# scan --base-lock is advisory; gate is the authority-growth verdict:
+# gate is the authority-growth verdict:
 auctelis gate --base-lock AUTHORITY.lock
 ```
 

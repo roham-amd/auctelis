@@ -1,14 +1,10 @@
-"""Install session-start and tool-time authority hooks for Claude and Cursor.
+"""Archived session-start and tool-time tripwire install (``auctelis hook``).
 
-Authority Watch front door: after ``auctelis watch --seal --accept <digest>``,
-install a session-start hook that speaks only on change, and a tool-time
-**tripwire** that refuses unlisted MCP servers and agent edits to
-authority-bearing paths.
+Optional local hooks for Claude/Cursor after a host ``watch`` seal. Tripwires are
+not a sandbox — agents can route around them. ``hook status`` / ``--probe`` are
+advisory (script presence and synthetic deny), not proof of host wiring.
 
-Tripwires are not a sandbox: an agent can route around them with shell, alternate
-config paths, or a fresh repo. ``hook status`` reports observed fire via the
-local heartbeat ledger, not mere file presence. ``hook status --probe`` proves
-each wired tripwire denies a synthetic unknown MCP.
+The product front door is ``auctelis check`` + the PR Authority Diff gate.
 """
 
 from __future__ import annotations

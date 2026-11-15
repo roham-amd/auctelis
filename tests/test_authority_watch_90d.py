@@ -201,7 +201,7 @@ def test_lock_diff_dedupes_url_and_host_destination():
     assert lines[0].count("mcp.example.invalid") == 1
 
 
-def test_ci_init_writes_lockless_workflow(tmp_path: Path, capsys):
+def test_ci_init_writes_enforce_workflow(tmp_path: Path, capsys):
     root = tmp_path / "repo"
     root.mkdir()
     (root / ".cursor").mkdir()
@@ -212,10 +212,10 @@ def test_ci_init_writes_lockless_workflow(tmp_path: Path, capsys):
     code = main(["ci", "init", "--owner", "@sec", "--force", str(root)])
     assert code == 0
     wf = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
-    assert 'locked: "false"' in wf
+    assert 'locked: "true"' in wf
     assert 'strict-ruleset: "true"' in wf
     out = capsys.readouterr().out
-    assert "locked: false" in out
+    assert "locked: true" in out or "Mode: enforce" in out
 
 
 def test_product_cli_rejects_dev_only_snapshot():
@@ -226,7 +226,13 @@ def test_product_cli_rejects_dev_only_snapshot():
     help_text = parser.format_help()
     assert "snapshot" not in help_text
     assert "artifact-vet" not in help_text
-    assert "hook" in help_text
+    # Archived hook stays callable but hidden from brief help listing.
+    listed = [
+        line
+        for line in help_text.splitlines()
+        if line.startswith("    ") and not line.strip().startswith("(")
+    ]
+    assert not any(line.strip().startswith("hook") for line in listed)
 
 
 def test_pretool_hook_refuses_unknown_mcp(tmp_path: Path, monkeypatch, capsys):

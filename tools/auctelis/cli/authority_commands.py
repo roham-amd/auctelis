@@ -1,4 +1,4 @@
-"""CLI handlers for the Authority Watch first screen and host hooks."""
+"""CLI handlers for repo check, archived watch/allow/hooks, and why."""
 
 from __future__ import annotations
 
@@ -9,15 +9,39 @@ from auctelis.doctor import run_doctor
 from auctelis.jsonio import print_json
 
 
-def cmd_why(args: argparse.Namespace) -> int:
-    """Print exact config path / fields for one authority name."""
-    from auctelis.watch import why_home
+def cmd_check(args: argparse.Namespace) -> int:
+    """Repo-only authority vs AUTHORITY.lock (product front door)."""
+    from auctelis.check import build_check_report, check_exit_code, render_check
 
-    lines, code = why_home(
-        str(getattr(args, "name", "") or ""),
-        home=getattr(args, "home", None),
-        project=getattr(args, "project", None),
+    report, cards, _scan = build_check_report(
+        getattr(args, "path", None),
+        lock_file=getattr(args, "lock_file", None),
     )
+    if getattr(args, "json", False):
+        print_json(report)
+    else:
+        print(render_check(report, cards))
+    return check_exit_code(report)
+
+
+def cmd_why(args: argparse.Namespace) -> int:
+    """Print exact config path / fields for one authority name (repo-first)."""
+    from auctelis.check import why_repo
+
+    # Archived host why when --home is explicitly passed.
+    if getattr(args, "home", None) is not None:
+        from auctelis.watch import why_home
+
+        lines, code = why_home(
+            str(getattr(args, "name", "") or ""),
+            home=getattr(args, "home", None),
+            project=getattr(args, "path", None),
+        )
+    else:
+        lines, code = why_repo(
+            str(getattr(args, "name", "") or ""),
+            root=getattr(args, "path", None),
+        )
     print("\n".join(lines).rstrip())
     return code
 

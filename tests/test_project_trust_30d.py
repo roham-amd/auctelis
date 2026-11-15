@@ -20,8 +20,8 @@ def _write_json(path: Path, data: object) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-def test_allow_is_public_command():
-    assert "allow" in CORE_PUBLIC_COMMANDS
+def test_allow_is_archived_not_public():
+    assert "allow" not in CORE_PUBLIC_COMMANDS
 
 
 def test_curl_pipeline_extracts_destination_host():

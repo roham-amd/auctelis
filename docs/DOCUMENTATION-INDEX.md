@@ -1,40 +1,36 @@
-# Documentation index (auctelis 0.5.0)
+# Documentation index (auctelis 0.7.0)
 
-## Public surface (start here)
+Keep the public surface near ten pages. Everything else is maintainer depth.
+
+## Public surface (~10)
 
 | Doc | Purpose |
 | --- | --- |
-| [`../README.md`](../README.md) | Authority Watch first screen |
-| [`INSTALL.md`](INSTALL.md) | Clean install (git tag; PyPI only once it returns 200) |
+| [`../README.md`](../README.md) | Authority Diff front door |
+| [`INSTALL.md`](INSTALL.md) | Git-tag install |
 | [`PRODUCT.md`](PRODUCT.md) | Frozen product contract |
 | [`REACH.md`](REACH.md) | Reach definition for lock schema v1 |
-| [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) | Lock semantics, diff classes, pins |
-| [`PLAYBOOK.md`](PLAYBOOK.md) | Human authority-review checklist (kill-criterion fallback) |
+| [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) | Lock semantics, diff classes |
+| [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) | Enforce Action + CODEOWNERS |
+| [`PLAYBOOK.md`](PLAYBOOK.md) | Human review checklist (day-60 fallback) |
+| [`ROADMAP.md`](ROADMAP.md) | 30/90-day plan + kill list |
+| [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI recipe |
+| [`../CHANGELOG.md`](../CHANGELOG.md) | Release notes |
 
-## Optional / demoted (team upsell & annotations)
+## Maintainer / archived depth
 
 | Doc | Purpose |
 | --- | --- |
-| [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) | Lockless Action → locked upgrade (optional) |
-| [`GUARD-SCAN.md`](GUARD-SCAN.md) | Hidden annotation layer (`scan` / `check`) |
 | [`CLI-REFERENCE.md`](CLI-REFERENCE.md) | Full CLI (`auctelis-dev` for maintainer) |
+| [`GUARD-SCAN.md`](GUARD-SCAN.md) | Hidden annotation layer (`scan`) |
 | [`POLICY.md`](POLICY.md) | `.auctelis.yml` |
-| [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) | Adapter maturity / unknowns |
+| [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md) | Adapter maturity |
 | [`adapters/`](adapters/) | Per-surface maturity specs |
 | [`SECURITY-RULES.md`](SECURITY-RULES.md) | Rules 001–022 (annotations) |
 | [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md) | Evidence classes |
 | [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust |
-| [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI recipe |
-
-## Maintainers / evidence
-
-| Doc | Purpose |
-| --- | --- |
-| [`ROADMAP.md`](ROADMAP.md) | 30/90-day lockfile + hook plan + kill list |
-| [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling procedure |
-| [`pilots/`](pilots/) | Five-pilot tracker + kill criterion |
-| [`../eval/`](../eval/) | Labeled configs + pilot metrics |
-| [`../CHANGELOG.md`](../CHANGELOG.md) | Release notes |
+| [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling |
+| [`pilots/`](pilots/) | Five-pilot tracker |
 | [`../SECURITY.md`](../SECURITY.md) | Vulnerability reporting |
 
 Skill (explainer only): [`../skills/auctelis-auditor/SKILL.md`](../skills/auctelis-auditor/SKILL.md)

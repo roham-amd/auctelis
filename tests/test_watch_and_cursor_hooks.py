@@ -21,15 +21,15 @@ def _mcp(home: Path, servers: dict) -> None:
     (cursor / "mcp.json").write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
 
 
-def test_bare_auctelis_is_watch_not_scan(tmp_path: Path):
-    assert normalize_argv([], cwd=tmp_path) == ["watch"]
-    assert "watch" in build_parser().format_help()
+def test_bare_auctelis_is_check_not_scan(tmp_path: Path):
+    assert normalize_argv([], cwd=tmp_path) == ["check"]
     listed = [
         line.strip()
         for line in build_parser().format_help().splitlines()
         if line.startswith("    ")
     ]
-    assert any(line.startswith("watch") for line in listed)
+    assert any(line.startswith("check") for line in listed)
+    assert not any(line.startswith("watch") for line in listed)
     assert not any(line.startswith("scan") for line in listed)
     assert not any(line.startswith("vet") for line in listed)
 
@@ -50,8 +50,10 @@ def test_watch_first_run_shows_reach_and_cards(tmp_path: Path, capsys):
     # First run is an onboarding summary, not a growth delta (exit 0).
     assert code == 0
     assert "Reach: 1 MCP, 0 hooks" in out
-    assert '+ mcp "linear" → mcp.linear.app · network' in out
+    assert '+ mcp "linear" → mcp.linear.app' in out
+    assert "network" in out
     assert "publisher NOT VERIFIED" in out
+    assert "@" in out  # config path on the card
     assert "Inventory:" in out
     assert "every current record appears as new" not in out
     assert "AUCTELIS-RULE" not in out
@@ -348,10 +350,10 @@ def test_gate_verdict_wins_in_pr_comment(tmp_path: Path, monkeypatch):
     assert "label `GROWTH`" in comment
 
 
-def test_release_manifest_is_lockless_first():
+def test_release_manifest_is_enforce_first():
     manifest = json.loads(
         (_ROOT / "canonical" / "release-manifest.json").read_text(encoding="utf-8")
     )
-    assert manifest["primary_command"] == "auctelis watch"
-    assert manifest["interfaces"]["locked_action_default"] is False
-    assert manifest["interfaces"]["cursor_hooks"] is True
+    assert manifest["primary_command"] == "auctelis check"
+    assert manifest["interfaces"]["locked_action_default"] is True
+    assert manifest["interfaces"]["cursor_hooks"] is False

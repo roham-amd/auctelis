@@ -17,13 +17,13 @@ def _mcp(home: Path, servers: dict) -> None:
     (cursor / "mcp.json").write_text(json.dumps({"mcpServers": servers}), encoding="utf-8")
 
 
-def test_public_path_is_lockfile_not_gate():
-    assert "why" in PUBLIC_PATH
-    assert "gate" not in PUBLIC_PATH
-    assert "ci" not in CORE_PUBLIC_COMMANDS
-    assert "gate" not in CORE_PUBLIC_COMMANDS
+def test_public_path_is_authority_diff_gate():
+    assert "check" in PUBLIC_PATH
+    assert "gate" in PUBLIC_PATH
+    assert "ci" in CORE_PUBLIC_COMMANDS
+    assert "gate" in CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    assert "tripwire" in help_text.lower()
+    assert "authority" in help_text.lower()
 
 
 def test_first_run_highlights_not_growth_exit(tmp_path: Path, capsys):

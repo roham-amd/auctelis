@@ -1,9 +1,11 @@
-# Sample auctelis scan artifacts
+# Sample auctelis scan artifacts (frozen)
 
-Generated from `examples/demo-vulnerable` with auctelis **0.5.0** / tooling **0.5.0**:
+Historical artifacts from `examples/demo-vulnerable` (generated under 0.5.0).
+JSON/SARIF blobs are intentionally frozen for contract shape; regenerate with a
+current tag when you need fresh numbers:
 
 ```bash
-auctelis watch --home /tmp/auctelis-demo-home   # the product first screen
+auctelis check examples/demo-vulnerable
 auctelis scan examples/demo-vulnerable -o examples/guard-scan --full --fail-on never
 ```
 

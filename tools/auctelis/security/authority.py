@@ -177,6 +177,8 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
             "Rule pack",
             "CI Workflow",
             "Plugin",
+            "Plugin / Connector",
+            "Subagent",
         }
         if kind not in authority_kinds and not hints:
             continue

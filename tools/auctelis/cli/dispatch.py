@@ -15,6 +15,7 @@ from auctelis.authority_lock import (
 )
 from auctelis.cli.authority_commands import (
     cmd_allow,
+    cmd_check,
     cmd_doctor,
     cmd_hook,
     cmd_watch,
@@ -63,16 +64,15 @@ def _write_or_print(data: object, output: Path | None) -> int:
 
 
 def dispatch(args: argparse.Namespace) -> int:
-    # Keep ``check`` as a scan alias; other legacy aliases were removed.
-    command = {
-        "check": "scan",
-    }.get(args.command, args.command)
+    command = args.command
     if args.command == "ci":
         return _cmd_init_gate(args) if getattr(args, "ci_command", None) == "init" else 2
     if args.command == "hook":
         return cmd_hook(args)
 
     match command:
+        case "check":
+            return cmd_check(args)
         case "watch":
             return cmd_watch(args)
         case "why":
@@ -306,7 +306,7 @@ def _cmd_lock(args: argparse.Namespace) -> int:
     from contextlib import ExitStack
 
     from auctelis.authority_lock import home_lock_path
-    from auctelis.doctor import discover_host_surfaces, stage_all_host_surfaces
+    from auctelis.host_scan import discover_host_surfaces, stage_all_host_surfaces
 
     root = args.path
     lock_path = getattr(args, "lock_file", None)
@@ -599,6 +599,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         return 2
     if not owner.startswith("@"):
         owner = f"@{owner}"
+    advisory = bool(getattr(args, "advisory", False))
     root = args.path.resolve()
     root.mkdir(parents=True, exist_ok=True)
     policy_path = root / ".auctelis.yml"
@@ -606,6 +607,13 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     workflow_path = workflow_dir / "auctelis-gate.yml"
     codeowners_path = root / ".github" / "CODEOWNERS"
     policy_body, workflow_body, codeowners_body = _init_gate_templates()
+    if advisory:
+        policy_body = policy_body.replace("mode: enforce", "mode: advisory")
+        workflow_body = workflow_body.replace('locked: "true"', 'locked: "false"')
+        workflow_body = workflow_body.replace(
+            "# Enforce mode: AUTHORITY.lock drift fails the job; CODEOWNERS must review growth.",
+            "# Advisory mode: Authority Diff posts; does not fail on lock drift.",
+        )
     codeowners_body = codeowners_body.replace("@YOUR_TEAM", owner)
     wrote: list[str] = []
     if policy_path.exists() and not args.force:
@@ -657,11 +665,9 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         print("Wrote:")
         for path in wrote:
             print(f"  {path}")
+    mode = "advisory" if advisory else "enforce"
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
-    print(
-        f"CODEOWNERS owner: {owner}. Workflow starts lockless (locked: false); "
-        "set locked: true after AUTHORITY.lock is sealed and protected."
-    )
+    print(f"CODEOWNERS owner: {owner}. Mode: {mode} (locked: {'false' if advisory else 'true'}).")
     print("Enable branch protection requiring a review from that owner on AUTHORITY.lock.")
     print("Pin the Action + tools install to an immutable git tag/SHA (or PyPI once published).")
     return 0

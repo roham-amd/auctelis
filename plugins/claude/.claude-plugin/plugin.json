@@ -1,6 +1,6 @@
 {
   "name": "auctelis",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "direnv allow for agent authority — Project Trust tripwire",
   "author": {
     "name": "Auctelis contributors"

@@ -73,7 +73,18 @@ jobs:
         run: uv sync --locked
 
       - name: Pytest (product path)
-        run: uv run --locked pytest -q ../tests/test_watch_and_cursor_hooks.py ../tests/test_northstar_30d.py
+        run: >
+          uv run --locked pytest -q
+          ../tests/test_authority_diff_070.py
+          ../tests/test_authority_lock.py
+          ../tests/test_gate.py
+          ../tests/test_cli_authority.py
+
+      - name: Pytest (archived host/hook compat)
+        run: >
+          uv run --locked pytest -q
+          ../tests/test_watch_and_cursor_hooks.py
+          ../tests/test_northstar_30d.py
 
   wheel-smoke:
     runs-on: ubuntu-latest

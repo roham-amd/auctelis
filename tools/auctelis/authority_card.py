@@ -27,6 +27,7 @@ _KIND_LABELS: dict[str, str] = {
     "claude slash command": "command",
     "commands": "command",
     "plugin": "plugin",
+    "plugin / connector": "plugin",
     "subagent": "subagent",
     "rule / instruction file": "instructions",
     "rule pack": "instructions",
@@ -176,10 +177,9 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
         target = f" → {host}"
     elif launch:
         target = f" launcher {_short(launch)}"
-        if path:
-            target += f" @ {path}"
-    elif path:
-        target = f" @ {path}"
+    if path and f" @ {path}" not in target:
+        # Always surface the config file so PR reviewers can jump to the change.
+        target += f" @ {_short(path, width=56)}"
 
     caps = _capabilities(record)
     bits.append(" · ".join(caps) if caps else "authority")

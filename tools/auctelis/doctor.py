@@ -1,11 +1,10 @@
-"""Host-level authority map (`auctelis doctor`).
+"""Archived host-level authority map (`auctelis doctor`).
 
-`doctor` is an alias for the Authority Watch first screen: declared config on
-this machine, diffed against the last human seal. It no longer prints a findings
-wall; rule IDs are annotations, not the product.
+``doctor`` is a compatibility alias for ``watch`` (host seal delta). The product
+front door for repositories is ``auctelis check``.
 
-Host discovery/staging lives in :mod:`auctelis.host_scan`; the names are
-re-exported here for callers that used the pre-0.4 location.
+Host discovery/staging lives in :mod:`auctelis.host_scan`; names are re-exported
+here for callers that used the pre-0.4 import path.
 """
 
 from __future__ import annotations

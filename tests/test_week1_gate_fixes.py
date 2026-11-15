@@ -37,7 +37,7 @@ def test_ci_init_template_loads_and_round_trips(tmp_path: Path):
     path = tmp_path / ".auctelis.yml"
     path.write_text(policy_body, encoding="utf-8")
     policy = load_policy(path)
-    assert policy.mode == "advisory"
+    assert policy.mode == "enforce"
     assert policy.suppressions == []
 
 
@@ -48,7 +48,7 @@ def test_ci_init_requires_owner_and_writes_loadable_policy(tmp_path: Path):
     assert main(["ci", "init", str(root), "--owner", "@YOUR_TEAM"]) == 2
     assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0
     policy = load_policy(root / ".auctelis.yml")
-    assert policy.mode == "advisory"
+    assert policy.mode == "enforce"
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "@sec-owners" in owners
     assert "@YOUR_TEAM" not in owners

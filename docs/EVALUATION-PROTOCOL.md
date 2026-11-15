@@ -33,9 +33,9 @@ pilot notes were removed in the shrink; cite only rows with day-30 retention evi
 ## Procedure (per repository)
 
 ```bash
-auctelis watch                       # one-screen delta vs the host seal
-auctelis watch --seal                # human baseline
-auctelis watch --arm                 # Cursor + Claude hooks
+auctelis check <path>                # repo authority vs AUTHORITY.lock
+auctelis lock --update <path>        # seal baseline
+auctelis ci init --owner @team <path>
 # Hidden annotation layer, if you need finding-level detail:
 auctelis scan <path> -o auctelis-out-pilot/<slug> --full
 ```
@@ -47,9 +47,9 @@ Capture:
 | Commit SHA | `audited_commit` / `profile.json` |
 | Product / tooling / rule pack | `provenance` in `findings.json` |
 | Component count + maturity mix | `coverage` |
-| Delta cards | `auctelis watch` / `watch --delta-only` |
+| Delta cards | `auctelis check` / `diff lock` / PR comment |
 | Unsupported / unparsed | `coverage.manual_review_families`, `unparsed_agent_config_count` |
-| Setup time | wall clock to the first delta line |
+| Setup time | wall clock to the first PR Authority Diff |
 | Reviewer disposition | accepted / rejected / deferred / remediated |
 | Did the line teach them something? | yes / partial / no (tracker) |
 
@@ -72,7 +72,7 @@ Only configs with a fixture are scored. Run:
 python eval/score_configs.py
 ```
 
-The 0.5.0 tree has five fixtures: four expected-growth configs and one benign
+The 0.6.0 tree has five fixtures: four expected-growth configs and one benign
 README. The current differ scores **TP=4, FP=0, FN=0, TN=1** on those five.
 That is a regression check, not a precision claim — publish a TP/FP number only
 after outside, independently labeled configs exist.

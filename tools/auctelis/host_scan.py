@@ -1,10 +1,8 @@
-"""Host config discovery and staging for `watch` / `doctor` / `lock --home`.
+"""Host config discovery and staging for archived `watch` / `doctor` / `lock --home`.
 
-This module owns the read-only host surface walk so the product front door
-(`watch`) does not depend on the `doctor` CLI module. Staging preserves
-adapter-relative paths (`.claude/settings.json`, `.cursor/mcp.json`) and copies
-lone config files into a throwaway directory so durable artifact trees never
-receive raw host config.
+Repo ``check`` / ``lock`` use full-tree :mod:`auctelis.inventory` adapters.
+This module owns the read-only host surface walk and throwaway staging so durable
+artifact trees never receive raw host config.
 """
 
 from __future__ import annotations
@@ -32,15 +30,28 @@ HOST_RELATIVE_SURFACES: tuple[tuple[str, str], ...] = (
     ("zed", ".config/zed"),
 )
 
-# Relative to a project / cwd. This is the Project Trust wedge: untrusted repos.
+# Relative to a project / cwd. Used by archived watch/allow staging only.
+# Repo `check` / `lock` use full-tree DISCOVERY_ADAPTERS (skills, rules, …).
 PROJECT_RELATIVE_SURFACES: tuple[tuple[str, str], ...] = (
     ("project-mcp", ".mcp.json"),
     ("project-cursor", ".cursor/mcp.json"),
     ("project-cursor", ".cursor/hooks.json"),
+    ("project-cursor", ".cursor/rules"),
     ("project-claude", ".claude/settings.json"),
     ("project-claude", ".claude/settings.local.json"),
     ("project-claude", ".claude/commands"),
     ("project-claude", ".claude/hooks"),
+    ("project-claude", ".claude/skills"),
+    ("project-claude", ".claude/agents"),
+    ("project-skills", "skills"),
+    ("project-instructions", "AGENTS.md"),
+    ("project-instructions", "CLAUDE.md"),
+    ("project-instructions", "GEMINI.md"),
+    ("project-instructions", "CODEX.md"),
+    ("project-instructions", ".cursorrules"),
+    ("project-instructions", ".windsurfrules"),
+    ("project-instructions", ".clinerules"),
+    ("project-instructions", ".github/copilot-instructions.md"),
     ("project-vscode", ".vscode/mcp.json"),
 )
 

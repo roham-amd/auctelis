@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.6.0** · product **0.6.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.7.0** · product **0.7.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -12,9 +12,10 @@ roadmap: [`ROADMAP.md`](ROADMAP.md).
 
 Install: [`INSTALL.md`](INSTALL.md).
 
-**Default:** bare `auctelis` runs `watch` (host authority delta). A path or scan
-flags without a subcommand still run the hidden `scan`. Advanced commands remain
-callable but are omitted from brief `--help`.
+**Default:** bare `auctelis` runs `check` (repo authority vs `AUTHORITY.lock`).
+A scanner-only flag without a subcommand (e.g. `--locked`) still routes to the
+hidden `scan`. Advanced commands remain callable but are omitted from brief
+`--help`.
 
 ---
 
@@ -22,18 +23,17 @@ callable but are omitted from brief `--help`.
 
 | Tier | Command | Purpose |
 | --- | --- | --- |
-| Core | `watch` | Every sealable record + Accept digest, or sealed delta vs host (+ project) |
-| Core | `watch --seal --accept <digest>` | Seal the human baseline (digest must match screen) |
-| Core | `allow --accept <digest>` | Allow current project authority hash |
-| Core | `watch --arm` / `hook install` | Session + tripwire hooks (absolute interpreter paths) |
+| Core | `check` | Repo authority vs `AUTHORITY.lock` (front door; no host scan) |
+| Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
+| Core | `ci init --owner @team` | Enforce workflow + CODEOWNERS + lock (`--advisory` opt-out) |
+| Core | `gate --base-lock …` | PR Authority Diff + CODEOWNERS / ruleset gate |
 | Core | `why <name>` | Exact config path / reach fields for one authority record |
-| Core | `hook status [--probe]` | Wired / firing per host; `--probe` proves tripwires deny |
-| Core | `doctor` | Alias for `watch` |
 | Core | `demo` | Packaged fixture walkthrough |
-| Core | `lock` | Write / check repo `AUTHORITY.lock` |
-| Team | `gate` | Optional PR growth label vs `--base-lock` (hidden from brief help) |
-| Team | `ci init` | Optional workflow + CODEOWNERS bootstrap (hidden from brief help) |
-| Hidden | `scan` / `check` | Repo annotations (add `--locked`, `--full`) |
+| Archived | `watch` | Host (+ project) sealable delta vs `~/.auctelis/AUTHORITY.lock` |
+| Archived | `allow` | Decorative project-allow store (not enforced by hooks) |
+| Archived | `hook install` / `hook status` | Tripwire install / heartbeat probe |
+| Archived | `doctor` | Alias for `watch` |
+| Hidden | `scan` | Repo annotations (add `--locked`, `--full`) |
 | Hidden | `vet` | Pre-install annotations for a local path or GitHub URL |
 | Review | `harden` | Dry-run least-privilege patch proposals |
 | Review | `explain` | Detailed explanation of a finding id |
@@ -45,131 +45,23 @@ Maintainer-only (`auctelis-dev`): `build`, `lint`, `deps`, `corpus`, `hosts`,
 
 ---
 
-## `auctelis watch`
+## `auctelis check`
 
 ```bash
-auctelis watch [--home PATH] [--project PATH] [--lock-file PATH]
-               [--seal] [--accept DIGEST] [--arm] [--delta-only] [--json]
+auctelis check [PATH] [--lock-file PATH] [--json]
 ```
 
-Inventories host agent configs and the current project (cwd by default). On
-first run (no seal), prints **every sealable record** (including Host Settings /
-permission posture) plus an Accept digest. `--seal` requires `--accept` to match
-that digest. After sealing, prints one card per authority change:
+Inventories agent configs in a repository (MCP, skills, instructions, hooks,
+rules, subagents, plugins, CI) and diffs them against the committed
+`AUTHORITY.lock`. No host home scan.
 
-```text
-+ mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
-~ host "claude-settings:settings.json" · permissions: prompt → bypassPermissions · +allow Bash(*)
-```
+- No lock yet → inventory + `BASELINE_NEEDED`; next step `auctelis lock --update`
+- Lock matches → quiet `LOCKED`
+- Lock drifts → cards with `@ path` + `NEEDS_REVIEW` / `AUTHORITY_CHANGED`
 
-An unchanged sealed host prints `No authority change since you sealed` and the
-session hook stays quiet. `--delta-only` prints only the changed lines (the
-hook uses this). `--arm` installs the Cursor (`~/.cursor/hooks.json`) and Claude
-(`~/.claude/settings.json`) tripwire hooks with absolute interpreter paths.
-`--json` emits `schema_version: watch-report/1` (includes `screen_digest` and
-optional `project_allow`).
+`--json` emits `schema_version: authority-diff/1`.
 
-Exit codes: `0` quiet / first-run summary; `1` sealed meaningful delta; `2`
-unusable lock, seal-accept mismatch, or internal error. `--seal` and `--arm`
-are refused when `AUCTELIS_AGENT=1`.
-
----
-
-## `auctelis allow`
-
-```bash
-auctelis allow [PATH] [--home PATH] [--accept DIGEST] [--status] [--json]
-```
-
-Records human consent for the current project's authority hash in
-`~/.auctelis/project-allow.json`. When the project has sealable records,
-`--accept` is required (same digest integrity as seal). `--status` reports
-`allowed` / `drifted` / `unknown` without writing. Watch surfaces project-allow
-status when project surfaces are present.
-
----
-
-## `auctelis why`
-
-```bash
-auctelis why NAME [--home PATH]
-```
-
-Prints the exact config path, destination, launcher, permissions, and
-capabilities for one authority name (MCP server, skill, hook, host settings, …).
-Exit `1` when nothing matches.
-
----
-
-## `auctelis doctor`
-
-```bash
-auctelis doctor [--home PATH] [-o OUTPUT_DIR] [--fail-on never|high|any]
-                 [--since-lock] [--delta-only] [--agent]
-```
-
-Alias for the `watch` screen. Reads local host configs under the user home
-(`~/.cursor`, `~/.claude`, `~/.claude.json`, `~/.mcp.json`, `~/.vscode`,
-`~/.codex`, Claude Desktop, Windsurf, Gemini, Zed). Local-only; nothing is
-uploaded. Rule IDs are no longer the first screen.
-
----
-
-## `auctelis hook`
-
-```bash
-auctelis hook install [--home PATH] [--hooks-dir PATH]
-                      [--session-only | --pretool-only] [--no-wire] [--no-cursor]
-auctelis hook status  [--home PATH] [--hooks-dir PATH] [--settings-file PATH]
-                      [--cursor-hooks-file PATH] [--json]
-```
-
-`install` copies the session/tool hook scripts to `~/.auctelis/hooks`, wires
-Claude Code `SessionStart` + `PreToolUse` (matcher `.*`), and wires Cursor
-`sessionStart`, `beforeMCPExecution`, `beforeShellExecution`, `beforeFileEdit`.
-`hook install` is a mutation and is refused for agents.
-
-`status` reports per host:
-
-| State | Meaning |
-| --- | --- |
-| `not_wired` | Host settings have no auctelis hook entries |
-| `not_firing` | Wired but script missing or `auctelis` not on PATH |
-| `not_armed` | Wired + scripts OK, but no `~/.auctelis/AUTHORITY.lock` |
-| `wired, not yet observed` | Armed, but no heartbeat yet |
-| `firing (last: …)` | Heartbeat present (session hook observed) |
-
-Hooks are **tripwires**, not a sandbox. Recent deltas (up to 5) come from the
-local ledger under `~/.auctelis/`.
-
----
-
-## `auctelis vet`
-
-```bash
-auctelis vet SOURCE [-o OUTPUT_DIR] [--keep-clone] [--agent]
-```
-
-`SOURCE` is a local path, Git URL, or `owner/repo` GitHub shorthand. Remote
-sources are shallow-cloned with hooks disabled, no submodules, and no LFS
-smudge. After the scan, remote clones quarantine project MCP/hooks configs by
-renaming them to `*.auctelis-quarantined` (reported in the banner; useful with
-`--keep-clone`). Exit `0` = `NO_FINDINGS_IN_SCOPE`; `1` = review/reject (incl.
-unparsed configs); `2` = tooling failure (e.g. missing `git`). `--agent` prints
-a fenced JSON digest.
-
----
-
-## `auctelis demo`
-
-```bash
-auctelis demo [-o OUTPUT_DIR] [--fail-on never|high|any]
-```
-
-Scans the packaged `auctelis/data/demo-vulnerable` fixture (also available as
-`examples/demo-vulnerable` in a checkout) and prints the Authority Diff PR
-comment. Works from every supported install path, including a bare wheel.
-Always exits `0` (tutorial / aha path).
+Exit codes: `0` quiet / first-run; `1` meaningful delta; `2` unusable lock.
 
 ---
 
@@ -180,178 +72,137 @@ auctelis lock [PATH] [--check] [--update] [--lock-file PATH]
               [--accept-gated] [--home] [--snapshot PATH] [--resolve]
 ```
 
-Writes a sorted `AUTHORITY.lock` (v1) of authority records. `--check` regenerates
-and exits `1` on drift (same as `auctelis check --locked`). `--accept-gated` is
-required when the tree has HIGH/CRITICAL gated findings; it records no approval
-and emits `approved_findings: []`. `--home` seals `~/.auctelis/AUTHORITY.lock`
-and is an alias for `watch --seal`. `--snapshot` imports an MCP tools snapshot.
-`--approval` is a deprecated no-op. Agents with `AUCTELIS_AGENT=1` cannot write
-locks.
+Writes or verifies repo `AUTHORITY.lock`. `--check` is read-only. Writes are
+refused when `AUCTELIS_AGENT=1`. `--accept-gated` seals despite HIGH/CRITICAL
+annotations (records no approval — CODEOWNERS governs). `--home` seals host
+authority under `~/.auctelis/AUTHORITY.lock` (archived personal path).
+
+---
 
 ## `auctelis ci init`
 
 ```bash
-auctelis ci init [PATH] --owner @TEAM [--force]
+auctelis ci init [PATH] --owner @TEAM [--force] [--advisory]
 ```
 
-Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml` (`locked: false` lockless-first),
-`.github/CODEOWNERS` (with `--owner` for `AUTHORITY.lock`), and an
-initial `AUTHORITY.lock` when the tree has **no** HIGH/CRITICAL gated findings.
-If gated findings are present, templates may still be written but the lock is
-**not** sealed — a human may explicitly run `auctelis lock --accept-gated`
-(which records no approval) after review. Does not overwrite existing files
-unless `--force`. `--owner` is required.
+Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml`,
+`.github/CODEOWNERS`, and attempts to seal `AUTHORITY.lock`. Default mode is
+**enforce** (`locked: true`). Pass `--advisory` for warn-only.
+
+---
 
 ## `auctelis gate`
 
 ```bash
-auctelis gate [PATH] --base-lock PATH [--head-lock PATH] [--codeowners PATH]
-               [--skip-ruleset-check] [--strict-ruleset] [--agent]
+auctelis gate [PATH] --base-lock PATH [--head-lock PATH]
+              [--codeowners PATH] [--strict-ruleset | --no-strict-ruleset]
+              [--skip-ruleset-check] [--agent]
 ```
 
-Compares observed (or `--head-lock`) authority to an approved base lock. Labels
-GROWTH vs REDUCTION. Exits `1` on growth when CODEOWNERS does not cover
-`AUTHORITY.lock`, or when a ruleset probe returns `MISSING`. `--strict-ruleset`
-is **on by default**, so `UNVERIFIED` also fails; use `--no-strict-ruleset` for
-best-effort `PASS / protection unverified` (prominent warning — not the same as
-verified protection). Reductions alone pass. An unparsed agent config or a
-missing base/head lock fails closed. GitHub CODEOWNERS / rulesets enforce the
-human review — auctelis does not count PR approvals. First-lock PRs with no
-base lock are an Action **adoption ceremony** (`BASELINE_ADOPTED`), not a
-growth-gate pass. `scan --base-lock` is advisory only; **gate** is the verdict.
+Compares base→head authority. Growth with missing CODEOWNERS / unverified
+ruleset fails closed when `--strict-ruleset` is on (default).
 
 ---
 
-## `auctelis harden`
+## `auctelis why`
 
 ```bash
-auctelis harden [--findings PATH] [--apply]
+auctelis why NAME [PATH] [--home PATH]
 ```
 
-Reads a prior `findings.json` and prints dry-run least-privilege patch templates
-for high-confidence gated rules. `--apply` is rejected (exit `2`) in this
-release — patches are never written automatically.
+Prints the exact config path, destination, launcher, permissions, and
+capabilities for one authority name. Default scope is the repository (`PATH`
+or cwd). `--home` uses the archived host inventory instead.
+
+Exit `1` when nothing matches.
 
 ---
 
-## `auctelis scan` / `check`
-
-One-command Guard assessment of a repository tree.
+## `auctelis demo`
 
 ```bash
-auctelis scan [PATH] [-o OUTPUT_DIR] [--baseline PATH] [--save-baseline PATH]
-         [--fail-on never|high|any] [--policy PATH] [--trust-target-policy]
-         [--no-policy] [--locked] [--lock-file PATH] [--base-lock PATH]
-         [--include-fixtures] [--full] [--agent]
+auctelis demo [-o DIR]
 ```
 
-| Flag | Meaning |
+Runs the packaged vulnerable fixture and prints an Authority Diff. Always
+exits `0` (walkthrough, not a gate).
+
+---
+
+## Archived: `watch` / `allow` / `hook` / `doctor`
+
+These remain fully callable for compatibility. They are **not** the product
+path (see [`PRODUCT.md`](PRODUCT.md) kill list).
+
+### `auctelis watch`
+
+```bash
+auctelis watch [--home PATH] [--project PATH] [--lock-file PATH]
+               [--seal] [--accept DIGEST] [--arm] [--delta-only] [--json]
+```
+
+Host (+ optional project) authority vs `~/.auctelis/AUTHORITY.lock`. First run
+shows every sealable record + Accept digest. `--seal` requires matching
+`--accept`. `--arm` installs tripwire hooks. `--json` → `watch-report/1`.
+
+### `auctelis allow`
+
+```bash
+auctelis allow [PATH] [--home PATH] [--accept DIGEST] [--status] [--json]
+```
+
+Writes `~/.auctelis/project-allow.json`. Decorative status only — tripwires do
+not enforce it.
+
+### `auctelis hook`
+
+```bash
+auctelis hook install [--session-only|--pretool-only] [--no-wire] [--no-cursor]
+auctelis hook status [--probe] [--json]
+```
+
+Copies session/PreToolUse scripts and optionally wires Claude/Cursor settings.
+`--probe` fires a synthetic unknown MCP through the scripts (not proof of host
+wiring). Heartbeats are shared-session stamps — treat status as advisory.
+
+### `auctelis doctor`
+
+Alias for `watch` (host map). Prefer `check` for repositories.
+
+---
+
+## Hidden: `scan` / `vet`
+
+```bash
+auctelis scan [PATH] [-o DIR] [--locked] [--base-lock PATH] [--fail-on never|high|any]
+              [--full] [--agent] [--trust-target-policy] …
+auctelis vet SOURCE [-o DIR] [--keep-clone] [--agent]
+```
+
+Annotation layer: findings, SARIF, risk delta. Not the Authority Diff product.
+Use `gate` for growth verdicts.
+
+---
+
+## Review helpers
+
+| Command | Purpose |
 | --- | --- |
-| `--fail-on` | `never` (default for bare scan unless policy), `high`, `any` |
-| `--policy` | Explicit policy file (trusted) |
-| `--trust-target-policy` | Discover `<target>/.auctelis.yml` |
-| `--locked` | Fail when observed authority drifts from `AUTHORITY.lock` |
-| `--base-lock` | Advisory head-vs-base lock delta (does **not** fail like `gate`) |
-| `--full` | Also write graph, capabilities, long summary |
-| `--agent` | Compact fenced JSON digest; default `-o` → `./auctelis-out` |
-
-Default: target `.auctelis.yml` is **ignored** so third-party trees cannot blind
-the scanner. Passive pack: AUCTELIS-RULE-001…022. See [`GUARD-SCAN.md`](GUARD-SCAN.md)
-and [`SECURITY-RULES.md`](SECURITY-RULES.md).
-
-### Artifacts (default)
-
-`findings.json`, `findings.sarif.json` (artifact; not uploaded by default),
-`inventory.json`, `authority-sbom.json`, `authority-snapshot.json`,
-`scan-summary.txt`, `pr-comment.md`; `risk-delta.json` / `authority-delta.json`
-when a baseline is supplied; `suppressions.json` when suppressions apply. With
-`--full`: `ecosystem-graph.json`, `capabilities.json`, `scan-summary-full.txt`,
-and related extras.
+| `diff lock BASE HEAD` | Record-level lock diff |
+| `annotate [findings.json] --format github\|text\|pr-comment` | Annotations / PR body |
+| `explain FINDING_ID` | Finding detail from `auctelis-out/` |
+| `harden --findings PATH` | Dry-run least-privilege proposals |
 
 ---
 
-## `auctelis explain`
+## Exit codes (summary)
 
-```bash
-auctelis explain FINDING_ID -o OUTPUT_DIR [--agent]
-```
+| Command | `0` | `1` | `2` |
+| --- | --- | --- | --- |
+| `check` | quiet / first-run | meaningful delta | lock error |
+| `lock --check` | matches | drift | — |
+| `gate` | PASS / BASELINE_ADOPTED | NEEDS_REVIEW / FAIL_CLOSED | usage |
+| `watch` | quiet / first-run | sealed delta | lock / seal error |
 
-Reads `OUTPUT_DIR/findings.json` and prints a human (or `--agent` JSON) explanation.
-
----
-
-## `auctelis annotate`
-
-```bash
-auctelis annotate [FINDINGS.json] [--format github|text|pr-comment] [--risk-delta PATH]
-```
-
-| Argument | Default | Description |
-| --- | --- | --- |
-| `FINDINGS.json` | `auctelis-out/findings.json` | Guard findings document |
-| `--format` | `github` | Actions workflow commands / plain text / Authority Diff |
-| `--risk-delta` | — | Optional `risk-delta.json` for delta-first PR comments |
-
----
-
-## `auctelis diff lock`
-
-```bash
-auctelis diff lock BASE.lock HEAD.lock
-```
-
-Record-level authority lock diff (`addition` / `removal` / `expansion` /
-`reduction` / `replacement` / `policy_change`).
-
----
-
-## Maintainer: `auctelis-dev`
-
-Kill-list / non-product execute paths live here only (not on `auctelis`):
-
-```bash
-auctelis-dev build [all|schemas]
-auctelis-dev validate report PATH [--no-semantic]
-auctelis-dev inventory PATH [-o OUT.json]
-auctelis-dev verify digest PATH [--expected HEX]
-auctelis-dev export sarif REPORT_OR_FINDINGS.json [-o OUT.sarif.json]
-auctelis-dev hosts list|show NAME
-auctelis-dev corpus run
-auctelis-dev deps outdated|upgrade [--dry-run]
-auctelis-dev lint [--fix] [--format] [--check-format]
-auctelis-dev run -- COMMAND [ARGS...]
-auctelis-dev snapshot --from-file tools.json | --execute -- COMMAND...
-auctelis-dev artifact-vet SPEC
-```
-
-`run` / `snapshot --execute` scrub a small allowlist of env vars only —
-**not** a sandbox. Prefer `watch` / `watch --seal` / `watch --arm` / `hook status`
-for the product path, with `lock` / `gate` as the team path.
-
-- **build:** schema parity, version metadata, dependency pins, example validation, markdown link check
-- **corpus:** deterministic tooling regression (`tests/corpus/`)
-- **validate report:** JSON Schema + semantic refs on findings / report docs
-
----
-
-## Library entry points
-
-| Symbol | Module |
-| --- | --- |
-| `run_scan` | `auctelis.security.scan` |
-| `run_security_scan` | `auctelis.security.engine` |
-| `run_gate` | `auctelis.gate` |
-| `build_authority_lock` / `diff_authority_locks` / `delta_label` | `auctelis.authority_lock` |
-| `build_watch_report` / `seal_home_lock` | `auctelis.watch` |
-| `install_hooks` / `hook_status` | `auctelis.hooks` |
-| `collect_inventory` | `auctelis.inventory.collector` |
-| `product_version` | `auctelis.versioning` |
-
----
-
-## Related docs
-
-- [`GUARD-SCAN.md`](GUARD-SCAN.md)
-- [`../tools/README.md`](../tools/README.md)
-- [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md)
-- [`.github/actions/auctelis-gate/action.yml`](../.github/actions/auctelis-gate/action.yml)
+Agents must set `AUCTELIS_AGENT=1`; mutation commands (`lock`, `ci init`,
+`watch --seal/--arm`, `allow`, `hook install`) are refused.

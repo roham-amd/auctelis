@@ -1,8 +1,8 @@
-"""Per-project allow store — Project Trust consent for a cloned repo.
+"""Archived per-project allow store (``auctelis allow``).
 
-``auctelis allow`` records that a human reviewed the current project authority
-hash. Session hooks and tripwires consult the store before treating project
-MCP / settings as new reach.
+Records a human-reviewed project authority hash in ``~/.auctelis/project-allow.json``.
+Decorative only: tripwires do not enforce this store. Prefer repo ``AUTHORITY.lock``
++ ``auctelis check`` for consent.
 """
 
 from __future__ import annotations

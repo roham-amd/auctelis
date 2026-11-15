@@ -1,17 +1,16 @@
 # auctelis scan — annotation layer (hidden)
 
-Guard scan path for **0.5.0**: deterministic discovery plus evidence-backed
+Guard scan path for **0.7.0**: deterministic discovery plus evidence-backed
 observations via `auctelis scan` / `check`, with capability / exposure / finding
 separation. This is an annotation layer behind the product, not the first
 screen. Default terminal output is ≤15 lines (`--full` for the long report).
 Artifacts land in cwd `./auctelis-out` (not inside the target tree).
 
-Product front door: `auctelis watch` (one-screen authority delta) →
-`auctelis watch --seal --accept <digest>` → `auctelis allow` → `auctelis watch --arm`.
+Product front door: `auctelis check` → `auctelis lock --update` →
+`auctelis ci init --owner @team` → PR `gate`. `scan` / `check` naming:
+`check` is the authority preflight; `scan` is this annotation layer.
 
-Companion commands: `auctelis doctor` (alias for watch) and
-`auctelis lock` (committed authority lockfile). `auctelis vet` remains callable
-but is hidden.
+Archived local host path: `watch` / `allow` / `hook` (callable, not required).
 
 Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md),
 [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md), [`CLI-REFERENCE.md`](CLI-REFERENCE.md),

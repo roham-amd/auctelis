@@ -76,14 +76,13 @@ inputs:
     default: "true"
   locked:
     description: >-
-      If true, also run AUTHORITY.lock drift check (`auctelis check --locked`).
-      Default false is lockless-first: the Action posts the base→head authority
-      diff without requiring a committed lock. Set locked=true after sealing
-      AUTHORITY.lock and protecting it with CODEOWNERS (approved-state upgrade).
-      On a PR with locked=true and no base-ref lock, a head AUTHORITY.lock is
-      treated as adoption bootstrap; missing both base and head locks fails closed.
+      If true (default), run AUTHORITY.lock drift check and fail on unapproved
+      growth. Set locked=false for advisory/lockless-first adoption. On a PR with
+      locked=true and no base-ref lock, a head AUTHORITY.lock is treated as
+      adoption bootstrap (BASELINE_ADOPTED); missing both base and head locks
+      fails closed.
     required: false
-    default: "false"
+    default: "true"
   lock-file:
     description: Path to AUTHORITY.lock relative to the scan target (default: AUTHORITY.lock)
     required: false

@@ -199,10 +199,11 @@ def test_lock_cli_roundtrip(tmp_path: Path):
     assert main(["lock", str(root)]) == 0
     assert (root / "AUTHORITY.lock").is_file()
     assert main(["lock", str(root), "--check"]) == 0
+    assert main(["check", str(root)]) == 0
     assert (
         main(
             [
-                "check",
+                "scan",
                 str(root),
                 "--locked",
                 "-o",
@@ -222,10 +223,11 @@ def test_lock_cli_roundtrip(tmp_path: Path):
         },
     )
     assert main(["lock", str(root), "--check"]) == 1
+    assert main(["check", str(root)]) == 1
     assert (
         main(
             [
-                "check",
+                "scan",
                 str(root),
                 "--locked",
                 "-o",

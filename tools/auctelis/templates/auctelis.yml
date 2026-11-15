@@ -1,8 +1,8 @@
 version: 1
 
 policy:
-  # Day-one default is advisory — promote to enforce after precision holds.
-  mode: advisory
+  # Default for `auctelis ci init` is enforce. Pass --advisory for warn-only.
+  mode: enforce
   fail_on: never
   output_dir: auctelis-out
   # baseline: .auctelis/baseline.json

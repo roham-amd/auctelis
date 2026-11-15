@@ -8,37 +8,40 @@ from auctelis.cli import main
 from auctelis.cli.parser import build_parser, normalize_argv
 
 
-def test_normalize_argv_defaults_watch_or_scan(tmp_path: Path):
+def test_normalize_argv_defaults_check_or_scan(tmp_path: Path):
     empty = tmp_path / "empty"
     empty.mkdir()
-    assert normalize_argv([], cwd=empty) == ["watch"]
+    assert normalize_argv([], cwd=empty) == ["check"]
     locked = tmp_path / "locked"
     locked.mkdir()
     (locked / "AUTHORITY.lock").write_text("{}\n", encoding="utf-8")
-    # Bare is never a scanner, even inside a locked repo.
-    assert normalize_argv([], cwd=locked) == ["watch"]
-    assert normalize_argv(["."]) == ["scan", "."]
+    # Bare is always repo check, even inside a locked repo.
+    assert normalize_argv([], cwd=locked) == ["check"]
+    assert normalize_argv(["."]) == ["check", "."]
     assert normalize_argv(["--locked"]) == ["scan", "--locked"]
     assert normalize_argv(["doctor"]) == ["doctor"]
     assert normalize_argv(["--help"]) == ["--help"]
-    assert normalize_argv(["check", "--locked", "."]) == ["check", "--locked", "."]
+    assert normalize_argv(["check", "."]) == ["check", "."]
+    assert normalize_argv(["scan", "--locked", "."]) == ["scan", "--locked", "."]
 
 
-def test_auctelis_path_runs_scan(tmp_path: Path, capsys):
+def test_auctelis_path_runs_check(tmp_path: Path, capsys):
     root = tmp_path / "repo"
     root.mkdir()
     (root / "README.md").write_text("x\n", encoding="utf-8")
-    code = main([str(root), "-o", str(tmp_path / "out"), "--fail-on", "never"])
+    code = main([str(root)])
+    # First-run / no lock → exit 0 (BASELINE_NEEDED).
     assert code == 0
-    assert (tmp_path / "out" / "findings.json").is_file()
+    captured = capsys.readouterr().out
+    assert "auctelis check" in captured or "BASELINE_NEEDED" in captured or "Inventory:" in captured
 
 
 def test_product_help_hides_advanced_shows_core():
     help_text = build_parser(include_dev=False).format_help()
     assert "demo" in help_text
-    assert "doctor" in help_text
-    assert "watch" in help_text
+    assert "check" in help_text
     assert "lock" in help_text
+    assert "gate" in help_text
     # Advanced names may appear in the epilog tier list, not as listed commands.
     listed = [
         line
@@ -48,6 +51,8 @@ def test_product_help_hides_advanced_shows_core():
     listed_text = "\n".join(listed)
     assert "artifact-vet" not in listed_text
     assert "lsp-validate" not in listed_text
+    assert "watch" not in listed_text
+    assert "doctor" not in listed_text
     assert "init-manifest" not in listed_text
     # Scanner surfaces are hidden from the default first screen.
     assert not any(line.strip().startswith("scan") for line in listed)
@@ -75,7 +80,7 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     assert (root / ".github" / "workflows" / "auctelis-gate.yml").is_file()
     workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     assert "trusted-policy" in workflow
-    assert 'locked: "false"' in workflow
+    assert 'locked: "true"' in workflow
     assert 'strict-ruleset: "true"' in workflow
     assert "Wrote" in out
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")

@@ -282,10 +282,14 @@ def check_install_doc_versions(product: str) -> None:
 
 
 def check_bare_command_docs() -> None:
-    """Public docs must describe doctor-or-scan bare CLI, not scan-only."""
+    """Public docs must describe bare CLI → check, not scan-only or watch-only."""
     root = repo_root()
-    stale = re.compile(
+    stale_scan = re.compile(
         r"bare\s+`auctelis`[^.?\n]{0,80}defaults to\s+`?(?:auctelis\s+)?scan",
+        re.IGNORECASE,
+    )
+    stale_watch = re.compile(
+        r"bare\s+`auctelis`[^.?\n]{0,100}runs\s+`watch`",
         re.IGNORECASE,
     )
     for rel in (
@@ -294,13 +298,19 @@ def check_bare_command_docs() -> None:
         "docs/GUARD-SCAN.md",
         "docs/AUCTELIS-GATE.md",
         "tools/README.md",
+        "README.md",
     ):
         path = root / rel
         text = path.read_text(encoding="utf-8")
-        if stale.search(text):
+        if stale_scan.search(text):
             raise SystemExit(
                 f"{rel} still claims bare auctelis defaults only to scan; "
-                "document doctor (no lock/policy) or scan . (when present)"
+                "document check (repo authority) as the front door"
+            )
+        if stale_watch.search(text):
+            raise SystemExit(
+                f"{rel} still claims bare auctelis runs watch; "
+                "document check (repo authority) as the front door"
             )
 
 

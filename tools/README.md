@@ -1,14 +1,13 @@
 # auctelis tooling (`auctelis`)
 
-Project Trust CLI: `watch` → `--seal --accept` → `allow` → `--arm` → `why` →
-`hook status [--probe]`. Repo `AUTHORITY.lock` + optional PR Action/`gate` are
-the team upsell. `scan` / `vet` are hidden annotation layers.
+Authority Diff CLI: `check` → `lock --update` → `ci init --owner` → `gate`.
+`watch` / `allow` / `hook` are archived. `scan` / `vet` are hidden annotation layers.
 
 **Full command reference:** [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md)  
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.6.0** · Product: auctelis **0.6.0**
+Package: `auctelis` **0.7.0** · Product: auctelis **0.7.0**
 
 ---
 
@@ -36,13 +35,11 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.6.0#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.7.0#subdirectory=tools
 # PyPI not published yet — git tag/SHA only.
-auctelis                                   # every sealable record + Accept digest
-auctelis watch --seal --accept <digest>    # human baseline
-auctelis allow --accept <digest>           # project allow store
-auctelis watch --arm                       # session + tripwire hooks
-auctelis hook status --probe               # wired / firing; prove deny
+auctelis check                             # repo authority vs AUTHORITY.lock
+auctelis lock --update                     # seal AUTHORITY.lock
+auctelis ci init --owner @security         # enforce workflow + CODEOWNERS
 auctelis why <name>                        # exact config path
 auctelis demo                              # optional
 ```
@@ -56,12 +53,12 @@ Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 cd tools
 uv sync --locked          # creates .venv from uv.lock
 uv run auctelis --help
-uv run auctelis watch --home /tmp/auctelis-home
+uv run auctelis check .
 uv run auctelis scan /path/to/target-repo   # hidden annotation layer
 ```
 
-Primary path: **`watch` / `--seal` / `--arm` / `why` / `hook status`**.
-`gate` / `ci init` / `scan` / `vet` are optional or hidden.
+Primary path: **`check` / `lock` / `ci init` / `gate`**.
+`watch` / `allow` / `hook` are archived; `scan` / `vet` are hidden.
 
 `.python-version` selects the **minor** interpreter (`3.12`). Patch pins belong in CI (`uv python install 3.12.16`) and the Docker base (`python:3.12.16-slim-trixie@sha256:…`).
 
@@ -125,16 +122,19 @@ uv run --locked auctelis-dev corpus run
 
 ```bash
 # Primary product surface
-uv run auctelis watch [--home DIR] [--lock-file PATH] [--seal] [--arm] [--delta-only]
-uv run auctelis hook install [--home DIR] [--no-cursor]
-uv run auctelis hook status [--home DIR] [--json]
-uv run auctelis ci init --owner @TEAM [PATH] [--force]
+uv run auctelis check [PATH] [--json]
+uv run auctelis lock [PATH] [--check] [--update] [--accept-gated]
+uv run auctelis ci init --owner @TEAM [PATH] [--force] [--advisory]
 uv run auctelis gate [PATH] --base-lock PATH
+uv run auctelis why NAME [PATH]
 
-# Hidden annotation layer (callable, not the first screen)
-uv run auctelis scan PATH [-o DIR] [--baseline B] [--save-baseline B] [--fail-on never|high|any] [--agent]
+# Archived host/tripwire (callable)
+uv run auctelis watch [--home DIR] [--seal] [--accept DIGEST] [--arm]
+uv run auctelis hook install|status [--probe]
+
+# Hidden annotation layer
+uv run auctelis scan PATH [-o DIR] [--baseline B] [--fail-on never|high|any] [--agent]
 uv run auctelis vet SOURCE [-o DIR] [--agent]
-uv run auctelis lock [PATH] [--check] [--accept-gated] [--home]
 uv run auctelis harden [--findings PATH]
 uv run auctelis explain F-001 -o DIR [--agent]
 uv run auctelis annotate FINDINGS.json --format github|text|pr-comment

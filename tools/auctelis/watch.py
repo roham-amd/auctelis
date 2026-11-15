@@ -1,12 +1,10 @@
-"""Authority Watch — the one-screen declared-config delta.
+"""Archived host Authority Watch (``auctelis watch``).
 
-``auctelis watch`` is the first screen: it inventories the host agent configs
-(Cursor, Claude Code, VS Code, …), compares them with the last human seal in
+Inventories host agent configs (+ optional project overlay), compares them with
 ``~/.auctelis/AUTHORITY.lock``, and prints one line per authority change.
 
-- No lock yet → every sealable record on screen + accept digest; seal is next.
-- Lock present and unchanged → quiet (the second-session experience).
-- Lock present and changed → the delta, and a human chooses reseal or revert.
+The product front door for repositories is :mod:`auctelis.check`. This module
+remains callable for compatibility.
 """
 
 from __future__ import annotations

@@ -3,8 +3,8 @@
 Seeded fixtures that **should** produce gated findings. Not for production use.
 
 ```bash
-# Preferred first screen: host authority delta
-auctelis watch
+# Preferred first screen: repo authority preflight
+auctelis check examples/demo-vulnerable
 
 # The canned repo fixture (for the PR-comment shape):
 auctelis demo

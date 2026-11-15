@@ -9,27 +9,25 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = (
-    "watch → watch --seal --accept <digest> → allow → watch --arm → why <name> → hook status"
-)
+PUBLIC_PATH = "check → lock --update → ci init --owner @team → gate (PR Authority Diff)"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
-team (opt):   gate | ci init  (hidden; PR Authority Diff upsell)
-review:       vet | explain | diff lock | annotate | harden  (hidden, optional)
+local:        why <name> | demo
+archived:     watch | allow | hook | doctor  (callable; not the product)
+review:       scan | vet | explain | diff lock | annotate | harden  (hidden)
 maintainer:   auctelis-dev (build | lint | corpus | deps)
 
-Bare `auctelis` → watch (host authority delta). `auctelis <path>` → scan (hidden).
-Labels (authority delta): GROWTH | REDUCTION | NONE.
-Hooks are tripwires (not a sandbox). Agents must set AUCTELIS_AGENT=1 and must
-not run watch --seal / lock / ci init.
+Bare `auctelis` → check (repo authority vs AUTHORITY.lock).
+Labels: GROWTH | REDUCTION | NONE. Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW.
+Agents must set AUCTELIS_AGENT=1 and must not run lock / ci init.
 """
 
 # Hidden from default --help; still fully callable.
 _ADV = argparse.SUPPRESS
 
-# Enforceable public mental model — the whole first-user surface.
-CORE_PUBLIC_COMMANDS = frozenset({"demo", "watch", "why", "doctor", "lock", "hook", "allow"})
+# Enforceable public mental model — GitHub-native Authority Diff front door.
+CORE_PUBLIC_COMMANDS = frozenset({"check", "lock", "ci", "gate", "why", "demo"})
 
 _PRODUCT_COMMANDS = frozenset(
     {
@@ -77,11 +75,11 @@ def normalize_argv(
     include_dev: bool = False,
     cwd: Path | None = None,
 ) -> list[str]:
-    """Default bare invocations to the Authority Watch screen.
+    """Default bare invocations to the repo authority check.
 
-    ``auctelis`` → ``watch`` (host authority delta; never a scanner)
-    ``auctelis /repo`` → ``scan /repo`` (hidden but callable)
-    ``auctelis --locked`` → ``scan --locked``
+    ``auctelis`` → ``check`` (repo authority vs AUTHORITY.lock)
+    ``auctelis /repo`` → ``check /repo``
+    ``auctelis --locked`` → ``scan --locked`` (hidden scanner flags)
     Known subcommands and ``-h`` / ``--help`` are left unchanged.
 
     ``cwd`` is accepted for call-site compatibility (reserved for path defaults).
@@ -92,11 +90,14 @@ def normalize_argv(
     if include_dev:
         known |= _DEV_COMMANDS
     if not raw:
-        return ["watch"]
+        return ["check"]
     head = raw[0]
     if head in ("-h", "--help", "-V", "--version") or head in known:
         return raw
-    return ["scan", *raw]
+    # Scanner-only flags still route to the hidden scan command.
+    if head.startswith("-") and head not in {"-h", "--help", "-V", "--version"}:
+        return ["scan", *raw]
+    return ["check", *raw]
 
 
 def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
@@ -106,8 +107,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog,
         description=(
-            "Auctelis — package-lock for agent authority. "
-            "See what your agents can reach, and what changed since you last said OK. "
+            "Auctelis — the authority lockfile and PR review for what AI agents can reach. "
             "(Maintainer cmds: `auctelis-dev`)"
         ),
         epilog=_EPILOG,
@@ -121,21 +121,44 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True, metavar="COMMAND")
 
+    check = sub.add_parser(
+        "check",
+        help="Repo authority vs AUTHORITY.lock (front door; no host scan)",
+    )
+    check.add_argument("path", type=Path, nargs="?", default=Path("."))
+    check.add_argument(
+        "--lock-file",
+        type=Path,
+        help="AUTHORITY.lock path (default: <path>/AUTHORITY.lock)",
+    )
+    check.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit authority-diff/1 JSON",
+    )
+
     scan = sub.add_parser(
         "scan",
-        aliases=["check"],
         help=_ADV,
     )
 
-    ci = sub.add_parser("ci", help=_ADV)
+    ci = sub.add_parser("ci", help="Write enforce workflow + CODEOWNERS + lock")
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
-    ci_init = ci_sub.add_parser("init", help="Write advisory .auctelis.yml + consumer workflow")
+    ci_init = ci_sub.add_parser(
+        "init",
+        help="Write .auctelis.yml + enforce workflow + CODEOWNERS + AUTHORITY.lock",
+    )
     ci_init.add_argument("path", type=Path, nargs="?", default=Path("."))
     ci_init.add_argument("--force", action="store_true")
     ci_init.add_argument(
         "--owner",
         metavar="@TEAM",
         help="CODEOWNERS identity for AUTHORITY.lock (e.g. @security-owners); required",
+    )
+    ci_init.add_argument(
+        "--advisory",
+        action="store_true",
+        help="Write advisory mode (locked=false); default is enforce",
     )
     ci_init.set_defaults(command="ci")
     scan.add_argument("path", type=Path, nargs="?", default=Path("."))
@@ -215,7 +238,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     watch = sub.add_parser(
         "watch",
-        help="One-screen declared authority delta vs the sealed host lock",
+        help=_ADV,  # archived: host+project seal; use `check` for repos
     )
     watch.add_argument(
         "--home",
@@ -264,14 +287,21 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     )
     why.add_argument("name", help="Authority record name (MCP server, skill, hook, …)")
     why.add_argument(
+        "path",
+        type=Path,
+        nargs="?",
+        default=Path("."),
+        help="Repository root (default: cwd)",
+    )
+    why.add_argument(
         "--home",
         type=Path,
-        help="Override home directory (default: user home; local-only)",
+        help=_ADV,  # archived host why
     )
 
     doctor = sub.add_parser(
         "doctor",
-        help="Alias for watch: declared authority on this machine",
+        help=_ADV,  # archived alias for watch
     )
     doctor.add_argument(
         "--home",
@@ -426,7 +456,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     gate_cmd = sub.add_parser(
         "gate",
-        help=_ADV,
+        help="PR Authority Diff: base lock → head (CODEOWNERS / ruleset gate)",
     )
     gate_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
     gate_cmd.add_argument(
@@ -467,7 +497,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     hook_cmd = sub.add_parser(
         "hook",
-        help="Install or inspect Authority Watch hooks (Claude Code + Cursor)",
+        help=_ADV,  # archived tripwire install; not the product
     )
     hook_sub = hook_cmd.add_subparsers(dest="hook_command", required=True)
     hook_install = hook_sub.add_parser(
@@ -526,7 +556,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     allow = sub.add_parser(
         "allow",
-        help="Allow the current project's authority hash (Project Trust)",
+        help=_ADV,  # archived project-allow store; decorative, not enforced
     )
     allow.add_argument(
         "path",
