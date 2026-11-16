@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.9.0 · **Package:** `auctelis` 0.9.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis-dev` only)
+**Release:** 0.9.1 · **Package:** `auctelis` 0.9.1 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis-dev` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -56,8 +56,10 @@ Public path: **init --owner team → check → lock --update → gate**
 Host stack (`watch` / `allow` / `hook` / `doctor`) and public `vet` / `harden` /
 `explain` CLIs are **removed**. The product gate is **tree-truth**: head
 authority is always derived from the working tree; a committed `AUTHORITY.lock`
-is drift-checked only. Research scan/annotate live on `auctelis-dev` only.
-Reach: [`REACH.md`](REACH.md).
+is drift-checked only. The Action always posts the Authority Diff from the
+gate lock delta; research scan/annotate (`annotate: true`) is opt-in only.
+Body/representation churn is comment-visible; the required check fails on
+**material** reach growth. Reach: [`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  

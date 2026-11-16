@@ -53,8 +53,8 @@ LOCK_VERSION = 1
 def delta_label(summary: dict[str, Any]) -> str:
     """Classify a lock delta as GROWTH / REDUCTION / NONE.
 
-    One implementation for the gate, the watch screen, and the PR comment. This
-    is a label, not a verdict: ``PASS`` / ``NEEDS_REVIEW`` belong to the gate.
+    One implementation for the gate, ``check``, and the PR comment. This is a
+    label, not a verdict: ``PASS`` / ``NEEDS_REVIEW`` belong to the gate.
     """
     adds = int(summary.get("additions") or 0)
     expansions = int(summary.get("expansions") or 0)
@@ -104,18 +104,21 @@ _AUTHORITY_FIELDS = (
     "launcher",
     "args_digest",
     "url_host",
-    "script_digest",
+    # script_digest (instruction/skill body) is representation — visible on cards
+    # as "body changed", not a material reach gate by itself. New hosts pulled
+    # from prose still land in destinations and fail as expansion.
 )
 _REPRESENTATION_FIELDS = (
     "path",
     "digest",
     "fingerprint",
+    "script_digest",
     "evidence_strength",
     "capability_origin",
     "parser_version",
     "source_commit",
 )
-_PIN_IDENTITY_FIELDS = ("launcher", "args_digest", "url_host", "script_digest")
+_PIN_IDENTITY_FIELDS = ("launcher", "args_digest", "url_host")
 
 
 def args_digest(args: list[Any] | tuple[Any, ...] | None) -> str:
@@ -612,6 +615,18 @@ def diff_authority_locks(
     )
     # Representation-only churn still marks lock drift (hash/path) but is labeled.
     authority_changed = meaningful or bool(changed or added or removed or policy_changed)
+    # Material reach: additions / expansions / replacements / tool pin growth /
+    # policy — not body-digest or path packaging alone. Gate fails on this;
+    # representation stays visible on the PR comment.
+    material = bool(
+        addition_n
+        or expansion_n
+        or replacement_n
+        or tools_added
+        or tools_changed
+        or policy_changed
+        or any(c.get("change_class") == "mixed" for c in changed)
+    )
     lines = render_lock_diff_lines(added=added, removed=removed, changed=changed)
     lines.extend(f"+ mcp tool pin `{name}`" for name in tools_added)
     lines.extend(f"- mcp tool pin `{name}`" for name in tools_removed)
@@ -633,6 +648,7 @@ def diff_authority_locks(
             "policy_changed": policy_changed,
             "authority_changed": authority_changed,
             "meaningful_authority_change": meaningful,
+            "material_authority_change": material,
         },
         "changes": {
             "added": added,

@@ -18,7 +18,7 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 ```bash
 # Working install today (PyPI name reserved; package publish follows pilots):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
 auctelis --version
 
 cd your-repo
@@ -32,11 +32,15 @@ auctelis why linear               # exact config path for one name
 ```
 
 On a PR, the Action diffs **tree-derived** base→head authority (committed lock
-is drift-checked, never trusted as head). First lock is `BASELINE_ADOPTED`
-(not `PASS`). Growth fails until a CODEOWNER reviews the changed authority
-paths. An empty (0-record) base lock is **empty-baseline growth** — CODEOWNERS
-review, not a permanent `FAIL_CLOSED`. Locally, `auctelis check` is the pre-push
-preflight.
+is drift-checked, never trusted as head) and always posts the Authority Diff
+comment from that gate delta. First lock is `BASELINE_ADOPTED` (not `PASS`).
+**Material** growth (new hosts, launchers, secrets/execute/network, pin or
+approval posture, MCP) fails until a CODEOWNER reviews; body-only instruction
+edits stay visible on the comment and do not fail the required check. An empty
+(0-record) base lock is **empty-baseline growth** — CODEOWNERS review, not a
+permanent `FAIL_CLOSED`. `status --check` is nonzero until CODEOWNERS and a
+verified code-owner ruleset are in place. Locally, `auctelis check` is the
+pre-push preflight.
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED

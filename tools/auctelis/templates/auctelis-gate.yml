@@ -19,8 +19,8 @@ jobs:
           fetch-depth: 0
 
       - name: auctelis Authority Diff
-        # Pinned by auctelis to release v0.9.0 (never consumer-repo HEAD)
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.9.0
+        # Pinned by auctelis to release v0.9.1 (never consumer-repo HEAD)
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.9.1
         with:
           path: .
           mode: scan
@@ -28,6 +28,7 @@ jobs:
           authority-diff: "true"
           locked: "true"
           strict-ruleset: "true"
-          # Research findings annotations are opt-in (not a gate input).
+          # Sticky Authority Diff always posts from the gate. Research scan /
+          # annotate stays opt-in and is never a gate input.
           annotate: false
           output-dir: auctelis-out

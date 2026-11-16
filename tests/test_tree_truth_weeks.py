@@ -118,6 +118,26 @@ def test_agents_md_body_change_is_reviewable(tmp_path: Path):
     assert agents[0].get("evidence_strength") == "INFERRED_HINT"
 
 
+def test_body_only_edit_is_visible_not_material_fail(tmp_path: Path):
+    """Wording-only AGENTS.md edit: comment-visible, required check stays green."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    base = _seal(root)
+    (root / "AGENTS.md").write_text("# Agents\nBe helpful.\n", encoding="utf-8")
+    write_authority_lock(root, path=root / "AUTHORITY.lock", accept_gated=True)
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+
+    (root / "AGENTS.md").write_text("# Agents\nBe helpful and polite.\n", encoding="utf-8")
+    write_authority_lock(root, path=root / "AUTHORITY.lock", accept_gated=True)
+    report, code = run_gate(root, base_lock=base, check_ruleset=False)
+    assert code == 0
+    assert report["verdict"] == "PASS"
+    assert report.get("representation_only") is True
+    assert report.get("material_authority_change") is False
+    blob = "\n".join(report.get("lines") or []) + str(report.get("error") or "")
+    assert "body changed" in blob.lower() or "representation" in blob.lower()
+
+
 def test_skill_and_slash_curl_hosts(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()

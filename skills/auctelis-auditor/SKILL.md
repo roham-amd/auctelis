@@ -22,7 +22,7 @@ Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 ```bash
 # Install once (git tag; PyPI coming — see docs/INSTALL.md):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
 ```
 
 ```bash

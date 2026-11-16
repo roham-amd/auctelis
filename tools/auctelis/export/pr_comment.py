@@ -21,6 +21,7 @@ __all__ = [
     "AUCTELIS_COMMENT_MARKER",
     "escape_markdown",
     "render_authority_diff_comment",
+    "render_gate_pr_comment",
 ]
 
 _SEV_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFORMATIONAL": 4}
@@ -108,8 +109,21 @@ def _sort_findings_by_severity(items: list[Any]) -> list[Any]:
 _ALLOWED_VERDICTS = {"PASS", "NEEDS_REVIEW", "BASELINE_ADOPTED", "FAIL_CLOSED"}
 
 
+def render_gate_pr_comment(report: dict[str, Any]) -> str:
+    """PR comment from a tree-truth gate report — no research findings required."""
+    coverage = report.get("coverage") if isinstance(report.get("coverage"), dict) else {}
+    if not coverage and report.get("unparsed"):
+        coverage = {"unparsed_agent_config_count": int(report.get("unparsed") or 0)}
+    return render_authority_diff_comment(
+        {"findings": [], "coverage": coverage},
+        lock_delta=report.get("delta") if isinstance(report.get("delta"), dict) else None,
+        needs_approval_from=list(report.get("required_owners") or []) or None,
+        verdict=str(report.get("verdict") or "NEEDS_REVIEW"),
+    )
+
+
 def render_authority_diff_comment(
-    findings_doc: dict[str, Any],
+    findings_doc: dict[str, Any] | None = None,
     *,
     risk_delta: dict[str, Any] | None = None,
     authority_delta: dict[str, Any] | None = None,
@@ -129,6 +143,7 @@ def render_authority_diff_comment(
     del authority_snapshot  # reserved
     # policy_mode no longer changes the authority section (lock-only contract).
     del policy_mode
+    findings_doc = findings_doc if isinstance(findings_doc, dict) else {}
     findings = list(findings_doc.get("findings") or [])
     coverage = findings_doc.get("coverage") or {}
     summary = (risk_delta or {}).get("summary") if risk_delta else None

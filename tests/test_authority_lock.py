@@ -94,9 +94,13 @@ def test_classify_representation_vs_expansion():
         "path": "old/mcp.json",
         "digest": "aaa",
         "fingerprint": "fp1",
+        "script_digest": "s1",
     }
     moved = {**before, "path": "new/mcp.json", "digest": "bbb", "fingerprint": "fp2"}
     assert classify_record_change(before, moved) == "representation"
+
+    body_only = {**before, "script_digest": "s2"}
+    assert classify_record_change(before, body_only) == "representation"
 
     broader = {**before, "pin_state": "floating", "env_keys": ["API_KEY"]}
     assert classify_record_change(before, broader) == "expansion"

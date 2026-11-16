@@ -7,14 +7,14 @@
 
 ## Canonical install
 
-Working install today is the **0.9.0** git tag (signed release assets are on
+Working install today is the **0.9.1** git tag (signed release assets are on
 the GitHub Release). Prefer PyPI / `uvx` only after the index returns the
 package.
 
 ```bash
 # Working install (PyPI publish follows pilots):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
 auctelis --version
 
 # After PyPI is live:
@@ -40,8 +40,8 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.9.0-py3-none-any.whl.cosign.bundle \
-  auctelis-0.9.0-py3-none-any.whl
+  --bundle auctelis-0.9.1-py3-none-any.whl.cosign.bundle \
+  auctelis-0.9.1-py3-none-any.whl
 ```
 
 Trusted Publishing workflow (reserve/publish the `auctelis` name):
@@ -71,5 +71,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.9.0 |
-| Package `auctelis` | 0.9.0 |
+| Product (`VERSION`) | 0.9.1 |
+| Package `auctelis` | 0.9.1 |

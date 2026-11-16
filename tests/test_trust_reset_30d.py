@@ -273,7 +273,7 @@ def test_status_check_exits_nonzero_when_unarmed(tmp_path: Path):
     assert main(["status", "--check", str(root)]) == 1
 
 
-def test_status_check_armed_after_init(tmp_path: Path):
+def test_status_check_armed_after_init(tmp_path: Path, monkeypatch):
     from auctelis.cli import main
 
     root = tmp_path / "repo"
@@ -285,6 +285,15 @@ def test_status_check_armed_after_init(tmp_path: Path):
     )
     assert main(["init", str(root), "--owner", "security"]) == 0
     assert (root / ".github" / "CODEOWNERS").is_file()
+    # Without API access, strict-ruleset leaves protection UNVERIFIED — not armed.
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    assert main(["status", "--check", str(root)]) == 1
+    # Verified ruleset + files in place → armed.
+    monkeypatch.setattr(
+        "auctelis.gate.check_code_owner_ruleset",
+        lambda **_kwargs: ("OK", "ruleset requires code-owner reviews"),
+    )
     assert main(["status", "--check", str(root)]) == 0
 
 

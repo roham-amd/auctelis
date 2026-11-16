@@ -200,11 +200,11 @@ Composite action: [`.github/actions/auctelis-gate`](../.github/actions/auctelis-
 | `fail-on` | empty → policy / never | `never` \| `high` \| `any` |
 | `trusted-policy` | `true` | Load `.auctelis.yml` from PR base ref; fail on policy edits |
 | `no-policy` | `false` | Ignore policy even if present |
-| `authority-diff` | `true` | Build a base-ref baseline for the PR comment |
-| `locked` | `false` | Run the base-lock growth gate after sealing |
+| `authority-diff` | `true` | Extract base-ref tree authority for the growth gate |
+| `locked` | `true` | Run the base-lock growth gate (set `false` for advisory) |
 | `lock-file` | `AUTHORITY.lock` | Lock path relative to the target |
 | `strict-ruleset` | `true` | `UNVERIFIED` protection fails growth |
-| `annotate` | `true` | Post annotations and the sticky PR comment |
+| `annotate` | `false` | Opt-in research scan + findings annotations; sticky Authority Diff always posts from the gate lock delta |
 | `output-dir` | `auctelis-out` | Artifact dir |
 | `install-tools-from` | empty → Action-bundled tools | Prefer pinned kit; refuse accidental PR `./tools` |
 | `upload-sarif` | `false` | Opt in to print the SARIF path for upload |

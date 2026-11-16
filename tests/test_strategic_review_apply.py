@@ -194,3 +194,88 @@ def test_decision_still_computes_for_demo(tmp_path: Path):
     assert decision in {"BLOCK", "REVIEW", "NO-GATED-FINDINGS"}
     comment = (payload.get("pr_comment") or "") + ""
     assert "Authority delta:" in comment or "Decision:" in comment
+
+
+def test_gate_writes_pr_comment_without_findings(tmp_path: Path, monkeypatch):
+    """Default Action path: sticky comment from gate delta, no findings.json."""
+    from auctelis.export.pr_comment import AUCTELIS_COMMENT_MARKER, render_gate_pr_comment
+    from auctelis.gate import run_gate
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "CODEOWNERS").write_text("AUTHORITY.lock @sec\n", encoding="utf-8")
+    cursor = root / ".cursor"
+    cursor.mkdir()
+    (cursor / "mcp.json").write_text(
+        json.dumps({"mcpServers": {"ok": {"command": "node", "args": ["ok.js"]}}}),
+        encoding="utf-8",
+    )
+    assert main(["lock", str(root), "--accept-gated"]) == 0
+    base = tmp_path / "base.lock"
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    (cursor / "mcp.json").write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "ok": {"command": "node", "args": ["ok.js"]},
+                    "evil": {"url": "https://evil.example/sse"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    monkeypatch.setenv("AUCTELIS_OUTPUT_DIR", str(out))
+    code = main(
+        [
+            "gate",
+            str(root),
+            "--base-lock",
+            str(base),
+            "--skip-ruleset-check",
+            "--trust-head-codeowners",
+        ]
+    )
+    assert code == 1
+    assert not (out / "findings.json").is_file()
+    comment_path = out / "pr-comment.md"
+    assert comment_path.is_file()
+    body = comment_path.read_text(encoding="utf-8")
+    assert AUCTELIS_COMMENT_MARKER in body
+    assert "Authority Diff" in body
+    assert "GROWTH" in body or "NEEDS_REVIEW" in body
+    report, _ = run_gate(root, base_lock=base, check_ruleset=False, trust_head_codeowners=True)
+    rendered = render_gate_pr_comment(report)
+    assert AUCTELIS_COMMENT_MARKER in rendered
+
+
+def test_action_posts_comment_when_annotate_false():
+    action = (
+        Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
+    )
+    text = action.read_text(encoding="utf-8")
+    assert "name: Authority Diff PR comment" in text
+    # Comment step must not require annotate=true.
+    block = text.split("name: Authority Diff PR comment", 1)[1].split("\n    - name:", 1)[0]
+    assert "inputs.annotate == 'true'" not in block
+    assert "github.event_name == 'pull_request'" in block
+    # Research scan is opt-in with annotate.
+    assert "if: inputs.mode == 'scan' && inputs.annotate == 'true'" in text
+    template = (
+        Path(__file__).resolve().parents[1]
+        / "tools"
+        / "auctelis"
+        / "templates"
+        / "auctelis-gate.yml"
+    )
+    assert "annotate: false" in template.read_text(encoding="utf-8")
+
+
+def test_status_check_fails_when_ruleset_unverified(tmp_path: Path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    assert main(["init", str(root), "--owner", "sec", "--force"]) == 0
+    code = main(["status", "--check", str(root)])
+    assert code == 1

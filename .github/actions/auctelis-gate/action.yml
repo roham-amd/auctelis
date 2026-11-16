@@ -1,9 +1,9 @@
 name: auctelis Authority Diff
 description: >-
   Tree-truth Authority Diff gate: extract base/head agent reach, fail on
-  unapproved growth or lock↔tree drift, post a sticky PR comment. Optional
-  research scan/annotate stays advisory. Does not execute target application
-  code or contact MCP endpoints.
+  material growth or lock↔tree drift, always post a sticky PR comment from
+  the lock delta. Research scan/annotate is opt-in and advisory. Does not
+  execute target application code or contact MCP endpoints.
 
 inputs:
   path:
@@ -66,9 +66,10 @@ inputs:
     default: "false"
   annotate:
     description: >-
-      If true (scan mode), emit research findings annotations and regenerate the
-      sticky comment from findings. Default false — the gate verdict is the
-      product signal; research findings are not a gate input.
+      If true, also run the research scanner (advisory), emit findings
+      annotations, and enrich the sticky comment from findings.json. Default
+      false — the gate posts the Authority Diff from the lock delta alone;
+      research findings are never a gate input.
     required: false
     default: "false"
   authority-diff:
@@ -332,30 +333,34 @@ runs:
           echo "Base-ref CODEOWNERS copied: $base_owners"
           echo "codeowners=${base_owners}" >> "$GITHUB_OUTPUT"
         fi
-        # Research baseline is advisory only (continue-on-error semantics via set +e).
-        base_args=(scan "$target" -o "$out" --save-baseline "$baseline" --fail-on never)
-        if [[ "${AUCTELIS_NO_POLICY}" == "true" ]]; then
-          base_args+=(--no-policy)
-        elif [[ -n "${AUCTELIS_TRUSTED_POLICY:-}" ]]; then
-          base_args+=(--policy "$AUCTELIS_TRUSTED_POLICY")
-        fi
-        set +e
-        auctelis-dev "${base_args[@]}"
-        base_scan_rc=$?
-        set -e
-        if [[ "$base_scan_rc" -ne 0 ]]; then
-          echo "::warning::base-ref research scan exited ${base_scan_rc} (advisory; not a gate)."
-        fi
-        if [[ -f "$baseline" ]]; then
-          echo "Base-ref baseline written: $baseline"
-          echo "path=${baseline}" >> "$GITHUB_OUTPUT"
+        # Research baseline is advisory and opt-in via annotate=true.
+        if [[ "${{ inputs.annotate }}" == "true" ]]; then
+          base_args=(scan "$target" -o "$out" --save-baseline "$baseline" --fail-on never)
+          if [[ "${AUCTELIS_NO_POLICY}" == "true" ]]; then
+            base_args+=(--no-policy)
+          elif [[ -n "${AUCTELIS_TRUSTED_POLICY:-}" ]]; then
+            base_args+=(--policy "$AUCTELIS_TRUSTED_POLICY")
+          fi
+          set +e
+          auctelis-dev "${base_args[@]}"
+          base_scan_rc=$?
+          set -e
+          if [[ "$base_scan_rc" -ne 0 ]]; then
+            echo "::warning::base-ref research scan exited ${base_scan_rc} (advisory; not a gate)."
+          fi
+          if [[ -f "$baseline" ]]; then
+            echo "Base-ref baseline written: $baseline"
+            echo "path=${baseline}" >> "$GITHUB_OUTPUT"
+          fi
+        else
+          echo "Research baseline skipped (annotate=false); gate uses tree-truth locks only."
         fi
         git worktree remove --force "$work" || true
 
     - name: Run auctelis research scan (advisory)
       id: scan
       continue-on-error: true
-      if: inputs.mode == 'scan'
+      if: inputs.mode == 'scan' && inputs.annotate == 'true'
       shell: bash
       env:
         AUCTELIS_PATH: ${{ inputs.path }}
@@ -514,7 +519,7 @@ runs:
         auctelis-dev annotate "$FINDINGS" --format github
 
     - name: Authority Diff PR comment
-      if: always() && inputs.mode == 'scan' && inputs.annotate == 'true' && github.event_name == 'pull_request'
+      if: always() && inputs.mode == 'scan' && github.event_name == 'pull_request'
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -522,16 +527,14 @@ runs:
         AUCTELIS_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
         AUCTELIS_PATH: ${{ inputs.path }}
         AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
+        AUCTELIS_ANNOTATE: ${{ inputs.annotate }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         FINDINGS="$AUCTELIS_OUTPUT_DIR/findings.json"
         COMMENT="$AUCTELIS_OUTPUT_DIR/pr-comment.md"
         DELTA="$AUCTELIS_OUTPUT_DIR/risk-delta.json"
-        if [[ ! -f "$FINDINGS" ]]; then
-          echo "No findings.json; skipping PR comment."
-          exit 0
-        fi
+        GATE_TXT="$AUCTELIS_OUTPUT_DIR/gate-report.txt"
         # Adoption ceremony: no base lock + head lock must never sticky-comment as PASS.
         head_lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         head_lock_path="${AUCTELIS_PATH%/}/${head_lock_rel}"
@@ -569,10 +572,28 @@ runs:
             } >"$COMMENT"
           fi
         elif [[ ! -f "$COMMENT" ]]; then
-          if [[ -f "$DELTA" ]]; then
-            auctelis-dev annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
+          # Prefer gate-owned comment; research annotate is optional enrichment.
+          if [[ "${AUCTELIS_ANNOTATE}" == "true" && -f "$FINDINGS" ]]; then
+            if [[ -f "$DELTA" ]]; then
+              auctelis-dev annotate "$FINDINGS" --format pr-comment --risk-delta "$DELTA" >"$COMMENT"
+            else
+              auctelis-dev annotate "$FINDINGS" --format pr-comment >"$COMMENT"
+            fi
+          elif [[ -f "$GATE_TXT" ]]; then
+            {
+              echo "<!-- auctelis-authority-diff -->"
+              echo "### auctelis Authority Diff"
+              echo ""
+              cat "$GATE_TXT"
+            } >"$COMMENT"
           else
-            auctelis-dev annotate "$FINDINGS" --format pr-comment >"$COMMENT"
+            {
+              echo "<!-- auctelis-authority-diff -->"
+              echo "### auctelis Authority Diff"
+              echo "**Verdict:** \`NEEDS_REVIEW\`"
+              echo ""
+              echo "Gate did not write pr-comment.md; see job summary / artifacts."
+            } >"$COMMENT"
           fi
         fi
         echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"

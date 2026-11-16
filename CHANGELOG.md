@@ -5,6 +5,29 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [0.9.1] — 2026-11-17
+
+### Security
+- **Material-reach gate:** body/script-digest-only edits stay visible on the
+  Authority Diff comment but no longer fail the required check. New hosts,
+  launchers, env keys, pin/approval growth, lock↔tree drift, and unparsed
+  configs still fail closed.
+
+### Changed
+- Action posts the sticky PR comment from the **gate lock delta** on every PR
+  (`annotate: false` default). Research `auctelis-dev scan` / annotate run only
+  when `annotate: true`.
+- `status --check` exits nonzero when `strict-ruleset` is on and ruleset
+  protection is `UNVERIFIED` or `MISSING`.
+- Instruction/skill `script_digest` classified as representation (cards still
+  say "body changed"); prose-derived destination growth remains material.
+- Docs/Action defaults and install pins updated to `@v0.9.1`.
+- Validate matrix covers tree-truth / strategic-review / trust-reset suites.
+
+### Fixed
+- GUARD-SCAN Action input table matched live defaults (`locked=true`,
+  `annotate=false`; comment is gate-owned).
+
 ## [0.9.0] — 2026-11-16
 
 ### Security

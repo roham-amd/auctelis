@@ -705,19 +705,23 @@ def run_gate(
             detail = f"committed AUTHORITY.lock ≠ tree ({shown})"
         error = f"{error} {detail}." if error else f"{detail} — run `auctelis lock` and review."
 
-    # Representation / body-only churn: check and lock --check already fail;
-    # gate must not print PASS / NONE as "no authority change".
-    if ok and authority_changed and label == "NONE":
-        ok = False
-        verdict = "NEEDS_REVIEW"
-        detail = (
-            "authority body/representation changed on head "
-            "(digest or packaging drift — not analyzed as new reach)"
+    # Representation / body-only churn is visible on the PR comment but is not
+    # material reach. Local `check` / `lock --check` still refuse an unsealed
+    # body digest; the required CI check fails only on material growth, drift,
+    # unparsed configs, or missing CODEOWNERS/ruleset protection.
+    material = (
+        bool(summary.get("material_authority_change")) if isinstance(summary, dict) else meaningful
+    )
+    representation_only = bool(authority_changed and not material and label == "NONE")
+    if ok and representation_only:
+        note = (
+            "authority body/representation changed on head (visible on comment; not material reach)"
         )
-        error = f"{error} {detail}." if error else f"{detail}."
+        error = f"{error} {note}." if error else f"{note}."
 
-    # Every discovered authority path should be CODEOWNERS-covered.
-    if uncovered_paths and (needs_approval or authority_changed or lock_drift):
+    # Every discovered authority path should be CODEOWNERS-covered on material
+    # growth or lock↔tree drift (not on body-only packaging churn).
+    if uncovered_paths and (needs_approval or material or lock_drift):
         ok = False
         verdict = "NEEDS_REVIEW"
         shown = ", ".join(uncovered_paths[:8])
@@ -743,6 +747,8 @@ def run_gate(
         "protection": protection,
         "strict_ruleset": strict_ruleset,
         "meaningful_authority_change": meaningful,
+        "material_authority_change": material,
+        "representation_only": representation_only,
         "authority_changed": authority_changed,
         "lock_tree_drift": lock_drift,
         "needs_approval": needs_approval,
@@ -756,6 +762,8 @@ def run_gate(
         "ruleset": ruleset_status,
         "ruleset_detail": ruleset_detail,
         "delta": delta,
+        "coverage": coverage,
+        "unparsed": unparsed,
         "lines": report_lines,
         "authority_path_hints": list(AUTHORITY_PATH_HINTS),
         "head_source": "tree",
@@ -810,6 +818,11 @@ def render_gate_report(report: dict[str, Any]) -> str:
         lines.append(str(report["message"]))
     if report.get("ok") and label == "REDUCTION":
         lines.append("Authority reduced vs base lock — no extra review required.")
+    elif report.get("ok") and report.get("representation_only"):
+        lines.append(
+            "Body/representation changed vs base lock — visible on comment; "
+            "not material reach (required check stays green)."
+        )
     elif report.get("ok") and not report.get("needs_approval"):
-        lines.append("No authority addition/expansion vs base lock.")
+        lines.append("No material authority growth vs base lock.")
     return "\n".join(lines)

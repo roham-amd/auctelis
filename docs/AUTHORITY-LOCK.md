@@ -48,7 +48,7 @@ full `id` (path-qualified).
 | `expansion` | Broader authority on an existing identity | New capabilities / destinations / env keys; weaker pin; looser approval |
 | `reduction` | Narrower authority | Removed component; fewer caps/destinations/env; stronger pin; stricter approval |
 | `replacement` | Authority shape rewritten without clear grow/shrink | Equal-size capability set rewrite |
-| `representation` | Packaging / location / digest only | Path move, content reformat with same authority fields |
+| `representation` | Packaging / location / body digest only | Path move; instruction/skill `script_digest` wording change with same reach fields |
 | `mixed` | Both expansion and reduction on one record | Caps added and removed in one edit |
 
 Pin ranking (worse →): `digest` &lt; `pinned` &lt; `n/a` &lt; `unknown` &lt; `floating`  
@@ -56,15 +56,20 @@ Approval ranking (worse →): `prompt` &lt; `unknown` &lt; `auto` &lt; `bypass`
 
 Diff summary fields:
 
-- `meaningful_authority_change` — additions / expansions / reductions / replacements / policy
+- `material_authority_change` — additions / expansions / replacements / tool-pin growth / policy (required CI gate)
+- `meaningful_authority_change` — material plus reductions (any non-representation delta)
 - `authority_changed` — any lock drift including representation (requires re-lock)
 
 Rendered lock / PR lines include **field-level old → new** for capabilities,
 destinations, env keys, pin/approval posture, launcher, and digests, plus the
-evidence path (`@ path`). Representation-only moves surface `path: old → new`.
+evidence path (`@ path`). Body-only edits surface `body changed`; path moves
+surface `path: old → new`. Prose that adds a destination host is an
+**expansion** (material), not representation.
 
-`auctelis lock --check` and `check --locked` fail when `authority_changed` is
-true so digests stay honest. Reviewers should prioritize `meaningful_authority_change`.
+`auctelis lock --check` and local `check` fail when `authority_changed` is
+true so digests stay honest. The required CI gate fails on
+`material_authority_change` (and drift / unparsed / CODEOWNERS gaps), not on
+body-only representation.
 
 ---
 

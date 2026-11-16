@@ -21,7 +21,7 @@ from auctelis.cli.authority_commands import (
 from auctelis.cli.guards import refuse_agent_mutation
 from auctelis.export.agent_digest import render_agent_digest
 from auctelis.export.annotate import render_github_annotations, render_text_annotations
-from auctelis.export.pr_comment import render_authority_diff_comment
+from auctelis.export.pr_comment import render_authority_diff_comment, render_gate_pr_comment
 from auctelis.export.sarif import report_to_sarif
 from auctelis.gate import load_lock_owners, render_gate_report, run_gate
 from auctelis.hosts.profiles import get_host_profile, list_host_profiles
@@ -342,21 +342,27 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         gate_out.mkdir(parents=True, exist_ok=True)
         write_json(gate_out / "gate-report.json", report)
         write_text(gate_out / "gate-report.txt", render_gate_report(report))
-        # Keep the one verdict dialect: when the gate ran, its verdict wins
-        # over the comment renderer's local heuristic.
+        # Gate owns the sticky comment. Optional findings.json may enrich
+        # coverage; it is never required to post the Authority Diff.
         findings_path = gate_out / "findings.json"
-        if findings_path.is_file():
-            findings_doc = read_json(findings_path)
-            if isinstance(findings_doc, dict):
-                comment = render_authority_diff_comment(
+        findings_doc = read_json(findings_path) if findings_path.is_file() else None
+        if isinstance(findings_doc, dict):
+            coverage = findings_doc.get("coverage")
+            if isinstance(coverage, dict) and not report.get("coverage"):
+                report["coverage"] = coverage
+            write_text(
+                gate_out / "pr-comment.md",
+                render_authority_diff_comment(
                     findings_doc,
                     lock_delta=report.get("delta")
                     if isinstance(report.get("delta"), dict)
                     else None,
                     needs_approval_from=report.get("required_owners") or None,
                     verdict=report.get("verdict"),
-                )
-                write_text(gate_out / "pr-comment.md", comment)
+                ),
+            )
+        else:
+            write_text(gate_out / "pr-comment.md", render_gate_pr_comment(report))
     return code
 
 
@@ -544,6 +550,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
     policy_path = root / ".auctelis.yml"
     lines: list[str] = [f"auctelis status · {root}", f"Product: {product_version()}"]
     problems: list[str] = []
+    workflow_strict = True
 
     if lock_path.is_file():
         try:
@@ -574,12 +581,12 @@ def _cmd_status(args: argparse.Namespace) -> int:
     if workflow_path.is_file():
         body = workflow_path.read_text(encoding="utf-8")
         has_gate, locked, pin = _workflow_locked_state(body)
-        strict = "--no-strict-ruleset" not in body
+        workflow_strict = "--no-strict-ruleset" not in body
         install = "local-action" if local_action.is_file() else "remote-action"
         lines.append(
             f"Workflow: present · gate={'yes' if has_gate else 'NO'} · "
             f"locked={'true' if locked else 'false'} · strict-ruleset="
-            f"{'on' if strict else 'off'} · Action @{pin} · install={install}"
+            f"{'on' if workflow_strict else 'off'} · Action @{pin} · install={install}"
         )
         if not has_gate:
             problems.append("workflow lacks auctelis-gate action")
@@ -610,6 +617,13 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
     status, detail = check_code_owner_ruleset()
     lines.append(f"Protection: {status} — {detail}")
+    # Mirror gate --strict-ruleset: UNVERIFIED/MISSING is not an armed enforce path.
+    if check_mode and workflow_strict:
+        status_u = str(status or "").upper()
+        if status_u == "MISSING":
+            problems.append("code-owner review ruleset missing")
+        elif status_u == "UNVERIFIED":
+            problems.append("ruleset protection UNVERIFIED")
     if check_mode and problems:
         lines.append("Gate armed: NO — " + "; ".join(problems))
     elif check_mode:

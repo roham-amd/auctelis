@@ -10,7 +10,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.9.0** · Product: auctelis **0.9.0** (install pin: `@v0.9.0` — see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.9.1** · Product: auctelis **0.9.1** (install pin: `@v0.9.1` — see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -38,7 +38,7 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.9.0#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools
 # PyPI coming — git tag until the index returns the package.
 auctelis init --owner security             # policy + workflow + CODEOWNERS + lock
 auctelis check                             # repo authority vs AUTHORITY.lock

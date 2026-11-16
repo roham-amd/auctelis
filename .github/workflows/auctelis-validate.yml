@@ -95,6 +95,9 @@ jobs:
           uv run --locked pytest -q
           ../tests/test_gate_zero_30d.py
           ../tests/test_days_6_30.py
+          ../tests/test_tree_truth_weeks.py
+          ../tests/test_strategic_review_apply.py
+          ../tests/test_trust_reset_30d.py
 
   wheel-smoke:
     runs-on: ubuntu-latest

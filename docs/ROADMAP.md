@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.9.0** (tree-truth gate) · lock schema 1 · tooling 0.9.0
+**Current:** **0.9.1** (material-reach + gate-owned PR comment) · lock schema 1 · tooling 0.9.1
 
 ## North star (Gate Zero)
 
@@ -17,8 +17,9 @@ are removed.
    forever `FAIL_CLOSED`
 5. Coverage and evidence strength are visible on every match and card
 6. Product path is **tree-truth**; research scanner stays on `auctelis-dev`
+7. Required check fails on **material** reach only; comment always posts
 
-## 30-day build (Gate Zero → 0.9.0)
+## 30-day build (Gate Zero → 0.9.1)
 
 | Window | Work | Status |
 | --- | --- | --- |
@@ -30,7 +31,8 @@ are removed.
 | **0.8.1** | Consumer Action pin; empty-baseline growth; `init`/`status`; inventory-only product path | **done** |
 | **0.8.2** | Trust reset: no fail_on promotion; Action inventory-only; CODEOWNERS protection; unparsed fail-closed; evidence through diff; PyPI-ready docs | **done** |
 | **0.9.0** | Tree-truth gate; lock↔tree drift; prose hosts; init CODEOWNERS for authority paths; Docker removed | **done** |
-| Next | PyPI Trusted Publishing; five outside pilots; further docs collapse; physical scanner delete | open |
+| **0.9.1** | Gate-owned PR comment; material-reach fail; `status --check` requires verified ruleset; docs/Action defaults aligned | **done** |
+| Next | PyPI Trusted Publishing; five outside pilots; physical scanner delete from wheel | open |
 
 ## 90-day decision gate
 

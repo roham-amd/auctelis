@@ -206,7 +206,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     demo = sub.add_parser(
         "demo",
-        help="Optional packaged fixture: scan demo-vulnerable and print the Authority Diff",
+        help="Optional packaged fixture: lock-only Authority Diff on demo-vulnerable",
     )
     demo.add_argument(
         "-o",

@@ -1,9 +1,9 @@
 {
   "manifest_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.9.0",
+  "product_version": "0.9.1",
   "package_name": "auctelis",
-  "package_version": "0.9.0",
+  "package_version": "0.9.1",
   "primary_command": "auctelis check",
   "north_star": "Nothing in a repo gains reach until a human has seen the Authority Diff and said OK.",
   "positioning": "The authority lockfile and PR review for what AI agents can reach.",
@@ -77,6 +77,7 @@
     "evidence_strength": "LITERAL_CONFIG | INFERRED_HINT | NAME_MARKER",
     "verdict": "PASS | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED (authority change control)",
     "label": "GROWTH | REDUCTION | NONE (what the lock delta is, not a verdict)",
+    "material_authority_change": "additions / expansions / replacements / tool-pin growth / policy (required CI gate; body-only representation is comment-visible only)",
     "internal_scan_decision": "BLOCK | REVIEW | NO-GATED-FINDINGS (annotation layer; never a second public gate)"
   },
   "compatibility": {

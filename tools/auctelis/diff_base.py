@@ -94,10 +94,8 @@ def run_diff_base(
         unparsed = 0
 
     growth = label == "GROWTH"
-    if unparsed or growth or summary.get("meaningful_authority_change"):
-        verdict = "NEEDS_REVIEW"
-    else:
-        verdict = "PASS"
+    material = bool(summary.get("material_authority_change"))
+    verdict = "NEEDS_REVIEW" if unparsed or growth or material else "PASS"
 
     findings_doc = {
         "findings": [],
