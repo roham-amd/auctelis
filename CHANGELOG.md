@@ -29,7 +29,8 @@ and this project uses semantic versioning.
 - Docs / templates / install pins → `@v0.11.0`; AUTHORITY-LOCK documents
   reach-tier `material_authority_change`.
 - Build prefers the current-version wheel when checking research omission.
-- Wheel-smoke asserts `auctelis_research` is not importable from the product wheel.
+- Wheel-smoke asserts `auctelis_research` is not importable from the product
+  wheel (`python -P` so the tools/ checkout is not on ``sys.path``).
 
 ### Compatibility
 - Existing `locked: "true"` workflows keep enforce behavior.
