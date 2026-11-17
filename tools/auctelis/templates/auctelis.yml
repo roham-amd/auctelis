@@ -1,8 +1,8 @@
 version: 1
 
 policy:
-  # Default for `auctelis ci init` is enforce. Pass --advisory for warn-only.
-  mode: enforce
+  # Default for `auctelis init` is comment-only (advisory). Pass --enforce to lock.
+  mode: advisory
   fail_on: never
   output_dir: auctelis-out
   # baseline: .auctelis/baseline.json

@@ -1,5 +1,5 @@
-# Enforce-by-default quickstart. For warn-only: locked=false or
-# `auctelis init --advisory --owner security`.
+# Lockless comment-only (default). For enforce: locked=true + strict-ruleset=true
+# or `auctelis init --owner security --enforce`.
 # Prefer an immutable Action commit SHA in high-assurance repos.
 name: auctelis
 on:
@@ -8,7 +8,6 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  security-events: write
 
 jobs:
   auctelis:
@@ -22,14 +21,10 @@ jobs:
         # Tools are bundled in the Action — no pip install required.
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.9.1
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.10.0
         with:
           path: .
-          mode: scan
-          trusted-policy: "true"
-          authority-diff: "true"
-          locked: "true"
-          strict-ruleset: "true"
-          # Gate posts the Authority Diff comment; research annotate is opt-in.
+          locked: "false"
+          strict-ruleset: "false"
           annotate: false
           output-dir: auctelis-out

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from auctelis.security.decision import compute_decision
 from auctelis.security.gating import is_high_gate_finding
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 _ATLAS = Path(__file__).resolve().parent / "atlas"
 

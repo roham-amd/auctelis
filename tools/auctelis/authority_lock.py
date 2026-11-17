@@ -554,8 +554,12 @@ def classify_record_change(
 def diff_authority_locks(
     base: dict[str, Any],
     head: dict[str, Any],
+    *,
+    trusted_hosts: set[str] | None = None,
 ) -> dict[str, Any]:
     """Record-level authority diff with expansion/reduction classification."""
+    from auctelis.reach_tiers import TIER_FAIL, delta_max_reach_tier
+
     base_n = normalize_lock_for_compare(base)
     head_n = normalize_lock_for_compare(head)
     base_by = _index_by_identity(base_n["records"])
@@ -616,40 +620,27 @@ def diff_authority_locks(
     # Representation-only churn still marks lock drift (hash/path) but is labeled.
     authority_changed = meaningful or bool(changed or added or removed or policy_changed)
     # Material reach: additions / expansions / replacements / tool pin growth /
-    # policy — not body-digest or path packaging alone. Gate fails on this;
-    # representation stays visible on the PR comment.
-    material = bool(
-        addition_n
-        or expansion_n
-        or replacement_n
-        or tools_added
-        or tools_changed
-        or policy_changed
-        or any(c.get("change_class") == "mixed" for c in changed)
-    )
-    lines = render_lock_diff_lines(added=added, removed=removed, changed=changed)
-    lines.extend(f"+ mcp tool pin `{name}`" for name in tools_added)
-    lines.extend(f"- mcp tool pin `{name}`" for name in tools_removed)
-    lines.extend(f"~ mcp tool pin `{name}`: digest changed" for name in tools_changed)
-    return {
+    # policy — not body-digest or path packaging alone. Gate fails on tier≥fail;
+    # representation and tier-1 network stay visible on the PR comment.
+    summary: dict[str, Any] = {
+        "records_added": len(added),
+        "records_removed": len(removed),
+        "records_changed": len(changed),
+        "additions": addition_n,
+        "expansions": expansion_n,
+        "reductions": reduction_n,
+        "replacements": replacement_n,
+        "representations": representation_n,
+        "mcp_tools_added": len(tools_added),
+        "mcp_tools_removed": len(tools_removed),
+        "mcp_tools_changed": len(tools_changed),
+        "policy_changed": policy_changed,
+        "authority_changed": authority_changed,
+        "meaningful_authority_change": meaningful,
+    }
+    provisional: dict[str, Any] = {
         "kind": "authority_lock_delta",
-        "summary": {
-            "records_added": len(added),
-            "records_removed": len(removed),
-            "records_changed": len(changed),
-            "additions": addition_n,
-            "expansions": expansion_n,
-            "reductions": reduction_n,
-            "replacements": replacement_n,
-            "representations": representation_n,
-            "mcp_tools_added": len(tools_added),
-            "mcp_tools_removed": len(tools_removed),
-            "mcp_tools_changed": len(tools_changed),
-            "policy_changed": policy_changed,
-            "authority_changed": authority_changed,
-            "meaningful_authority_change": meaningful,
-            "material_authority_change": material,
-        },
+        "summary": summary,
         "changes": {
             "added": added,
             "removed": removed,
@@ -658,8 +649,18 @@ def diff_authority_locks(
             "mcp_tools_removed": tools_removed,
             "mcp_tools_changed": tools_changed,
         },
-        "lines": lines,
+        "lines": [],
     }
+    max_tier = delta_max_reach_tier(provisional, trusted_hosts=trusted_hosts)
+    material = max_tier >= TIER_FAIL
+    lines = render_lock_diff_lines(added=added, removed=removed, changed=changed)
+    lines.extend(f"+ mcp tool pin `{name}`" for name in tools_added)
+    lines.extend(f"- mcp tool pin `{name}`" for name in tools_removed)
+    lines.extend(f"~ mcp tool pin `{name}`: digest changed" for name in tools_changed)
+    summary["max_reach_tier"] = max_tier
+    summary["material_authority_change"] = material
+    provisional["lines"] = lines
+    return provisional
 
 
 def _short(value: Any, *, max_len: int = 24) -> str:

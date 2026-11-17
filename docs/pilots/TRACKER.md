@@ -1,4 +1,4 @@
-# Pilot tracker (5 × 30 days) — Authority Diff gate
+# Pilot tracker (5 × 30 days) — Authority Diff
 
 Update a row when a pilot starts, renews, or drops the check.
 Do not invent retention — leave `status` as `open` until evidence exists.
@@ -9,35 +9,26 @@ check weekly, or fewer than three growth PRs actually reviewed → fall back to
 
 | Slot | Surface mix | Repo | Action | First lock (UTC) | Day-30 check | Growth PRs reviewed | Taught them something | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | MCP + skills | _TBD_ | no | — | — | — | — | open | `check` + lock |
-| 2 | Instructions / rules | _TBD_ | no | — | — | — | — | open | |
-| 3 | Enforce Action | _TBD_ | no | — | — | — | — | open | locked=true |
-| 4 | Advisory → enforce | _TBD_ | no | — | — | — | — | open | `--advisory` then upgrade |
-| 5 | CODEOWNERS growth | _TBD_ | no | — | — | — | — | open | NEEDS_REVIEW → approve |
+| 1 | MCP + skills | _TBD_ | lockless | — | — | — | — | open | paste `auctelis-diff.yml` |
+| 2 | Instructions / rules | _TBD_ | lockless | — | — | — | — | open | |
+| 3 | Enforce Action | _TBD_ | enforce | — | — | — | — | open | `init --enforce` |
+| 4 | Advisory → enforce | _TBD_ | advisory→enforce | — | — | — | — | open | upgrade path |
+| 5 | CODEOWNERS growth | _TBD_ | lockless→init | — | — | — | — | open | NEEDS_REVIEW → approve |
 
 **Status values:** `open` · `recruited` · `installed` · `retained_30d` · `dropped` · `declined`
 
 Leave a cell empty if the pilot declines or no evidence exists. Do not invent
 retention, and do not replace `_TBD_` with a dogfood repo.
 
-## Metrics to capture per pilot
-
-Log rows in [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv):
-
-| Metric | How |
-| --- | --- |
-| `install_to_first_pr_diff_minutes` | Wall clock from install to first PR Authority Diff |
-| `check_enabled_weekly` | yes/no — Action still required on default branch |
-| `taught_them_something` | Reviewer: yes / partial / no |
-| `pr_replies` | Reviewer replies on the PR comment: yes / partial / no |
-| `false_positives` | Count of gated FPs in first two weeks |
-| `growth_prs_reviewed` / `total_growth_prs` | CODEOWNER-reviewed growth |
+Metrics CSV: [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv) ·
+Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 
 ## Recruitment checklist
 
 - [ ] Confirm unrelated org/repo (not this product dogfood)
-- [ ] Path: `check` → `lock --update` → `ci init --apply --owner @team` under 10 minutes
-- [ ] Enforce Action (`locked=true`) + CODEOWNERS on `AUTHORITY.lock`
-- [ ] Pin Action to git tag `v0.9.1` or commit SHA; `strict-ruleset: true`
-- [ ] File labeled findings into `eval/holdout-labels.csv` / `eval/configs/`
+- [ ] Prefer lockless workflow first (`templates/auctelis-diff.yml`)
+- [ ] Path under 10 minutes: paste workflow → PR → comment
+- [ ] Optional later: `init --owner team` / `--enforce`
+- [ ] Pin Action to git tag `v0.9.1` (or commit SHA)
+- [ ] Log row in `eval/pilot-metrics.csv`
 - [ ] Re-check day 30 and update this tracker

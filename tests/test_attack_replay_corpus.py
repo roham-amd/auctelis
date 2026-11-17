@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from auctelis.security.decision import compute_decision
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 _REPLAY = Path(__file__).resolve().parents[1] / "examples" / "attack-replay"
 

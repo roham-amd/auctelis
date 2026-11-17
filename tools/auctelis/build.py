@@ -327,7 +327,7 @@ def check_bare_command_docs() -> None:
         if rel in {"SECURITY.md", "docs/GUARD-SCAN.md"} and stale_product.search(text):
             raise SystemExit(
                 f"{rel} still describes Authority Watch / watch-first as the product; "
-                "document check → lock → ci init → gate"
+                "document diff --base → init / lockless workflow → gate"
             )
         if rel == "CONTRIBUTING.md" and stale_rebrand.search(text):
             raise SystemExit(f"{rel} still contains rebrand residue ('formerly branded')")
@@ -512,6 +512,36 @@ def check_dependency_pins() -> list[str]:
     return actions
 
 
+def check_wheel_omits_research() -> list[str]:
+    """Fail the build if the product wheel still ships the research scanner."""
+    import zipfile
+    from pathlib import Path
+
+    dist = Path(__file__).resolve().parents[1] / "dist"
+    wheels = sorted(dist.glob("auctelis-*.whl")) if dist.is_dir() else []
+    if not wheels:
+        return ["skip wheel research check (no dist/*.whl; run uv build first)"]
+    wheel = wheels[-1]
+    banned = (
+        "auctelis/security/rules.py",
+        "auctelis/security/scan.py",
+        "auctelis/broker.py",
+        "auctelis/typosquat.py",
+        "auctelis/mcp_snapshot.py",
+        "auctelis/artifact_vet.py",
+        "auctelis/export/annotate.py",
+        "auctelis/corpus/",
+        "auctelis/graph/",
+        "auctelis_research/",
+    )
+    with zipfile.ZipFile(wheel) as zf:
+        names = zf.namelist()
+    hits = [b for b in banned if any(b in n for n in names)]
+    if hits:
+        raise SystemExit(f"{wheel.name} still contains research modules: {hits}")
+    return [f"ok {wheel.name} omits research scanner"]
+
+
 def build_all() -> dict[str, object]:
     sync = sync_schemas()
     packaged = sync_packaged_version_metadata()
@@ -523,12 +553,14 @@ def build_all() -> dict[str, object]:
     validate_json_schema_document()
     examples = validate_examples()
     links = check_internal_markdown_links()
+    wheel_lean = check_wheel_omits_research()
     return {
         "schemas": sync,
         "packaged_metadata": packaged,
         "examples": examples,
         "dependency_pins": dep_pins,
         "markdown_files_link_checked": links,
+        "wheel_omits_research": wheel_lean,
         # Monolith generation removed from product build (archive/methodology only).
         "status": "ok",
     }

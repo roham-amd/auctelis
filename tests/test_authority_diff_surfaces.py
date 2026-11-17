@@ -2,7 +2,7 @@ from pathlib import Path
 
 from auctelis.export.agent_digest import fence_untrusted, render_agent_digest
 from auctelis.export.pr_comment import escape_markdown, render_authority_diff_comment
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def test_escape_markdown_strips_links_and_mentions():

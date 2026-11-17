@@ -1199,7 +1199,7 @@ def rule_typosquat_known_name(
     Evidence is NAME proximity only → never CRITICAL; does not gate alone via
     NAME_MARKER exclusion in gating.
     """
-    from auctelis.typosquat import nearest_typosquat
+    from auctelis_research.typosquat import nearest_typosquat
 
     candidate = _typosquat_candidate(component)
     if not candidate:

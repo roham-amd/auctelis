@@ -585,7 +585,10 @@ def run_gate(
         not base_records and not (base.get("mcp_tools") or {}) and bool(head_records)
     )
 
-    delta = diff_authority_locks(base, head)
+    from auctelis.reach_tiers import TIER_FAIL, delta_max_reach_tier, load_trusted_hosts
+
+    trusted_hosts = load_trusted_hosts(root)
+    delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
     summary = delta.get("summary") or {}
     meaningful = bool(summary.get("meaningful_authority_change"))
     # Align with check / lock --check: representation / body drift is reviewable.
@@ -604,7 +607,12 @@ def run_gate(
         codeowners_covers_protection(co_text, root=root) if co_text else (False, [LOCK_NAME])
     )
     uncovered_paths = uncovered_authority_paths(head, co_text, delta=delta) if co_text else []
-    needs_approval = label == "GROWTH"
+    max_tier = int(
+        summary.get("max_reach_tier") or delta_max_reach_tier(delta, trusted_hosts=trusted_hosts)
+    )
+    # Tier 0/1 growth stays on the comment; only tier ≥ fail (execute/secrets/MCP…)
+    # pages CODEOWNERS / fails the required check.
+    needs_approval = label == "GROWTH" and max_tier >= TIER_FAIL
     # Head CODEOWNERS alone is attacker-writable on a PR. Trust it only when:
     # - caller passed a base-ref copy (--codeowners / codeowners_text), or
     # - --trust-head-codeowners, or
@@ -685,13 +693,23 @@ def run_gate(
                 "review is required in branch protection."
             )
 
+    def _append_review_error(detail: str) -> None:
+        """Append a NEEDS_REVIEW detail; drop stale PASS labels from earlier branches."""
+        nonlocal error
+        prior = error
+        if prior and prior.lstrip().startswith("PASS"):
+            prior = None
+        error = f"{prior} {detail}".strip() if prior else detail
+
     # Unparsed configs mean authority could not be established. Never let a
     # missing record look like a reduction/PASS.
     if unparsed:
         ok = False
         verdict = "NEEDS_REVIEW"
-        detail = f"{unparsed} agent config file(s) could not be parsed on head"
-        error = f"{error} {detail}." if error else f"{detail} — review before merge."
+        detail = (
+            f"{unparsed} agent config file(s) could not be parsed on head — review before merge."
+        )
+        _append_review_error(detail)
 
     # Committed lock must match the tree; otherwise the gate would green-light
     # authority that never entered the lock (the classic bypass).
@@ -699,11 +717,11 @@ def run_gate(
         ok = False
         verdict = "NEEDS_REVIEW"
         if drift_error:
-            detail = drift_error
+            detail = f"{drift_error} — run `auctelis lock` and review."
         else:
             shown = "; ".join(drift_lines[:8]) if drift_lines else "authority fields differ"
-            detail = f"committed AUTHORITY.lock ≠ tree ({shown})"
-        error = f"{error} {detail}." if error else f"{detail} — run `auctelis lock` and review."
+            detail = f"committed AUTHORITY.lock ≠ tree ({shown}) — run `auctelis lock` and review."
+        _append_review_error(detail)
 
     # Representation / body-only churn is visible on the PR comment but is not
     # material reach. Local `check` / `lock --check` still refuse an unsealed
@@ -714,10 +732,8 @@ def run_gate(
     )
     representation_only = bool(authority_changed and not material and label == "NONE")
     if ok and representation_only:
-        note = (
-            "authority body/representation changed on head (visible on comment; not material reach)"
-        )
-        error = f"{error} {note}." if error else f"{note}."
+        note = "authority body/representation changed on head (visible on comment; not material reach)."
+        error = f"{error} {note}".strip() if error else note
 
     # Every discovered authority path should be CODEOWNERS-covered on material
     # growth or lock↔tree drift (not on body-only packaging churn).
@@ -726,14 +742,16 @@ def run_gate(
         verdict = "NEEDS_REVIEW"
         shown = ", ".join(uncovered_paths[:8])
         more = f" (+{len(uncovered_paths) - 8} more)" if len(uncovered_paths) > 8 else ""
-        detail = f"CODEOWNERS missing coverage for authority paths: {shown}{more}"
-        error = f"{error} {detail}." if error else f"{detail}."
+        detail = f"CODEOWNERS missing coverage for authority paths: {shown}{more}."
+        _append_review_error(detail)
 
     if empty_baseline_growth:
         note = (
             "Empty-baseline growth: base AUTHORITY.lock has 0 records; "
             "first sealed authority requires CODEOWNERS review (not FAIL_CLOSED)."
         )
+        if error and error.lstrip().startswith("PASS"):
+            error = None
         error = f"{error} {note}".strip() if error else note
 
     protection = protection_status(ruleset_status, needs_approval=needs_approval)

@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "init --owner @team → check → lock --update → gate (PR Authority Diff)"
+PUBLIC_PATH = "diff --base main → init --owner team → check → gate (PR Authority Diff)"
 
 _EPILOG = f"""
 public core:  {PUBLIC_PATH}
@@ -136,9 +136,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="CODEOWNERS identity for AUTHORITY.lock (e.g. security; @ optional)",
     )
     init_cmd.add_argument(
+        "--enforce",
+        action="store_true",
+        help="Opt into enforce mode (locked=true + strict ruleset); default is comment-only",
+    )
+    init_cmd.add_argument(
         "--advisory",
         action="store_true",
-        help="Write advisory mode (locked=false); default is enforce",
+        help="Comment-only mode (default; locked=false)",
     )
     init_cmd.add_argument(
         "--accept-gated",
@@ -157,7 +162,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Exit nonzero when the authority gate is not armed",
     )
 
-    ci = sub.add_parser("ci", help="Write enforce workflow + CODEOWNERS + lock")
+    ci = sub.add_parser("ci", help="Write workflow + CODEOWNERS + lock (alias of init)")
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
     ci_init = ci_sub.add_parser(
         "init",
@@ -171,9 +176,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="CODEOWNERS identity for AUTHORITY.lock (e.g. security; @ optional); required",
     )
     ci_init.add_argument(
+        "--enforce",
+        action="store_true",
+        help="Opt into enforce mode (locked=true + strict ruleset); default is comment-only",
+    )
+    ci_init.add_argument(
         "--advisory",
         action="store_true",
-        help="Write advisory mode (locked=false); default is enforce",
+        help="Comment-only mode (default; locked=false)",
     )
     ci_init.add_argument(
         "--apply",

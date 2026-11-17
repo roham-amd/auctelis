@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from auctelis.corpus.runner import run_corpus
 from auctelis.inventory.collector import collect_inventory, inventory_to_json
 from auctelis.inventory.limits import CollectorLimits
 from auctelis.validate_report import analyze_graph_paths
+from auctelis_research.corpus.runner import run_corpus
 
 
 def test_dependency_pins_consistent():

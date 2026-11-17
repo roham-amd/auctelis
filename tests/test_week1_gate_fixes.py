@@ -37,7 +37,7 @@ def test_ci_init_template_loads_and_round_trips(tmp_path: Path):
     path = tmp_path / ".auctelis.yml"
     path.write_text(policy_body, encoding="utf-8")
     policy = load_policy(path)
-    assert policy.mode == "enforce"
+    assert policy.mode == "advisory"
     assert policy.suppressions == []
 
 
@@ -48,11 +48,16 @@ def test_ci_init_requires_owner_and_writes_loadable_policy(tmp_path: Path):
     assert main(["ci", "init", str(root), "--owner", "@YOUR_TEAM"]) == 2
     assert main(["ci", "init", str(root), "--owner", "@sec-owners"]) == 0
     policy = load_policy(root / ".auctelis.yml")
-    assert policy.mode == "enforce"
+    assert policy.mode == "advisory"
     owners = (root / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
     assert "@sec-owners" in owners
     assert "@YOUR_TEAM" not in owners
     assert (root / "AUTHORITY.lock").is_file()
+    # Opt-in enforce still works.
+    root2 = tmp_path / "repo2"
+    root2.mkdir()
+    assert main(["ci", "init", str(root2), "--owner", "@sec-owners", "--enforce"]) == 0
+    assert load_policy(root2 / ".auctelis.yml").mode == "enforce"
 
 
 def test_lock_seals_vulnerable_tree_without_approval_theater(tmp_path: Path):

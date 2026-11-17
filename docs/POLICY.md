@@ -7,7 +7,7 @@ Repository-level defaults for the **Action mode label** and optional
 | Item | Value |
 | --- | --- |
 | Contract | **1.3** (`require_review` / suppressions apply to maintainer scan) |
-| Product default | `mode: enforce`, `fail_on: never` (no promotion) |
+| Product default | `mode: advisory` (comment-only); `fail_on: never` (no promotion) |
 | Local CLI | Target `.auctelis.yml` ignored by product `check`/`lock`/`gate` unless a maintainer scan opts in |
 | Discovery (when trusted) | Look for `.auctelis.yml` **inside the scan target tree only** |
 | CI trust | Action `trusted-policy=true` loads `.auctelis.yml` from the **PR base ref**; CODEOWNERS-covered policy edits are allowed, but the gate still uses the base-ref copy |
@@ -20,7 +20,7 @@ Repository-level defaults for the **Action mode label** and optional
 version: 1
 
 policy:
-  mode: enforce          # advisory | enforce — Action label only
+  mode: advisory         # advisory | enforce — Action label only; init defaults advisory
   fail_on: never         # never promoted; research scan stays advisory in CI
   output_dir: auctelis-out
   ignore: []
@@ -37,8 +37,8 @@ For `auctelis-dev scan` only (not the required PR gate):
 version: 1
 
 policy:
-  mode: enforce
-  fail_on: high          # never | high | any — research exit code only
+  mode: advisory         # product default; use enforce with init --enforce
+  fail_on: never         # never | high | any — research exit code only
   output_dir: auctelis-out
   baseline: .auctelis/baseline.json
 

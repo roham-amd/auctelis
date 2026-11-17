@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def test_scan_emits_findings_and_sarif(tmp_path: Path):

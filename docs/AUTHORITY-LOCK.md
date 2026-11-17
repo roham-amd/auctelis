@@ -95,7 +95,8 @@ Agents must not mutate locks (`AUCTELIS_AGENT=1`).
 auctelis check                             # repo authority vs AUTHORITY.lock
 auctelis lock --update                     # write / refresh repo AUTHORITY.lock
 auctelis lock --check                      # exit 1 on drift
-auctelis ci init --apply --owner @you      # workflow + CODEOWNERS + ruleset verify
+auctelis init --owner you                 # comment-only workflow + CODEOWNERS + lock
+auctelis init --owner you --enforce       # opt into locked + strict ruleset
 auctelis gate --base-lock base.lock        # PR Authority Diff + CODEOWNERS gate
 auctelis why <name>                        # exact config path for one record
 ```
@@ -110,7 +111,7 @@ Protect the file:
 AUTHORITY.lock  @security-owner
 ```
 
-`auctelis ci init --apply --owner @you` merges a CODEOWNERS stub for this path.
+`auctelis init --owner you` merges a CODEOWNERS stub for this path.
 
 ### Pinned facts
 
@@ -128,7 +129,7 @@ Same identity with a different launcher/args/host is a **`replacement`** (needs 
 Opt-in: `auctelis lock --snapshot tools.json` merges `mcp_tools` description pins.
 
 Host tripwires (`watch` / `allow` / `hook`) and public scanner CLIs are
-**removed**. Product path: check → lock --update → ci init --apply → gate.
+**removed**. Product path: diff --base → init --owner team → check → gate.
 
 ---
 

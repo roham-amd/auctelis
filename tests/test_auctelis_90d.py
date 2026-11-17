@@ -8,18 +8,18 @@ from pathlib import Path
 
 import pytest
 
-from auctelis.artifact_vet import parse_artifact_spec
-from auctelis.broker import run_brokered
 from auctelis.lock_io import load_authority_lock
-from auctelis.mcp_snapshot import (
+from auctelis.process_env import scrub_env
+from auctelis.security.decision import compute_decision, decision_sentences
+from auctelis_research.artifact_vet import parse_artifact_spec
+from auctelis_research.broker import run_brokered
+from auctelis_research.mcp_snapshot import (
     diff_tool_locks,
     snapshot_execute,
     snapshot_from_file,
     tools_from_list_payload,
 )
-from auctelis.process_env import scrub_env
-from auctelis.security.decision import compute_decision, decision_sentences
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def test_parse_artifact_spec():

@@ -7,28 +7,30 @@
 
 ## Canonical install
 
-Working install today is the **0.9.1** git tag (signed release assets are on
+Working install today is the **0.10.0** git tag (signed release assets are on
 the GitHub Release). Prefer PyPI / `uvx` only after the index returns the
 package.
 
 ```bash
 # Working install (PyPI publish follows pilots):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.10.0#subdirectory=tools"
 auctelis --version
 
-# After PyPI is live:
-# uvx auctelis --version
+# After PyPI is live (trusted publishing already wired):
 # uv tool install --python 3.12 auctelis
 
-auctelis init --owner security              # @ optional; PowerShell-safe
+auctelis diff --base origin/main            # aha before writing files
+# Lockless: copy tools/auctelis/templates/auctelis-diff.yml → .github/workflows/
+auctelis init --owner security              # comment-only; @ optional; PowerShell-safe
+auctelis init --owner security --enforce    # optional locked + strict ruleset
 auctelis check                              # repo authority vs AUTHORITY.lock
-auctelis status --check                     # nonzero if gate is not armed
+auctelis status --check                     # nonzero if enforce gate is not armed
 auctelis why <name>                         # exact config path for one record
 ```
 
 Bare `auctelis` runs `check` (repo-only). Product path:
-**init --owner team → check → lock --update → gate** (tree-truth).
+**diff --base → init --owner team → check → gate** (tree-truth; lock optional pin).
 
 An empty baseline is normal: the first growth PR is a CODEOWNERS review of
 changed authority paths, not a forever `FAIL_CLOSED`. Use `auctelis demo` for
@@ -40,8 +42,8 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.9.1-py3-none-any.whl.cosign.bundle \
-  auctelis-0.9.1-py3-none-any.whl
+  --bundle auctelis-0.10.0-py3-none-any.whl.cosign.bundle \
+  auctelis-0.10.0-py3-none-any.whl
 ```
 
 Trusted Publishing workflow (reserve/publish the `auctelis` name):
@@ -71,5 +73,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.9.1 |
-| Package `auctelis` | 0.9.1 |
+| Product (`VERSION`) | 0.10.0 |
+| Package `auctelis` | 0.10.0 |

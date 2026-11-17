@@ -9,7 +9,7 @@ from auctelis.security.report import (
     render_short_terminal_report,
     render_terminal_report,
 )
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def _demo() -> Path:

@@ -6,20 +6,19 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.9.1** (material-reach + gate-owned PR comment) · lock schema 1 · tooling 0.9.1
+**Current:** **0.10.0** (lockless comment-only default + reach tiers + lean wheel) · lock schema 1 · tooling 0.10.0
 
 ## North star (Gate Zero)
 
-1. One extractor, one lock, one diff, one PR comment, one Action
-2. `auctelis init --owner team` configures CODEOWNERS + pins release tag
+1. One extractor, one diff, one PR comment, one Action (lock optional)
+2. Lockless six-line workflow first; `init --enforce` when ready to fail closed
 3. Adoption ceremony is `BASELINE_ADOPTED`, never false `PASS`
-4. Empty baseline is fine: first growth is CODEOWNERS review — not hollow /
-   forever `FAIL_CLOSED`
+4. Empty baseline is fine: first growth under enforce is CODEOWNERS review
 5. Coverage and evidence strength are visible on every match and card
-6. Product path is **tree-truth**; research scanner stays on `auctelis-dev`
-7. Required check fails on **material** reach only; comment always posts
+6. Product path is **tree-truth**; research scanner is `auctelis_research` (not in wheel)
+7. Comment always posts; required check fails on **tier≥fail** reach only when locked
 
-## 30-day build (Gate Zero → 0.9.1)
+## 30-day build (Gate Zero → 0.10.0)
 
 | Window | Work | Status |
 | --- | --- | --- |
@@ -31,8 +30,9 @@ are removed.
 | **0.8.1** | Consumer Action pin; empty-baseline growth; `init`/`status`; inventory-only product path | **done** |
 | **0.8.2** | Trust reset: no fail_on promotion; Action inventory-only; CODEOWNERS protection; unparsed fail-closed; evidence through diff; PyPI-ready docs | **done** |
 | **0.9.0** | Tree-truth gate; lock↔tree drift; prose hosts; init CODEOWNERS for authority paths; Docker removed | **done** |
-| **0.9.1** | Gate-owned PR comment; material-reach fail; `status --check` requires verified ruleset; docs/Action defaults aligned | **done** |
-| Next | PyPI Trusted Publishing; five outside pilots; physical scanner delete from wheel | open |
+| **0.9.1** | Gate-owned PR comment; material-reach fail; `status --check` requires verified ruleset | **done** |
+| **0.10.0** | Lockless default; reach tiers; tomllib; CODEOWNERS path fix; research out of wheel; dogfood/release matrix | **done** |
+| Next | Five outside pilots; PyPI Trusted Publishing when pilots retain | open |
 
 ## 90-day decision gate
 
@@ -47,12 +47,14 @@ broker before five outside repos retain the gate.
 ## Kill list (product path)
 
 - Host `watch` / `allow` / `hook` / `doctor` / `ledger` / `host_scan` / plugins
-- Public 22-rule scanner, `vet`, `harden`, `explain`, audit/ecosystem-graph schemas
+- Public 22-rule scanner in the product wheel (moved to `auctelis_research`)
+- `vet`, `harden`, `explain`, audit/ecosystem-graph as product gate inputs
 - Docker as the Authority Diff install story (removed in 0.9.0)
 - PyPI ceremony until five pilots retain the gate
 - Marketplace / badge / “Authority Watch” product copy
+- Drift-as-failure and default strict-ruleset on comment-only installs
 
-Keep: `init`, `status`, `check`, `lock`, `ci`, `gate`, `why`, `demo`, `diff --base`.
+Keep: `diff --base`, lockless workflow, `init`, `status`, `check`, `lock`, `ci`, `gate`, `why`, `demo`.
 
 ## Success metrics
 

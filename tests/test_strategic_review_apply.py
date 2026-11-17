@@ -15,7 +15,7 @@ from auctelis.cli.dispatch import _demo_target
 from auctelis.cli.parser import CORE_PUBLIC_COMMANDS, build_parser
 from auctelis.security.decision import authority_establishment, compute_decision
 from auctelis.security.relationships import emit_relationships
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def test_core_public_commands_are_the_first_screen():

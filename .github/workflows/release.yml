@@ -57,6 +57,57 @@ jobs:
       - name: Pytest
         run: uv run --locked pytest -q ../tests
 
+      - name: Dogfood lock freshness
+        working-directory: .
+        run: |
+          # Always target the repository root (GITHUB_WORKSPACE), never tools/.
+          repo="${GITHUB_WORKSPACE:-$PWD}"
+          uv run --directory tools --locked auctelis check "$repo"
+          uv run --directory tools --locked auctelis lock --check "$repo"
+
+  # Mirror validate.yml OS matrix so a red Windows/macOS tree cannot be tagged.
+  pytest-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Pytest (product path)
+        run: >
+          uv run --locked pytest -q
+          ../tests/test_authority_diff_070.py
+          ../tests/test_authority_lock.py
+          ../tests/test_gate.py
+          ../tests/test_cli_authority.py
+          ../tests/test_recovery_081.py
+
+      - name: Pytest (gate zero / product path)
+        run: >
+          uv run --locked pytest -q
+          ../tests/test_gate_zero_30d.py
+          ../tests/test_days_6_30.py
+          ../tests/test_tree_truth_weeks.py
+          ../tests/test_strategic_review_apply.py
+          ../tests/test_trust_reset_30d.py
+
   wheel-smoke:
     runs-on: ubuntu-latest
     steps:
@@ -96,7 +147,7 @@ jobs:
           /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable | grep -E 'BASELINE_NEEDED|Inventory'
 
   release:
-    needs: [validate, wheel-smoke]
+    needs: [validate, pytest-matrix, wheel-smoke]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

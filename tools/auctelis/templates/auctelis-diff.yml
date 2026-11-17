@@ -1,0 +1,13 @@
+# Lockless Authority Diff — paste into .github/workflows/ (no init / lock required).
+# Comment-only: every PR gets the reach diff. Add locked: "true" later to enforce.
+name: auctelis
+on: [pull_request]
+permissions: { contents: read, pull-requests: write }
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: { fetch-depth: 0 }
+      - uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.10.0
+        with: { locked: "false", strict-ruleset: "false" }

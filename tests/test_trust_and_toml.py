@@ -16,7 +16,7 @@ from auctelis.inventory.adapters.toml_config import (
 from auctelis.inventory.limits import CollectorLimits
 from auctelis.security.decision import compute_decision
 from auctelis.security.models import Finding
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def _high_gate() -> Finding:
@@ -75,10 +75,32 @@ def test_toml_parse_and_discover(tmp_path: Path):
     assert comps[0]["adapter"] == "toml_mcp"
 
 
-def test_toml_unsupported_line_fails_closed(tmp_path: Path):
+def test_toml_inline_array_parses(tmp_path: Path):
+    """Codex-shaped ``args = ["-y", "pkg"]`` must seal, not NOT PARSED."""
+    data = _parse_simple_toml('[mcp_servers.demo]\ncommand = "npx"\nargs = ["-y", "pkg"]\n')
+    assert data["mcp_servers"]["demo"]["args"] == ["-y", "pkg"]
     root = tmp_path / "repo"
     root.mkdir()
-    (root / "config.toml").write_text("broken = [1, 2, 3]\n", encoding="utf-8")
+    (root / "config.toml").write_text(
+        '[mcp_servers.demo]\ncommand = "npx"\nargs = ["-y", "demo-pkg"]\n',
+        encoding="utf-8",
+    )
+    events: list[dict] = []
+    comps = discover_toml_mcp_configs(
+        root,
+        files=[root / "config.toml"],
+        limits=CollectorLimits(),
+        events=events,
+    )
+    assert len(comps) == 1
+    assert comps[0]["args"] == ["-y", "demo-pkg"]
+    assert not any(e.get("type") == "unparsed_agent_config" for e in events)
+
+
+def test_toml_invalid_fails_closed(tmp_path: Path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    (root / "config.toml").write_text("broken = [\n", encoding="utf-8")
     events: list[dict] = []
     comps = discover_toml_mcp_configs(
         root,

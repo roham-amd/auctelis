@@ -1,12 +1,12 @@
 {
   "approvals": [],
   "approved_findings": [],
-  "audited_commit": "4e8358123a6f8255138c4bcd0fc5c2a9756950c1",
-  "lock_hash": "30c42559d3e8b3a4af0e4c7b9cf84e9b",
+  "audited_commit": "0f1471a1a496d3750952d57fa2b41b34f223b98e",
+  "lock_hash": "ffa7d1f3a08abf51e27c7f24ab48fd0c",
   "mcp_tools": {},
   "policy_hash": "sha256:a8c2859829cdcc55c39319e381e1301a9e0e4608357be1f214f2ad9d89030c54",
   "product": "auctelis",
-  "product_version": "0.9.0",
+  "product_version": "0.10.0",
   "records": [
     {
       "approval_posture": "unknown",
@@ -43,10 +43,10 @@
       ],
       "capability_origin": "TYPE_DEFAULT",
       "destinations": [],
-      "digest": "sha256:8c3a083e2d15821c8ef95c95b6be142d346200315cd77e8a3c17a776a888db4c",
+      "digest": "sha256:990c0d3aa14893ae919e22a75e10e08251151f6fa100b766f868ed4551d7dbb7",
       "env_keys": [],
       "evidence_strength": "LITERAL_CONFIG",
-      "fingerprint": "eb0d7f723b19bf4a",
+      "fingerprint": "cd6f3c510feb3bf3",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/auctelis-validate@.github/workflows/auctelis-validate.yml",
       "identity_key": "github_workflows|ci workflow|auctelis-validate",
@@ -95,10 +95,10 @@
       ],
       "capability_origin": "TYPE_DEFAULT",
       "destinations": [],
-      "digest": "sha256:932cf4d7df600c6f8fc0392b5f8fdeaec333f5c1fe617d7c434fb1bac4b67bbe",
+      "digest": "sha256:65984d9c0d69f3c5cae56578daf11174519bb40fc9cc45fef65f12fe431b74cb",
       "env_keys": [],
       "evidence_strength": "LITERAL_CONFIG",
-      "fingerprint": "8ede3912c7b083d3",
+      "fingerprint": "a109f4c73563865b",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/release@.github/workflows/release.yml",
       "identity_key": "github_workflows|ci workflow|release",
@@ -125,10 +125,10 @@
       "destinations": [
         "github.com"
       ],
-      "digest": "sha256:81f390d4e20a5657757d00e07833eae493352c0f7f0956a1f9e816b04c256941",
+      "digest": "sha256:17d479244a8b39ec77cfa02021c536f4600a9a5503bf10765467cf36dd1c239e",
       "env_keys": [],
       "evidence_strength": "INFERRED_HINT",
-      "fingerprint": "9915c9b93a1f772f",
+      "fingerprint": "2181f0184e4d5115",
       "host": "github.com",
       "id": "skill_md/Skill/auctelis-auditor@skills/auctelis-auditor/SKILL.md",
       "identity_key": "skill_md|skill|auctelis-auditor",
@@ -139,7 +139,7 @@
       "path": "skills/auctelis-auditor/SKILL.md",
       "permission_allows": [],
       "pin_state": "n/a",
-      "script_digest": "sha256:81f390d4e20a5657757d00e07833eae493352c0f7f0956a1f9e816b04c256941",
+      "script_digest": "sha256:17d479244a8b39ec77cfa02021c536f4600a9a5503bf10765467cf36dd1c239e",
       "url_host": "github.com"
     }
   ],

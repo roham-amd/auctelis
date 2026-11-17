@@ -1,59 +1,28 @@
-"""Bounded TOML reader for Codex / other host configs (no third-party TOML dep).
+"""TOML reader for Codex / other host configs via stdlib ``tomllib``.
 
-Supports a minimal subset sufficient for ``[mcp_servers.*]`` / ``[mcp.servers.*]``
-tables with string and boolean values. Unknown syntax is recorded as
+Full TOML 1.0 (inline arrays, nested tables). Parse failures are recorded as
 ``unparsed_agent_config`` (fail closed).
 """
 
 from __future__ import annotations
 
-import re
+import tomllib
 from pathlib import Path
 from typing import Any
 
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.limits import CollectorLimits
 
-_TABLE_RE = re.compile(r"^\[([^\]]+)\]\s*$")
-_KV_RE = re.compile(
-    r'^([A-Za-z0-9_.-]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|(true|false)|([0-9]+))\s*$',
-    re.IGNORECASE,
-)
-
 
 def _parse_simple_toml(text: str) -> dict[str, Any]:
-    root: dict[str, Any] = {}
-    current: list[str] = []
-    for raw in text.splitlines():
-        line = raw.split("#", 1)[0].rstrip()
-        if not line.strip():
-            continue
-        table = _TABLE_RE.match(line.strip())
-        if table:
-            current = [p.strip() for p in table.group(1).split(".")]
-            cursor: dict[str, Any] = root
-            for part in current:
-                cursor = cursor.setdefault(part, {})
-            continue
-        kv = _KV_RE.match(line.strip())
-        if not kv:
-            raise ValueError(f"Unsupported TOML line: {line.strip()[:80]}")
-        key = kv.group(1)
-        if kv.group(2) is not None:
-            value: Any = kv.group(2)
-        elif kv.group(3) is not None:
-            value = kv.group(3)
-        elif kv.group(4) is not None:
-            value = kv.group(4).lower() == "true"
-        else:
-            value = int(kv.group(5))
-        cursor = root
-        for part in current:
-            cursor = cursor.setdefault(part, {})
-        if not isinstance(cursor, dict):
-            raise ValueError(f"Cannot assign under non-table at {'.'.join(current)}")
-        cursor[key] = value
-    return root
+    """Parse TOML text; raise ``ValueError`` on syntax errors (fail closed)."""
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise ValueError(f"Invalid TOML: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("TOML root must be a table")
+    return data
 
 
 def _iter_mcp_servers(data: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:

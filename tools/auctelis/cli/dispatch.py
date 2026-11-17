@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import re
 from pathlib import Path
@@ -20,7 +21,6 @@ from auctelis.cli.authority_commands import (
 )
 from auctelis.cli.guards import refuse_agent_mutation
 from auctelis.export.agent_digest import render_agent_digest
-from auctelis.export.annotate import render_github_annotations, render_text_annotations
 from auctelis.export.pr_comment import render_authority_diff_comment, render_gate_pr_comment
 from auctelis.export.sarif import report_to_sarif
 from auctelis.gate import load_lock_owners, render_gate_report, run_gate
@@ -29,9 +29,38 @@ from auctelis.inventory.collector import collect_inventory, inventory_to_json
 from auctelis.jsonio import print_json, read_json, write_json, write_text
 from auctelis.lock_io import load_authority_lock
 from auctelis.policy import apply_policy_defaults, discover_policy_file, load_policy
-from auctelis.security.scan import run_scan
 from auctelis.supply_chain.digest import sha256_file, verify_file_digest
 from auctelis.validate_report import validate_report_file
+
+
+def _require_research() -> None:
+    """Research scanner lives outside the product wheel (source / editable only)."""
+    import sys
+
+    try:
+        import auctelis_research as _research
+
+        _ = _research
+        return
+    except ImportError:
+        pass
+    # Source checkout: sibling of the installed ``auctelis`` package under tools/.
+    import auctelis as _pkg
+
+    tools_dir = Path(_pkg.__file__).resolve().parents[1]
+    tools_s = str(tools_dir)
+    if tools_s not in sys.path:
+        sys.path.insert(0, tools_s)
+    try:
+        import auctelis_research as _research
+
+        _ = _research
+    except ImportError as exc:
+        raise SystemExit(
+            "auctelis-dev research commands require a source checkout "
+            "(auctelis_research is not shipped in the product wheel)."
+        ) from exc
+
 
 # Maintainer modules (build/deps/corpus/lint) import packaging and other
 # dev-only deps. Keep them lazy so the product wheel starts with jsonschema alone.
@@ -158,6 +187,9 @@ def _cmd_scan(args: argparse.Namespace) -> int:
         and not getattr(args, "baseline", None)
     ):
         baseline = None
+
+    _require_research()
+    from auctelis_research.scan import run_scan
 
     scan, payload, code = run_scan(
         args.path,
@@ -290,7 +322,8 @@ def _cmd_lock(args: argparse.Namespace) -> int:
     mcp_tools: dict[str, str] | None = None
     snap = getattr(args, "snapshot", None)
     if snap is not None:
-        from auctelis.mcp_snapshot import snapshot_from_file
+        _require_research()
+        from auctelis_research.mcp_snapshot import snapshot_from_file
 
         doc = snapshot_from_file(Path(snap))
         frag = (doc.get("authority_lock_fragment") or {}).get("mcp_tools") or {}
@@ -581,7 +614,16 @@ def _cmd_status(args: argparse.Namespace) -> int:
     if workflow_path.is_file():
         body = workflow_path.read_text(encoding="utf-8")
         has_gate, locked, pin = _workflow_locked_state(body)
-        workflow_strict = "--no-strict-ruleset" not in body
+        # Prefer the Action input; fall back to CLI flag presence for older workflows.
+        strict_m = re.search(
+            r"strict-ruleset:\s*[\"']?(true|false)[\"']?",
+            body,
+            flags=re.IGNORECASE,
+        )
+        if strict_m:
+            workflow_strict = strict_m.group(1).lower() == "true"
+        else:
+            workflow_strict = "--no-strict-ruleset" not in body
         install = "local-action" if local_action.is_file() else "remote-action"
         lines.append(
             f"Workflow: present · gate={'yes' if has_gate else 'NO'} · "
@@ -668,6 +710,18 @@ def _has_explicit_codeowners_pattern(text: str, pattern: str) -> bool:
     return False
 
 
+def _rel_authority_path(path: str) -> str:
+    """Normalize a repo-relative authority path without stripping leading dots.
+
+    ``str.lstrip("./")`` treats the argument as a *set* of characters, so
+    ``.vscode/mcp.json`` wrongly becomes ``vscode/mcp.json``.
+    """
+    normalized = str(path or "").replace("\\", "/")
+    while normalized.startswith("./"):
+        normalized = normalized[2:]
+    return normalized
+
+
 def _merge_codeowners_authority(
     existing: str,
     owner: str,
@@ -693,9 +747,7 @@ def _merge_codeowners_authority(
         ".claude/commands/",
     ]
     for path in extra_paths or []:
-        normalized = str(path).replace("\\", "/")
-        if normalized.startswith("./"):
-            normalized = normalized[2:]
+        normalized = _rel_authority_path(path)
         if normalized and normalized not in required:
             required.append(normalized)
     missing_lines: list[str] = []
@@ -777,7 +829,12 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         return 2
     if not owner.startswith("@"):
         owner = f"@{owner}"
-    advisory = bool(getattr(args, "advisory", False))
+    # Comment-only is the default; --enforce opts into locked + strict ruleset.
+    enforce = bool(getattr(args, "enforce", False))
+    advisory = (not enforce) or bool(getattr(args, "advisory", False))
+    if enforce and getattr(args, "advisory", False):
+        print("Pass either --enforce or --advisory, not both.")
+        return 2
     apply = bool(getattr(args, "apply", False))
     root = args.path.resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -792,22 +849,56 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     if advisory:
         policy_body = policy_body.replace("mode: enforce", "mode: advisory")
         workflow_body = workflow_body.replace('locked: "true"', 'locked: "false"')
+        workflow_body = workflow_body.replace('strict-ruleset: "true"', 'strict-ruleset: "false"')
         workflow_body = workflow_body.replace(
-            "# Enforce mode: AUTHORITY.lock drift fails the job; CODEOWNERS must review growth.",
+            "# Enforce mode: tree-truth Authority Diff fails on unapproved growth;",
             "# Advisory mode: Authority Diff posts; does not fail on lock drift.",
         )
+    else:
+        policy_body = policy_body.replace("mode: advisory", "mode: enforce")
+        workflow_body = workflow_body.replace('locked: "false"', 'locked: "true"')
+        workflow_body = workflow_body.replace('strict-ruleset: "false"', 'strict-ruleset: "true"')
     codeowners_body = codeowners_body.replace("@YOUR_TEAM", owner)
     # Always pin to the installed auctelis release tag — never consumer HEAD.
     workflow_body = _pin_workflow_to_release(workflow_body)
     accept_gated = bool(getattr(args, "accept_gated", False))
     wrote: list[str] = []
     warnings: list[str] = []
+    # Transactional init: roll back files we created if the lock seal refuses.
+    created_paths: list[Path] = []
+    prior_text: dict[Path, str | None] = {}
+
+    def _snapshot(path: Path) -> None:
+        if path in prior_text:
+            return
+        prior_text[path] = path.read_text(encoding="utf-8") if path.is_file() else None
+
+    def _write_new(path: Path, body: str) -> None:
+        _snapshot(path)
+        created = not path.is_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+        if created:
+            created_paths.append(path)
+
+    def _rollback_init() -> None:
+        for path in reversed(created_paths):
+            with contextlib.suppress(OSError):
+                path.unlink(missing_ok=True)
+        for path, previous in prior_text.items():
+            if path in created_paths:
+                continue
+            if previous is None:
+                continue
+            with contextlib.suppress(OSError):
+                path.write_text(previous, encoding="utf-8")
+
     reported_locked = not advisory
     reported_mode = "advisory" if advisory else "enforce"
     if policy_path.exists() and not args.force:
         print(f"Exists (use --force): {policy_path}")
     else:
-        policy_path.write_text(policy_body, encoding="utf-8")
+        _write_new(policy_path, policy_body)
         wrote.append(str(policy_path))
         # Round-trip guard: generated policy must load.
         load_policy(policy_path)
@@ -826,7 +917,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             )
         refreshed = _pin_workflow_to_release(existing)
         if refreshed != existing:
-            workflow_path.write_text(refreshed, encoding="utf-8")
+            _write_new(workflow_path, refreshed)
             wrote.append(f"{workflow_path} (pin refreshed)")
         else:
             print(
@@ -835,7 +926,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             )
     else:
         workflow_dir.mkdir(parents=True, exist_ok=True)
-        workflow_path.write_text(workflow_body, encoding="utf-8")
+        _write_new(workflow_path, workflow_body)
         wrote.append(str(workflow_path))
         has_gate, reported_locked, _pin = _workflow_locked_state(workflow_body)
         reported_mode = "enforce" if reported_locked else "advisory"
@@ -847,11 +938,12 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     init_lock = build_authority_lock(root, scan=init_scan)
     discovered_paths = sorted(
         {
-            str(rec.get("path") or "").replace("\\", "/").lstrip("./")
+            _rel_authority_path(str(rec.get("path") or ""))
             for rec in (init_lock.get("records") or [])
             if isinstance(rec, dict) and rec.get("path")
         }
     )
+    discovered_paths = [p for p in discovered_paths if p]
     if discovered_paths:
         print("Authority surfaces found:")
         for path in discovered_paths[:20]:
@@ -864,16 +956,17 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         current = codeowners_path.read_text(encoding="utf-8")
         merged = _merge_codeowners_authority(current, owner, extra_paths=discovered_paths)
         if merged != current:
-            codeowners_path.write_text(merged, encoding="utf-8")
+            _write_new(codeowners_path, merged)
             wrote.append(f"{codeowners_path} (merged)")
         else:
             print(f"CODEOWNERS already covers protection paths: {codeowners_path}")
     else:
-        codeowners_path.parent.mkdir(parents=True, exist_ok=True)
         seeded = _merge_codeowners_authority(codeowners_body, owner, extra_paths=discovered_paths)
-        codeowners_path.write_text(seeded, encoding="utf-8")
+        _write_new(codeowners_path, seeded)
         wrote.append(str(codeowners_path))
     lock_path = root / "AUTHORITY.lock"
+    lock_existed = lock_path.is_file()
+    _snapshot(lock_path)
     # Always (re)seal after generated workflow/policy so CI authority is in the lock.
     msg, lock_code = run_lock_command(
         root,
@@ -885,10 +978,18 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     )
     print(msg)
     if lock_code != 0:
+        _rollback_init()
+        if not lock_existed and lock_path.is_file():
+            with contextlib.suppress(OSError):
+                lock_path.unlink()
+        elif lock_existed and prior_text.get(lock_path) is not None:
+            with contextlib.suppress(OSError):
+                lock_path.write_text(prior_text[lock_path] or "", encoding="utf-8")
         warnings.append(
-            "AUTHORITY.lock not sealed — remediate configs (unparsed/gated) then re-run. "
-            "(CODEOWNERS remains the approval system)."
+            "AUTHORITY.lock not sealed — init rolled back newly written setup files. "
+            "Remediate configs (unparsed/gated) then re-run."
         )
+        wrote = []
     else:
         wrote.append(f"{lock_path} (sealed)")
     if wrote:
@@ -1032,8 +1133,14 @@ def _cmd_annotate(args: argparse.Namespace) -> int:
             risk = read_json(Path(risk_path))
         text = render_authority_diff_comment(doc, risk_delta=risk)
     elif args.annotate_format == "text":
+        _require_research()
+        from auctelis_research.annotate import render_text_annotations
+
         text = render_text_annotations(doc)
     else:
+        _require_research()
+        from auctelis_research.annotate import render_github_annotations
+
         text = render_github_annotations(doc)
     if text:
         print(text, end="" if text.endswith("\n") else "\n")
@@ -1060,7 +1167,8 @@ def _cmd_hosts(args: argparse.Namespace) -> int:
 
 
 def _cmd_corpus() -> int:
-    from auctelis.corpus.runner import run_corpus
+    _require_research()
+    from auctelis_research.corpus.runner import run_corpus
 
     summary = run_corpus()
     print_json(summary)
@@ -1095,7 +1203,8 @@ def _cmd_lint(args: argparse.Namespace) -> int:
 
 
 def _cmd_run(args: argparse.Namespace) -> int:
-    from auctelis.broker import run_brokered
+    _require_research()
+    from auctelis_research.broker import run_brokered
 
     cmd = list(args.command or [])
     if cmd and cmd[0] == "--":
@@ -1107,8 +1216,9 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 
 def _cmd_snapshot(args: argparse.Namespace) -> int:
+    _require_research()
     from auctelis.jsonio import print_json, write_json
-    from auctelis.mcp_snapshot import snapshot_execute, snapshot_from_file
+    from auctelis_research.mcp_snapshot import snapshot_execute, snapshot_from_file
 
     if args.from_file:
         doc = snapshot_from_file(args.from_file)
@@ -1132,8 +1242,9 @@ def _cmd_snapshot(args: argparse.Namespace) -> int:
 
 
 def _cmd_artifact_vet(args: argparse.Namespace) -> int:
-    from auctelis.artifact_vet import run_artifact_vet, write_artifact_report
+    _require_research()
     from auctelis.jsonio import print_json
+    from auctelis_research.artifact_vet import run_artifact_vet, write_artifact_report
 
     report = run_artifact_vet(args.spec)
     if args.output:

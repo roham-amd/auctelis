@@ -5,6 +5,38 @@ All notable changes to **Auctelis** are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses semantic versioning.
 
+## [Unreleased]
+
+## [0.10.0] — 2026-11-17
+
+### Fixed
+- `init` CODEOWNERS no longer strips leading dots via `str.lstrip("./")`
+  (`.vscode/…`, `.cursor/…` stay covered).
+- TOML MCP configs use stdlib `tomllib` (Codex `args = ["-y", "pkg"]` seals).
+- `NEEDS_REVIEW` errors no longer keep a leftover `PASS / …` label.
+- Dogfood `AUTHORITY.lock` resealed; `release.yml` mirrors validate dogfood +
+  Windows/macOS matrix.
+- `init` rolls back newly written setup files when the lock seal refuses.
+- `status` reads `strict-ruleset: true|false` from the workflow Action input.
+
+### Changed
+- `init` defaults to **comment-only** (advisory); pass `--enforce` for locked
+  + strict ruleset.
+- Reach tiers (0 silent / 1 comment / 2 fail): inferred doc-link network no
+  longer pages CODEOWNERS the same as execute/secrets/new MCP.
+- Research scanner moved to `auctelis_research/` and **omitted from the product
+  wheel** (`rules`, `scan`, annotate, broker, snapshot, corpus, graph, …).
+- Lockless Action path: `templates/auctelis-diff.yml`; Action defaults
+  `locked=false` / `strict-ruleset=false` and still posts the tree-truth comment.
+- Pilot slots + `eval/pilot-metrics.csv` + `docs/pilots/RECRUITMENT.md` ready
+  (PyPI publish still deferred until outside pilots retain).
+- First-user path leads with `diff --base` / lockless workflow before enforce.
+- Docs/Action/install pins updated to `@v0.10.0`.
+
+### Compatibility
+- Existing workflows that set `locked: "true"` keep enforce behavior.
+- `auctelis-dev scan` requires a source checkout (not available from the wheel).
+
 ## [0.9.1] — 2026-11-17
 
 ### Security

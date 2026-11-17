@@ -2,7 +2,7 @@
 
 > **Maintainer research surface (`auctelis-dev`). Not part of the product gate.**
 > Product path: [`PRODUCT.md`](PRODUCT.md) — check → lock --update →
-> ci init --apply → gate / diff / why.
+> init --owner team → gate / diff / why.
 
 Guard scan path for maintainers: deterministic discovery plus evidence-backed
 observations via `auctelis-dev scan` / `annotate`, with capability / exposure /
@@ -11,7 +11,7 @@ first screen. Default terminal output is ≤15 lines (`--full` for the long
 report). Artifacts land in cwd `./auctelis-out` (not inside the target tree).
 
 Product front door: `auctelis check` → `auctelis lock --update` →
-`auctelis ci init --apply --owner @team` → PR `gate`. Public `scan` / `vet` /
+`auctelis init --owner team` → PR `gate`. Public `scan` / `vet` /
 `explain` / `watch` / `allow` / `hook` CLIs are **removed**.
 
 Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md),
@@ -80,7 +80,7 @@ Principle: never ask an LLM to establish a fact the CLI can establish; never let
 # Product front door (git-tag install — see INSTALL.md):
 auctelis check
 auctelis lock --update
-auctelis ci init --apply --owner @security
+auctelis init --owner security
 
 # Maintainer annotation only (not the product gate):
 auctelis-dev scan /path/to/target-repo -o ./auctelis-out
@@ -220,7 +220,7 @@ Never `uv sync` a PR-controlled `tools/` directory as the scanner.
 2. Run `auctelis check` / `auctelis diff --base <ref>` / `auctelis gate` (read-only).
 3. Point the agent at the Authority Diff cards (`--json` or PR comment).
 4. Agent may explain the delta only — never run `lock`, never mutate policy.
-5. Product path: `check → lock --update → ci init --apply → gate / diff / why`.
+5. Product path: `diff --base → init --owner team → check → gate / diff / why`.
 
 ---
 

@@ -7,8 +7,8 @@ from pathlib import Path
 
 from auctelis.inventory.jsonc import loads_json_tolerant
 from auctelis.security.decision import compute_decision
-from auctelis.security.scan import run_scan
 from auctelis.versioning import product_version
+from auctelis_research.scan import run_scan
 
 
 def test_product_version_resolves_without_checkout(monkeypatch, tmp_path: Path):

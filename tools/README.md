@@ -10,7 +10,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.9.1** · Product: auctelis **0.9.1** (install pin: `@v0.9.1` — see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.10.0** · Product: auctelis **0.10.0** (install pin: `@v0.10.0` — see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -38,7 +38,7 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 
 ```bash
 uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools
+  git+https://github.com/roham-amd/auctelis.git@v0.10.0#subdirectory=tools
 # PyPI coming — git tag until the index returns the package.
 auctelis init --owner security             # policy + workflow + CODEOWNERS + lock
 auctelis check                             # repo authority vs AUTHORITY.lock
@@ -102,7 +102,7 @@ uv run --locked auctelis-dev build all
 uv run --locked auctelis-dev corpus run
 ```
 
-**Dependabot** (`.github/dependabot.yml`): weekly `uv`, `docker` (tag@digest), and SHA-pinned `github-actions`.
+**Dependabot** (`.github/dependabot.yml`): weekly `uv` and SHA-pinned `github-actions` (Docker install path removed).
 
 ---
 
@@ -113,10 +113,9 @@ uv run --locked auctelis-dev corpus run
 ```bash
 uv run auctelis check [PATH] [--json]
 uv run auctelis lock [PATH] [--check] [--update] [--accept-gated]
-uv run auctelis ci init --apply --owner @TEAM [PATH] [--force] [--advisory]
+uv run auctelis init --owner TEAM [PATH] [--force] [--enforce]
 uv run auctelis gate [PATH] --base-lock PATH
 uv run auctelis diff --base REF [--repo PATH]
-uv run auctelis diff lock <base.lock> <head.lock>
 uv run auctelis why NAME [PATH]
 uv run auctelis demo [-o DIR]
 ```

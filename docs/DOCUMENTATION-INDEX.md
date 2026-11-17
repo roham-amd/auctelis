@@ -1,4 +1,4 @@
-# Documentation index (auctelis 0.9.1)
+# Documentation index (auctelis 0.10.0)
 
 Keep the public surface near ten pages. Everything else is maintainer depth.
 

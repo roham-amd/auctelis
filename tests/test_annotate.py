@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from auctelis.export.annotate import (
+from auctelis.jsonio import read_json
+from auctelis_research.annotate import (
     iter_annotation_targets,
     render_github_annotations,
     render_text_annotations,
 )
-from auctelis.jsonio import read_json
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def test_github_annotations_from_live_scan(tmp_path: Path) -> None:

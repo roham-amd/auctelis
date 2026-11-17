@@ -153,23 +153,22 @@ def test_check_empty_repo_is_quiet_baseline(tmp_path: Path):
     assert check_exit_code(report) == 0
 
 
-def test_ci_init_defaults_enforce(tmp_path: Path):
+def test_ci_init_defaults_advisory_comment_only(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()
     (root / ".mcp.json").write_text(json.dumps({"mcpServers": {}}), encoding="utf-8")
     code = main(["ci", "init", str(root), "--owner", "@security", "--force"])
-    # May fail lock seal on gated findings; workflow/policy must still be enforce.
     workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     policy = (root / ".auctelis.yml").read_text(encoding="utf-8")
-    assert 'locked: "true"' in workflow
-    assert "mode: enforce" in policy
+    assert 'locked: "false"' in workflow
+    assert "mode: advisory" in policy
     assert code in {0, 1}
 
     root2 = tmp_path / "repo2"
     root2.mkdir()
     (root2 / ".mcp.json").write_text(json.dumps({"mcpServers": {}}), encoding="utf-8")
-    main(["ci", "init", str(root2), "--owner", "@security", "--advisory", "--force"])
+    main(["ci", "init", str(root2), "--owner", "@security", "--enforce", "--force"])
     workflow2 = (root2 / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     policy2 = (root2 / ".auctelis.yml").read_text(encoding="utf-8")
-    assert 'locked: "false"' in workflow2
-    assert "mode: advisory" in policy2
+    assert 'locked: "true"' in workflow2
+    assert "mode: enforce" in policy2

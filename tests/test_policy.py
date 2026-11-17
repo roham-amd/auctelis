@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from auctelis.policy import apply_policy_defaults, load_policy
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 SAMPLE = """
 version: 1

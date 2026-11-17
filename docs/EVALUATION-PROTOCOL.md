@@ -41,7 +41,7 @@ pilot notes were removed in the shrink; cite only rows with day-30 retention evi
 ```bash
 auctelis check <path>                # repo authority vs AUTHORITY.lock
 auctelis lock --update <path>        # seal baseline (empty OK)
-auctelis ci init --apply --owner @team <path>
+auctelis init --owner team <path>
 auctelis diff --base origin/main --repo <path>
 # Maintainer annotation only (optional):
 auctelis-dev scan <path> -o auctelis-out-pilot/<slug> --full

@@ -283,13 +283,15 @@ def test_status_check_armed_after_init(tmp_path: Path, monkeypatch):
         '{"mcpServers":{"demo":{"command":"node","args":["x.js"]}}}',
         encoding="utf-8",
     )
+    # Comment-only init is not "armed"; enforce + verified ruleset is.
     assert main(["init", str(root), "--owner", "security"]) == 0
     assert (root / ".github" / "CODEOWNERS").is_file()
-    # Without API access, strict-ruleset leaves protection UNVERIFIED — not armed.
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     assert main(["status", "--check", str(root)]) == 1
-    # Verified ruleset + files in place → armed.
+    assert main(["init", str(root), "--owner", "security", "--enforce", "--force"]) == 0
+    assert main(["status", "--check", str(root)]) == 1
+    # Verified ruleset + locked workflow → armed.
     monkeypatch.setattr(
         "auctelis.gate.check_code_owner_ruleset",
         lambda **_kwargs: ("OK", "ruleset requires code-owner reviews"),

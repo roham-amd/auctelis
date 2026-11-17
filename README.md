@@ -18,29 +18,32 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 ```bash
 # Working install today (PyPI name reserved; package publish follows pilots):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.10.0#subdirectory=tools"
 auctelis --version
 
 cd your-repo
-auctelis init --owner security    # policy + workflow + CODEOWNERS + lock
-# PowerShell: omit @ — auctelis adds it. commit → PR → BASELINE_ADOPTED
+auctelis diff --base origin/main  # aha: local Authority Diff (no files written)
+
+# Lockless (no init): paste templates/auctelis-diff.yml into .github/workflows/
+# Or comment-only setup:
+auctelis init --owner security    # advisory workflow + CODEOWNERS + lock
+# PowerShell: omit @ — auctelis adds it. Use --enforce for locked gate.
+# commit → PR → Authority Diff comment
 
 auctelis check                    # repo authority vs AUTHORITY.lock
-auctelis status --check           # nonzero if gate is not armed
-auctelis diff --base origin/main  # local PR Authority Diff simulator
+auctelis status --check           # nonzero if enforce gate is not armed
 auctelis why linear               # exact config path for one name
 ```
 
 On a PR, the Action diffs **tree-derived** base→head authority (committed lock
 is drift-checked, never trusted as head) and always posts the Authority Diff
-comment from that gate delta. First lock is `BASELINE_ADOPTED` (not `PASS`).
-**Material** growth (new hosts, launchers, secrets/execute/network, pin or
-approval posture, MCP) fails until a CODEOWNER reviews; body-only instruction
-edits stay visible on the comment and do not fail the required check. An empty
-(0-record) base lock is **empty-baseline growth** — CODEOWNERS review, not a
-permanent `FAIL_CLOSED`. `status --check` is nonzero until CODEOWNERS and a
-verified code-owner ruleset are in place. Locally, `auctelis check` is the
-pre-push preflight.
+comment from that gate delta. Default `init` is **comment-only** (advisory);
+pass `--enforce` for a required check. Auctelis **labels** growth and posts
+the diff — it does **not** count PR approvals; GitHub CODEOWNERS/rulesets do
+that when you enforce. Reach is tiered: inferred doc links stay comment-only;
+execute/secrets/new MCP fail under `--enforce`. Body-only instruction edits
+stay visible on the comment. An empty (0-record) base lock is
+**empty-baseline growth**. Locally, `auctelis check` is the pre-push preflight.
 
 ```text
 + mcp "linear" → mcp.linear.app · network · tools · unpinned · publisher NOT VERIFIED
@@ -59,7 +62,7 @@ Agents must export `AUCTELIS_AGENT=1`; `lock`, `init`, and `ci init` are refused
 
 | Command | Purpose |
 | --- | --- |
-| `auctelis init --owner team` | One-command setup (preferred; `@` optional) |
+| `auctelis init --owner team` | Comment-only setup (`--enforce` for locked gate; `@` optional) |
 | `auctelis` / `check` | Repo authority vs `AUTHORITY.lock` (front door) |
 | `auctelis status [--check]` | Lock / workflow / CODEOWNERS / protection |
 | `auctelis lock --update` | Write / refresh the committed lock |

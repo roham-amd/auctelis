@@ -11,7 +11,7 @@ from auctelis.security.authority import (
 )
 from auctelis.security.baseline import diff_against_baseline, save_baseline
 from auctelis.security.decision import compute_decision
-from auctelis.security.scan import run_scan
+from auctelis_research.scan import run_scan
 
 
 def test_package_pin_semantics():

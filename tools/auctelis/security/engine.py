@@ -14,8 +14,10 @@ from auctelis.security.evidence_util import EvidenceContext, enrich_component_pr
 from auctelis.security.fingerprint import component_fingerprint
 from auctelis.security.models import Capability, Evidence, Finding, Relationship
 from auctelis.security.relationships import emit_relationships
-from auctelis.security.rules import CROSS_COMPONENT_RULE_IDS, RULES, apply_all_rules
 from auctelis.versioning import package_version, product_version
+
+# Research rules live in ``auctelis_research`` (omitted from the product wheel).
+# ``apply_rules=True`` lazy-loads them for auctelis-dev from a source checkout.
 
 
 @dataclass(slots=True)
@@ -213,6 +215,13 @@ def run_security_scan(
         observed_at=collected_at,
     )
     if apply_rules:
+        try:
+            from auctelis_research.rules import CROSS_COMPONENT_RULE_IDS, RULES, apply_all_rules
+        except ImportError as exc:
+            raise RuntimeError(
+                "Research rules are not in the product wheel; "
+                "run auctelis-dev from a source checkout."
+            ) from exc
         evidences, findings = apply_all_rules(components, ctx=ctx)
         rules_applied = [r.rule_id for r in RULES] + list(CROSS_COMPONENT_RULE_IDS)
     else:

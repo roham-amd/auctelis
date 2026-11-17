@@ -16,7 +16,7 @@ A slot is **active** when the **team path** holds for 30 consecutive days:
   branch.
 - At least one growth PR was actually reviewed by a CODEOWNER.
 
-Setup path: `check` → `lock --update` → `ci init --apply --owner @team`
+Setup path: `diff --base main` → `init --owner team` → PR comment (add `--enforce` when ready)
 (under 10 minutes). Empty baseline is fine; first growth is CODEOWNERS review.
 
 Self-dogfood of this repository does **not** count toward the five-slot kill

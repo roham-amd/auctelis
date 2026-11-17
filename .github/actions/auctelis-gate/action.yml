@@ -81,13 +81,13 @@ inputs:
     default: "true"
   locked:
     description: >-
-      If true (default), run AUTHORITY.lock drift check and fail on unapproved
-      growth. Set locked=false for advisory/lockless-first adoption. On a PR with
-      locked=true and no base-ref lock, a head AUTHORITY.lock is treated as
-      adoption bootstrap (BASELINE_ADOPTED); missing both base and head locks
-      fails closed.
+      If true, run AUTHORITY.lock drift check and fail on unapproved growth.
+      Default false = lockless comment-only Authority Diff (no init / lock
+      required). On a PR with locked=true and no base-ref lock, a head
+      AUTHORITY.lock is treated as adoption bootstrap (BASELINE_ADOPTED);
+      missing both base and head locks fails closed.
     required: false
-    default: "true"
+    default: "false"
   lock-file:
     description: >-
       Path to AUTHORITY.lock relative to the scan target (default: AUTHORITY.lock)
@@ -95,11 +95,11 @@ inputs:
     default: ""
   strict-ruleset:
     description: >-
-      If true (default), authority growth with UNVERIFIED ruleset/branch-protection
-      status fails the gate. Set false for best-effort PASS with a prominent
-      "protection unverified" warning (MISSING rulesets still fail).
+      If true, authority growth with UNVERIFIED ruleset/branch-protection status
+      fails the gate. Default false matches lockless comment-only. Set true with
+      locked=true for enforce. MISSING rulesets still fail when locked=true.
     required: false
-    default: "true"
+    default: "false"
 
 runs:
   using: composite
@@ -429,12 +429,11 @@ runs:
           echo "::warning::auctelis scan exited ${scan_code}; continuing so gate/comment/artifact can run."
         fi
 
-    - name: Enforce base-lock gate (growth label + CODEOWNERS/ruleset)
+    - name: Authority Diff gate (tree-truth; comment always, fail only when locked)
       id: gate
       if: >-
         always() &&
         inputs.mode == 'scan' &&
-        inputs.locked == 'true' &&
         github.event_name == 'pull_request' &&
         steps.auth_diff.outputs.lock != ''
       shell: bash
@@ -445,6 +444,7 @@ runs:
         AUCTELIS_BASE_CODEOWNERS: ${{ steps.auth_diff.outputs.codeowners }}
         AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
         AUCTELIS_STRICT_RULESET: ${{ inputs.strict-ruleset }}
+        AUCTELIS_LOCKED: ${{ inputs.locked }}
         # pull_request GITHUB_SHA is the merge commit; reviews use PR head.
         AUCTELIS_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         GITHUB_TOKEN: ${{ github.token }}
@@ -459,6 +459,8 @@ runs:
         if [[ -f "$head_path" ]]; then
           gate_args+=(--head-lock "$head_path")
           echo "Drift-checking committed lock against tree: $head_path"
+        else
+          echo "Lockless / no head AUTHORITY.lock — tree-derived head only"
         fi
         if [[ -n "${AUCTELIS_BASE_CODEOWNERS:-}" && -f "${AUCTELIS_BASE_CODEOWNERS}" ]]; then
           gate_args+=(--codeowners "$AUCTELIS_BASE_CODEOWNERS")
@@ -470,7 +472,7 @@ runs:
         else
           # CLI defaults --strict-ruleset on; must pass the negative form explicitly.
           gate_args+=(--no-strict-ruleset)
-          echo "Strict ruleset: off (best-effort)"
+          echo "Strict ruleset: off (best-effort / comment-only)"
         fi
         if [[ -n "${AUCTELIS_HEAD_SHA:-}" ]]; then
           echo "PR head: ${AUCTELIS_HEAD_SHA}"
@@ -479,19 +481,29 @@ runs:
         auctelis "${gate_args[@]}"
         gate_code=$?
         set -e
+        # Comment-only: never fail the job on growth / drift.
+        if [[ "${AUCTELIS_LOCKED}" != "true" ]]; then
+          echo "locked=false — Authority Diff posted; gate exit ${gate_code} is advisory."
+          gate_code=0
+        fi
         echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
-        # Explicit lock↔tree check (same dialect as local `lock --check`).
-        set +e
-        auctelis lock --check "$AUCTELIS_PATH" ${AUCTELIS_LOCK_FILE:+--lock-file "$AUCTELIS_LOCK_FILE"}
-        lock_check_code=$?
-        set -e
-        echo "lock_check_code=${lock_check_code}" >> "$GITHUB_OUTPUT"
-        if [[ "$lock_check_code" -ne 0 ]]; then
-          echo "::warning::auctelis lock --check exited ${lock_check_code} (committed lock ≠ tree)."
-          if [[ "$gate_code" -eq 0 ]]; then
-            gate_code="$lock_check_code"
-            echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
+        # Explicit lock↔tree check only when enforcing a committed lock.
+        lock_check_code=0
+        if [[ "${AUCTELIS_LOCKED}" == "true" && -f "$head_path" ]]; then
+          set +e
+          auctelis lock --check "$AUCTELIS_PATH" ${AUCTELIS_LOCK_FILE:+--lock-file "$AUCTELIS_LOCK_FILE"}
+          lock_check_code=$?
+          set -e
+          echo "lock_check_code=${lock_check_code}" >> "$GITHUB_OUTPUT"
+          if [[ "$lock_check_code" -ne 0 ]]; then
+            echo "::warning::auctelis lock --check exited ${lock_check_code} (committed lock ≠ tree)."
+            if [[ "$gate_code" -eq 0 ]]; then
+              gate_code="$lock_check_code"
+              echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
+            fi
           fi
+        else
+          echo "lock_check_code=0" >> "$GITHUB_OUTPUT"
         fi
         if [[ -f "$AUCTELIS_OUTPUT_DIR/gate-report.txt" ]]; then
           echo "## auctelis growth gate" >> "$GITHUB_STEP_SUMMARY"

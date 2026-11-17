@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.9.1 · **Package:** `auctelis` 0.9.1 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis-dev` only)
+**Release:** 0.10.0 · **Package:** `auctelis` 0.10.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -39,27 +39,28 @@ One question drives the workflow:
 
 ## Primary commands
 
-Public path: **init --owner team → check → lock --update → gate**
+Public path: **diff --base → lockless workflow or init --owner team → check → gate**
 
 | Command | Job |
 | --- | --- |
-| `auctelis init --owner team` | One-command setup: policy + workflow + CODEOWNERS + lock (`@` optional) |
+| `auctelis diff --base <ref>` | Local PR Authority Diff simulator (aha; no files written) |
+| `auctelis init --owner team` | Comment-only setup (default); `--enforce` for locked gate (`@` optional) |
 | `auctelis check` | Repo authority vs `AUTHORITY.lock` (front door; inventory-only) |
 | `auctelis status` | Lock / workflow / CODEOWNERS / protection summary |
-| `auctelis lock --update` | Write the committed lock from the current tree |
-| `auctelis ci init --apply --owner @team` | Legacy alias of init (apply + ruleset probe) |
+| `auctelis lock --update` | Write / refresh the committed lock (optional pin) |
+| `auctelis ci init` | Legacy alias of init |
 | `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |
-| `auctelis diff --base <ref>` | Local PR Authority Diff simulator |
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Optional packaged fixture |
 
 Host stack (`watch` / `allow` / `hook` / `doctor`) and public `vet` / `harden` /
 `explain` CLIs are **removed**. The product gate is **tree-truth**: head
 authority is always derived from the working tree; a committed `AUTHORITY.lock`
-is drift-checked only. The Action always posts the Authority Diff from the
-gate lock delta; research scan/annotate (`annotate: true`) is opt-in only.
-Body/representation churn is comment-visible; the required check fails on
-**material** reach growth. Reach: [`REACH.md`](REACH.md).
+is an optional pin (drift-checked when present). Default Action is
+**comment-only**; research scan/annotate stays out of the product wheel
+(`auctelis_research` / `auctelis-dev` from source). Reach tiers: inferred doc
+links stay comment-only; execute/secrets/new MCP fail under enforce. Reach:
+[`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  
