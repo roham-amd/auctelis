@@ -30,11 +30,15 @@ from auctelis.authority_lock import (
 )
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
 from auctelis.security.engine import ScanResult, run_authority_inventory
+from auctelis.textutil import validated_http_url
 
-# Authority-bearing path globs that CODEOWNERS should cover (docs + ci init).
+TRUST_FILE = ".auctelis/trusted-hosts"
+
+# Authority-bearing path globs that CODEOWNERS should cover (docs + code).
 AUTHORITY_PATH_HINTS = (
     LOCK_NAME,
     ".auctelis.yml",
+    TRUST_FILE,
     "**/.mcp.json",
     "**/.cursor/mcp.json",
     "**/.claude/settings.json",
@@ -168,6 +172,9 @@ def codeowners_covers_protection(
         targets = list(_PROTECTION_TARGETS)
     else:
         targets = [LOCK_NAME]
+        # Only repos that actually use trusted hosts must cover the file.
+        if (root / TRUST_FILE).is_file():
+            targets.append(TRUST_FILE)
         gate_installed = (root / ".github" / "workflows" / "auctelis-gate.yml").is_file() or (
             root / ".github" / "actions" / "auctelis-gate" / "action.yml"
         ).is_file()
@@ -204,6 +211,10 @@ def codeowners_covers_protection(
 
 
 def _api_get_json(url: str, *, token: str) -> tuple[Any | None, int]:
+    try:
+        url = validated_http_url(url, what="GitHub API URL")
+    except ValueError:
+        return None, 0
     req = urllib.request.Request(
         url,
         headers={
@@ -214,7 +225,8 @@ def _api_get_json(url: str, *, token: str) -> tuple[Any | None, int]:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
+        # Scheme/host validated above; only http(s) reaches urlopen.
+        with urllib.request.urlopen(req, timeout=20) as resp:  # nosec B310
             return json.loads(resp.read().decode("utf-8")), int(resp.status)
     except urllib.error.HTTPError as exc:
         return None, int(exc.code)
@@ -590,15 +602,13 @@ def run_gate(
         not base_records and not (base.get("mcp_tools") or {}) and bool(head_records)
     )
 
-    from auctelis.reach_tiers import TIER_FAIL, delta_max_reach_tier, load_trusted_hosts
+    from auctelis.reach_tiers import (
+        TIER_COMMENT,
+        TIER_FAIL,
+        delta_max_reach_tier,
+        load_trusted_hosts,
+    )
 
-    trusted_hosts = load_trusted_hosts(root)
-    delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
-    summary = delta.get("summary") or {}
-    meaningful = bool(summary.get("meaningful_authority_change"))
-    # Align with check / lock --check: representation / body drift is reviewable.
-    authority_changed = bool(summary.get("authority_changed"))
-    label = growth_label(summary if isinstance(summary, dict) else {})
     owners = load_lock_owners(
         root, codeowners_path=codeowners_path, codeowners_text=codeowners_text
     )
@@ -607,6 +617,21 @@ def run_gate(
         if codeowners_text is not None
         else load_codeowners_text(root, codeowners_path=codeowners_path)
     )
+    # Trusted hosts are as attacker-writable as head CODEOWNERS on a PR. Honor
+    # them only when the trust file itself is CODEOWNERS-covered; otherwise a PR
+    # could allowlist its own destination and lower its own reach tier. Deleting
+    # the file only makes the gate stricter, so absence is not a bypass.
+    trusted_hosts = load_trusted_hosts(root)
+    trusted_hosts_ignored = False
+    if trusted_hosts and not (co_text and codeowners_covers_path(co_text, TRUST_FILE)):
+        trusted_hosts = set()
+        trusted_hosts_ignored = True
+    delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
+    summary = delta.get("summary") or {}
+    meaningful = bool(summary.get("meaningful_authority_change"))
+    # Align with check / lock --check: representation / body drift is reviewable.
+    authority_changed = bool(summary.get("authority_changed"))
+    label = growth_label(summary if isinstance(summary, dict) else {})
     owners_present = codeowners_covers_lock(co_text) if co_text else bool(owners)
     protection_ok, missing_protection = (
         codeowners_covers_protection(co_text, root=root) if co_text else (False, [LOCK_NAME])
@@ -618,6 +643,12 @@ def run_gate(
     # Tier 0/1 growth stays on the comment; only tier ≥ fail (execute/secrets/MCP…)
     # pages CODEOWNERS / fails the required check.
     needs_approval = label == "GROWTH" and max_tier >= TIER_FAIL
+    trust_warning = (
+        "`.auctelis/trusted-hosts` is not covered by CODEOWNERS — trusted "
+        "destinations were ignored for this run. Add a CODEOWNERS entry for it."
+        if trusted_hosts_ignored
+        else None
+    )
     # Head CODEOWNERS alone is attacker-writable on a PR. Trust it only when:
     # - caller passed a base-ref copy (--codeowners / codeowners_text), or
     # - --trust-head-codeowners, or
@@ -761,19 +792,28 @@ def run_gate(
 
     mode = "comment-only" if comment_only else "enforce"
     if comment_only:
-        # Growth is labeled on the comment; the required check stays green.
-        # Keep unparsed / lock↔tree drift as NEEDS_REVIEW for honesty, but do
-        # not fail the job (Action also treats locked=false as advisory).
-        if verdict == "NEEDS_REVIEW" and not unparsed and not lock_drift:
-            ok = True
-            verdict = "PASS"
-            note = "comment-only — growth labeled; required check does not fail."
-            if error and error.lstrip().startswith("PASS"):
-                error = note
-            else:
-                error = f"{error} {note}".strip() if error else note
+        # The required check stays green (advisory), but the verdict must stay
+        # honest: unreviewed network-or-worse growth is NEEDS_REVIEW, never PASS.
+        # Only NONE / REDUCTION / tier-0 growth can say PASS.
+        ok = True
+        if unparsed or lock_drift:
+            note = "comment-only — advisory; required check does not fail, review still required."
+        elif label == "GROWTH" and max_tier >= TIER_COMMENT:
+            verdict = "NEEDS_REVIEW"
+            note = (
+                "comment-only — unreviewed growth is advisory; "
+                "CODEOWNERS review required before merge."
+            )
         else:
-            ok = True
+            verdict = "PASS"
+            note = "comment-only — no unreviewed reach; required check stays green."
+        if error and error.lstrip().startswith("PASS"):
+            error = note
+        else:
+            error = f"{error} {note}".strip() if error else note
+
+    if trust_warning and (not error or trust_warning not in error):
+        error = f"{error} {trust_warning}".strip() if error else trust_warning
 
     protection = protection_status(ruleset_status, needs_approval=needs_approval)
     report_lines = list(delta.get("lines") or [])
@@ -794,6 +834,8 @@ def run_gate(
         "needs_approval": needs_approval,
         "empty_baseline_growth": empty_baseline_growth,
         "label": label,
+        "max_reach_tier": max_tier,
+        "trusted_hosts_ignored": trusted_hosts_ignored,
         "required_owners": owners,
         "owners_present": owners_present,
         "protection_paths_covered": protection_ok,
@@ -826,7 +868,12 @@ def render_gate_report(report: dict[str, Any]) -> str:
     else:
         header = f"auctelis gate — {verdict}"
     if mode == "comment-only":
-        header = f"{header} · mode comment-only"
+        if verdict == "NEEDS_REVIEW":
+            header = (
+                "auctelis gate — NEEDS_REVIEW · mode comment-only (advisory; check not failing)"
+            )
+        else:
+            header = f"{header} · mode comment-only"
     lines = [header]
     label = str(report.get("label") or "NONE")
     if report.get("ceremony") == "baseline_adopted":
@@ -866,6 +913,11 @@ def render_gate_report(report: dict[str, Any]) -> str:
             "Body/representation changed vs base lock — visible on comment; "
             "not material reach (required check stays green)."
         )
-    elif report.get("ok") and not report.get("needs_approval"):
+    elif report.get("ok") and not report.get("needs_approval") and label == "NONE":
         lines.append("No material authority growth vs base lock.")
+    if mode == "comment-only" and label == "GROWTH":
+        lines.append(
+            "Advisory: review the growth above; the required check does not fail "
+            "until enforce is armed."
+        )
     return "\n".join(lines)

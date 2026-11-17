@@ -30,9 +30,10 @@ def test_core_public_commands_are_the_first_screen():
         "demo",
         "init",
         "status",
+        "trust",
     } == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in ("check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status"):
+    for name in ("check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status", "trust"):
         assert name in help_text
     listed = [
         line.strip()
@@ -280,11 +281,14 @@ def test_status_check_comment_only_ok_without_ruleset(tmp_path: Path, monkeypatc
     assert main(["status", "--check", str(root)]) == 0
 
 
-def test_status_check_fails_when_enforce_ruleset_unverified(tmp_path: Path, monkeypatch):
+def test_status_check_enforce_offline_says_verify_not_false_failure(tmp_path: Path, monkeypatch):
     root = tmp_path / "repo"
     root.mkdir()
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     assert main(["init", str(root), "--owner", "sec", "--enforce", "--force"]) == 0
-    code = main(["status", "--check", str(root)])
-    assert code == 1
+    # Offline, a correct enforce install is armed locally; ruleset verification
+    # is a GitHub-side step, not a false local failure.
+    assert main(["status", "--check", str(root)]) == 0
+    # CI can still demand a verified ruleset explicitly.
+    assert main(["status", "--check", "--require-protection", str(root)]) == 1

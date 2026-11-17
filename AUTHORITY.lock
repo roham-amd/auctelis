@@ -1,12 +1,12 @@
 {
   "approvals": [],
   "approved_findings": [],
-  "audited_commit": "23f392a27750a7c55cf21843a0568e864cfb7a92",
-  "lock_hash": "76023dc15c2baddae70b9580ba020d4c",
+  "audited_commit": "c04a372a34d1d201ce38376387c69656a4d89312",
+  "lock_hash": "2f12d7e5888a8d79731101fea304102c",
   "mcp_tools": {},
   "policy_hash": "sha256:a8c2859829cdcc55c39319e381e1301a9e0e4608357be1f214f2ad9d89030c54",
   "product": "auctelis",
-  "product_version": "0.11.0",
+  "product_version": "0.12.0",
   "records": [
     {
       "approval_posture": "unknown",
@@ -95,10 +95,10 @@
       ],
       "capability_origin": "TYPE_DEFAULT",
       "destinations": [],
-      "digest": "sha256:f675ec29c262c6c5c00822c4f652fe77e366d20a569a3aa320ad5f1141c71be2",
+      "digest": "sha256:b440ae959cfe10158ed25481b72fadfd236aab11430f71b8b078e5988421031a",
       "env_keys": [],
       "evidence_strength": "LITERAL_CONFIG",
-      "fingerprint": "38ea34c72977dc6d",
+      "fingerprint": "db0e2bc1d2da59c9",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/release@.github/workflows/release.yml",
       "identity_key": "github_workflows|ci workflow|release",

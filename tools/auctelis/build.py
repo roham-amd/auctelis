@@ -98,9 +98,10 @@ def sync_packaged_version_metadata() -> list[str]:
     actions: list[str] = []
 
     product = (root / "VERSION").read_text(encoding="utf-8").strip() + "\n"
+    product_bytes = product.encode("utf-8")
     packaged_version = data_dir / "VERSION"
-    if packaged_version.read_text(encoding="utf-8") != product:
-        packaged_version.write_text(product, encoding="utf-8")
+    if not packaged_version.is_file() or packaged_version.read_bytes() != product_bytes:
+        packaged_version.write_bytes(product_bytes)
         actions.append("updated tools/auctelis/data/VERSION")
     else:
         actions.append("unchanged tools/auctelis/data/VERSION")
@@ -110,9 +111,9 @@ def sync_packaged_version_metadata() -> list[str]:
         dest = data_dir / name
         if not src.is_file():
             raise SystemExit(f"Missing canonical/{name}")
-        src_text = src.read_text(encoding="utf-8")
-        if not dest.is_file() or dest.read_text(encoding="utf-8") != src_text:
-            dest.write_text(src_text, encoding="utf-8")
+        src_bytes = src.read_bytes()
+        if not dest.is_file() or dest.read_bytes() != src_bytes:
+            dest.write_bytes(src_bytes)
             actions.append(f"updated tools/auctelis/data/{name}")
         else:
             actions.append(f"unchanged tools/auctelis/data/{name}")
@@ -181,6 +182,22 @@ def check_demo_fixture_parity() -> None:
             )
 
 
+def _check_embedded_version_fallbacks(product: str, versions: dict[str, str]) -> None:
+    """Wheel-only fallbacks must not drift from canonical metadata."""
+    from auctelis.versioning import _EMBEDDED_PRODUCT_VERSION, _EMBEDDED_VERSIONS
+
+    if product != _EMBEDDED_PRODUCT_VERSION:
+        raise SystemExit(
+            f"versioning._EMBEDDED_PRODUCT_VERSION ({_EMBEDDED_PRODUCT_VERSION}) "
+            f"!= VERSION ({product})"
+        )
+    if dict(_EMBEDDED_VERSIONS) != dict(versions):
+        raise SystemExit(
+            "versioning._EMBEDDED_VERSIONS is out of sync with canonical/versions.json; "
+            "update tools/auctelis/versioning.py"
+        )
+
+
 def check_version_metadata() -> None:
     versions = load_canonical_versions()
     if not isinstance(versions, dict):
@@ -191,6 +208,7 @@ def check_version_metadata() -> None:
             f"VERSION file ({product}) != canonical/versions.json auctelis_product "
             f"({versions.get('auctelis_product')})"
         )
+    _check_embedded_version_fallbacks(product, versions)
 
     # Keep tooling package metadata aligned with canonical build_tool tag.
     build_tool = str(versions.get("build_tool") or "")
@@ -327,7 +345,7 @@ def check_bare_command_docs() -> None:
         if rel in {"SECURITY.md", "docs/GUARD-SCAN.md"} and stale_product.search(text):
             raise SystemExit(
                 f"{rel} still describes Authority Watch / watch-first as the product; "
-                "document diff --base → init / lockless workflow → gate"
+                "document check → diff --base → init / lockless workflow → gate"
             )
         if rel == "CONTRIBUTING.md" and stale_rebrand.search(text):
             raise SystemExit(f"{rel} still contains rebrand residue ('formerly branded')")

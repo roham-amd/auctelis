@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from auctelis.lock_io import load_authority_lock
+from auctelis.lock_io import SEAL_EXCLUDE, load_authority_lock
 from auctelis.security.authority import (
     build_authority_snapshot,
     logical_authority_id,
@@ -352,9 +352,8 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
     # (merge conflicts on hash alone with identical records).
     # Legacy decorative fields (approvals / approved_findings / mcp_servers) are
     # no longer emitted — CODEOWNERS / rulesets are the approval system.
-    _SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit"}
     canonical = json.dumps(
-        {k: v for k, v in body.items() if k not in _SEAL_EXCLUDE},
+        {k: v for k, v in body.items() if k not in SEAL_EXCLUDE},
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -833,9 +832,8 @@ def merge_mcp_tools_into_lock(
     tools = dict(merged.get("mcp_tools") or {})
     tools.update({str(k): str(v) for k, v in mcp_tools.items() if k and v})
     merged["mcp_tools"] = dict(sorted(tools.items()))
-    _SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
     canonical = json.dumps(
-        {k: v for k, v in merged.items() if k not in _SEAL_EXCLUDE},
+        {k: v for k, v in merged.items() if k not in SEAL_EXCLUDE},
         sort_keys=True,
         separators=(",", ":"),
     )

@@ -16,6 +16,8 @@ from auctelis.authority_card import (
     delta_cards,
     highlight_cards,
     kind_label,
+    pin_report,
+    reach_snapshot,
     sealable_records,
 )
 from auctelis.authority_lock import (
@@ -25,15 +27,8 @@ from auctelis.authority_lock import (
     delta_label,
     diff_authority_locks,
 )
-from auctelis.lock_io import AuthorityLockError, load_authority_lock
+from auctelis.lock_io import AuthorityLockError, empty_authority_lock, load_authority_lock
 from auctelis.security.engine import ScanResult, run_authority_inventory
-
-_EMPTY_LOCK: dict[str, Any] = {
-    "version": 1,
-    "records": [],
-    "policy_hash": None,
-    "mcp_tools": {},
-}
 
 _REACH_KEYS = (
     "mcp",
@@ -104,6 +99,7 @@ def build_check_report(
     root: Path | None = None,
     *,
     lock_file: Path | None = None,
+    top: int = 5,
 ) -> tuple[dict[str, Any], list[str], ScanResult | None]:
     """Return ``(report, cards, scan)`` for repo authority vs ``AUTHORITY.lock``."""
     repo = (root or Path.cwd()).expanduser().resolve()
@@ -127,12 +123,23 @@ def build_check_report(
         "highlight_total": 0,
         "error": None,
         "coverage_line": "",
+        "reach": {},
+        "pins": {},
     }
 
+    from auctelis.reach_tiers import load_trusted_hosts
+
+    trusted_hosts = load_trusted_hosts(repo)
     scan = run_authority_inventory(repo)
     head = build_authority_lock(repo, scan=scan)
     head_records = list(head.get("records") or [])
     sealable = sealable_records(head_records)
+    report["reach"] = reach_snapshot(
+        head_records,
+        limit=top,
+        trusted_hosts=trusted_hosts,
+    )
+    report["pins"] = pin_report(head_records)
     report["counts"] = _counts(head_records)
     report["unparsed"] = _unparsed_count(scan)
     report["gated_findings"] = _gated_finding_count(scan)
@@ -141,7 +148,7 @@ def build_check_report(
     report["inventory_total"] = len(sealable)
     report["empty"] = len(sealable) == 0
 
-    base = dict(_EMPTY_LOCK)
+    base = empty_authority_lock()
     if lock_path.is_file():
         report["lock_present"] = True
         try:
@@ -155,6 +162,11 @@ def build_check_report(
         cards, highlight_total, inventory_total = highlight_cards(head_records)
         report["highlight_total"] = highlight_total
         report["inventory_total"] = inventory_total
+        # Five-card reach report first; the full inventory stays in JSON / lock.
+        if top <= 0:
+            cards = []
+        elif report["reach"].get("top_cards"):
+            cards = list(report["reach"]["top_cards"])
         report["meaningful"] = False
         report["label"] = "NONE"
         report["verdict"] = "BASELINE_NEEDED"
@@ -175,9 +187,9 @@ def build_check_report(
         }
         return report, cards, scan
 
-    delta = diff_authority_locks(base, head)
+    delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
     summary = dict(delta.get("summary") or {})
-    cards = delta_cards(delta, limit=12)
+    cards = delta_cards(delta, limit=12, trusted_hosts=trusted_hosts)
     # Align with lock --check: representation path/digest drift is also review.
     lock_drift = bool(summary.get("authority_changed"))
     meaningful = bool(cards or summary.get("policy_changed") or lock_drift)
@@ -187,6 +199,10 @@ def build_check_report(
     report["delta"] = delta
     report["label"] = delta_label(summary) if meaningful else "NONE"
     report["meaningful"] = meaningful
+    if not meaningful:
+        # Quiet lock match still shows what the repo can reach — the card is
+        # the product, not a one-line "matches".
+        cards = list((report.get("reach") or {}).get("top_cards") or [])
     if meaningful:
         # One vocabulary: any meaningful lock drift needing human review is
         # NEEDS_REVIEW (GROWTH / REDUCTION / mixed). AUTHORITY_CHANGED is retired.
@@ -239,7 +255,49 @@ def _inventory_line(report: dict[str, Any]) -> str:
         if n:
             bits.append(f"{n} {label}")
     detail = ", ".join(bits) if bits else "no authority records"
-    return f"Inventory: {total} records ({detail})."
+    noun = "record" if total == 1 else "records"
+    return f"Inventory: {total} {noun} ({detail})."
+
+
+def _reach_line(report: dict[str, Any]) -> str:
+    reach = report.get("reach") or {}
+    total = int(reach.get("total") or 0)
+    if not total:
+        return ""
+    counts = reach.get("tier_counts") or {}
+    t2 = int(counts.get("tier2") or 0)
+    t1 = int(counts.get("tier1") or 0)
+    t0 = int(counts.get("tier0") or 0)
+    noun = "record" if total == 1 else "records"
+    return f"Reach: {total} {noun} · tier 2 fail {t2} · tier 1 comment {t1} · tier 0 silent {t0}"
+
+
+def _pins_line(report: dict[str, Any]) -> str:
+    pins = report.get("pins") or {}
+    unpinned = int(pins.get("unpinned") or 0)
+    total = int(pins.get("total") or 0)
+    if not unpinned:
+        return ""
+    noun = "server" if unpinned == 1 else "servers"
+    return (
+        f"Pins: {unpinned} of {total} MCP {noun} unpinned (run `auctelis check --pins` for fixes)"
+    )
+
+
+def render_pin_report(report: dict[str, Any]) -> str:
+    """Detailed MCP pin doctor output for ``check --pins``."""
+    pins = report.get("pins") or {}
+    items = list(pins.get("items") or [])
+    if not items:
+        total = int(pins.get("total") or 0)
+        return f"No unpinned MCP servers ({total} checked)."
+    lines = [f"Unpinned MCP servers: {len(items)} of {int(pins.get('total') or 0)}"]
+    for item in items:
+        where = f" @ {item['path']}" if item.get("path") else ""
+        env = f" · env {', '.join(item['env_keys'])}" if item.get("env_keys") else ""
+        lines.append(f"  {item['name']}{where} · pin {item['pin_state']}{env}")
+        lines.append(f"    → {item['suggestion']}")
+    return "\n".join(lines)
 
 
 def render_check(
@@ -279,12 +337,18 @@ def render_check(
     if report.get("first_run"):
         lines.append(f"auctelis check · {repo}")
         lines.append(_inventory_line(report))
+        reach_line = _reach_line(report)
+        if reach_line:
+            lines.append(reach_line)
         if cards:
             lines.append("")
-            lines.extend(cards[:12])
-            more = len(cards) - 12
-            if more > 0:
-                lines.append(f"… +{more} more")
+            lines.extend(cards)
+            hidden = int(report.get("inventory_total") or 0) - len(cards)
+            if hidden > 0:
+                lines.append(f"… +{hidden} more (see `auctelis check --top {hidden + len(cards)}`)")
+        pins_line = _pins_line(report)
+        if pins_line:
+            lines.append(pins_line)
         lines.append("")
         lines.append(f"Verdict: {verdict} · label {label}")
         lines.append(f"Next: auctelis lock --update  # write {LOCK_NAME}, then commit")
@@ -293,6 +357,15 @@ def render_check(
 
     if not report.get("meaningful"):
         lines.append(f"auctelis check · {LOCK_NAME} matches · {label}")
+        reach_line = _reach_line(report)
+        if reach_line:
+            lines.append(reach_line)
+        if cards:
+            lines.append("")
+            lines.extend(cards)
+        pins_line = _pins_line(report)
+        if pins_line:
+            lines.append(pins_line)
         lines.extend(_coverage_footer())
         return "\n".join(lines)
 
@@ -307,6 +380,9 @@ def render_check(
             lines.append("~ policy: .auctelis.yml changed")
         elif summary.get("authority_changed"):
             lines.append("~ representation drift (path/digest) — reseal AUTHORITY.lock")
+    pins_line = _pins_line(report)
+    if pins_line:
+        lines.append(pins_line)
     lines.append("")
     lines.append(f"Next: review the delta, then `auctelis lock --update` and commit {LOCK_NAME}")
     lines.extend(_coverage_footer())

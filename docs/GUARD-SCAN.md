@@ -204,7 +204,8 @@ Composite action: [`.github/actions/auctelis-gate`](../.github/actions/auctelis-
 | `locked` | `false` | Comment-only default; set `true` / `init --enforce` to fail on growth |
 | `lock-file` | `AUTHORITY.lock` | Lock path relative to the target |
 | `strict-ruleset` | `false` | Comment-only default; set `true` with `locked=true` for enforce |
-| `annotate` | `false` | Opt-in research scan + findings annotations; sticky Authority Diff always posts from the gate lock delta |
+| `comment-on-none` | `false` | Post the Authority Diff even when authority did not change (default: quiet on `NONE`, sticky updated once) |
+| `annotate` | `false` | Opt-in research scan + findings annotations; sticky Authority Diff posts from the gate lock delta when authority changed (or always with `comment-on-none: true`) |
 | `output-dir` | `auctelis-out` | Artifact dir |
 | `install-tools-from` | empty → Action-bundled tools | Prefer pinned kit; refuse accidental PR `./tools` |
 | `upload-sarif` | `false` | Opt in to print the SARIF path for upload |

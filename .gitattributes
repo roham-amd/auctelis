@@ -7,3 +7,6 @@ tools/auctelis/data/demo-vulnerable/** text eol=lf
 *.json text eol=lf
 *.md text eol=lf
 *.py text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
+VERSION text eol=lf

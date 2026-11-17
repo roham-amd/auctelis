@@ -107,6 +107,7 @@ jobs:
           ../tests/test_tree_truth_weeks.py
           ../tests/test_strategic_review_apply.py
           ../tests/test_trust_reset_30d.py
+          ../tests/test_agent_reach_review.py
 
   wheel-smoke:
     runs-on: ubuntu-latest
@@ -135,6 +136,7 @@ jobs:
           /tmp/auctelis-wheel-smoke/bin/auctelis check --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis init --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis status --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis trust --help >/dev/null
           set +e
           /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
           demo_rc=$?
@@ -145,6 +147,7 @@ jobs:
           test "$check_rc" -eq 0
           grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|NEEDS_REVIEW' /tmp/auctelis-wheel-demo/pr-comment.md
           /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable | grep -E 'BASELINE_NEEDED|Inventory'
+          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable --pins | grep -E 'Unpinned MCP servers'
           # Research scanner must not ship in the product wheel.
           # -P: do not prepend the tools/ cwd (source checkout) onto sys.path.
           /tmp/auctelis-wheel-smoke/bin/python -P -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('auctelis_research') is None else 1)"

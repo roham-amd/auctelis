@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.11.0** (lean Action install + usable enforce + comment-only status) · lock schema 1 · tooling 0.11.0
+**Current:** **0.12.0** (Agent Reach Review: honest verdicts, quiet NONE, reach report, trust, pin doctor) · lock schema 1 · tooling 0.12.0
 
 ## North star (Gate Zero)
 
@@ -16,7 +16,7 @@ are removed.
 4. Empty baseline is fine: first growth under enforce is CODEOWNERS review
 5. Coverage and evidence strength are visible on every match and card
 6. Product path is **tree-truth**; research scanner is `auctelis_research` (not in wheel)
-7. Comment always posts; required check fails on **tier≥fail** reach only when locked
+7. Comment posts when authority changed (opt into every-PR); required check fails on **tier≥fail** reach only when locked
 
 ## 30-day build (applied in 0.11.0)
 
@@ -33,6 +33,7 @@ are removed.
 | **0.9.1** | Gate-owned PR comment; material-reach fail; `status --check` requires verified ruleset | **done** |
 | **0.10.0** | Lockless default; reach tiers; tomllib; CODEOWNERS path fix; research out of wheel; dogfood/release matrix | **done** |
 | **0.11.0** | Lean Action (`uv sync --no-editable`); remove locked=false warning; `--comment-only` gate; CI/Plugin/Subagent paging fix; status comment-only OK; doc pin reset; wheel-smoke research omit | **done** |
+| **0.12.0** | Agent Reach Review: day-zero `diff --base` (`BASELINE_NEEDED`); honest comment-only verdict; quiet-on-NONE; ranked reach report; env/tier on cards; offline enforce status; trusted destinations; MCP pin doctor | **done** |
 | Next | Five outside pilots; PyPI Trusted Publishing when pilots retain; physical `auctelis_research` repo split if unused | open |
 
 ## 90-day decision gate

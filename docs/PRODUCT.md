@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.11.0 · **Package:** `auctelis` 0.11.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.12.0 · **Package:** `auctelis` 0.12.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -39,14 +39,15 @@ One question drives the workflow:
 
 ## Primary commands
 
-Public path: **diff --base → lockless workflow or init --owner team → check → gate**
+Public path: **check → diff --base → lockless workflow or init --enforce → gate**
 
 | Command | Job |
 | --- | --- |
-| `auctelis diff --base <ref>` | Local PR Authority Diff simulator (aha; no files written) |
+| `auctelis check [--top N] [--pins]` | Ranked reach report vs `AUTHORITY.lock` (front door; inventory-only) |
+| `auctelis diff --base <ref>` | Local Authority Diff; `BASELINE_NEEDED` when the ref has no lock |
+| `auctelis trust <host>` | Trusted destinations for network-only reach (`--list`, `--remove`, `--init`) |
 | `auctelis init --owner team` | Comment-only setup (default); `--enforce` for locked gate (`@` optional) |
-| `auctelis check` | Repo authority vs `AUTHORITY.lock` (front door; inventory-only) |
-| `auctelis status` | Lock / workflow / CODEOWNERS / protection summary (`--check` OK for comment-only) |
+| `auctelis status` | Lock / workflow / CODEOWNERS / protection summary (`--check`; `--require-protection` for CI) |
 | `auctelis lock --update` | Write / refresh the committed lock (optional pin) |
 | `auctelis ci init` | Legacy alias of init |
 | `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |
@@ -59,8 +60,11 @@ authority is always derived from the working tree; a committed `AUTHORITY.lock`
 is an optional pin (drift-checked when present). Default Action is
 **comment-only**; research scan/annotate stays out of the product wheel
 (`auctelis_research` / `auctelis-dev` from source). Reach tiers: inferred doc
-links stay comment-only; execute/secrets/new MCP fail under enforce. Reach:
-[`REACH.md`](REACH.md).
+links stay comment-only; execute/secrets/new MCP fail under enforce. Comment-only
+mode never says `PASS` on unreviewed growth (it says `NEEDS_REVIEW`), and
+no-change PRs are quiet by default. Trusted destinations (`auctelis trust`) lower
+network-only reach to the comment tier but never hide secrets/execute/approvals.
+Reach: [`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  

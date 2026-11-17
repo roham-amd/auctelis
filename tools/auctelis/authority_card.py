@@ -4,15 +4,13 @@ The product sentence is a declared-config diff:
 
     + mcp "linear" → mcp.linear.app · network · unpinned · publisher NOT VERIFIED
 
-Only four fields are user-facing: name, destination (host or launcher),
-capability set, and evidence strength. Everything else in the lock stays
-available to tooling but does not become the page.
+User-facing fields: name, destination (host or launcher), capability set,
+env-key names, reach tier + reason, and evidence strength. Everything else in
+the lock stays available to tooling but does not become the page.
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 from typing import Any
 from urllib.parse import urlparse
 
@@ -144,6 +142,25 @@ def _permission_allows(record: dict[str, Any]) -> list[str]:
     return [str(a) for a in (record.get("permission_allows") or []) if str(a).strip()]
 
 
+def _env_keys(record: dict[str, Any], *, limit: int = 3) -> list[str]:
+    """Secret *names* only — never values. Added cards must say why they matter."""
+    return [str(k) for k in (record.get("env_keys") or []) if str(k).strip()][:limit]
+
+
+def _tier_bit(
+    record: dict[str, Any],
+    *,
+    trusted_hosts: set[str] | None = None,
+) -> str:
+    from auctelis.reach_tiers import reach_reason, record_reach_tier
+
+    tier = record_reach_tier(record, trusted_hosts=trusted_hosts)
+    if tier <= 0:
+        return ""
+    reason = reach_reason(record, trusted_hosts=trusted_hosts)
+    return f"tier {tier} ({reason})"
+
+
 def evidence_label(record: dict[str, Any]) -> str:
     """Evidence strength for cards / why — never invent LITERAL_CONFIG."""
     raw = str(record.get("evidence_strength") or "").strip().upper()
@@ -159,7 +176,12 @@ def _path_bit(record: dict[str, Any]) -> str:
     return f" @ {_short(path, width=56)}"
 
 
-def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
+def record_card(
+    record: dict[str, Any],
+    *,
+    prefix: str = "+",
+    trusted_hosts: set[str] | None = None,
+) -> str:
     """Render one added/current authority record as a single card line."""
     kind = kind_label(record.get("kind"))
     name = str(record.get("name") or record.get("id") or "?").strip()
@@ -168,6 +190,8 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
     launch = launcher(record)
     posture = _posture(record)
     allows = _permission_allows(record)
+    env_keys = _env_keys(record)
+    tier_bit = _tier_bit(record, trusted_hosts=trusted_hosts)
     evidence = evidence_label(record)
 
     # First-class permission-posture card for host settings / bypass.
@@ -184,6 +208,10 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
                 bits.append(cap)
         if host:
             bits.append(f"→ {host}")
+        if env_keys:
+            bits.append(f"env: {', '.join(env_keys)}")
+        if tier_bit:
+            bits.append(tier_bit)
         bits.append(_PUBLISHER)
         bits.append(evidence)
         return f'{prefix} {kind} "{name}"{path_bit} · ' + " · ".join(bits)
@@ -201,6 +229,10 @@ def record_card(record: dict[str, Any], *, prefix: str = "+") -> str:
     pin = _pin_bit(record)
     if kind in _MCP_KINDS and pin:
         bits.append(pin)
+    if env_keys:
+        bits.append(f"env: {', '.join(env_keys)}")
+    if tier_bit:
+        bits.append(tier_bit)
     bits.append(_PUBLISHER)
     bits.append(evidence)
     return f'{prefix} {kind} "{name}"{target} · ' + " · ".join(bits)
@@ -220,7 +252,12 @@ def _set_delta(before: Any, after: Any) -> tuple[list[str], list[str]]:
     return sorted(a - b), sorted(b - a)
 
 
-def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
+def changed_card(
+    item: dict[str, Any],
+    *,
+    prefix: str = "~",
+    trusted_hosts: set[str] | None = None,
+) -> str:
     """Render an existing record whose authority fields changed (old → new)."""
     before = item.get("before") or {}
     after = item.get("after") or {}
@@ -298,6 +335,9 @@ def changed_card(item: dict[str, Any], *, prefix: str = "~") -> str:
             bits.append(f"{changed_fields[0]} changed")
         else:
             bits.append("record identity changed")
+    tier_bit = _tier_bit(after if after else before, trusted_hosts=trusted_hosts)
+    if tier_bit:
+        bits.append(tier_bit)
     evidence = evidence_label(after if after else before)
     bits.append(evidence)
     return f'{prefix} {kind} "{name}"{path_bit} · ' + " · ".join(bits)
@@ -357,33 +397,6 @@ def highlight_cards(
 def sealable_records(records: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
     """Records that appear on screen and may be sealed (excludes agent-host noise)."""
     return [r for r in (records or []) if _is_renderable(r)]
-
-
-def screen_digest(records: list[dict[str, Any]] | None) -> str:
-    """Stable short digest of every record shown / sealed on the current screen."""
-    payload = []
-    for record in sealable_records(records):
-        payload.append(
-            {
-                "id": record.get("id"),
-                "kind": kind_label(record.get("kind")),
-                "name": record.get("name"),
-                "path": str(record.get("path") or "").replace("\\", "/"),
-                "approval_posture": record.get("approval_posture"),
-                "permission_allows": sorted(
-                    str(a) for a in (record.get("permission_allows") or [])
-                ),
-                "destinations": sorted(str(d) for d in (record.get("destinations") or [])),
-                "url_host": record.get("url_host"),
-                "launcher": record.get("launcher"),
-                "capabilities": sorted(str(c) for c in (record.get("capabilities") or [])),
-                "env_keys": sorted(str(k) for k in (record.get("env_keys") or [])),
-                "pin_state": record.get("pin_state"),
-            }
-        )
-    payload.sort(key=lambda r: (str(r.get("kind")), str(r.get("name")), str(r.get("path"))))
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
 
 
 def why_record(record: dict[str, Any]) -> list[str]:
@@ -493,6 +506,7 @@ def delta_cards(
     *,
     limit: int = 10,
     include_overflow_summary: bool = False,
+    trusted_hosts: set[str] | None = None,
 ) -> list[str]:
     """Risk-ranked cards: bypass/execute/secrets before quieter additions."""
     if not isinstance(delta, dict):
@@ -506,11 +520,25 @@ def delta_cards(
         after = item.get("after") or item.get("before") or {}
         if not _is_renderable(after):
             continue
-        ranked.append((_risk_score(after), order, changed_card(item), after))
+        ranked.append(
+            (
+                _risk_score(after),
+                order,
+                changed_card(item, trusted_hosts=trusted_hosts),
+                after,
+            )
+        )
         order += 1
     for record in changes.get("added") or []:
         if _is_renderable(record):
-            ranked.append((_risk_score(record), order, record_card(record), record))
+            ranked.append(
+                (
+                    _risk_score(record),
+                    order,
+                    record_card(record, trusted_hosts=trusted_hosts),
+                    record,
+                )
+            )
             order += 1
     for record in changes.get("removed") or []:
         if _is_renderable(record):
@@ -538,18 +566,90 @@ def delta_cards(
     return cards
 
 
-def count_cards(delta: dict[str, Any] | None) -> int:
-    if not isinstance(delta, dict):
-        return 0
-    changes = delta.get("changes") or {}
-    total = 0
-    for key in ("added", "removed"):
-        total += sum(1 for record in (changes.get(key) or []) if _is_renderable(record))
-    for item in changes.get("changed") or []:
-        if str(item.get("change_class") or "") == "representation":
+def _is_unpinned_mcp(record: dict[str, Any]) -> bool:
+    if kind_label(record.get("kind")) != "mcp":
+        return False
+    pin = str(record.get("pin_state") or "").strip().lower()
+    if pin in {"floating", "unknown", ""}:
+        return True
+    launch = launcher(record)
+    return bool(launch) and pin not in {"pinned", "digest"}
+
+
+def pin_suggestion(record: dict[str, Any]) -> str:
+    """Concrete next step for a floating MCP launcher (names only, no network)."""
+    launch = launcher(record).lower()
+    if launch in {"npx", "bunx"}:
+        return "pin the package: npx -y <pkg>@<exact-version>"
+    if launch in {"uvx", "pipx"}:
+        return "pin the package: <pkg>==<exact-version>"
+    if launch in {"docker", "podman"}:
+        return "pin the image: <image>@sha256:<digest>"
+    if launch:
+        return f"pin {launch} to an exact version or digest"
+    return "prefer a versioned/signed endpoint, then reseal the lock"
+
+
+def pin_report(records: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """MCP pin doctor: unpinned/floating servers and a concrete suggestion."""
+    mcps = [r for r in (records or []) if kind_label(r.get("kind")) == "mcp"]
+    items: list[dict[str, Any]] = []
+    for record in mcps:
+        if not _is_unpinned_mcp(record):
             continue
-        if _is_renderable(item.get("after") or item.get("before") or {}):
-            total += 1
-    for key in ("mcp_tools_added", "mcp_tools_removed", "mcp_tools_changed"):
-        total += len(changes.get(key) or [])
-    return total
+        items.append(
+            {
+                "name": str(record.get("name") or record.get("id") or "?"),
+                "path": str(record.get("path") or ""),
+                "launcher": launcher(record),
+                "pin_state": str(record.get("pin_state") or "unknown"),
+                "env_keys": _env_keys(record, limit=8),
+                "suggestion": pin_suggestion(record),
+            }
+        )
+    items.sort(key=lambda item: (item["name"], item["path"]))
+    return {"total": len(mcps), "unpinned": len(items), "items": items}
+
+
+def reach_snapshot(
+    records: list[dict[str, Any]] | None,
+    *,
+    limit: int = 5,
+    trusted_hosts: set[str] | None = None,
+) -> dict[str, Any]:
+    """Ranked reach summary for `auctelis check` (tiers + top cards)."""
+    from auctelis.reach_tiers import reach_reason, record_reach_tier
+
+    inventory = [r for r in (records or []) if _is_renderable(r)]
+    tier_counts = {"tier0": 0, "tier1": 0, "tier2": 0}
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for record in inventory:
+        tier = record_reach_tier(record, trusted_hosts=trusted_hosts)
+        tier_counts[f"tier{min(tier, 2)}"] += 1
+        scored.append((tier, _risk_score(record), record))
+    scored.sort(
+        key=lambda row: (
+            -row[0],
+            -row[1],
+            str(row[2].get("name") or ""),
+            str(row[2].get("path") or ""),
+        )
+    )
+    top: list[dict[str, Any]] = []
+    for tier, _score, record in scored[: max(int(limit or 0), 0)]:
+        top.append(
+            {
+                "kind": kind_label(record.get("kind")),
+                "name": str(record.get("name") or record.get("id") or "?"),
+                "path": str(record.get("path") or ""),
+                "tier": tier,
+                "reason": reach_reason(record, trusted_hosts=trusted_hosts),
+                "card": record_card(record, trusted_hosts=trusted_hosts),
+            }
+        )
+    return {
+        "total": len(inventory),
+        "tier_counts": tier_counts,
+        "top": top,
+        "top_cards": [item["card"] for item in top],
+    }

@@ -7,6 +7,47 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-11-17
+
+### Added
+- `auctelis check` is now a ranked reach report: `Reach:` tier counts and the
+  top five cards even when `AUTHORITY.lock` matches; `--top N` and `--json`
+  expose the ranking; `--pins` is the MCP pin doctor.
+- `auctelis trust <host>` manages `.auctelis/trusted-hosts` (`--list`,
+  `--remove`, `--init`). Trusted destinations lower network-only reach to the
+  comment tier; secrets/execute/approvals/unattended/env keys still fail.
+- Cards name secret **names** (`env: API_TOKEN`) and the reach tier reason
+  (`tier 2 (secrets)`); added cards no longer hide env reach.
+- MCP pin doctor: `check --pins` lists unpinned npx/uvx/docker launchers with a
+  concrete pin suggestion.
+- `status --require-protection` for CI that must fail on an UNVERIFIED ruleset.
+
+### Fixed
+- `diff --base` works on a repo that has never sealed `AUTHORITY.lock`:
+  the ref is resolved first, a missing lock is `BASELINE_NEEDED` (exit 0, no
+  files written), and only an invalid ref fails closed. JSON carries
+  `baseline_state`; real base-lock diffs no longer say "absolute head scan".
+- Comment-only growth is `NEEDS_REVIEW`, not `PASS`. The Action still exits 0,
+  but reviewers no longer see a false approval on a new MCP/token.
+- A no-change PR no longer posts an Authority Diff by default
+  (`comment-on-none: false`; an existing sticky is updated once to "no
+  change"). `comment-on-none: true` or `--comment-policy always` restores it.
+- `init` in comment-only mode no longer prints an enforce ruleset checklist;
+  `status --check` on a correct enforce install reports "verify in GitHub"
+  instead of failing offline.
+
+### Changed (maintenance)
+- Removed unused card/summary helpers and a retired finding-explanation renderer.
+- Centralized the empty-lock shape and seal-hash exclusions so `check`,
+  `diff --base`, and `lock` cannot drift.
+- GitHub/PyPI URLs are validated as http(s) before `urlopen`; git discovery uses
+  `shutil.which` instead of relying on a partial executable path.
+- Trusted destinations reject TLD-only and wildcard entries so a trust file
+  cannot allowlist an entire suffix.
+- `auctelis-dev build` now fails when wheel-only embedded version fallbacks drift
+  from `canonical/versions.json`.
+- Docs, templates, Action examples, and version tables aligned to 0.12.0.
+
 ## [0.11.0] — 2026-11-17
 
 ### Fixed

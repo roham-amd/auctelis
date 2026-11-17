@@ -13,11 +13,26 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-_SEAL_EXCLUDE = {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
+# Volatile / decorative fields that never participate in the seal hash.
+# ``repository`` and ``audited_commit`` vary per clone; approvals are written
+# after the seal (CODEOWNERS is the approval system).
+SEAL_EXCLUDE = frozenset(
+    {"lock_hash", "repository", "audited_commit", "approvals", "approved_findings"}
+)
 
 
 class AuthorityLockError(ValueError):
     """Raised when an AUTHORITY.lock fails schema or hollowness checks."""
+
+
+def empty_authority_lock() -> dict[str, Any]:
+    """Return a fresh, schema-shaped zero-record lock (never shared/mutated)."""
+    return {
+        "version": 1,
+        "records": [],
+        "policy_hash": None,
+        "mcp_tools": {},
+    }
 
 
 def _loads_object(text: str) -> dict[str, Any]:
@@ -65,7 +80,7 @@ def _lock_schema() -> dict[str, Any]:
 def compute_lock_hash(data: dict[str, Any]) -> str:
     """Canonical seal hash (excludes volatile / decorative fields)."""
     canonical = json.dumps(
-        {k: v for k, v in data.items() if k not in _SEAL_EXCLUDE},
+        {k: v for k, v in data.items() if k not in SEAL_EXCLUDE},
         sort_keys=True,
         separators=(",", ":"),
     )

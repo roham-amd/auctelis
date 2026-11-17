@@ -290,7 +290,10 @@ def test_status_check_armed_after_init(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     assert main(["status", "--check", str(root)]) == 0
     assert main(["init", str(root), "--owner", "security", "--enforce", "--force"]) == 0
-    assert main(["status", "--check", str(root)]) == 1
+    # Offline status says "verify in GitHub" instead of a false failure; CI can
+    # still require verification with --require-protection.
+    assert main(["status", "--check", str(root)]) == 0
+    assert main(["status", "--check", "--require-protection", str(root)]) == 1
     # Verified ruleset + locked workflow → armed.
     monkeypatch.setattr(
         "auctelis.gate.check_code_owner_ruleset",

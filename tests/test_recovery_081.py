@@ -48,7 +48,8 @@ def test_ci_init_apply_pins_release_and_exits_zero(tmp_path: Path, capsys):
     assert f"auctelis-gate@{pin}" in workflow
     assert "deadbeef" not in workflow
     assert (root / "AUTHORITY.lock").is_file()
-    assert "Warning:" in out or "Ruleset probe:" in out
+    # Comment-only --apply does not nag about rulesets (nothing to enforce yet).
+    assert "Comment-only mode: no ruleset required" in out
 
 
 def test_init_command_one_shot(tmp_path: Path, capsys):

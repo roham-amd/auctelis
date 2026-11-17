@@ -85,15 +85,21 @@ def _required_action(
     growth: bool,
     new_powers: list[Any],
     needs_approval_from: list[str] | None = None,
+    comment_only: bool = False,
 ) -> str:
     owners = [o for o in (needs_approval_from or []) if o]
+    if verdict == "BASELINE_NEEDED":
+        return "No base lock — seal the baseline with `auctelis lock --update` before relying on growth checks."
     if growth and owners:
         who = _format_owners_for_comment(owners) or "(none)"
         # Owners are already code-spanned; do not re-escape this line.
         return f"Needs approval from: {who}"
+    if growth:
+        if comment_only:
+            # Advisory checks must never imply "no action" on unreviewed growth.
+            return "CODEOWNERS review required before merge; this check is advisory."
+        return "CODEOWNERS for AUTHORITY.lock (run `auctelis init --owner @team`)"
     if verdict == "NEEDS_REVIEW":
-        if growth:
-            return "CODEOWNERS for AUTHORITY.lock (run `auctelis ci init --owner @team`)"
         if new_powers:
             return "Review the new authority, then seal the baseline."
         return "Review the unknown / NOT PARSED entries before merge."
@@ -106,10 +112,20 @@ def _sort_findings_by_severity(items: list[Any]) -> list[Any]:
     return sorted(items, key=lambda f: _SEV_RANK.get(_sev(f).upper(), 9))
 
 
-_ALLOWED_VERDICTS = {"PASS", "NEEDS_REVIEW", "BASELINE_ADOPTED", "FAIL_CLOSED"}
+_ALLOWED_VERDICTS = {
+    "PASS",
+    "NEEDS_REVIEW",
+    "BASELINE_NEEDED",
+    "BASELINE_ADOPTED",
+    "FAIL_CLOSED",
+}
 
 
-def render_gate_pr_comment(report: dict[str, Any]) -> str:
+def render_gate_pr_comment(
+    report: dict[str, Any],
+    *,
+    trusted_hosts: set[str] | None = None,
+) -> str:
     """PR comment from a tree-truth gate report — no research findings required."""
     coverage = report.get("coverage") if isinstance(report.get("coverage"), dict) else {}
     if not coverage and report.get("unparsed"):
@@ -120,6 +136,8 @@ def render_gate_pr_comment(report: dict[str, Any]) -> str:
         needs_approval_from=list(report.get("required_owners") or []) or None,
         verdict=str(report.get("verdict") or "NEEDS_REVIEW"),
         mode=str(report.get("mode") or "") or None,
+        baseline_state=str(report.get("baseline_state") or "") or None,
+        trusted_hosts=trusted_hosts,
     )
 
 
@@ -134,6 +152,8 @@ def render_authority_diff_comment(
     needs_approval_from: list[str] | None = None,
     verdict: str | None = None,
     mode: str | None = None,
+    baseline_state: str | None = None,
+    trusted_hosts: set[str] | None = None,
     max_lines: int = 20,
 ) -> str:
     """Render a short PR body: complete compact reach table (≤5 delta cards).
@@ -152,8 +172,17 @@ def render_authority_diff_comment(
     if summary is None and risk_delta and "gated_findings_added" in risk_delta:
         summary = risk_delta
 
+    baseline_absent = str(baseline_state or "").strip().lower() == "absent"
     new_powers: list[Any] = []
-    has_baseline = risk_delta is not None
+    # A real base lock is a baseline even when the delta is empty. Only a
+    # truly lockless ref may call this an absolute head scan.
+    has_baseline = (
+        risk_delta is not None
+        or lock_delta is not None
+        or str(baseline_state or "").strip().lower() == "present"
+    )
+    if baseline_absent:
+        has_baseline = False
     if risk_delta:
         changes = risk_delta.get("changes") or {}
         for key in ("high_or_critical_new_findings", "gated_new_findings"):
@@ -174,16 +203,14 @@ def render_authority_diff_comment(
 
     lock_summary = dict((lock_delta or {}).get("summary") or {})
     label = delta_label(lock_summary)
+    if baseline_absent:
+        # Absolute head reach is not a delta label (no GROWTH vs a base).
+        label = "NONE"
     growth = label == "GROWTH"
     if verdict is None:
-        if growth and not needs_approval_from:
-            verdict = "NEEDS_REVIEW"
-        elif growth:
-            verdict = "PASS"
-        elif new_powers:
-            verdict = "NEEDS_REVIEW"
-        else:
-            verdict = "PASS"
+        # Unreviewed growth is never PASS, even when CODEOWNERS owners exist —
+        # GitHub enforces the review; this comment must not pre-approve it.
+        verdict = "NEEDS_REVIEW" if growth or new_powers else "PASS"
     verdict = str(verdict).upper()
     if verdict not in _ALLOWED_VERDICTS:
         verdict = "NEEDS_REVIEW"
@@ -223,13 +250,26 @@ def render_authority_diff_comment(
     if not changed_bits and component_lines:
         changed_bits.append(f"component deltas {len(component_lines)}")
     if not changed_bits:
-        changed_bits.append(
-            "no new authority vs baseline" if has_baseline else "absolute head scan"
-        )
+        if baseline_absent:
+            changed_bits.append("absolute head reach (no base lock)")
+        else:
+            changed_bits.append(
+                "no new authority vs baseline" if has_baseline else "absolute head reach"
+            )
     visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
+    if baseline_absent:
+        visible.append(
+            "**Baseline:** none at the base ref — showing absolute head reach. "
+            "Seal with `auctelis lock --update`."
+        )
 
     visible.append("**Authority delta:**")
-    cards = delta_cards(lock_delta, limit=5, include_overflow_summary=True)
+    cards = delta_cards(
+        lock_delta,
+        limit=5,
+        include_overflow_summary=True,
+        trusted_hosts=trusted_hosts,
+    )
     if not cards and isinstance(lock_delta, dict):
         cards = [
             f"- {line.lstrip('+-~ ')}"
@@ -257,6 +297,7 @@ def render_authority_diff_comment(
         growth=growth,
         new_powers=new_powers,
         needs_approval_from=needs_approval_from if growth else None,
+        comment_only=mode_norm in {"comment-only", "comment_only", "advisory"},
     )
     # Owner names are already code-spanned; static instruction text stays readable.
     visible.append(required if len(required) <= 160 else required[:159] + "…")

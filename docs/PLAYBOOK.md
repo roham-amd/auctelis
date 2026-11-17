@@ -68,16 +68,17 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# Git install only today — PyPI when the index returns the package; pin 0.11.0
+# Git install only today — PyPI when the index returns the package; pin 0.12.0
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
 
-auctelis diff --base origin/main            # aha (no files written)
+auctelis check                              # aha: ranked reach cards
+auctelis diff --base origin/main            # BASELINE_NEEDED if main has no lock
 # Lockless first: copy templates/auctelis-diff.yml → .github/workflows/
 auctelis init --owner security              # comment-only default
 auctelis init --owner security --enforce    # optional locked gate
-auctelis check                              # repo authority vs AUTHORITY.lock
-auctelis status --check                     # OK for comment-only; enforce must be armed
+auctelis trust mcp.linear.app               # optional trusted destination
+auctelis status --check                     # comment-only OK; enforce says "verify in GitHub"
 auctelis demo                               # canned fixture + PR comment (exits 0)
 auctelis gate --base-lock AUTHORITY.lock    # authority-growth verdict
 ```

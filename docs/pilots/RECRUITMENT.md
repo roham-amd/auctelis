@@ -17,14 +17,14 @@ until a real outside repo is installed.
 # In the pilot repo:
 mkdir -p .github/workflows
 # Copy tools/auctelis/templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-# Or curl the raw file from the auctelis tag v0.11.0, then open a PR that adds an MCP.
+# Or curl the raw file from the auctelis tag v0.12.0, then open a PR that adds an MCP.
 ```
 
 **B — Comment-only init**
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
 auctelis diff --base origin/main
 auctelis init --owner security   # advisory workflow + CODEOWNERS + lock
 ```

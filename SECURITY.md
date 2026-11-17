@@ -4,13 +4,13 @@
 
 | Project version | Supported |
 | --- | --- |
-| 0.9.x | Yes |
-| 0.8.x | Security fixes when practical |
-| 0.7.x | Security fixes when practical |
-| ≤ 0.6.x | No |
+| 0.12.x | Yes |
+| 0.11.x | Security fixes when practical |
+| 0.10.x | No |
+| 0.9.x and earlier | No |
 | 1.0.x | No (yanked / superseded pre-1.0 `authdiff` line; do not use) |
 
-Tooling package version (`auctelis`, currently **0.11.0**) is tracked in
+Tooling package version (`auctelis`, currently **0.12.0**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 

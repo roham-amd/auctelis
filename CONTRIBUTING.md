@@ -29,14 +29,23 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
 - Actions: full commit SHAs with version comments; CI uses `uv python install 3.12.16` + `uv sync --locked` + `uv run --locked …`.
   Docker install images were removed in 0.9.0 — use the git-tag / PyPI install story.
 - Product CLI name is **`auctelis`**; keep **`auctelis`** as a console-script alias. Maintainer commands live on **`auctelis-dev`**.
-- Keep the product path lean: `init --owner` → `check` → `lock --update` → `gate` / `diff` / `why`.
-  Host tripwires and public `scan` / `vet` / `explain` CLIs are removed; annotation
-  helpers live on `auctelis-dev`. The `docs/pilots/` tracker is intentional for
-  the five-slot kill criterion.
+- Keep the product path lean: `check` → `diff --base` → lockless workflow or
+  `init --owner --enforce` → `gate`. Host tripwires and public `scan` / `vet` /
+  `explain` CLIs are removed; annotation helpers live on `auctelis-dev`. The
+  `docs/pilots/` tracker is intentional for the five-slot kill criterion.
 - Passive inventory must remain read-only. Maintainer opt-in execute paths
   (`auctelis-dev run`, `snapshot --execute`) scrub env only and must document
   sandbox limits.
-- Lock I/O lives in `auctelis.lock_io`; lock build/diff in `auctelis.authority_lock`. Do not pull the scanner into the product gate path.
+- Architecture: `lock_io` (schema/empty lock/seal hash) →
+  `authority_lock` (build/diff) → `reach_tiers` (tier + trust) →
+  `authority_card` (cards/pins) → `export/pr_comment` (review UI) →
+  `gate` / `diff_base` (verdicts). Do not pull the research scanner into the
+  product gate path. Renderers must never invent evidence, hosts, or approvals.
+- Security: validate external URLs before `urlopen`; resolve executables with
+  `shutil.which`; pass subprocess argv lists (never `shell=True`); keep target
+  strings escaped before markdown/terminal output.
+- Trusted destinations are authority: in the gate they are honored only when
+  `.auctelis/trusted-hosts` is CODEOWNERS-covered.
 
 ## Pull requests
 

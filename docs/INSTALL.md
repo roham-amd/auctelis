@@ -7,30 +7,33 @@
 
 ## Canonical install
 
-Working install today is the **0.11.0** git tag (signed release assets are on
+Working install today is the **0.12.0** git tag (signed release assets are on
 the GitHub Release). Prefer PyPI / `uvx` only after the index returns the
 package.
 
 ```bash
 # Working install (PyPI Trusted Publishing is wired; publish after pilots ask):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
 auctelis --version
 
 # After PyPI is live:
 # uv tool install --python 3.12 auctelis
 
-auctelis diff --base origin/main            # aha before writing files
+auctelis check                              # aha: ranked reach cards (no lock needed)
+auctelis check --pins                       # unpinned MCP launchers + exact fixes
+auctelis diff --base origin/main            # BASELINE_NEEDED when main has no lock
 # Lockless: copy tools/auctelis/templates/auctelis-diff.yml → .github/workflows/
 auctelis init --owner security              # comment-only; @ optional; PowerShell-safe
 auctelis init --owner security --enforce    # optional locked + strict ruleset
-auctelis check                              # repo authority vs AUTHORITY.lock
-auctelis status --check                     # OK for comment-only; nonzero if enforce unarmed
+auctelis trust mcp.linear.app               # optional trusted destination (network only)
+auctelis status --check                     # OK for comment-only; enforce says "verify in GitHub"
 auctelis why <name>                         # exact config path for one record
 ```
 
 Bare `auctelis` runs `check` (repo-only). Product path:
-**diff --base → init --owner team → check → gate** (tree-truth; lock optional pin).
+**check → diff --base → lockless workflow or init --enforce → gate** (tree-truth;
+lock optional pin).
 
 An empty baseline is normal: the first growth PR is a CODEOWNERS review of
 changed authority paths, not a forever `FAIL_CLOSED`. Use `auctelis demo` for
@@ -42,8 +45,8 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.11.0-py3-none-any.whl.cosign.bundle \
-  auctelis-0.11.0-py3-none-any.whl
+  --bundle auctelis-0.12.0-py3-none-any.whl.cosign.bundle \
+  auctelis-0.12.0-py3-none-any.whl
 ```
 
 Trusted Publishing workflow (reserve/publish the `auctelis` name):
@@ -75,5 +78,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.11.0 |
-| Package `auctelis` | 0.11.0 |
+| Product (`VERSION`) | 0.12.0 |
+| Package `auctelis` | 0.12.0 |

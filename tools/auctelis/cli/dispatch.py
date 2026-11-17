@@ -95,6 +95,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return cmd_check(args)
         case "why":
             return cmd_why(args)
+        case "trust":
+            return _cmd_trust(args)
         case "init":
             return _cmd_init(args)
         case "status":
@@ -376,28 +378,63 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         gate_out.mkdir(parents=True, exist_ok=True)
         write_json(gate_out / "gate-report.json", report)
         write_text(gate_out / "gate-report.txt", render_gate_report(report))
-        # Gate owns the sticky comment. Optional findings.json may enrich
-        # coverage; it is never required to post the Authority Diff.
-        findings_path = gate_out / "findings.json"
-        findings_doc = read_json(findings_path) if findings_path.is_file() else None
-        if isinstance(findings_doc, dict):
-            coverage = findings_doc.get("coverage")
-            if isinstance(coverage, dict) and not report.get("coverage"):
-                report["coverage"] = coverage
+        from auctelis.reach_tiers import load_trusted_hosts
+
+        trusted_hosts = load_trusted_hosts(args.path)
+        if report.get("trusted_hosts_ignored"):
+            # Do not render a lower tier than the verdict actually used.
+            trusted_hosts = set()
+        comment_path = gate_out / "pr-comment.md"
+        skip_path = gate_out / "comment-skip.txt"
+        # Quiet on NONE: the Authority Diff comment is the product, but a
+        # no-change comment on every PR trains maintainers to disable the Job.
+        # Silence is the feature; job summary still records PASS/NONE.
+        quiet = (
+            str(getattr(args, "comment_policy", "auto") or "auto") == "auto"
+            and str(report.get("verdict") or "") == "PASS"
+            and str(report.get("label") or "NONE") == "NONE"
+            and not int(report.get("unparsed") or 0)
+            and not bool(report.get("lock_tree_drift"))
+            and not bool(report.get("meaningful_authority_change"))
+            and not bool(report.get("representation_only"))
+        )
+        if quiet:
             write_text(
-                gate_out / "pr-comment.md",
-                render_authority_diff_comment(
-                    findings_doc,
-                    lock_delta=report.get("delta")
-                    if isinstance(report.get("delta"), dict)
-                    else None,
-                    needs_approval_from=report.get("required_owners") or None,
-                    verdict=report.get("verdict"),
-                    mode=str(report.get("mode") or "") or None,
-                ),
+                skip_path,
+                "No authority change vs base lock — comment skipped "
+                "(set comment-on-none: true or --comment-policy always).\n",
             )
+            with contextlib.suppress(OSError):
+                comment_path.unlink(missing_ok=True)
         else:
-            write_text(gate_out / "pr-comment.md", render_gate_pr_comment(report))
+            with contextlib.suppress(OSError):
+                skip_path.unlink(missing_ok=True)
+            # Gate owns the sticky comment. Optional findings.json may enrich
+            # coverage; it is never required to post the Authority Diff.
+            findings_path = gate_out / "findings.json"
+            findings_doc = read_json(findings_path) if findings_path.is_file() else None
+            if isinstance(findings_doc, dict):
+                coverage = findings_doc.get("coverage")
+                if isinstance(coverage, dict) and not report.get("coverage"):
+                    report["coverage"] = coverage
+                write_text(
+                    comment_path,
+                    render_authority_diff_comment(
+                        findings_doc,
+                        lock_delta=report.get("delta")
+                        if isinstance(report.get("delta"), dict)
+                        else None,
+                        needs_approval_from=report.get("required_owners") or None,
+                        verdict=report.get("verdict"),
+                        mode=str(report.get("mode") or "") or None,
+                        trusted_hosts=trusted_hosts,
+                    ),
+                )
+            else:
+                write_text(
+                    comment_path,
+                    render_gate_pr_comment(report, trusted_hosts=trusted_hosts),
+                )
     return code
 
 
@@ -552,6 +589,113 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     return 0
 
 
+def _trusted_hosts_path(root: Path) -> Path:
+    return root.resolve() / ".auctelis" / "trusted-hosts"
+
+
+def _normalize_trusted_host(raw: str) -> str:
+    text = str(raw or "").strip().lower()
+    if not text:
+        raise ValueError("empty host")
+    if "://" in text:
+        from urllib.parse import urlsplit
+
+        text = str(urlsplit(text).hostname or "")
+    else:
+        text = text.split("/", 1)[0]
+    text = text.strip().rstrip(".")
+    if not text or any(ch in text for ch in " \t#@"):
+        raise ValueError(f"not a host: {raw!r}")
+    from auctelis.reach_tiers import valid_trusted_host
+
+    if not valid_trusted_host(text):
+        raise ValueError(f"not a specific host (no TLD-only/wildcards): {raw!r}")
+    return text
+
+
+def _cmd_trust(args: argparse.Namespace) -> int:
+    """Manage `.auctelis/trusted-hosts` — benign reach stays comment-tier."""
+    from auctelis.reach_tiers import STARTER_TRUSTED_HOSTS, load_trusted_hosts
+
+    root = getattr(args, "repo", Path(".")).resolve()
+    path = _trusted_hosts_path(root)
+    raw_hosts = [str(h) for h in (getattr(args, "hosts", None) or []) if str(h).strip()]
+    if getattr(args, "init", False):
+        if path.is_file() and path.read_text(encoding="utf-8").strip():
+            print(f"Trusted hosts already configured: {path}")
+            return 0
+        path.parent.mkdir(parents=True, exist_ok=True)
+        body = (
+            "# Trusted destination hosts (one per line; subdomains covered).\n"
+            "# Trust lowers network-only growth to comment tier. Execute,\n"
+            "# secrets, approvals, and unattended reach still fail.\n"
+            + "\n".join(STARTER_TRUSTED_HOSTS)
+            + "\n"
+        )
+        path.write_text(body, encoding="utf-8", newline="\n")
+        print(f"Wrote starter trusted hosts: {path}")
+        print("Edit the file to remove any host you do not trust.")
+        return 0
+
+    if getattr(args, "remove", False):
+        if not raw_hosts:
+            print("Usage: auctelis trust --remove <host> [host…]")
+            return 2
+        try:
+            remove = {_normalize_trusted_host(h) for h in raw_hosts}
+        except ValueError as exc:
+            print(f"auctelis trust: {exc}")
+            return 2
+        if not path.is_file():
+            print("No trusted hosts configured.")
+            return 0
+        kept: list[str] = []
+        removed = 0
+        for line in path.read_text(encoding="utf-8").splitlines():
+            entry = line.split("#", 1)[0].strip().lower()
+            if entry and entry in remove:
+                removed += 1
+                continue
+            kept.append(line)
+        path.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8", newline="\n")
+        print(f"Removed {removed} host(s) from {path}.")
+        return 0
+
+    if raw_hosts:
+        try:
+            hosts = [_normalize_trusted_host(h) for h in raw_hosts]
+        except ValueError as exc:
+            print(f"auctelis trust: {exc}")
+            return 2
+        existing = load_trusted_hosts(root)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        added = [h for h in hosts if h not in existing]
+        if added:
+            prior = path.read_text(encoding="utf-8").rstrip() + "\n" if path.is_file() else ""
+            if not prior:
+                prior = "# Trusted destination hosts (one per line; subdomains covered).\n"
+            path.write_text(prior + "\n".join(added) + "\n", encoding="utf-8", newline="\n")
+            print(f"Trusted {len(added)} host(s): {', '.join(added)}")
+        else:
+            print("Already trusted: " + ", ".join(hosts))
+        print(f"File: {path}")
+        return 0
+
+    # Default / --list
+    hosts = sorted(load_trusted_hosts(root))
+    if not hosts:
+        print(
+            "No trusted hosts configured. "
+            "Add one with `auctelis trust mcp.linear.app` or `auctelis trust --init`."
+        )
+        return 0
+    print(f"Trusted hosts ({len(hosts)}):")
+    for host in hosts:
+        print(f"  {host}")
+    print(f"File: {path}")
+    return 0
+
+
 def _cmd_init(args: argparse.Namespace) -> int:
     """One-command setup: policy + workflow + CODEOWNERS + lock; exit 0 after writes."""
     refused = refuse_agent_mutation("init")
@@ -655,7 +799,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
     co_text = load_codeowners_text(root)
     existing_co = _find_existing_codeowners(root)
     if co_text and codeowners_covers_lock(co_text):
-        protection_ok, missing = codeowners_covers_protection(co_text)
+        protection_ok, missing = codeowners_covers_protection(co_text, root=root)
         loc = str(existing_co.relative_to(root)).replace("\\", "/") if existing_co else "?"
         if protection_ok:
             lines.append(f"CODEOWNERS: covers protection paths ({loc})")
@@ -676,13 +820,25 @@ def _cmd_status(args: argparse.Namespace) -> int:
 
     status, detail = check_code_owner_ruleset()
     lines.append(f"Protection: {status} — {detail}")
-    # Enforce path: UNVERIFIED/MISSING ruleset is not armed when strict-ruleset is on.
+    require_protection = bool(getattr(args, "require_protection", False))
+    offline_unverified = False
+    # Enforce path: a *missing* code-owner ruleset is a real local gap. An
+    # UNVERIFIED probe is usually "no API token on this laptop" — say "verify
+    # in GitHub" instead of a false local failure, unless CI opts into
+    # --require-protection (or the caller has a token but insufficient scope).
     if check_mode and locked and workflow_strict:
         status_u = str(status or "").upper()
         if status_u == "MISSING":
             problems.append("code-owner review ruleset missing")
         elif status_u == "UNVERIFIED":
-            problems.append("ruleset protection UNVERIFIED")
+            if require_protection:
+                problems.append("ruleset protection UNVERIFIED")
+            else:
+                offline_unverified = True
+                lines.append(
+                    "Protection: verify in GitHub — enable require_code_owner_review "
+                    "(local status cannot read rulesets without GITHUB_TOKEN)"
+                )
     if locked and not lock_path.is_file():
         problems.append("missing AUTHORITY.lock")
 
@@ -710,7 +866,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
             lines.append("Gate armed: NO — " + "; ".join(problems))
             print("\n".join(lines))
             return 1
-        lines.append("Gate armed: YES")
+        if offline_unverified:
+            lines.append("Gate armed: YES (locally) — verify code-owner ruleset in GitHub")
+        else:
+            lines.append("Gate armed: YES")
     print("\n".join(lines))
     return 0
 
@@ -772,6 +931,7 @@ def _merge_codeowners_authority(
     required = [
         "AUTHORITY.lock",
         ".auctelis.yml",
+        ".auctelis/trusted-hosts",
         ".github/workflows/",
         ".github/actions/",
         ".github/CODEOWNERS",
@@ -1042,7 +1202,13 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         f"CODEOWNERS owner: {owner}. "
         f"Actual workflow: mode={reported_mode} (locked: {str(reported_locked).lower()})."
     )
-    if apply:
+    if apply and advisory:
+        print(
+            "Comment-only mode: no ruleset required. Run `auctelis init --owner "
+            f"{owner} --enforce` (or `auctelis status --check`) when you want the "
+            "required check to fail on growth."
+        )
+    elif apply:
         from auctelis.gate import check_code_owner_ruleset
 
         status, detail = check_code_owner_ruleset()

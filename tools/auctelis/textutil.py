@@ -3,6 +3,20 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
+
+
+def validated_http_url(value: str, *, what: str = "URL") -> str:
+    """Return an http(s) URL or raise — never pass file:/custom schemes to urlopen."""
+    text = str(value or "").strip()
+    try:
+        parts = urlsplit(text)
+    except ValueError as exc:
+        raise ValueError(f"invalid {what}: {text!r}") from exc
+    if parts.scheme.lower() not in {"http", "https"} or not parts.netloc:
+        raise ValueError(f"{what} must be an http(s) URL with a host: {text!r}")
+    return text
+
 
 # Escape markdown specials that enable injection. Dots are left alone so paths
 # like `.cursor/mcp.json` stay readable (ordered-list dots only matter at BOL).

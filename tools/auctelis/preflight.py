@@ -8,17 +8,23 @@ and test utilities only — not a second product surface.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
 from auctelis.inventory.collector import InventoryResult
 
+_GIT = shutil.which("git")
+
 
 def resolve_git_commit(root: Path) -> str | None:
+    if not _GIT:
+        return None
     try:
-        proc = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+        # Fixed git argv, no shell, target root passed as cwd.
+        proc = subprocess.run(  # nosec B603
+            [_GIT, "rev-parse", "HEAD"],
             cwd=root,
             check=False,
             capture_output=True,

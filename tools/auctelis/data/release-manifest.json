@@ -1,12 +1,12 @@
 {
   "manifest_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.11.0",
+  "product_version": "0.12.0",
   "package_name": "auctelis",
-  "package_version": "0.11.0",
+  "package_version": "0.12.0",
   "primary_command": "auctelis check",
   "north_star": "Nothing in a repo gains reach until a human has seen the Authority Diff and said OK.",
-  "positioning": "The authority lockfile and PR review for what AI agents can reach.",
+  "positioning": "See what your AI agents can reach. Approve every change - in one PR comment.",
   "release_status": "pre-1.0",
   "contracts": {
     "audit_procedure": "1.0",
@@ -71,7 +71,14 @@
     "reach_tiers": true,
     "comment_only_gate": true,
     "lean_action_install": true,
-    "research_in_wheel": false
+    "research_in_wheel": false,
+    "trusted_destinations": true,
+    "reach_report": true,
+    "mcp_pin_doctor": true,
+    "quiet_on_none": true,
+    "honest_comment_only_verdict": true,
+    "comment_policy": true,
+    "status_require_protection": true
   },
   "assessment_model": {
     "capability": "What a component can potentially reach",
@@ -80,7 +87,7 @@
     "authority_layers": "DECLARED | CONFIGURED | EFFECTIVE | VERIFIED (passive scan = DECLARED/CONFIGURED only)",
     "declared_vs_effective": "Host profiles declare configuration; effective permissions stay NOT VERIFIED without host/runtime evidence",
     "evidence_strength": "LITERAL_CONFIG | INFERRED_HINT | NAME_MARKER",
-    "verdict": "PASS | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED (authority change control)",
+    "verdict": "PASS | NEEDS_REVIEW | BASELINE_NEEDED | BASELINE_ADOPTED | FAIL_CLOSED (authority change control)",
     "label": "GROWTH | REDUCTION | NONE (what the lock delta is, not a verdict)",
     "material_authority_change": "tier>=fail reach (execute/secrets/new MCP/env); inferred doc links stay comment-only",
     "internal_scan_decision": "BLOCK | REVIEW | NO-GATED-FINDINGS (annotation layer; never a second public gate)",

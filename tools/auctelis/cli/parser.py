@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "diff --base → lockless workflow or init --owner team → check → gate"
+PUBLIC_PATH = "check → diff --base → lockless workflow or init --enforce → gate"
 
 _EPILOG = f"""
 first path:   {PUBLIC_PATH}
@@ -28,7 +28,7 @@ _ADV = argparse.SUPPRESS
 
 # Enforceable public mental model — GitHub-native Authority Diff front door.
 CORE_PUBLIC_COMMANDS = frozenset(
-    {"check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status"}
+    {"check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status", "trust"}
 )
 
 _PRODUCT_COMMANDS = frozenset(CORE_PUBLIC_COMMANDS)
@@ -122,6 +122,18 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Emit authority-diff/1 JSON",
     )
+    check.add_argument(
+        "--top",
+        type=int,
+        default=5,
+        metavar="N",
+        help="Show the top N reach cards (default: 5; 0 hides cards)",
+    )
+    check.add_argument(
+        "--pins",
+        action="store_true",
+        help="Show unpinned/floating MCP servers with concrete pin fixes",
+    )
 
     init_cmd = sub.add_parser(
         "init",
@@ -161,6 +173,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Exit nonzero when comment-only is broken, or when enforce (locked=true) is not armed"
+        ),
+    )
+    status_cmd.add_argument(
+        "--require-protection",
+        action="store_true",
+        help=(
+            "Hard-fail when the code-owner ruleset cannot be verified (CI / strict); "
+            "offline local status says 'verify in GitHub' instead"
         ),
     )
 
@@ -214,6 +234,29 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         nargs="?",
         default=Path("."),
         help="Repository root (default: cwd)",
+    )
+
+    trust = sub.add_parser(
+        "trust",
+        help="Manage trusted destination hosts (tier-1 reach; never secrets/execute)",
+    )
+    trust.add_argument(
+        "hosts",
+        nargs="*",
+        help="Host(s) to trust, e.g. mcp.linear.app (subdomains are covered)",
+    )
+    trust.add_argument(
+        "--repo",
+        type=Path,
+        default=Path("."),
+        help="Repository root (default: cwd)",
+    )
+    trust.add_argument("--list", action="store_true", help="List trusted hosts")
+    trust.add_argument("--remove", action="store_true", help="Remove the given hosts")
+    trust.add_argument(
+        "--init",
+        action="store_true",
+        help="Write a starter trusted-host list (opt-in; never automatic)",
     )
 
     demo = sub.add_parser(
@@ -333,6 +376,12 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
             "Lockless / advisory mode: post the Authority Diff without failing "
             "the required check on growth (Action locked=false)"
         ),
+    )
+    gate_cmd.add_argument(
+        "--comment-policy",
+        choices=["auto", "always"],
+        default="auto",
+        help=("auto (default): skip the PR comment when nothing changed; always: post on every PR"),
     )
     gate_cmd.add_argument(
         "--agent",

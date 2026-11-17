@@ -4,10 +4,10 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.11.0** |
-| Tooling package | **0.11.0** (`auctelis`) |
+| Product release | **0.12.0** |
+| Tooling package | **0.12.0** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
-| Primary path | `diff --base` → lockless workflow **or** `init --owner` → `check` → Action / `gate` |
+| Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
 | Action | `.github/actions/auctelis-gate` — **comment-only** default (`locked=false`); `--enforce` / `locked=true` for fail |
 | Verdict | `PASS` / `NEEDS_REVIEW` / `BASELINE_ADOPTED` / `FAIL_CLOSED` |
@@ -25,12 +25,13 @@ Normative depth: [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md), [`GUARD-SCAN.md`](GUA
 > what data can flow through it, and what materially changed.
 
 The valuable artifact is the **PR Authority Diff comment** (≤12 lines): one
-verdict, at most three `old → new` cards, the unknowns, and the action. The
-Action always posts this comment from the tree-truth gate lock delta (base
-authority is extracted from the base worktree — no committed lock required for
-comment-only). Research `annotate: true` is optional enrichment — never a gate
-input. Inferred doc-link network stays comment-tier; execute / secrets / new
-MCP fail only when `locked=true`.
+verdict, at most five ranked cards, the unknowns, and the action. The Action
+posts this comment from the tree-truth gate lock delta when authority changed
+(base authority is extracted from the base worktree — no committed lock required
+for comment-only). Research `annotate: true` is optional enrichment — never a
+gate input. Inferred doc-link network stays comment-tier; execute / secrets / new
+MCP fail only when `locked=true`. Comment-only growth is `NEEDS_REVIEW`, never a
+false `PASS`; no-change PRs are quiet unless `comment-on-none: true`.
 
 1. What changed? (`GROWTH` / `REDUCTION` / `NONE`)
 2. What new host, launcher, or env key?
@@ -46,13 +47,14 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ```bash
 # Git tag is the supported install until PyPI returns the package.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
 
-auctelis diff --base origin/main                # aha (no files written)
+auctelis check                                  # aha: ranked reach cards
+auctelis diff --base origin/main                # BASELINE_NEEDED if no lock; no files written
 # Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
 auctelis init --owner security-owner            # comment-only setup
 auctelis init --owner security-owner --enforce  # optional locked gate
-auctelis check                                  # repo authority vs AUTHORITY.lock
+auctelis trust mcp.linear.app                   # optional: network-only trust
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
@@ -81,14 +83,27 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.11.0`.
+Or pin the release tag: `@v0.12.0`.
 
 ### Modes
 
 | Mode | How | Behavior |
 | --- | --- | --- |
-| **Comment-only** (default) | lockless template / `init` / `locked: false` | Posts Authority Diff; does not fail on growth |
+| **Comment-only** (default) | lockless template / `init` / `locked: false` | Posts Authority Diff as `NEEDS_REVIEW` on growth; check stays green; quiet on `NONE` |
 | **Enforce** | `init --enforce` / `locked: true` | Fails on tier≥fail growth, drift, unparsed, missing CODEOWNERS/ruleset |
+
+### Comment policy
+
+- Default `auto`: post only when authority changed (`GROWTH` / `REDUCTION` /
+  unparsed / drift). A `NONE` PR gets no new comment; an existing sticky comment
+  is updated once to "no authority change". The job summary always records the
+  verdict.
+- `comment-on-none: true` (Action) or `gate --comment-policy always` restores a
+  comment on every PR.
+- Default `init --enforce` + local `auctelis status --check` says
+  "verify code-owner ruleset in GitHub" instead of failing offline. Use
+  `status --check --require-protection` where a missing/UNVERIFIED ruleset must
+  fail (for example a CI readiness job).
 
 ---
 

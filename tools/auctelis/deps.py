@@ -6,6 +6,7 @@ import json
 import subprocess
 import tomllib
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import date
@@ -16,9 +17,11 @@ from packaging.requirements import Requirement
 from packaging.version import InvalidVersion, Version
 
 from auctelis.paths import repo_root
+from auctelis.textutil import validated_http_url
+from auctelis.versioning import product_version
 
 _PYPI = "https://pypi.org/pypi/{name}/json"
-_USER_AGENT = "auctelis-deps/0.11 (+https://github.com/roham-amd/auctelis)"
+_USER_AGENT = f"auctelis-deps/{product_version()} (+https://github.com/roham-amd/auctelis)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,11 +73,16 @@ def parse_declared_requirements(text: str | None = None) -> list[Requirement]:
 
 
 def fetch_latest_version(name: str, *, timeout: float = 20.0) -> str:
+    url = validated_http_url(
+        _PYPI.format(name=urllib.parse.quote(str(name), safe="")),
+        what="PyPI API URL",
+    )
     req = urllib.request.Request(
-        _PYPI.format(name=name),
+        url,
         headers={"Accept": "application/json", "User-Agent": _USER_AGENT},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    # Fixed PyPI host + validated scheme; package name is URL-quoted.
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosec B310
         payload = json.loads(resp.read().decode("utf-8"))
     version = payload.get("info", {}).get("version")
     if not version:

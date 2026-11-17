@@ -236,6 +236,9 @@ def test_comment_only_gate_does_not_fail_on_growth(tmp_path: Path):
     assert report.get("mode") == "comment-only"
     assert report.get("label") == "GROWTH"
     assert report.get("ok") is True
+    # Honest verdict: unreviewed growth is never PASS in comment-only mode.
+    assert report.get("verdict") == "NEEDS_REVIEW"
+    assert "NEEDS_REVIEW" in render_gate_report(report)
     assert "comment-only" in render_gate_report(report)
 
 

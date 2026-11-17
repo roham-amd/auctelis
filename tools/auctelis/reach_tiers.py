@@ -17,6 +17,16 @@ TIER_SILENT = 0
 TIER_COMMENT = 1
 TIER_FAIL = 2
 
+# Starter destinations for `auctelis trust --init`. Opt-in only — nothing here
+# is trusted until the operator writes it (or runs --init explicitly).
+STARTER_TRUSTED_HOSTS = (
+    "api.github.com",
+    "github.com",
+    "pypi.org",
+    "files.pythonhosted.org",
+    "registry.npmjs.org",
+)
+
 _CAP_TIER: dict[str, int] = {
     "modify_agent_instructions": TIER_SILENT,
     "access_network": TIER_COMMENT,
@@ -40,11 +50,19 @@ def capability_tier(cap: str) -> int:
     return _CAP_TIER.get(str(cap or ""), TIER_COMMENT)
 
 
+def valid_trusted_host(value: str) -> bool:
+    """Reject TLD-only / wildcard entries that would trust an entire suffix."""
+    host = str(value or "").strip().lower().rstrip(".")
+    if not host or "*" in host or host.startswith("."):
+        return False
+    return host == "localhost" or "." in host
+
+
 def _trusted_host(host: str, trusted: set[str]) -> bool:
     h = str(host or "").strip().lower().rstrip(".")
     if not h or not trusted:
         return False
-    return h in trusted or any(h.endswith(f".{t}") for t in trusted)
+    return h in trusted or any(h.endswith(f".{t}") for t in trusted if valid_trusted_host(t))
 
 
 def record_reach_tier(
@@ -102,7 +120,60 @@ def record_reach_tier(
     ):
         tier = min(tier, TIER_COMMENT)
 
+    # Trusted destinations: a benign addition/expansion that only reaches
+    # allowlisted hosts stays visible on the comment but never pages CODEOWNERS
+    # or fails the required check. Execute / secrets / approval reach still
+    # fails — trust is about *where*, not *what* the record can do.
+    dangerous = bool(record.get("env_keys")) or bool(
+        set(caps) & {"execute", "access_secrets", "modify_approvals", "unattended_operation"}
+    )
+    if (
+        trusted
+        and destinations
+        and all(_trusted_host(d, trusted) for d in destinations)
+        and not dangerous
+    ):
+        tier = min(tier, TIER_COMMENT)
+
     return tier
+
+
+def reach_reason(
+    record: dict[str, Any],
+    *,
+    trusted_hosts: set[str] | None = None,
+) -> str:
+    """Short human reason for a record's reach tier (card ordering / comments)."""
+    trusted = {h.lower() for h in (trusted_hosts or set()) if h}
+    caps = {str(c) for c in (record.get("capabilities") or [])}
+    posture = str(record.get("approval_posture") or "").strip().lower()
+    if posture == "bypass":
+        return "bypass permissions"
+    if "execute" in caps:
+        return "execute"
+    if record.get("env_keys") or "access_secrets" in caps:
+        return "secrets"
+    if "modify_approvals" in caps:
+        return "approvals"
+    if "unattended_operation" in caps:
+        return "unattended"
+    kind = str(record.get("kind") or "")
+    if kind in _ADDITION_FAIL_KINDS:
+        return "new authority"
+    launcher = str(record.get("launcher") or "")
+    pin = str(record.get("pin_state") or "")
+    if launcher and pin in {"floating", "unknown", ""}:
+        return "unpinned launcher"
+    destinations = [str(d) for d in (record.get("destinations") or [])]
+    if destinations:
+        if trusted and all(_trusted_host(d, trusted) for d in destinations):
+            return "trusted destination"
+        return "network"
+    if caps & {"invoke_tools", "access_network"}:
+        return "tools"
+    if "modify_agent_instructions" in caps:
+        return "instructions"
+    return "recorded authority"
 
 
 def expansion_reach_tier(
@@ -202,6 +273,6 @@ def load_trusted_hosts(root: Any = None) -> set[str]:
         return hosts
     for line in text.splitlines():
         line = line.split("#", 1)[0].strip().lower()
-        if line:
-            hosts.add(line)
+        if valid_trusted_host(line):
+            hosts.add(line.rstrip("."))
     return hosts

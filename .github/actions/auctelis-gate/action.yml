@@ -1,9 +1,10 @@
 name: auctelis Authority Diff
 description: >-
-  Tree-truth Authority Diff gate: extract base/head agent reach, fail on
-  material growth or lock↔tree drift, always post a sticky PR comment from
-  the lock delta. Research scan/annotate is opt-in and advisory. Does not
-  execute target application code or contact MCP endpoints.
+  Tree-truth Authority Diff gate: extract base/head agent reach, report
+  unreviewed growth honestly, and post a sticky PR comment when authority
+  changes (opt into every-PR with comment-on-none). Research scan/annotate is
+  opt-in and advisory. Does not execute target application code or contact MCP
+  endpoints.
 
 inputs:
   path:
@@ -98,6 +99,14 @@ inputs:
       If true, authority growth with UNVERIFIED ruleset/branch-protection status
       fails the gate. Default false matches lockless comment-only. Set true with
       locked=true for enforce. MISSING rulesets still fail when locked=true.
+    required: false
+    default: "false"
+  comment-on-none:
+    description: >-
+      If true, post the Authority Diff on every PR even when authority did not
+      change. Default false: the gate stays quiet on NONE (job summary still
+      records PASS/NONE) and updates an existing sticky comment once to say so.
+      Growth, reduction, unparsed configs, and drift always comment.
     required: false
     default: "false"
 
@@ -459,6 +468,7 @@ runs:
         AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
         AUCTELIS_STRICT_RULESET: ${{ inputs.strict-ruleset }}
         AUCTELIS_LOCKED: ${{ inputs.locked }}
+        AUCTELIS_COMMENT_ON_NONE: ${{ inputs.comment-on-none }}
         # pull_request GITHUB_SHA is the merge commit; reviews use PR head.
         AUCTELIS_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         GITHUB_TOKEN: ${{ github.token }}
@@ -491,6 +501,13 @@ runs:
         if [[ "${AUCTELIS_LOCKED}" != "true" ]]; then
           gate_args+=(--comment-only)
           echo "Mode: comment-only (growth labeled; required check stays green)"
+        fi
+        if [[ "${AUCTELIS_COMMENT_ON_NONE}" == "true" ]]; then
+          gate_args+=(--comment-policy always)
+          echo "Comment policy: always (comment-on-none=true)"
+        else
+          gate_args+=(--comment-policy auto)
+          echo "Comment policy: auto (quiet when authority did not change)"
         fi
         if [[ -n "${AUCTELIS_HEAD_SHA:-}" ]]; then
           echo "PR head: ${AUCTELIS_HEAD_SHA}"
@@ -564,6 +581,40 @@ runs:
         COMMENT="$AUCTELIS_OUTPUT_DIR/pr-comment.md"
         DELTA="$AUCTELIS_OUTPUT_DIR/risk-delta.json"
         GATE_TXT="$AUCTELIS_OUTPUT_DIR/gate-report.txt"
+        SKIP="$AUCTELIS_OUTPUT_DIR/comment-skip.txt"
+        # Quiet on NONE: no authority change means no new comment. If a sticky
+        # comment exists from an earlier PR state, update it once to say so
+        # instead of leaving a stale PASS behind.
+        if [[ ! -f "$COMMENT" && -f "$SKIP" ]]; then
+          echo "No authority change — comment skipped (comment-on-none=false)."
+          echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
+          cat "$SKIP" >> "$GITHUB_STEP_SUMMARY"
+          if command -v gh >/dev/null 2>&1 && [[ -n "${GITHUB_TOKEN:-}" ]]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+            MARKER="<!-- auctelis-authority-diff -->"
+            existing_id="$(
+              gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" --paginate \
+                --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" 2>/dev/null \
+                | head -n 1 || true
+            )"
+            if [[ -n "${existing_id}" ]]; then
+              NOCHANGE="$(mktemp)"
+              {
+                echo "$MARKER"
+                echo "### auctelis Authority Diff"
+                echo "**Verdict:** \`PASS\` · label \`NONE\`"
+                echo ""
+                echo "No authority change vs the base ref. No review required."
+              } >"$NOCHANGE"
+              if gh api "repos/${{ github.repository }}/issues/comments/${existing_id}" \
+                -X PATCH -F body=@"$NOCHANGE" >/dev/null 2>&1; then
+                echo "Updated sticky comment to no-change."
+              fi
+              rm -f "$NOCHANGE"
+            fi
+          fi
+          exit 0
+        fi
         # Adoption ceremony: no base lock + head lock must never sticky-comment as PASS.
         head_lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         head_lock_path="${AUCTELIS_PATH%/}/${head_lock_rel}"
