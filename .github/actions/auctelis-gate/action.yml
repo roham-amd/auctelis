@@ -110,24 +110,26 @@ runs:
       env:
         AUCTELIS_INSTALL_TOOLS_FROM: ${{ inputs.install-tools-from }}
         AUCTELIS_ACTION_PATH: ${{ github.action_path }}
+        AUCTELIS_ANNOTATE: ${{ inputs.annotate }}
       run: |
         set -euo pipefail
         # Prefer explicit input, then Action-bundled tools, and only then a
         # workspace-relative path. Never silently uv-sync a PR-controlled tools/.
         # Special values path|pypi mean: use preinstalled CLI on PATH.
         chosen="${AUCTELIS_INSTALL_TOOLS_FROM}"
+        annotate="${AUCTELIS_ANNOTATE:-false}"
         if [[ "${chosen}" == "path" || "${chosen}" == "pypi" ]]; then
           if ! command -v auctelis >/dev/null 2>&1; then
             echo "::error::install-tools-from=${chosen} but auctelis is not on PATH. pip/uv install auctelis first."
             exit 1
           fi
-          if ! command -v auctelis-dev >/dev/null 2>&1; then
-            echo "::error::install-tools-from=${chosen} but auctelis-dev is not on PATH (needed for scan/annotate)."
+          if [[ "${annotate}" == "true" ]] && ! command -v auctelis-dev >/dev/null 2>&1; then
+            echo "::error::annotate=true requires auctelis-dev on PATH (source checkout; research is not in the wheel)."
             exit 1
           fi
           echo "mode=path" >> "$GITHUB_OUTPUT"
           echo "dir=" >> "$GITHUB_OUTPUT"
-          echo "Using preinstalled auctelis + auctelis-dev on PATH."
+          echo "Using preinstalled auctelis on PATH (annotate=${annotate})."
           exit 0
         fi
         bundled="$(cd "$AUCTELIS_ACTION_PATH/../../.." && pwd)/tools"
@@ -135,10 +137,14 @@ runs:
           if [[ -f "${bundled}/pyproject.toml" ]]; then
             chosen="${bundled}"
             echo "Using Action-bundled auctelis tools: ${chosen}"
-          elif command -v auctelis >/dev/null 2>&1 && command -v auctelis-dev >/dev/null 2>&1; then
+          elif command -v auctelis >/dev/null 2>&1; then
+            if [[ "${annotate}" == "true" ]] && ! command -v auctelis-dev >/dev/null 2>&1; then
+              echo "::error::annotate=true requires auctelis-dev on PATH (source checkout)."
+              exit 1
+            fi
             echo "mode=path" >> "$GITHUB_OUTPUT"
             echo "dir=" >> "$GITHUB_OUTPUT"
-            echo "install-tools-from empty; using preinstalled auctelis + auctelis-dev on PATH."
+            echo "install-tools-from empty; using preinstalled auctelis on PATH."
             exit 0
           elif [[ -f tools/pyproject.toml ]]; then
             echo "::error::install-tools-from is empty and Action-bundled tools were not found. Refusing to default to workspace ./tools (PR-controlled code execution risk). Pass install-tools-from explicitly to a pinned auctelis checkout, or install auctelis and set install-tools-from: path."
@@ -171,9 +177,17 @@ runs:
       if: steps.tools.outputs.mode != 'path'
       shell: bash
       working-directory: ${{ steps.tools.outputs.dir }}
+      env:
+        AUCTELIS_ANNOTATE: ${{ inputs.annotate }}
       run: |
         set -euo pipefail
-        uv sync --locked --no-dev
+        # Product path: non-editable install → research scanner omitted (wheel shape).
+        # annotate=true needs auctelis_research from the source tree → editable sync.
+        if [[ "${AUCTELIS_ANNOTATE}" == "true" ]]; then
+          uv sync --locked --no-dev
+        else
+          uv sync --locked --no-dev --no-editable
+        fi
         echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
     - name: Flag .auctelis.yml policy edits on pull requests
@@ -474,6 +488,10 @@ runs:
           gate_args+=(--no-strict-ruleset)
           echo "Strict ruleset: off (best-effort / comment-only)"
         fi
+        if [[ "${AUCTELIS_LOCKED}" != "true" ]]; then
+          gate_args+=(--comment-only)
+          echo "Mode: comment-only (growth labeled; required check stays green)"
+        fi
         if [[ -n "${AUCTELIS_HEAD_SHA:-}" ]]; then
           echo "PR head: ${AUCTELIS_HEAD_SHA}"
         fi
@@ -481,9 +499,8 @@ runs:
         auctelis "${gate_args[@]}"
         gate_code=$?
         set -e
-        # Comment-only: never fail the job on growth / drift.
+        # Comment-only: never fail the job on growth / drift (belt + suspenders).
         if [[ "${AUCTELIS_LOCKED}" != "true" ]]; then
-          echo "locked=false — Authority Diff posted; gate exit ${gate_code} is advisory."
           gate_code=0
         fi
         echo "code=${gate_code}" >> "$GITHUB_OUTPUT"
@@ -715,12 +732,6 @@ runs:
         name: auctelis-out
         path: ${{ inputs.output-dir }}
         if-no-files-found: warn
-
-    - name: Warn when authority growth is unchecked
-      if: always() && inputs.mode == 'scan' && inputs.locked == 'false'
-      shell: bash
-      run: |
-        echo "::warning::auctelis locked=false — authority growth is unchecked. Set locked=true after AUTHORITY.lock is committed."
 
     - name: Fail job on gate verdict (inventory-only)
       if: always() && inputs.mode == 'scan'

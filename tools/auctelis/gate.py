@@ -501,6 +501,7 @@ def run_gate(
     strict_ruleset: bool = True,
     trust_head_codeowners: bool = False,
     codeowners_from_base: bool = False,
+    comment_only: bool = False,
 ) -> tuple[dict[str, Any], int]:
     """Compare base→head tree authority; fail on growth without CODEOWNERS.
 
@@ -513,6 +514,10 @@ def run_gate(
 
     When CODEOWNERS is loaded from the head tree (not a trusted base-ref copy),
     growth requires ``trust_head_codeowners=True`` — otherwise NEEDS_REVIEW.
+
+    ``comment_only`` (lockless / ``locked=false`` Action): still posts the
+    Authority Diff, but growth / CODEOWNERS / ruleset gaps do not fail the
+    required check. Unparsed configs and lock↔tree drift stay visible.
     """
     root = root.resolve()
     if base_lock.is_dir():
@@ -754,6 +759,22 @@ def run_gate(
             error = None
         error = f"{error} {note}".strip() if error else note
 
+    mode = "comment-only" if comment_only else "enforce"
+    if comment_only:
+        # Growth is labeled on the comment; the required check stays green.
+        # Keep unparsed / lock↔tree drift as NEEDS_REVIEW for honesty, but do
+        # not fail the job (Action also treats locked=false as advisory).
+        if verdict == "NEEDS_REVIEW" and not unparsed and not lock_drift:
+            ok = True
+            verdict = "PASS"
+            note = "comment-only — growth labeled; required check does not fail."
+            if error and error.lstrip().startswith("PASS"):
+                error = note
+            else:
+                error = f"{error} {note}".strip() if error else note
+        else:
+            ok = True
+
     protection = protection_status(ruleset_status, needs_approval=needs_approval)
     report_lines = list(delta.get("lines") or [])
     if drift_lines:
@@ -761,6 +782,7 @@ def run_gate(
     report: dict[str, Any] = {
         "ok": ok,
         "verdict": verdict,
+        "mode": mode,
         "ceremony": "empty_baseline_growth" if empty_baseline_growth else "growth_gate",
         "protection": protection,
         "strict_ruleset": strict_ruleset,
@@ -794,6 +816,7 @@ def run_gate(
 def render_gate_report(report: dict[str, Any]) -> str:
     verdict = str(report.get("verdict") or "UNKNOWN")
     protection = str(report.get("protection") or "")
+    mode = str(report.get("mode") or "")
     if verdict == "PASS" and protection == "verified":
         header = "auctelis gate — PASS / protection verified"
     elif verdict == "PASS" and protection == "unverified":
@@ -802,6 +825,8 @@ def render_gate_report(report: dict[str, Any]) -> str:
         header = "auctelis gate — BASELINE_ADOPTED (adoption ceremony, not growth PASS)"
     else:
         header = f"auctelis gate — {verdict}"
+    if mode == "comment-only":
+        header = f"{header} · mode comment-only"
     lines = [header]
     label = str(report.get("label") or "NONE")
     if report.get("ceremony") == "baseline_adopted":

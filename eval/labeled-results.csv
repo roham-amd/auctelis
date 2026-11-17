@@ -14,7 +14,7 @@ cfg-012-skill-clean,skill,yes,yes,modify_agent_instructions,TP,1
 cfg-013-skill-secrets-hint,skill,yes,yes,"access_secrets, modify_agent_instructions",TP,1
 cfg-014-plugin-manifest,plugin,yes,yes,,TP,1
 cfg-015-subagent-file,subagent,yes,yes,delegate_tasks,TP,1
-cfg-016-ci-workflow-mcp,ci,yes,yes,"access_secrets, unattended_operation",TP,1
+cfg-016-ci-workflow-mcp,ci,yes,yes,"access_secrets, invoke_tools, unattended_operation",TP,1
 cfg-017-hooks-json-pretool,hooks,yes,yes,"execute, execute_commands, modify_approvals, unattended_operation",TP,1
 cfg-018-vscode-mcp,mcp,yes,yes,"execute_commands, invoke_tools",TP,1
 cfg-019-nested-mcp,mcp,yes,yes,"access_network, invoke_tools",TP,1

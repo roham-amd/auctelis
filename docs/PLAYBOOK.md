@@ -1,9 +1,9 @@
 # Agent authority review playbook
 
 One page for humans reviewing agent-config diffs. The weekly habit is the
-PR Authority Diff (CODEOWNERS review of `AUTHORITY.lock`). Locally,
-`auctelis check` is the pre-push preflight. This playbook is the fallback if
-pilot adoption fails the day-60 kill criterion.
+PR Authority Diff comment. Locally, `auctelis check` / `diff --base` are the
+pre-push preflight. This playbook is the fallback if pilot adoption fails the
+day-60 kill criterion.
 
 ## Report questions (every Authority Diff)
 
@@ -43,7 +43,7 @@ finding on `MANUAL_ONLY` surfaces as safety.
 
 ```markdown
 ## Agent authority
-- [ ] AUTHORITY.lock updated (or N/A — no agent surfaces)
+- [ ] AUTHORITY.lock updated (or N/A — lockless comment-only / no agent surfaces)
 - [ ] Launchers pinned (version/digest)
 - [ ] No project MCP auto-approve / permission bypass
 - [ ] No new remote MCP / hooks without CODEOWNER ack
@@ -53,8 +53,9 @@ finding on `MANUAL_ONLY` surfaces as safety.
 ## CODEOWNERS
 
 Prefer CODEOWNERS coverage for `AUTHORITY.lock` plus a GitHub ruleset that
-requires code-owner review (and dismisses stale approvals). `auctelis gate`
-labels growth and checks that protection exists — it does not count PR reviews.
+requires code-owner review (and dismisses stale approvals) when you opt into
+`--enforce`. `auctelis gate` labels growth and checks that protection exists —
+it does not count PR reviews.
 
 ```text
 AUTHORITY.lock  @security-owner
@@ -67,17 +68,21 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# Git install only today — PyPI coming; pin the 0.9.1 tag
+# Git install only today — PyPI when the index returns the package; pin 0.11.0
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
 
-auctelis init --owner @you                  # preferred: policy + workflow + CODEOWNERS + lock
+auctelis diff --base origin/main            # aha (no files written)
+# Lockless first: copy templates/auctelis-diff.yml → .github/workflows/
+auctelis init --owner security              # comment-only default
+auctelis init --owner security --enforce    # optional locked gate
 auctelis check                              # repo authority vs AUTHORITY.lock
-auctelis status                             # lock / workflow / CODEOWNERS / protection
+auctelis status --check                     # OK for comment-only; enforce must be armed
 auctelis demo                               # canned fixture + PR comment (exits 0)
 auctelis gate --base-lock AUTHORITY.lock    # authority-growth verdict
 ```
 
-Empty baseline is expected: first growth is a CODEOWNERS review, not forever
-`FAIL_CLOSED`. Product lock is inventory-only (findings are `auctelis-dev`
-research). CODEOWNERS and rulesets remain the approval system.
+Empty baseline is expected: first growth under enforce is a CODEOWNERS review,
+not forever `FAIL_CLOSED`. Product lock is inventory-only (findings are
+`auctelis-dev` research from a source checkout). CODEOWNERS and rulesets remain
+the approval system when you enforce.

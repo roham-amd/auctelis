@@ -39,9 +39,8 @@ _LIFECYCLE_TOKENS = (
 
 
 def download_and_execute_hint(text: str) -> str | None:
-    if DOWNLOAD_EXEC_RE.search(text) or any(
-        token in text.lower() for token in ("curl ", "wget ", "invoke-webrequest", "| sh", "| bash")
-    ):
+    """True only for pipe-to-shell download patterns — not bare ``curl`` mentions."""
+    if DOWNLOAD_EXEC_RE.search(text or ""):
         return "download_and_execute"
     return None
 

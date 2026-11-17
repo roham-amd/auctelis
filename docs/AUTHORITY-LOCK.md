@@ -56,20 +56,23 @@ Approval ranking (worse →): `prompt` &lt; `unknown` &lt; `auto` &lt; `bypass`
 
 Diff summary fields:
 
-- `material_authority_change` — additions / expansions / replacements / tool-pin growth / policy (required CI gate)
-- `meaningful_authority_change` — material plus reductions (any non-representation delta)
+- `max_reach_tier` — 0 silent / 1 comment / 2 fail (see [`REACH.md`](REACH.md) + `reach_tiers.py`)
+- `material_authority_change` — `max_reach_tier >= 2` (execute / secrets / new MCP / env / floating launchers / agent CI). Required CI fails on this **when locked**
+- `meaningful_authority_change` — any non-representation delta (additions / expansions / reductions / …)
 - `authority_changed` — any lock drift including representation (requires re-lock)
 
 Rendered lock / PR lines include **field-level old → new** for capabilities,
 destinations, env keys, pin/approval posture, launcher, and digests, plus the
 evidence path (`@ path`). Body-only edits surface `body changed`; path moves
 surface `path: old → new`. Prose that adds a destination host is an
-**expansion** (material), not representation.
+**expansion** at comment tier (`INFERRED_HINT`) unless execute/secrets evidence
+is also present — visible on the PR comment, not a required-check fail alone.
 
 `auctelis lock --check` and local `check` fail when `authority_changed` is
 true so digests stay honest. The required CI gate fails on
-`material_authority_change` (and drift / unparsed / CODEOWNERS gaps), not on
-body-only representation.
+`material_authority_change` / lock↔tree drift / unparsed / CODEOWNERS gaps
+**when `locked=true`**, not on body-only representation or comment-tier
+doc-link growth.
 
 ---
 

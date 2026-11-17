@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.10.0** (lockless comment-only default + reach tiers + lean wheel) · lock schema 1 · tooling 0.10.0
+**Current:** **0.11.0** (lean Action install + usable enforce + comment-only status) · lock schema 1 · tooling 0.11.0
 
 ## North star (Gate Zero)
 
@@ -18,7 +18,7 @@ are removed.
 6. Product path is **tree-truth**; research scanner is `auctelis_research` (not in wheel)
 7. Comment always posts; required check fails on **tier≥fail** reach only when locked
 
-## 30-day build (Gate Zero → 0.10.0)
+## 30-day build (applied in 0.11.0)
 
 | Window | Work | Status |
 | --- | --- | --- |
@@ -32,7 +32,8 @@ are removed.
 | **0.9.0** | Tree-truth gate; lock↔tree drift; prose hosts; init CODEOWNERS for authority paths; Docker removed | **done** |
 | **0.9.1** | Gate-owned PR comment; material-reach fail; `status --check` requires verified ruleset | **done** |
 | **0.10.0** | Lockless default; reach tiers; tomllib; CODEOWNERS path fix; research out of wheel; dogfood/release matrix | **done** |
-| Next | Five outside pilots; PyPI Trusted Publishing when pilots retain | open |
+| **0.11.0** | Lean Action (`uv sync --no-editable`); remove locked=false warning; `--comment-only` gate; CI/Plugin/Subagent paging fix; status comment-only OK; doc pin reset; wheel-smoke research omit | **done** |
+| Next | Five outside pilots; PyPI Trusted Publishing when pilots retain; physical `auctelis_research` repo split if unused | open |
 
 ## 90-day decision gate
 
@@ -53,6 +54,8 @@ broker before five outside repos retain the gate.
 - PyPI ceremony until five pilots retain the gate
 - Marketplace / badge / “Authority Watch” product copy
 - Drift-as-failure and default strict-ruleset on comment-only installs
+- Action `locked=false` “growth unchecked” warning (removed in 0.11.0)
+- Treating every CI workflow / Plugin / Subagent as fail-tier (fixed in 0.11.0)
 
 Keep: `diff --base`, lockless workflow, `init`, `status`, `check`, `lock`, `ci`, `gate`, `why`, `demo`.
 

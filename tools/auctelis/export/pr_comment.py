@@ -1,6 +1,6 @@
 """Compact Authority Diff PR comment (≤12 lines).
 
-One verdict, at most three old → new authority cards, the unknowns (including
+One verdict, at most five risk-ranked authority cards, the unknowns (including
 ``NOT PARSED``), and the required action. Finding IDs and rule IDs stay in the
 artifacts, not the review UI. Target-derived strings are escaped so findings
 cannot inject markdown links/mentions.
@@ -119,6 +119,7 @@ def render_gate_pr_comment(report: dict[str, Any]) -> str:
         lock_delta=report.get("delta") if isinstance(report.get("delta"), dict) else None,
         needs_approval_from=list(report.get("required_owners") or []) or None,
         verdict=str(report.get("verdict") or "NEEDS_REVIEW"),
+        mode=str(report.get("mode") or "") or None,
     )
 
 
@@ -132,9 +133,10 @@ def render_authority_diff_comment(
     policy_mode: str | None = None,
     needs_approval_from: list[str] | None = None,
     verdict: str | None = None,
+    mode: str | None = None,
     max_lines: int = 20,
 ) -> str:
-    """Render a short PR body: complete compact reach table (≤10 delta lines).
+    """Render a short PR body: complete compact reach table (≤5 delta cards).
 
     Finding IDs and rule IDs stay out of the comment body. The line carries
     name, destination/launcher, env, pin, capabilities, and evidence strength.
@@ -194,10 +196,17 @@ def render_authority_diff_comment(
     if unparsed_count and verdict == "PASS":
         verdict = "NEEDS_REVIEW"
 
+    mode_bit = ""
+    mode_norm = str(mode or "").strip().lower()
+    if mode_norm in {"comment-only", "comment_only", "advisory"}:
+        mode_bit = " · mode `comment-only`"
+    elif mode_norm in {"enforce", "locked"}:
+        mode_bit = " · mode `enforce`"
+
     # Marker is sticky-comment metadata — not counted toward the ≤12 visible lines.
     visible: list[str] = [
         "### auctelis Authority Diff",
-        f"**Verdict:** `{verdict}` · label `{label}`",
+        f"**Verdict:** `{verdict}` · label `{label}`{mode_bit}",
     ]
 
     changed_bits: list[str] = []
@@ -220,20 +229,20 @@ def render_authority_diff_comment(
     visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
 
     visible.append("**Authority delta:**")
-    cards = delta_cards(lock_delta, limit=10, include_overflow_summary=True)
+    cards = delta_cards(lock_delta, limit=5, include_overflow_summary=True)
     if not cards and isinstance(lock_delta, dict):
         cards = [
             f"- {line.lstrip('+-~ ')}"
             for line in (lock_delta.get("lines") or [])
             if " representation " not in f" {line} "
-        ][:10]
+        ][:5]
     if not cards and component_lines:
-        cards = [f"- {line.lstrip('+-~ ')}" for line in component_lines[:10]]
+        cards = [f"- {line.lstrip('+-~ ')}" for line in component_lines[:5]]
     if not cards and new_powers:
         cards = [
             f"- {escape_markdown(_sev(finding), max_len=12)} "
             f"{escape_markdown(_title(finding), max_len=120)}"
-            for finding in new_powers[:10]
+            for finding in new_powers[:5]
         ]
     if not cards:
         unparsed = int((findings_doc.get("coverage") or {}).get("unparsed_agent_config_count") or 0)

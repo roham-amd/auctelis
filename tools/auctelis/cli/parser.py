@@ -9,16 +9,16 @@ from pathlib import Path
 from typing import Any
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "diff --base main → init --owner team → check → gate (PR Authority Diff)"
+PUBLIC_PATH = "diff --base → lockless workflow or init --owner team → check → gate"
 
 _EPILOG = f"""
-public core:  {PUBLIC_PATH}
-local:        status | diff --base <ref> | why <name> | demo
-maintainer:   auctelis-dev (scan | annotate | build | lint | corpus | deps)
+first path:   {PUBLIC_PATH}
+local:        status [--check] | why <name> | demo
+maintainer:   auctelis-dev (source checkout; research not in the wheel)
 
 Bare `auctelis` → check (repo authority vs AUTHORITY.lock).
 Labels: GROWTH | REDUCTION | NONE.
-Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED.
+Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED | PASS.
 Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init
 (AUCTELIS_AGENT is a speed bump, not a security control).
 """
@@ -159,7 +159,9 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     status_cmd.add_argument(
         "--check",
         action="store_true",
-        help="Exit nonzero when the authority gate is not armed",
+        help=(
+            "Exit nonzero when comment-only is broken, or when enforce (locked=true) is not armed"
+        ),
     )
 
     ci = sub.add_parser("ci", help="Write workflow + CODEOWNERS + lock (alias of init)")
@@ -322,6 +324,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help=(
             "Unsafe: accept CODEOWNERS from the head tree when no base-ref "
             "copy was supplied (default: require --codeowners from base)"
+        ),
+    )
+    gate_cmd.add_argument(
+        "--comment-only",
+        action="store_true",
+        help=(
+            "Lockless / advisory mode: post the Authority Diff without failing "
+            "the required check on growth (Action locked=false)"
         ),
     )
     gate_cmd.add_argument(

@@ -18,7 +18,7 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 ```bash
 # Working install today (PyPI name reserved; package publish follows pilots):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.10.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
 auctelis --version
 
 cd your-repo
@@ -31,7 +31,7 @@ auctelis init --owner security    # advisory workflow + CODEOWNERS + lock
 # commit → PR → Authority Diff comment
 
 auctelis check                    # repo authority vs AUTHORITY.lock
-auctelis status --check           # nonzero if enforce gate is not armed
+auctelis status --check           # OK for comment-only; nonzero if enforce unarmed
 auctelis why linear               # exact config path for one name
 ```
 

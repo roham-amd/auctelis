@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.10.0 · **Package:** `auctelis` 0.10.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.11.0 · **Package:** `auctelis` 0.11.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -46,7 +46,7 @@ Public path: **diff --base → lockless workflow or init --owner team → check 
 | `auctelis diff --base <ref>` | Local PR Authority Diff simulator (aha; no files written) |
 | `auctelis init --owner team` | Comment-only setup (default); `--enforce` for locked gate (`@` optional) |
 | `auctelis check` | Repo authority vs `AUTHORITY.lock` (front door; inventory-only) |
-| `auctelis status` | Lock / workflow / CODEOWNERS / protection summary |
+| `auctelis status` | Lock / workflow / CODEOWNERS / protection summary (`--check` OK for comment-only) |
 | `auctelis lock --update` | Write / refresh the committed lock (optional pin) |
 | `auctelis ci init` | Legacy alias of init |
 | `auctelis gate --base-lock base.lock` | PR Authority Diff + CODEOWNERS / ruleset gate |

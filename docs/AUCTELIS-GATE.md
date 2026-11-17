@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.10.0** |
-| Tooling package | **0.10.0** (`auctelis`) |
+| Product release | **0.11.0** |
+| Tooling package | **0.11.0** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `diff --base` → lockless workflow **or** `init --owner` → `check` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -46,7 +46,7 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ```bash
 # Git tag is the supported install until PyPI returns the package.
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.10.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.11.0#subdirectory=tools"
 
 auctelis diff --base origin/main                # aha (no files written)
 # Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
@@ -81,7 +81,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.10.0`.
+Or pin the release tag: `@v0.11.0`.
 
 ### Modes
 

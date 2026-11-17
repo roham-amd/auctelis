@@ -42,10 +42,7 @@ def normalize_component_name(raw: str) -> str:
 def load_known_names() -> tuple[str, ...]:
     # Names list stays in the product package data; research code reads it.
     path = (
-        Path(__file__).resolve().parent.parent
-        / "auctelis"
-        / "data"
-        / "known-component-names.json"
+        Path(__file__).resolve().parent.parent / "auctelis" / "data" / "known-component-names.json"
     )
     if not path.is_file():
         return ()

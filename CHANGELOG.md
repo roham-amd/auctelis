@@ -7,6 +7,34 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-11-17
+
+### Fixed
+- Action no longer warns that `locked=false` is “unchecked” — that is the
+  supported comment-only default.
+- `install-tools-from: path` no longer requires `auctelis-dev` unless
+  `annotate: true`.
+- Plain CI workflows are not automatic secret reach; Plugin / Subagent
+  additions no longer auto-fail without launcher / env / agent evidence.
+- Inferred doc-link host expansions stay comment-tier (visible, non-fail).
+- `download_and_execute` hints require a real pipe-to-shell pattern.
+- `status --check` treats comment-only installs as ready (enforce still must
+  be armed when `locked=true`).
+
+### Changed
+- Action product path installs with `uv sync --no-editable` (research omitted);
+  `annotate: true` keeps editable sync for `auctelis_research`.
+- Gate accepts `--comment-only` (Action passes it when `locked=false`).
+- PR comment shows `mode comment-only|enforce` and caps cards at five.
+- Docs / templates / install pins → `@v0.11.0`; AUTHORITY-LOCK documents
+  reach-tier `material_authority_change`.
+- Build prefers the current-version wheel when checking research omission.
+- Wheel-smoke asserts `auctelis_research` is not importable from the product wheel.
+
+### Compatibility
+- Existing `locked: "true"` workflows keep enforce behavior.
+- Research scanner remains source-checkout / `auctelis-dev` only.
+
 ## [0.10.0] — 2026-11-17
 
 ### Fixed

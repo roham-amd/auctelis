@@ -271,11 +271,20 @@ def test_action_posts_comment_when_annotate_false():
     assert "annotate: false" in template.read_text(encoding="utf-8")
 
 
-def test_status_check_fails_when_ruleset_unverified(tmp_path: Path, monkeypatch):
+def test_status_check_comment_only_ok_without_ruleset(tmp_path: Path, monkeypatch):
     root = tmp_path / "repo"
     root.mkdir()
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     assert main(["init", str(root), "--owner", "sec", "--force"]) == 0
+    assert main(["status", "--check", str(root)]) == 0
+
+
+def test_status_check_fails_when_enforce_ruleset_unverified(tmp_path: Path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
+    assert main(["init", str(root), "--owner", "sec", "--enforce", "--force"]) == 0
     code = main(["status", "--check", str(root)])
     assert code == 1

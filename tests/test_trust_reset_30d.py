@@ -283,12 +283,12 @@ def test_status_check_armed_after_init(tmp_path: Path, monkeypatch):
         '{"mcpServers":{"demo":{"command":"node","args":["x.js"]}}}',
         encoding="utf-8",
     )
-    # Comment-only init is not "armed"; enforce + verified ruleset is.
+    # Comment-only init is ready; enforce needs verified ruleset.
     assert main(["init", str(root), "--owner", "security"]) == 0
     assert (root / ".github" / "CODEOWNERS").is_file()
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
-    assert main(["status", "--check", str(root)]) == 1
+    assert main(["status", "--check", str(root)]) == 0
     assert main(["init", str(root), "--owner", "security", "--enforce", "--force"]) == 0
     assert main(["status", "--check", str(root)]) == 1
     # Verified ruleset + locked workflow → armed.

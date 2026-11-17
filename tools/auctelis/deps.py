@@ -18,7 +18,7 @@ from packaging.version import InvalidVersion, Version
 from auctelis.paths import repo_root
 
 _PYPI = "https://pypi.org/pypi/{name}/json"
-_USER_AGENT = "auctelis-deps/0.3 (+https://github.com/roham-amd/auctelis)"
+_USER_AGENT = "auctelis-deps/0.11 (+https://github.com/roham-amd/auctelis)"
 
 
 @dataclass(frozen=True, slots=True)

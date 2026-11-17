@@ -517,11 +517,21 @@ def check_wheel_omits_research() -> list[str]:
     import zipfile
     from pathlib import Path
 
+    from auctelis.versioning import product_version
+
     dist = Path(__file__).resolve().parents[1] / "dist"
-    wheels = sorted(dist.glob("auctelis-*.whl")) if dist.is_dir() else []
-    if not wheels:
+    if not dist.is_dir():
         return ["skip wheel research check (no dist/*.whl; run uv build first)"]
-    wheel = wheels[-1]
+    ver = product_version()
+    matching = sorted(dist.glob(f"auctelis-{ver}-*.whl"))
+    # Prefer the wheel for the current product version; never pick a stale
+    # lexicographic neighbor (e.g. 0.9.1 after 0.10.0).
+    wheel = matching[-1] if matching else None
+    if wheel is None:
+        wheels = sorted(dist.glob("auctelis-*.whl"))
+        if not wheels:
+            return ["skip wheel research check (no dist/*.whl; run uv build first)"]
+        wheel = wheels[-1]
     banned = (
         "auctelis/security/rules.py",
         "auctelis/security/scan.py",
@@ -539,6 +549,8 @@ def check_wheel_omits_research() -> list[str]:
     hits = [b for b in banned if any(b in n for n in names)]
     if hits:
         raise SystemExit(f"{wheel.name} still contains research modules: {hits}")
+    if ver not in wheel.name:
+        return [f"ok {wheel.name} omits research scanner (warning: expected auctelis-{ver}-*.whl)"]
     return [f"ok {wheel.name} omits research scanner"]
 
 

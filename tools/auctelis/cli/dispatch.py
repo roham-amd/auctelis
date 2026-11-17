@@ -364,6 +364,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         strict_ruleset=bool(getattr(args, "strict_ruleset", True)),
         trust_head_codeowners=bool(getattr(args, "trust_head_codeowners", False)),
         codeowners_from_base=bool(getattr(args, "codeowners", None)),
+        comment_only=bool(getattr(args, "comment_only", False)),
     )
     if getattr(args, "agent", False):
         print_json(report)
@@ -392,6 +393,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
                     else None,
                     needs_approval_from=report.get("required_owners") or None,
                     verdict=report.get("verdict"),
+                    mode=str(report.get("mode") or "") or None,
                 ),
             )
         else:
@@ -579,11 +581,16 @@ def _cmd_status(args: argparse.Namespace) -> int:
     check_mode = bool(getattr(args, "check", False))
     lock_path = root / "AUTHORITY.lock"
     workflow_path = root / ".github" / "workflows" / "auctelis-gate.yml"
+    # Lockless template may use auctelis.yml instead of auctelis-gate.yml.
+    alt_workflow = root / ".github" / "workflows" / "auctelis.yml"
     local_action = root / ".github" / "actions" / "auctelis-gate" / "action.yml"
     policy_path = root / ".auctelis.yml"
     lines: list[str] = [f"auctelis status · {root}", f"Product: {product_version()}"]
     problems: list[str] = []
     workflow_strict = True
+    comment_only = False
+    locked = False
+    has_gate = False
 
     if lock_path.is_file():
         try:
@@ -595,8 +602,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
             lines.append(f"Lock: INVALID — {exc}")
             problems.append("invalid AUTHORITY.lock")
     else:
-        lines.append("Lock: missing — run `auctelis init --owner security`")
-        problems.append("missing AUTHORITY.lock")
+        lines.append("Lock: missing (OK for lockless comment-only)")
 
     if policy_path.is_file():
         try:
@@ -608,12 +614,17 @@ def _cmd_status(args: argparse.Namespace) -> int:
             lines.append(f"Policy: INVALID — {exc}")
             problems.append("invalid .auctelis.yml")
     else:
-        lines.append("Policy: missing (.auctelis.yml)")
-        problems.append("missing .auctelis.yml")
+        lines.append("Policy: missing (.auctelis.yml; OK for lockless)")
 
-    if workflow_path.is_file():
-        body = workflow_path.read_text(encoding="utf-8")
+    workflow_file = (
+        workflow_path
+        if workflow_path.is_file()
+        else (alt_workflow if alt_workflow.is_file() else None)
+    )
+    if workflow_file is not None:
+        body = workflow_file.read_text(encoding="utf-8")
         has_gate, locked, pin = _workflow_locked_state(body)
+        comment_only = not locked
         # Prefer the Action input; fall back to CLI flag presence for older workflows.
         strict_m = re.search(
             r"strict-ruleset:\s*[\"']?(true|false)[\"']?",
@@ -625,18 +636,21 @@ def _cmd_status(args: argparse.Namespace) -> int:
         else:
             workflow_strict = "--no-strict-ruleset" not in body
         install = "local-action" if local_action.is_file() else "remote-action"
+        rel = str(workflow_file.relative_to(root)).replace("\\", "/")
         lines.append(
-            f"Workflow: present · gate={'yes' if has_gate else 'NO'} · "
+            f"Workflow: {rel} · gate={'yes' if has_gate else 'NO'} · "
             f"locked={'true' if locked else 'false'} · strict-ruleset="
             f"{'on' if workflow_strict else 'off'} · Action @{pin} · install={install}"
         )
+        if comment_only:
+            lines.append("Mode: comment-only (enforce not on — OK)")
+        else:
+            lines.append("Mode: enforce (locked=true)")
         if not has_gate:
             problems.append("workflow lacks auctelis-gate action")
-        if not locked:
-            problems.append("workflow locked!=true")
     else:
-        lines.append("Workflow: missing — run `auctelis init --owner security`")
-        problems.append("missing auctelis-gate.yml")
+        lines.append("Workflow: missing — paste templates/auctelis-diff.yml or run init")
+        problems.append("missing auctelis workflow")
 
     co_text = load_codeowners_text(root)
     existing_co = _find_existing_codeowners(root)
@@ -649,30 +663,55 @@ def _cmd_status(args: argparse.Namespace) -> int:
             lines.append(
                 f"CODEOWNERS: covers AUTHORITY.lock but missing {', '.join(missing)} ({loc})"
             )
-            problems.append("CODEOWNERS incomplete protection coverage")
+            if locked:
+                problems.append("CODEOWNERS incomplete protection coverage")
     elif co_text:
         lines.append("CODEOWNERS: present but does not cover AUTHORITY.lock")
-        problems.append("CODEOWNERS missing AUTHORITY.lock")
+        if locked:
+            problems.append("CODEOWNERS missing AUTHORITY.lock")
     else:
-        lines.append("CODEOWNERS: missing")
-        problems.append("missing CODEOWNERS")
+        lines.append("CODEOWNERS: missing" + ("" if comment_only else " (required for enforce)"))
+        if locked:
+            problems.append("missing CODEOWNERS")
 
     status, detail = check_code_owner_ruleset()
     lines.append(f"Protection: {status} — {detail}")
-    # Mirror gate --strict-ruleset: UNVERIFIED/MISSING is not an armed enforce path.
-    if check_mode and workflow_strict:
+    # Enforce path: UNVERIFIED/MISSING ruleset is not armed when strict-ruleset is on.
+    if check_mode and locked and workflow_strict:
         status_u = str(status or "").upper()
         if status_u == "MISSING":
             problems.append("code-owner review ruleset missing")
         elif status_u == "UNVERIFIED":
             problems.append("ruleset protection UNVERIFIED")
-    if check_mode and problems:
-        lines.append("Gate armed: NO — " + "; ".join(problems))
-    elif check_mode:
+    if locked and not lock_path.is_file():
+        problems.append("missing AUTHORITY.lock")
+
+    if check_mode:
+        hard = [
+            p
+            for p in problems
+            if p.startswith("invalid ")
+            or p
+            in {
+                "workflow lacks auctelis-gate action",
+                "missing auctelis workflow",
+            }
+        ]
+        if comment_only and has_gate:
+            # Default install is comment-only; do not fail on missing enforce armor.
+            if hard:
+                lines.append("Comment-only ready: NO — " + "; ".join(hard))
+                print("\n".join(lines))
+                return 1
+            lines.append("Comment-only ready: YES")
+            print("\n".join(lines))
+            return 0
+        if problems:
+            lines.append("Gate armed: NO — " + "; ".join(problems))
+            print("\n".join(lines))
+            return 1
         lines.append("Gate armed: YES")
     print("\n".join(lines))
-    if check_mode and problems:
-        return 1
     return 0
 
 

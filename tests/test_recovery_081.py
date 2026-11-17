@@ -72,7 +72,8 @@ def test_status_reports_gate_surface(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert code == 0
     assert "Lock: present" in out
-    assert "Workflow: present" in out
+    assert "Workflow:" in out and "auctelis-gate.yml" in out
+    assert "Mode: comment-only" in out
     assert "CODEOWNERS:" in out
     assert "Protection:" in out
 

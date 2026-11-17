@@ -27,15 +27,12 @@ _CAP_TIER: dict[str, int] = {
     "modify_approvals": TIER_FAIL,
 }
 
+# New records of these kinds fail under enforce. Plain CI / Plugin / Subagent
+# additions escalate only via capabilities (secrets, agent steps, launchers).
 _ADDITION_FAIL_KINDS = {
     "MCP Server Registration",
     "Hook",
-    "CI Workflow",
-    "Workflow",
     "Host Settings",
-    "Plugin",
-    "Plugin / Connector",
-    "Subagent",
 }
 
 
@@ -138,18 +135,19 @@ def expansion_reach_tier(
             tier = max(tier, TIER_COMMENT)
 
     evidence = str(after.get("evidence_strength") or "")
-    # Doc-link / prose network alone stays comment (or silent if only instructions).
+    # Doc-link / prose network alone stays comment (visible, non-fail).
     if (
         evidence == "INFERRED_HINT"
         and added_caps <= {"access_network", "modify_agent_instructions"}
         and not (after.get("launcher") and not before.get("launcher"))
     ):
-        tier = min(tier, TIER_COMMENT)
         if added_caps <= {"modify_agent_instructions"} and not added_dest:
             tier = TIER_SILENT
-        elif added_caps <= {"access_network", "modify_agent_instructions"}:
-            # Pure inferred host mention → silent when no execute/secrets.
-            tier = TIER_SILENT if "execute" not in after_caps else TIER_COMMENT
+        elif added_dest or "access_network" in added_caps:
+            # Keep on the comment; never escalate to fail for inferred hosts alone.
+            tier = TIER_COMMENT
+        else:
+            tier = min(tier, TIER_COMMENT)
     return tier
 
 

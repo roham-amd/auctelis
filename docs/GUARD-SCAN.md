@@ -176,7 +176,7 @@ are removed — use `auctelis-dev scan` in CI / maintainer workflows only.
 1. First assessment: `auctelis check` then `auctelis lock --update`.
 2. After changes: `auctelis check` (or `auctelis diff --base origin/main`).
 3. Inspect `pr-comment.md` / lock delta for authority expansions.
-4. CI: Action with `authority-diff: true` and `locked: true` after sealing
+4. CI: lockless comment-only first (`locked: false`); set `locked: true` after sealing if you want enforce
    `AUTHORITY.lock` (see
    [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)).
 
@@ -201,9 +201,9 @@ Composite action: [`.github/actions/auctelis-gate`](../.github/actions/auctelis-
 | `trusted-policy` | `true` | Load `.auctelis.yml` from PR base ref; fail on policy edits |
 | `no-policy` | `false` | Ignore policy even if present |
 | `authority-diff` | `true` | Extract base-ref tree authority for the growth gate |
-| `locked` | `true` | Run the base-lock growth gate (set `false` for advisory) |
+| `locked` | `false` | Comment-only default; set `true` / `init --enforce` to fail on growth |
 | `lock-file` | `AUTHORITY.lock` | Lock path relative to the target |
-| `strict-ruleset` | `true` | `UNVERIFIED` protection fails growth |
+| `strict-ruleset` | `false` | Comment-only default; set `true` with `locked=true` for enforce |
 | `annotate` | `false` | Opt-in research scan + findings annotations; sticky Authority Diff always posts from the gate lock delta |
 | `output-dir` | `auctelis-out` | Artifact dir |
 | `install-tools-from` | empty → Action-bundled tools | Prefer pinned kit; refuse accidental PR `./tools` |

@@ -172,8 +172,17 @@ def _capabilities(
     if ctype == "MCP Server Registration":
         caps.add("invoke_tools")
     if ctype in {"CI Workflow", "Workflow"}:
-        caps.add("unattended_operation")
-        caps.add("access_secrets")
+        # Do not treat every workflow as secret reach. Escalate only on evidence.
+        if "secret_reference" in hints:
+            caps.add("access_secrets")
+        if (
+            "agent_related_step" in hints
+            or "pull_request_target_with_agent" in hints
+            or "pull_request_target" in hints
+        ):
+            caps.add("unattended_operation")
+        if "agent_related_step" in hints or "pull_request_target_with_agent" in hints:
+            caps.add("invoke_tools")
     if ctype == "Hook":
         caps.add("unattended_operation")
     if ctype in {"Skill", "Rule / instruction file", "Rule pack", "Claude slash command"}:
