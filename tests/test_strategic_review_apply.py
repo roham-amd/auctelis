@@ -261,7 +261,7 @@ def test_action_posts_comment_when_annotate_false():
     assert "inputs.annotate == 'true'" not in block
     assert "github.event_name == 'pull_request'" in block
     # Research scan is opt-in with annotate.
-    assert "if: inputs.mode == 'scan' && inputs.annotate == 'true'" in text
+    assert "inputs.mode == 'scan' && inputs.annotate == 'true'" in text
     template = (
         Path(__file__).resolve().parents[1]
         / "tools"

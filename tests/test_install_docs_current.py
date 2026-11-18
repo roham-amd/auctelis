@@ -62,3 +62,17 @@ def test_no_public_doc_names_a_0_9_pin():
         text = (root / rel).read_text(encoding="utf-8")
         assert "git+https://github.com/roham-amd/auctelis.git@v0.9" not in text
         assert "auctelis==0.9" not in text
+
+
+def test_lockless_template_and_action_shallow_skip():
+    root = Path(__file__).resolve().parents[1]
+    tmpl = (root / "tools" / "auctelis" / "templates" / "auctelis-diff.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "fetch-depth: 0" not in tmpl
+    action = (root / ".github" / "actions" / "auctelis-gate" / "action.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "id: path_filter" in action
+    assert "steps.path_filter.outputs.skip != 'true'" in action
+    assert "--depth=1" in action

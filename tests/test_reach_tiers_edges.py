@@ -175,3 +175,38 @@ def test_delta_max_tier_tracks_mcp_tool_and_policy_changes():
     )
     assert delta_max_reach_tier({"changes": {"added": [], "changed": []}}) == TIER_SILENT
     assert delta_max_reach_tier({}) == TIER_SILENT
+
+
+def test_plain_ci_bare_plugin_and_execute_commands(tmp_path):
+    from auctelis.security.authority import build_authority_snapshot
+    from auctelis.security.engine import run_authority_inventory
+
+    wf_dir = tmp_path / ".github" / "workflows"
+    wf_dir.mkdir(parents=True)
+    (wf_dir / "test.yml").write_text(
+        "name: CI\non: [push]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - run: pytest\n",
+        encoding="utf-8",
+    )
+    (wf_dir / "agent.yml").write_text(
+        "name: Agent\non: [pull_request]\njobs:\n  ai:\n    runs-on: ubuntu-latest\n    env:\n      API_KEY: ${{ secrets.API_KEY }}\n    steps:\n      - uses: anthropics/claude-code-action@v1\n",
+        encoding="utf-8",
+    )
+    snap = build_authority_snapshot(run_authority_inventory(tmp_path))
+    by_path = {c["path"]: c for c in snap["components"]}
+    assert record_reach_tier(by_path[".github/workflows/test.yml"]) == TIER_SILENT
+    assert record_reach_tier(by_path[".github/workflows/agent.yml"]) == TIER_FAIL
+
+    bare_plugin = {
+        "kind": "Plugin",
+        "capabilities": [],
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert record_reach_tier(bare_plugin) <= TIER_COMMENT
+
+    exec_cmd = {
+        "kind": "Skill",
+        "capabilities": ["execute_commands"],
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert record_reach_tier(exec_cmd) == TIER_FAIL
+    assert reach_reason(exec_cmd) == "execute"

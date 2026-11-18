@@ -147,8 +147,8 @@ def _codeowners_owners_for(codeowners_text: str, target: str) -> list[str]:
         if (
             normalized in {"*", "**"}
             or (normalized.endswith("/") and target_norm.startswith(normalized))
-            or (normalized.endswith("/**") and target_norm.startswith(normalized[:-3]))
-            or (normalized.endswith("/**/*") and target_norm.startswith(normalized[:-5]))
+            or (normalized.endswith("/**") and target_norm.startswith(normalized[:-2]))
+            or (normalized.endswith("/**/*") and target_norm.startswith(normalized[:-4]))
             or (normalized.rstrip("/") and target_norm.startswith(normalized.rstrip("/") + "/"))
         ):
             matched = True
@@ -506,6 +506,19 @@ def uncovered_authority_paths(
     return [p for p in paths if not codeowners_covers_path(codeowners_text, p)]
 
 
+def _fail_closed_gate_report(error: str) -> tuple[dict[str, Any], int]:
+    return {
+        "ok": False,
+        "verdict": "FAIL_CLOSED",
+        "error": error,
+        "needs_approval": True,
+        "required_owners": [],
+        "label": "GROWTH",
+        "ruleset": "UNVERIFIED",
+        "lines": [],
+    }, 2
+
+
 def run_gate(
     root: Path,
     *,
@@ -540,59 +553,23 @@ def run_gate(
     """
     root = root.resolve()
     if base_lock.is_dir():
-        return {
-            "ok": False,
-            "verdict": "FAIL_CLOSED",
-            "error": (
-                f"--base-lock expects an AUTHORITY.lock file, not a directory "
-                f"({base_lock}). Pass the lock path (e.g. /tmp/base.lock)."
-            ),
-            "needs_approval": True,
-            "required_owners": [],
-            "label": "GROWTH",
-            "ruleset": "UNVERIFIED",
-            "lines": [],
-        }, 2
+        return _fail_closed_gate_report(
+            f"--base-lock expects an AUTHORITY.lock file, not a directory "
+            f"({base_lock}). Pass the lock path (e.g. /tmp/base.lock)."
+        )
     try:
         base = load_authority_lock(base_lock)
     except (AuthorityLockError, FileNotFoundError, OSError) as exc:
-        return {
-            "ok": False,
-            "verdict": "FAIL_CLOSED",
-            "error": f"cannot read base lock {base_lock}: {exc}",
-            "needs_approval": True,
-            "required_owners": [],
-            "label": "GROWTH",
-            "ruleset": "UNVERIFIED",
-            "lines": [],
-        }, 2
+        return _fail_closed_gate_report(f"cannot read base lock {base_lock}: {exc}")
     # Explicit --head-lock that is missing still fails closed (caller promised a file).
     if head_lock is not None and not head_lock.is_file():
-        return {
-            "ok": False,
-            "verdict": "FAIL_CLOSED",
-            "error": f"head lock not found: {head_lock}",
-            "needs_approval": True,
-            "required_owners": [],
-            "label": "GROWTH",
-            "ruleset": "UNVERIFIED",
-            "lines": [],
-        }, 2
+        return _fail_closed_gate_report(f"head lock not found: {head_lock}")
     try:
         if scan is None:
             scan = run_authority_inventory(root)
         head = build_authority_lock(root, scan=scan)
     except (AuthorityLockError, FileNotFoundError, OSError, ValueError) as exc:
-        return {
-            "ok": False,
-            "verdict": "FAIL_CLOSED",
-            "error": str(exc),
-            "needs_approval": True,
-            "required_owners": [],
-            "label": "GROWTH",
-            "ruleset": "UNVERIFIED",
-            "lines": [],
-        }, 2
+        return _fail_closed_gate_report(str(exc))
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
     try:
         unparsed = int(coverage.get("unparsed_agent_config_count") or 0)

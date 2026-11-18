@@ -14,6 +14,11 @@ _SKIP_DIRS = {
     "venv",
     ".venv-smoke",
     "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".ruff-cache",
+    ".uv-cache",
     ".tox",
     "dist",
     "build",
@@ -94,8 +99,9 @@ def iter_repo_files(
                     )
                 continue
             kept.append(d)
+        kept.sort()
         dirnames[:] = kept
-        for name in filenames:
+        for name in sorted(filenames):
             if file_count >= limits.max_files:
                 truncated = True
                 events.append({"type": "file_limit_reached", "path": str(rel_dir)})
@@ -175,7 +181,9 @@ def safe_read_text(
             )
             return None
         resolved = path.resolve()
-        if not is_under_root(resolved, root):
+        try:
+            rel = resolved.relative_to(root)
+        except ValueError:
             events.append(
                 {
                     "type": "path_escape_skipped",
@@ -184,7 +192,6 @@ def safe_read_text(
                 }
             )
             return None
-        rel = resolved.relative_to(root)
         if len(rel.parts) > limits.max_depth:
             events.append(
                 {

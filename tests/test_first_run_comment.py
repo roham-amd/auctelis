@@ -123,3 +123,5 @@ def test_action_posts_first_run_only_without_sticky():
     block = text.split('if [[ ! -f "$COMMENT" && -f "$SKIP" ]]', 1)[1].split("exit 0", 1)[0]
     assert "FIRST_RUN" in block
     assert "existing_id" in block
+    assert "workflow_added" in block
+    assert ".github/workflows/auctelis*.yml" in block

@@ -77,7 +77,8 @@ inputs:
     description: >-
       On pull_request events, scan the base ref and pass its baseline into the
       head scan so the PR comment is a true Authority Diff (facts added on head).
-      Requires fetch-depth: 0 (or enough history to resolve the base ref).
+      Fetches the base ref at --depth=1 automatically when absent; fetch-depth: 0
+      is not required.
     required: false
     default: "true"
   locked:
@@ -113,8 +114,42 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Check watched agent paths on PR
+      id: path_filter
+      if: github.event_name == 'pull_request' && inputs.locked != 'true' && inputs.comment-on-none != 'true'
+      shell: bash
+      env:
+        AUCTELIS_BASE_REF: ${{ github.base_ref }}
+      run: |
+        set -euo pipefail
+        echo "skip=false" >> "$GITHUB_OUTPUT"
+        if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          exit 0
+        fi
+        base="origin/${AUCTELIS_BASE_REF}"
+        if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
+          git fetch --no-tags --depth=1 origin "${AUCTELIS_BASE_REF}:refs/remotes/origin/${AUCTELIS_BASE_REF}" 2>/dev/null || true
+        fi
+        if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
+          exit 0
+        fi
+        changed="$(git diff --name-only "${base}..HEAD" 2>/dev/null || true)"
+        if [[ -z "$changed" ]]; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
+          echo "No changed files vs base ref — skipped setup." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+        if ! printf '%s\n' "$changed" | grep -iE '(^|/)(\.cursor|\.claude|\.codex|\.gemini|\.vscode|\.zed|\.config/zed|\.continue|\.kiro|\.roo|\.amazonq|\.opencode|\.windsurf|windsurf|\.github/workflows|\.github/actions|\.github/instructions|\.auctelis)/|(^|/)(\.github/CODEOWNERS|\.github/copilot-instructions\.md|\.mcp\.json|\.claude\.json|opencode\.json|mcp[^/]*\.json|[^/]*mcp[^/]*\.toml|codex\.toml|SKILL\.md|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.gemini\.md|CODEX\.md|\.cursorrules|\.windsurfrules|windsurfrules|\.clinerules|copilot-instructions\.md|hooks\.(json|ya?ml)|hooks/[^/]+\.(json|md|py)|plugin\.(json|ya?ml)|\.cursor-plugin|[^/]*plugin[^/]*/package\.json|(sub)?agents\.json|(sub)?agents/[^/]+\.(md|json|ya?ml)|automations?\.json|automation\.ya?ml|automations/[^/]+\.(json|ya?ml|md)|agent[-_]card\.json|AUTHORITY\.lock|\.auctelis\.yml|CODEOWNERS)$' >/dev/null 2>&1; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "No agent-config or workflow paths changed — skipping uv sync."
+          echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
+          echo "No agent-config or workflow paths changed — skipped setup." >> "$GITHUB_STEP_SUMMARY"
+        fi
+
     - name: Resolve auctelis tools directory
       id: tools
+      if: steps.path_filter.outputs.skip != 'true'
       shell: bash
       env:
         AUCTELIS_INSTALL_TOOLS_FROM: ${{ inputs.install-tools-from }}
@@ -176,14 +211,14 @@ runs:
         echo "dir=${chosen}" >> "$GITHUB_OUTPUT"
 
     - name: Install uv
-      if: steps.tools.outputs.mode != 'path'
+      if: steps.path_filter.outputs.skip != 'true' && steps.tools.outputs.mode != 'path'
       uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.4
       with:
         enable-cache: true
         python-version: "3.12"
 
     - name: Install auctelis tooling
-      if: steps.tools.outputs.mode != 'path'
+      if: steps.path_filter.outputs.skip != 'true' && steps.tools.outputs.mode != 'path'
       shell: bash
       working-directory: ${{ steps.tools.outputs.dir }}
       env:
@@ -200,7 +235,7 @@ runs:
         echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
     - name: Flag .auctelis.yml policy edits on pull requests
-      if: inputs.mode == 'scan' && inputs.trusted-policy == 'true' && github.event_name == 'pull_request'
+      if: steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan' && inputs.trusted-policy == 'true' && github.event_name == 'pull_request'
       shell: bash
       env:
         AUCTELIS_PATH: ${{ inputs.path }}
@@ -213,22 +248,28 @@ runs:
         fi
         base="origin/${AUCTELIS_BASE_REF}"
         if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
-          git fetch --no-tags --depth=1 origin "${AUCTELIS_BASE_REF}:${AUCTELIS_BASE_REF}" || true
-          base="${AUCTELIS_BASE_REF}"
+          git fetch --no-tags --depth=1 origin "${AUCTELIS_BASE_REF}:refs/remotes/origin/${AUCTELIS_BASE_REF}" 2>/dev/null || true
         fi
-        if git diff --name-only "${base}...HEAD" | grep -E '(^|/)\.auctelis\.yml$' >/dev/null; then
+        if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
+          echo "::error::Could not resolve base ref ${AUCTELIS_BASE_REF} for policy-edit check."
+          exit 1
+        fi
+        if git diff --name-only "${base}..HEAD" | grep -E '(^|/)\.auctelis\.yml$' >/dev/null; then
           # First-adoption PRs that *add* .auctelis.yml (absent on base) must not fail the gate.
           if git cat-file -e "${base}:.auctelis.yml" 2>/dev/null; then
-            # Policy edits are allowed when CODEOWNERS covers .auctelis.yml; the
-            # gate still loads the trusted base-ref policy for this PR.
-            owners=""
+            # Policy edits are allowed when trusted base-ref CODEOWNERS covers .auctelis.yml;
+            # the gate still loads the trusted base-ref policy for this PR.
+            owners_text=""
             for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
-              if [[ -f "$cand" ]]; then owners="$cand"; break; fi
+              if owners_text="$(git show "${base}:${cand}" 2>/dev/null)"; then
+                break
+              fi
+              owners_text=""
             done
-            if [[ -n "$owners" ]] && grep -E '(^|[[:space:]])\.auctelis\.yml([[:space:]]|$)' "$owners" >/dev/null 2>&1; then
-              echo "::notice::PR edits .auctelis.yml under CODEOWNERS; gate still uses base-ref policy for this run."
+            if [[ -n "$owners_text" ]] && printf '%s\n' "$owners_text" | grep -E '(^|[[:space:]])\.auctelis\.yml([[:space:]]|$)' >/dev/null 2>&1; then
+              echo "::notice::PR edits .auctelis.yml under base CODEOWNERS; gate still uses base-ref policy for this run."
             else
-              echo "::error::PR modifies existing .auctelis.yml without CODEOWNERS coverage. Add a .auctelis.yml owner, or keep policy edits on their own PR."
+              echo "::error::PR modifies existing .auctelis.yml without base CODEOWNERS coverage. Add a .auctelis.yml owner, or keep policy edits on their own PR."
               exit 1
             fi
           else
@@ -238,7 +279,7 @@ runs:
         echo "No blocking .auctelis.yml edits in this PR."
 
     - name: Resolve trusted policy path
-      if: inputs.mode == 'scan'
+      if: steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan'
       id: trusted_policy
       shell: bash
       env:
@@ -278,6 +319,7 @@ runs:
     - name: Build base-ref Authority Diff baseline
       id: auth_diff
       if: >-
+        steps.path_filter.outputs.skip != 'true' &&
         inputs.mode == 'scan' &&
         inputs.authority-diff == 'true' &&
         github.event_name == 'pull_request' &&
@@ -295,9 +337,10 @@ runs:
         echo "lock=" >> "$GITHUB_OUTPUT"
         echo "codeowners=" >> "$GITHUB_OUTPUT"
         echo "resolved=false" >> "$GITHUB_OUTPUT"
+        echo "base_lock_committed=false" >> "$GITHUB_OUTPUT"
         base="origin/${AUCTELIS_BASE_REF}"
         if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
-          if ! git fetch --no-tags origin "${AUCTELIS_BASE_REF}:refs/remotes/origin/${AUCTELIS_BASE_REF}" 2>/dev/null; then
+          if ! git fetch --no-tags --depth=1 origin "${AUCTELIS_BASE_REF}:refs/remotes/origin/${AUCTELIS_BASE_REF}" 2>/dev/null; then
             echo "::error::Could not resolve base ref ${AUCTELIS_BASE_REF}; fail closed (not BASELINE_ADOPTED)."
             echo "resolved=false" >> "$GITHUB_OUTPUT"
             exit 1
@@ -323,6 +366,9 @@ runs:
         # committed lock alone — lock↔tree drift on base is still useful later).
         lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         lock_rel="${lock_rel#./}"
+        if git cat-file -e "${base}:${lock_rel}" 2>/dev/null; then
+          echo "base_lock_committed=true" >> "$GITHUB_OUTPUT"
+        fi
         set +e
         auctelis lock "$target" --lock-file "$base_lock" --accept-gated
         base_lock_rc=$?
@@ -383,7 +429,7 @@ runs:
     - name: Run auctelis research scan (advisory)
       id: scan
       continue-on-error: true
-      if: inputs.mode == 'scan' && inputs.annotate == 'true'
+      if: steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan' && inputs.annotate == 'true'
       shell: bash
       env:
         AUCTELIS_PATH: ${{ inputs.path }}
@@ -456,6 +502,7 @@ runs:
       id: gate
       if: >-
         always() &&
+        steps.path_filter.outputs.skip != 'true' &&
         inputs.mode == 'scan' &&
         github.event_name == 'pull_request' &&
         steps.auth_diff.outputs.lock != ''
@@ -550,7 +597,7 @@ runs:
         # Do not exit yet — comment/artifact steps use always(). Final step fails the job.
 
     - name: Annotate pull request findings (advisory)
-      if: always() && inputs.mode == 'scan' && inputs.annotate == 'true'
+      if: always() && steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan' && inputs.annotate == 'true'
       continue-on-error: true
       shell: bash
       env:
@@ -565,12 +612,14 @@ runs:
         auctelis-dev annotate "$FINDINGS" --format github
 
     - name: Authority Diff PR comment
-      if: always() && inputs.mode == 'scan' && github.event_name == 'pull_request'
+      if: always() && steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan' && github.event_name == 'pull_request'
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
         AUCTELIS_LOCKED: ${{ inputs.locked }}
         AUCTELIS_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
+        AUCTELIS_BASE_LOCK_COMMITTED: ${{ steps.auth_diff.outputs.base_lock_committed }}
+        AUCTELIS_BASE_REF: ${{ github.base_ref }}
         AUCTELIS_PATH: ${{ inputs.path }}
         AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
         AUCTELIS_ANNOTATE: ${{ inputs.annotate }}
@@ -585,8 +634,8 @@ runs:
         FIRST_RUN="$AUCTELIS_OUTPUT_DIR/comment-first-run.md"
         # Quiet on NONE: no authority change means no new comment. If a sticky
         # comment exists from an earlier PR state, update it once to say so
-        # instead of leaving a stale PASS behind. If it does not exist yet, this
-        # is a fresh install: post the first-run "watching" proof below.
+        # instead of leaving a stale PASS behind. Only post the first-run
+        # "watching" proof when this PR itself adds the Auctelis workflow file.
         if [[ ! -f "$COMMENT" && -f "$SKIP" ]]; then
           echo "No authority change — comment skipped (comment-on-none=false)."
           echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
@@ -599,8 +648,19 @@ runs:
                 --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" 2>/dev/null \
                 | head -n 1 || true
             )"
-            if [[ -z "${existing_id}" && -f "$FIRST_RUN" ]]; then
-              echo "First run on this PR and no sticky comment yet — posting installation check."
+            workflow_added=0
+            base_ref="origin/${AUCTELIS_BASE_REF:-}"
+            if [[ -n "${AUCTELIS_BASE_REF:-}" ]] && git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+              while IFS= read -r wf; do
+                [[ -z "$wf" ]] && continue
+                if ! git cat-file -e "${base_ref}:${wf}" 2>/dev/null; then
+                  workflow_added=1
+                  break
+                fi
+              done < <(git diff --name-only "${base_ref}..HEAD" -- '.github/workflows/auctelis*.yml' 2>/dev/null || true)
+            fi
+            if [[ -z "${existing_id}" && -f "$FIRST_RUN" && "$workflow_added" -eq 1 ]]; then
+              echo "Workflow install PR and no sticky comment yet — posting installation check."
               cp "$FIRST_RUN" "$COMMENT"
             else
               if [[ -n "${existing_id}" ]]; then
@@ -628,7 +688,7 @@ runs:
         head_lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"
         head_lock_path="${AUCTELIS_PATH%/}/${head_lock_rel}"
         head_lock_path="${head_lock_path#./}"
-        if [[ "${AUCTELIS_LOCKED}" == "true" && -z "${AUCTELIS_BASE_LOCK}" && -f "$head_lock_path" ]]; then
+        if [[ "${AUCTELIS_LOCKED}" == "true" && ( -z "${AUCTELIS_BASE_LOCK}" || "${AUCTELIS_BASE_LOCK_COMMITTED:-true}" == "false" ) && -f "$head_lock_path" ]]; then
           # Adoption comment only when CODEOWNERS covers protection paths.
           co_ok=0
           for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
@@ -718,7 +778,7 @@ runs:
         fi
 
     - name: Diff against baseline inventory (optional)
-      if: inputs.baseline-inventory != ''
+      if: steps.path_filter.outputs.skip != 'true' && inputs.baseline-inventory != ''
       shell: bash
       env:
         AUCTELIS_BASE_INVENTORY: ${{ inputs.baseline-inventory }}
@@ -748,7 +808,7 @@ runs:
         " "$BASE" "$CUR" "$OUT"
 
     - name: Report incomplete coverage
-      if: always()
+      if: always() && steps.path_filter.outputs.skip != 'true'
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -772,7 +832,7 @@ runs:
         " "$INV"
 
     - name: Note SARIF path
-      if: always() && inputs.upload-sarif == 'true' && inputs.mode == 'scan'
+      if: always() && steps.path_filter.outputs.skip != 'true' && inputs.upload-sarif == 'true' && inputs.mode == 'scan'
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -786,7 +846,7 @@ runs:
         fi
 
     - name: Upload auctelis artifacts
-      if: always()
+      if: always() && steps.path_filter.outputs.skip != 'true'
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: auctelis-out
@@ -794,7 +854,7 @@ runs:
         if-no-files-found: warn
 
     - name: Fail job on gate verdict (inventory-only)
-      if: always() && inputs.mode == 'scan'
+      if: always() && steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan'
       shell: bash
       env:
         AUCTELIS_SCAN_CODE: ${{ steps.scan.outputs.code }}
@@ -805,6 +865,7 @@ runs:
         AUCTELIS_BASE_RESOLVED: ${{ steps.auth_diff.outputs.resolved }}
         AUCTELIS_LOCKED: ${{ inputs.locked }}
         AUCTELIS_BASE_LOCK: ${{ steps.auth_diff.outputs.lock }}
+        AUCTELIS_BASE_LOCK_COMMITTED: ${{ steps.auth_diff.outputs.base_lock_committed }}
         AUCTELIS_EVENT_NAME: ${{ github.event_name }}
         AUCTELIS_PATH: ${{ inputs.path }}
         AUCTELIS_LOCK_FILE: ${{ inputs.lock-file }}
@@ -826,7 +887,7 @@ runs:
             echo "::error::Base ref could not be resolved — fail closed (not BASELINE_ADOPTED)."
             exit 1
           fi
-          if [[ -z "${AUCTELIS_BASE_LOCK}" ]]; then
+          if [[ -z "${AUCTELIS_BASE_LOCK}" || "${AUCTELIS_BASE_LOCK_COMMITTED:-true}" == "false" ]]; then
             if [[ -f "$head_lock_path" ]]; then
               co_ok=0
               for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
@@ -837,6 +898,10 @@ runs:
               done
               if [[ "$co_ok" -ne 1 ]]; then
                 echo "::error::BASELINE_ADOPTED refused — CODEOWNERS does not cover AUTHORITY.lock."
+                exit 1
+              fi
+              if ! auctelis lock "$AUCTELIS_PATH" --lock-file "$head_lock_path" --check; then
+                echo "::error::BASELINE_ADOPTED refused — head AUTHORITY.lock does not match head tree."
                 exit 1
               fi
               echo "::notice::BASELINE_ADOPTED — adoption ceremony (not a growth-gate PASS). Head AUTHORITY.lock must be CODEOWNERS-reviewed on this PR; later PRs require base-lock growth approval."
@@ -865,7 +930,7 @@ runs:
           echo "::error::auctelis gate exited ${gate_code} (unapproved authority growth)."
           exit "$gate_code"
         fi
-        if [[ -z "${AUCTELIS_BASE_LOCK}" && "${AUCTELIS_LOCKED}" == "true" && "${AUCTELIS_EVENT_NAME}" == "pull_request" && -f "$head_lock_path" ]]; then
+        if [[ ( -z "${AUCTELIS_BASE_LOCK}" || "${AUCTELIS_BASE_LOCK_COMMITTED:-true}" == "false" ) && "${AUCTELIS_LOCKED}" == "true" && "${AUCTELIS_EVENT_NAME}" == "pull_request" && -f "$head_lock_path" ]]; then
           echo "auctelis adoption ceremony complete (BASELINE_ADOPTED); inventory gate path passed."
         else
           echo "auctelis inventory gate passed (research scan advisory)."

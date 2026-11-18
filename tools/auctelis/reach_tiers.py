@@ -32,6 +32,7 @@ _CAP_TIER: dict[str, int] = {
     "access_network": TIER_COMMENT,
     "invoke_tools": TIER_FAIL,
     "execute": TIER_FAIL,
+    "execute_commands": TIER_FAIL,
     "access_secrets": TIER_FAIL,
     "unattended_operation": TIER_FAIL,
     "modify_approvals": TIER_FAIL,
@@ -97,7 +98,9 @@ def record_reach_tier(
         tier = max(tier, TIER_FAIL)
     if launcher and pin in {"floating", "unknown", ""}:
         tier = max(tier, TIER_FAIL)
-    if any(c in {"execute", "access_secrets", "modify_approvals"} for c in caps):
+    if any(
+        c in {"execute", "execute_commands", "access_secrets", "modify_approvals"} for c in caps
+    ):
         tier = max(tier, TIER_FAIL)
     # Env credentials on a record are secret reach even when caps lag adapters.
     if record.get("env_keys"):
@@ -117,6 +120,15 @@ def record_reach_tier(
     if evidence == "INFERRED_HINT" and not _literal_signal(record):
         tier = min(tier, TIER_COMMENT)
 
+    # Plain CI workflows without agent steps or unattended triggers stay below
+    # fail tier so normal repo CI (even referencing GITHUB_TOKEN) never pages.
+    if (
+        kind in {"CI Workflow", "Workflow"}
+        and not (set(caps) & {"invoke_tools", "unattended_operation"})
+        and not _literal_signal(record)
+    ):
+        tier = min(tier, TIER_COMMENT)
+
     # Trusted destinations: a benign addition/expansion that only reaches
     # allowlisted hosts stays visible on the comment but never pages CODEOWNERS
     # or fails the required check. Execute / secrets / approval reach still
@@ -127,7 +139,14 @@ def record_reach_tier(
         bool(record.get("env_keys"))
         or bool(launcher)
         or bool(
-            set(caps) & {"execute", "access_secrets", "modify_approvals", "unattended_operation"}
+            set(caps)
+            & {
+                "execute",
+                "execute_commands",
+                "access_secrets",
+                "modify_approvals",
+                "unattended_operation",
+            }
         )
     )
     if (
@@ -158,7 +177,7 @@ def reach_reason(
         return "inferred hint"
     if posture == "bypass":
         return "bypass permissions"
-    if "execute" in caps:
+    if "execute" in caps or "execute_commands" in caps:
         return "execute"
     if record.get("env_keys") or "access_secrets" in caps:
         return "secrets"

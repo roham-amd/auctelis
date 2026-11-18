@@ -7,18 +7,17 @@
 
 ## One-line install (canonical)
 
-PyPI Trusted Publishing is wired for **v0.12.1**. `uvx` runs the package without
-a permanent install (if the index has not propagated the release yet, use a
-fallback below):
+`uvx` runs the package without a permanent install (once PyPI `auctelis` is
+published, `uvx auctelis check` also works directly):
 
 ```bash
-uvx auctelis check                     # aha: ranked reach cards (no lock needed)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check                     # aha: ranked reach cards (no lock needed)
 ```
 
 For a persistent CLI:
 
 ```bash
-uv tool install --python 3.12 auctelis
+uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
 auctelis --version
 ```
 
@@ -26,10 +25,10 @@ auctelis --version
 
 ```bash
 cd your-repo
-uvx auctelis check                          # repo authority vs AUTHORITY.lock
-uvx auctelis init --owner security          # comment-only; @ optional; PowerShell-safe
-uvx auctelis init --owner security --enforce  # optional locked + strict ruleset
-# commit → open one PR → first-run "Watching …" comment → later PRs get the diff
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check                          # repo authority vs AUTHORITY.lock
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security          # comment-only; @ optional; PowerShell-safe
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security --enforce  # optional locked + strict ruleset
+# commit → open install PR → first-run "Watching …" comment → later PRs get the diff
 ```
 
 Bare `auctelis` runs `check` (repo-only). Product path:
@@ -51,10 +50,10 @@ Use these only when the PyPI index cannot be reached.
 ```bash
 # Git tag (signed release assets are on the GitHub Release):
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
 
 # Or a downloaded wheel:
-uv tool install --python 3.12 ./auctelis-0.12.1-py3-none-any.whl
+uv tool install --python 3.12 ./auctelis-0.12.2-py3-none-any.whl
 ```
 
 ### Signed wheel (release assets)
@@ -63,8 +62,8 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.12.1-py3-none-any.whl.cosign.bundle \
-  auctelis-0.12.1-py3-none-any.whl
+  --bundle auctelis-0.12.2-py3-none-any.whl.cosign.bundle \
+  auctelis-0.12.2-py3-none-any.whl
 ```
 
 Trusted Publishing workflow:
@@ -84,9 +83,9 @@ uv run auctelis demo -o /tmp/auctelis-demo
 ## Verify
 
 ```bash
-uvx auctelis --version
-uvx auctelis check --help
-uvx auctelis demo -o /tmp/auctelis-demo
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis --version
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check --help
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis demo -o /tmp/auctelis-demo
 ```
 
 See [`PRODUCT.md`](PRODUCT.md) for the command contract and
@@ -96,5 +95,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.12.1 |
-| Package `auctelis` | 0.12.1 |
+| Product (`VERSION`) | 0.12.2 |
+| Package `auctelis` | 0.12.2 |

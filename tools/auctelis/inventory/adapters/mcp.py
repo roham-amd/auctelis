@@ -6,18 +6,13 @@ from pathlib import Path
 from typing import Any
 
 from auctelis.inventory.env_routing import is_routing_override_env_key
+from auctelis.inventory.hints import DOWNLOAD_EXEC_RE
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.jsonc import loads_json_tolerant
 from auctelis.inventory.limits import CollectorLimits
 
 _SECRETISH_ENV_RE = re.compile(
     r"(api[_-]?key|token|secret|password|passwd|authorization|credential|private[_-]?key)",
-    re.IGNORECASE,
-)
-_DOWNLOAD_EXEC_RE = re.compile(
-    r"(curl\s+[^\n|;]*\|\s*(?:sudo\s+)?(?:ba)?sh|"
-    r"wget\s+[^\n|;]*\|\s*(?:sudo\s+)?(?:ba)?sh|"
-    r"iwr\s+[^\n|;]*\|\s*iex|invoke-webrequest[^\n|;]*\|\s*iex)",
     re.IGNORECASE,
 )
 
@@ -114,7 +109,7 @@ def _env_secret_severity_hint(env: Any) -> str | None:
         if not _SECRETISH_ENV_RE.search(key_s):
             continue
         # Placeholder / env expansion is inheritance (RULE-002), not a literal secret.
-        if val_s.startswith("${") or val_s.startswith("$(") or val_s.startswith("{{"):
+        if val_s.startswith(("${", "$(", "{{")):
             continue
         if val_s.startswith("$"):
             continue
@@ -152,11 +147,7 @@ def _env_passes_host_secrets(env: Any) -> bool:
         if not _SECRETISH_ENV_RE.search(str(key)):
             continue
         val_s = str(value) if value is not None else ""
-        if (
-            val_s.startswith("${")
-            or val_s.startswith("$(")
-            or (val_s.startswith("$") and not val_s.startswith("$$"))
-        ):
+        if val_s.startswith(("${", "$(")) or (val_s.startswith("$") and not val_s.startswith("$$")):
             return True
     return False
 
@@ -169,9 +160,9 @@ def _is_broad_path_arg(arg: Any) -> bool:
     lowered = s.lower()
     if lowered in {"/", "~", "$home", "${home}", "%userprofile%", "%homepath%"}:
         return True
-    if s.startswith("~/") or s.startswith("~\\"):
+    if s.startswith(("~/", "~\\")):
         return True
-    if s in {".."} or s.startswith("../") or s.startswith("..\\"):
+    if s in {".."} or s.startswith(("../", "..\\")):
         return True
     # Windows drive root: C:\ or C:/
     if re.fullmatch(r"[A-Za-z]:[\\/]?", s):
@@ -298,6 +289,97 @@ def _is_mcp_server_source(path: Path) -> bool:
     return "mcp" in parts and name.endswith((".py", ".ts", ".js", ".mjs"))
 
 
+def build_mcp_server_entry(
+    *,
+    name: str,
+    cfg: dict[str, Any],
+    rel: str,
+    adapter: str = "mcp_config",
+    default_host_id: str = "",
+    example_like: bool = False,
+) -> dict[str, Any]:
+    """Normalize one declared MCP server config (JSON or TOML) into a component dict."""
+    hints: list[str] = []
+    if example_like:
+        hints.append("example_or_template_config")
+    command = str(cfg.get("command") or "")
+    raw_args = cfg.get("args")
+    args: list[Any] = list(raw_args) if isinstance(raw_args, list) else []
+    if command:
+        hints.append("local_command_transport")
+        if _looks_unpinned_launcher(command, args):
+            hints.append("unpinned_package_launcher")
+    env = cfg.get("env") or cfg.get("environment")
+    if env:
+        hints.append("sets_environment")
+        secret_hint = _env_secret_severity_hint(env)
+        if secret_hint:
+            hints.append(secret_hint)
+        elif _env_passes_host_secrets(env):
+            # Only credential-shaped keys with host expansion escalate RULE-002.
+            hints.append("inherits_or_sets_environment")
+    url = str(cfg.get("url") or "")
+    if url:
+        hints.append("remote_endpoint")
+        if url.lower().startswith("http://"):
+            hints.append("insecure_http_remote")
+    if isinstance(args, list) and any(_is_broad_path_arg(a) for a in args):
+        hints.append("broad_or_relative_path_args")
+    joined_cmd = f"{command} {' '.join(str(a) for a in args)}"
+    if DOWNLOAD_EXEC_RE.search(joined_cmd):
+        hints.append("download_and_execute")
+    if any(
+        token in joined_cmd.lower()
+        for token in (
+            "dangerously-skip-permissions",
+            "bypasspermissions",
+            "--yolo",
+            "skip-permissions",
+        )
+    ):
+        hints.append("permission_bypass_flag")
+    env_keys: list[str] = []
+    url_destinations: list[str] = []
+    mcp_detail: dict[str, Any] = {}
+    if isinstance(env, dict):
+        env_keys = sorted(str(k) for k in env)
+        for ek, ev in env.items():
+            if not is_routing_override_env_key(ek):
+                continue
+            hints.append("base_url_or_proxy_override")
+            if not mcp_detail.get("override_key"):
+                mcp_detail["override_key"] = str(ek)
+            val = str(ev or "").strip()
+            if val and not val.startswith("${"):
+                url_destinations.append(val)
+    elif isinstance(env, list):
+        env_keys = sorted(str(item) for item in env if isinstance(item, str))
+    # Derive a coarse host id from path so copying the same server under
+    # another host tree is a distinct authority record.
+    host_id = _host_id_from_repository_path(rel) or default_host_id
+    entry: dict[str, Any] = {
+        "name": name,
+        "type": "MCP Server Registration",
+        "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
+        "repository_path": rel,
+        "adapter": adapter,
+        "adapter_maturity": "PARTIAL",
+        "discovery_status": "IDENTIFIED",
+        "declared_transport": cfg.get("transport") or cfg.get("type"),
+        "command": cfg.get("command") or None,
+        "args": args,
+        "url": cfg.get("url"),
+        "env_keys": env_keys,
+        "host_id": host_id,
+        "priority_hints": hints,
+    }
+    if url_destinations:
+        entry["destinations"] = sorted(set(url_destinations))
+    if mcp_detail:
+        entry["mcp_detail"] = mcp_detail
+    return entry
+
+
 def discover_mcp_configs(
     root: Path,
     *,
@@ -358,85 +440,15 @@ def discover_mcp_configs(
         for name, cfg in servers.items():
             if not isinstance(cfg, dict):
                 continue
-            hints: list[str] = []
-            if example_like:
-                hints.append("example_or_template_config")
-            command = str(cfg.get("command") or "")
-            raw_args = cfg.get("args")
-            args: list[Any] = list(raw_args) if isinstance(raw_args, list) else []
-            if command:
-                hints.append("local_command_transport")
-                if _looks_unpinned_launcher(command, args):
-                    hints.append("unpinned_package_launcher")
-            env = cfg.get("env") or cfg.get("environment")
-            if env:
-                hints.append("sets_environment")
-                secret_hint = _env_secret_severity_hint(env)
-                if secret_hint:
-                    hints.append(secret_hint)
-                elif _env_passes_host_secrets(env):
-                    # Only credential-shaped keys with host expansion escalate RULE-002.
-                    hints.append("inherits_or_sets_environment")
-            url = str(cfg.get("url") or "")
-            if url:
-                hints.append("remote_endpoint")
-                if url.lower().startswith("http://"):
-                    hints.append("insecure_http_remote")
-            if isinstance(args, list) and any(_is_broad_path_arg(a) for a in args):
-                hints.append("broad_or_relative_path_args")
-            joined_cmd = f"{command} {' '.join(str(a) for a in args)}"
-            if _DOWNLOAD_EXEC_RE.search(joined_cmd):
-                hints.append("download_and_execute")
-            if any(
-                token in joined_cmd.lower()
-                for token in (
-                    "dangerously-skip-permissions",
-                    "bypasspermissions",
-                    "--yolo",
-                    "skip-permissions",
+            results.append(
+                build_mcp_server_entry(
+                    name=name,
+                    cfg=cfg,
+                    rel=rel,
+                    adapter="mcp_config",
+                    example_like=example_like,
                 )
-            ):
-                hints.append("permission_bypass_flag")
-            env_keys: list[str] = []
-            url_destinations: list[str] = []
-            mcp_detail: dict[str, Any] = {}
-            if isinstance(env, dict):
-                env_keys = sorted(str(k) for k in env)
-                for ek, ev in env.items():
-                    if not is_routing_override_env_key(ek):
-                        continue
-                    hints.append("base_url_or_proxy_override")
-                    if not mcp_detail.get("override_key"):
-                        mcp_detail["override_key"] = str(ek)
-                    val = str(ev or "").strip()
-                    if val and not val.startswith("${"):
-                        url_destinations.append(val)
-            elif isinstance(env, list):
-                env_keys = sorted(str(item) for item in env if isinstance(item, str))
-            # Derive a coarse host id from path so copying the same server under
-            # another host tree is a distinct authority record.
-            host_id = _host_id_from_repository_path(rel)
-            entry: dict[str, Any] = {
-                "name": name,
-                "type": "MCP Server Registration",
-                "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
-                "repository_path": rel,
-                "adapter": "mcp_config",
-                "adapter_maturity": "PARTIAL",
-                "discovery_status": "IDENTIFIED",
-                "declared_transport": cfg.get("transport") or cfg.get("type"),
-                "command": cfg.get("command"),
-                "args": list(args) if isinstance(args, list) else [],
-                "url": cfg.get("url"),
-                "env_keys": env_keys,
-                "host_id": host_id,
-                "priority_hints": hints,
-            }
-            if url_destinations:
-                entry["destinations"] = sorted(set(url_destinations))
-            if mcp_detail:
-                entry["mcp_detail"] = mcp_detail
-            results.append(entry)
+            )
 
     # MCP server implementations (source), distinct from client registration JSON.
     for path in select_files(files, _is_mcp_server_source):

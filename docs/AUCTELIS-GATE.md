@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.12.1** |
-| Tooling package | **0.12.1** (`auctelis`) |
+| Product release | **0.12.2** |
+| Tooling package | **0.12.2** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -45,20 +45,20 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ## First user journey
 
 ```bash
-# PyPI one-line install (no permanent install step):
-uvx auctelis check                              # aha: ranked reach cards
+# One-line run without permanent install (uvx auctelis check once PyPI is live):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check                              # aha: ranked reach cards
 
 cd your-repo
-uvx auctelis init --owner security-owner        # comment-only setup
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security-owner        # comment-only setup
 # Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-uvx auctelis init --owner security-owner --enforce  # optional locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
 ```
 
-Fallback (if the index is unreachable):
+Persistent install:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
@@ -87,7 +87,9 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.12.1`.
+Or pin the release tag: `@v0.12.2`. The Action fetches the base ref at `--depth=1`
+automatically (no `fetch-depth: 0` required) and short-circuits setup in
+lockless mode when no watched agent-config or workflow paths changed.
 
 ### Modes
 
@@ -102,10 +104,10 @@ Or pin the release tag: `@v0.12.1`.
   unparsed / drift). A `NONE` PR gets no new comment; an existing sticky comment
   is updated once to "no authority change". The job summary always records the
   verdict.
-- **First run:** when no sticky comment exists yet, a quiet `NONE` PR posts one
-  "Watching" comment naming the reach surfaces the install can see. This is the
-  only time a no-change PR comments; it proves the Action is live. Later
-  no-change PRs are silent.
+- **First run:** when the PR itself adds the Auctelis workflow file (`.github/workflows/auctelis*.yml`)
+  and no sticky comment exists yet, a quiet `NONE` PR posts one "Watching" comment naming the
+  reach surfaces the install can see. This is the only time a no-change PR comments; it proves
+  the Action is live. All other no-change PRs stay silent.
 - `comment-on-none: true` (Action) or `gate --comment-policy always` restores a
   comment on every PR (and suppresses the separate first-run comment).
 - Default `init --enforce` + local `auctelis status --check` says

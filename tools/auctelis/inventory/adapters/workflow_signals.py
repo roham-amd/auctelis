@@ -24,7 +24,7 @@ def workflow_text_has_agent_step(raw: str) -> bool:
         if not stripped or stripped.startswith("#"):
             continue
         lower = stripped.lower()
-        if lower.startswith("uses:") or lower.startswith("- uses:"):
+        if lower.startswith(("uses:", "- uses:")):
             if _AGENT_USE_RE.search(stripped):
                 return True
             continue

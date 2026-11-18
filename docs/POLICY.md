@@ -91,7 +91,7 @@ auctelis-dev scan . --no-policy
 A policy file that the PR author can edit is not a gate. In CI:
 
 1. Set Action input `trusted-policy: true` (default).
-2. Checkout with enough history to read the base ref (e.g. `fetch-depth: 0`).
+2. Default shallow checkout works (`action.yml` fetches the base ref at `--depth=1` automatically; `fetch-depth: 0` is not required).
 3. Prefer the **Action-bundled tools** (no consumer `pip install`). If using
    `install-tools-from: path`, pin a release-tag checkout — never PR `./tools`.
 4. CODEOWNERS must cover `.auctelis.yml` for policy edits; the Action still

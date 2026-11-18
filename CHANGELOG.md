@@ -7,6 +7,40 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.12.2] — 2026-11-19
+
+### Fixed
+- **AUCT-001 (Real-Repo Signal & TOML Scope):** Removed `CI Workflow`,
+  `Workflow`, and `Plugin` tier-2 `TYPE_DEFAULT` injections from
+  `capabilities.py`, added `execute_commands` to tier-2 reach in
+  `reach_tiers.py`, capped non-agent CI workflows below tier 2, and scoped
+  `config.toml` discovery in `toml_config.py` (and `hosts.py`) to agent
+  directories (`.codex/`, `.cursor/`, `.claude/`, `.gemini/`, `.opencode/`).
+- **AUCT-002 (Quiet-PR Silence & `BASELINE_ADOPTED`):** Restricted
+  `comment-first-run.md` to PRs that add `.github/workflows/auctelis*.yml`
+  so ordinary quiet PRs post zero comments; added `base_lock_committed` output
+  and head `auctelis lock --check` verification in `action.yml` so first-time
+  `--enforce` adoption PRs reach `BASELINE_ADOPTED`.
+- **AUCT-003 (Working First-Run Install & Fast Lockless Action):** Updated
+  `README.md`, `docs/INSTALL.md`, and `build.py` to lead with the working
+  `uvx --from git+…` one-liner until PyPI is published; removed
+  `fetch-depth: 0` from templates and example workflows; added shallow
+  `--depth=1` base fetch and a watched-path short-circuit before `setup-uv` in
+  `action.yml`; documented `auctelis-dev` as a source-only entry in
+  `tools/pyproject.toml`.
+- **Action & Gate Hardening:** Fixed shallow-clone `...HEAD` diff crash and
+  head-CODEOWNERS trust gap in `action.yml`'s `.auctelis.yml` edit check;
+  fixed CODEOWNERS `/**` / `/**/*` directory boundary prefix matching in
+  `gate.py`.
+
+### Changed
+- Consolidated duplicated static-analysis hint regexes and markers into
+  `inventory/hints.py`, unified JSON and TOML MCP server normalization via
+  `build_mcp_server_entry` in `inventory/adapters/mcp.py`, aligned Claude
+  `UserPromptSubmit` / `printenv` hook hints, sorted `iter_repo_files` walk
+  order while skipping local cache dirs, and deduplicated `FAIL_CLOSED` report
+  building in `gate.py`.
+
 ## [0.12.1] — 2026-11-18
 
 ### Added

@@ -50,7 +50,7 @@ def emit_relationships(components: list[dict[str, Any]]) -> list[Relationship]:
 
     out: list[Relationship] = []
     seen: set[str] = set()
-    for _host, group in by_host.items():
+    for group in by_host.values():
         indexed: dict[str, list[dict[str, Any]]] = {}
         for comp in group:
             bucket = _kind_bucket(str(comp.get("kind") or ""))

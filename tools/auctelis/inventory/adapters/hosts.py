@@ -43,7 +43,9 @@ def _copilot_markers(path: Path, root: Path) -> bool:
 def _codex_markers(path: Path, root: Path) -> bool:
     rel = path.relative_to(root).as_posix().lower()
     name = path.name.lower()
-    return name in {"codex.md", "config.toml"} or rel.startswith(".codex/")
+    return (
+        name in {"codex.md", "codex.toml"} or rel.startswith(".codex/") or "/.codex/" in f"/{rel}"
+    )
 
 
 def _gemini_markers(path: Path, _root: Path) -> bool:
@@ -58,7 +60,7 @@ def _windsurf_markers(path: Path, _root: Path) -> bool:
 
 def _zed_markers(path: Path, root: Path) -> bool:
     rel = path.relative_to(root).as_posix().lower()
-    return rel.startswith(".zed/") or rel.startswith(".config/zed/")
+    return rel.startswith((".zed/", ".config/zed/"))
 
 
 def _continue_markers(path: Path, root: Path) -> bool:
@@ -92,30 +94,31 @@ def discover_host_profiles(
         "opencode": [],
     }
 
+    def _record(host_id: str, rel: str) -> None:
+        bucket = found[host_id]
+        if len(bucket) < 20:
+            bucket.append(rel)
+
     for path in select_files(files, lambda p: True):
         rel = path.relative_to(root).as_posix()
         if _cursor_markers(path, root):
-            found["cursor"].append(rel)
+            _record("cursor", rel)
         if _claude_markers(path, root):
-            found["claude-code"].append(rel)
+            _record("claude-code", rel)
         if _copilot_markers(path, root):
-            found["github-copilot"].append(rel)
+            _record("github-copilot", rel)
         if _codex_markers(path, root):
-            found["codex"].append(rel)
+            _record("codex", rel)
         if _gemini_markers(path, root):
-            found["gemini"].append(rel)
+            _record("gemini", rel)
         if _windsurf_markers(path, root):
-            found["windsurf"].append(rel)
+            _record("windsurf", rel)
         if _zed_markers(path, root):
-            found["zed"].append(rel)
+            _record("zed", rel)
         if _continue_markers(path, root):
-            found["continue"].append(rel)
+            _record("continue", rel)
         if _opencode_markers(path, root):
-            found["opencode"].append(rel)
-        # Bound memory: do not keep unbounded path lists.
-        for key in found:
-            if len(found[key]) > 20:
-                found[key] = found[key][:20]
+            _record("opencode", rel)
 
     results: list[dict[str, Any]] = []
     for host_id, paths in found.items():

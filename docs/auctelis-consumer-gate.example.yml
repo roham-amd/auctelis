@@ -14,14 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
 
       - name: auctelis Authority Diff
         # Tools are bundled in the Action — no pip install required.
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.12.1
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.12.2
         with:
           path: .
           locked: "false"

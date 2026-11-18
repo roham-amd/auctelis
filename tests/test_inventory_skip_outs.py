@@ -33,3 +33,43 @@ def test_iter_repo_files_skips_auctelis_out_prefix(tmp_path: Path):
     rels = {str(p.relative_to(root)).replace("\\", "/") for p in files}
     assert "keep/ok.txt" in rels
     assert not any(r.startswith("auctelis-out-pilot/") for r in rels)
+
+
+def test_iter_repo_files_skips_caches_sorted_and_safe_read_guards(tmp_path: Path):
+    from auctelis.build import _skip_markdown_path
+    from auctelis.inventory.io import safe_read_text
+
+    root = tmp_path / "repo"
+    (root / ".uv-cache").mkdir(parents=True)
+    (root / ".uv-cache" / "cached.md").write_text("x\n", encoding="utf-8")
+    (root / ".pytest_cache").mkdir(parents=True)
+    (root / ".pytest_cache" / "cached.txt").write_text("x\n", encoding="utf-8")
+    (root / "b.txt").write_text("b\n", encoding="utf-8")
+    (root / "a.txt").write_text("a\n", encoding="utf-8")
+    (root / "big.txt").write_text("x" * 100, encoding="utf-8")
+
+    outside = tmp_path / "outside.txt"
+    outside.write_text("secret\n", encoding="utf-8")
+
+    events: list[dict] = []
+    _summary, files = iter_repo_files(
+        root,
+        limits=CollectorLimits(max_file_bytes=50),
+        events=events,
+        default_excludes=False,
+    )
+    rels = [p.relative_to(root).as_posix() for p in files]
+    assert rels == ["a.txt", "b.txt"]
+    assert any(e.get("type") == "parse_skipped_size" for e in events)
+
+    escape_events: list[dict] = []
+    assert (
+        safe_read_text(
+            outside, root=root, limits=CollectorLimits(), events=escape_events, adapter="t"
+        )
+        is None
+    )
+    assert any(e.get("type") == "path_escape_skipped" for e in escape_events)
+
+    assert _skip_markdown_path(root / ".uv-cache" / "cached.md")
+    assert _skip_markdown_path(root / "dist" / "README.md")

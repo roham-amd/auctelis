@@ -10,8 +10,11 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+from auctelis.inventory.adapters.mcp import build_mcp_server_entry
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.limits import CollectorLimits
+
+_AGENT_TOML_DIRS = frozenset({".codex", ".cursor", ".claude", ".gemini", ".opencode"})
 
 
 def _parse_simple_toml(text: str) -> dict[str, Any]:
@@ -53,11 +56,11 @@ def discover_toml_mcp_configs(
     def _toml_mcp_candidate(path: Path) -> bool:
         name = path.name.lower()
         parts = {part.lower() for part in path.parts}
-        if name in {"config.toml", "mcp.toml", "codex.toml"}:
+        if name in {"mcp.toml", "codex.toml"}:
             return True
         if name.endswith(".toml") and "mcp" in name:
             return True
-        return bool(name == "config.toml" and (".codex" in parts or "codex" in parts))
+        return bool(name == "config.toml" and (parts & _AGENT_TOML_DIRS))
 
     for path in select_files(files, _toml_mcp_candidate):
         raw = safe_read_text(path, root=root, limits=limits, events=events, adapter="toml_mcp")
@@ -85,31 +88,13 @@ def discover_toml_mcp_configs(
             )
             continue
         for name, cfg in _iter_mcp_servers(data):
-            hints: list[str] = []
-            command = str(cfg.get("command") or "")
-            raw_args = cfg.get("args")
-            args: list[Any] = list(raw_args) if isinstance(raw_args, list) else []
-            if command:
-                hints.append("local_command_transport")
-            if cfg.get("url"):
-                hints.append("remote_endpoint")
-            env = cfg.get("env") or cfg.get("environment")
-            if isinstance(env, dict) and env:
-                hints.append("sets_environment")
             results.append(
-                {
-                    "name": name,
-                    "type": "MCP Server Registration",
-                    "reference_kind": "LOCAL_CONFIGURATION_OR_INSTRUCTIONS",
-                    "repository_path": rel,
-                    "adapter": "toml_mcp",
-                    "adapter_maturity": "PARTIAL",
-                    "discovery_status": "IDENTIFIED",
-                    "command": command or None,
-                    "args": args,
-                    "url": cfg.get("url"),
-                    "host_id": "codex",
-                    "priority_hints": hints,
-                }
+                build_mcp_server_entry(
+                    name=name,
+                    cfg=cfg,
+                    rel=rel,
+                    adapter="toml_mcp",
+                    default_host_id="codex",
+                )
             )
     return results

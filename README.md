@@ -17,15 +17,14 @@ There are exactly **two surfaces**: `check` locally, the Action on PRs.
 
 ```bash
 # 1. See the aha — no install step, no lock needed (2 min):
-uvx auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check
 
 # 2. In your repo: baseline + comment-only workflow + CODEOWNERS (2 min):
 cd your-repo
-uvx auctelis check
-uvx auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
 
-# 3. Commit, open one PR, and read the first-run "Watching …" comment (2 min).
-#    The next PR that changes agent authority gets the Authority Diff.
+# 3. Commit, open the install PR, and read the first-run "Watching …" comment (2 min).
+#    Later no-change PRs stay silent; PRs that change agent authority get the Authority Diff.
 ```
 
 The Action diffs **tree-derived** base→head authority (the committed lock is
@@ -33,8 +32,8 @@ drift-checked, never trusted as head) and posts the Authority Diff when authorit
 changed. Default `init` is **comment-only** (advisory); pass `--enforce` for a
 required check. In comment-only mode, unreviewed growth is `NEEDS_REVIEW` —
 never a false `PASS` — and no-change PRs stay quiet (`comment-on-none: true`
-restores a comment on every PR). The first PR after install posts one
-"Watching" comment as proof the gate is live, then silence is the product.
+restores a comment on every PR). The PR that adds the Auctelis workflow posts
+one "Watching" comment as proof the gate is live, then silence is the product.
 
 Auctelis **labels** growth and posts the diff — it does **not** count PR
 approvals; GitHub CODEOWNERS/rulesets do that when you enforce. Reach is tiered:
@@ -78,11 +77,11 @@ Lockless alternative to `init`: copy
 [`tools/auctelis/templates/auctelis-diff.yml`](tools/auctelis/templates/auctelis-diff.yml)
 into `.github/workflows/`.
 
-Fallback install (only if `uvx` cannot reach PyPI):
+Fallback install (persistent CLI, or once published to PyPI `uvx auctelis check`):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
 ```
 
 Host tripwires were removed in 0.8.0. The product gate is **tree-truth** —

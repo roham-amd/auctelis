@@ -26,6 +26,20 @@ PERMISSION_BYPASS_RE = re.compile(
     re.IGNORECASE,
 )
 
+HIDDEN_UNICODE_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff\u202a-\u202e\u2066-\u2069]")
+
+INSTRUCTION_ABUSE_MARKERS = (
+    "ignore previous instructions",
+    "ignore all previous",
+    "do not tell the user",
+    "hide this action",
+    "bypass confirmation",
+    "skip approval",
+    "exfiltrate",
+    "fetch and execute",
+    "download and run",
+)
+
 _LIFECYCLE_TOKENS = (
     "before",
     "pretool",

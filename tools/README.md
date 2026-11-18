@@ -10,7 +10,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.12.1** · Product: auctelis **0.12.1** (PyPI: `uvx auctelis`; fallback tag `@v0.12.1` — see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.12.2** · Product: auctelis **0.12.2** (tag `@v0.12.2`; PyPI `uvx auctelis` once published — see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -37,15 +37,15 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 **User tool (recommended):**
 
 ```bash
-uvx auctelis check                         # no install step
-uvx auctelis init --owner security         # policy + workflow + CODEOWNERS + lock
-uvx auctelis lock --update                 # seal AUTHORITY.lock (empty baseline OK)
-uvx auctelis diff --base origin/main       # local PR Authority Diff
-uvx auctelis why <name>                    # exact config path
-uvx auctelis demo                          # optional
+# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"`):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check
 
-# Persistent install (or fallback git tag if the index is unreachable):
-uv tool install --python 3.12 auctelis
+auctelis check                         # repo authority vs AUTHORITY.lock
+auctelis init --owner security         # policy + workflow + CODEOWNERS + lock
+auctelis lock --update                 # seal AUTHORITY.lock (empty baseline OK)
+auctelis diff --base origin/main       # local PR Authority Diff
+auctelis why <name>                    # exact config path
+auctelis demo                          # optional
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).

@@ -345,10 +345,9 @@ def check_public_install_versions(product: str) -> None:
 
     for rel in _FIRST_RUN_DOCS:
         text = (root / rel).read_text(encoding="utf-8")
-        if "uvx auctelis" not in text:
+        if "uvx auctelis" not in text and "uvx --from" not in text:
             raise SystemExit(
-                f"{rel} must show `uvx auctelis` as the first-run install "
-                "(keep the git tag under a fallback heading)"
+                f"{rel} must show `uvx auctelis` or `uvx --from` as the first-run install"
             )
 
 
@@ -510,6 +509,12 @@ _SKIP_MD_PARTS = frozenset(
         "auctelis-independent-assessment",
         "archive",  # historical methodology; links may be relative to old roots
         ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".ruff-cache",
+        ".uv-cache",
+        "dist",
+        "build",
     }
 )
 

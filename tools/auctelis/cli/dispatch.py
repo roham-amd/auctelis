@@ -204,7 +204,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
                 comment_path.unlink(missing_ok=True)
             # First-run proof: a healthy install is otherwise indistinguishable
             # from a broken one (quiet-on-NONE). The Action posts this file only
-            # when the PR has no sticky comment yet.
+            # when the PR itself adds the Auctelis workflow file.
             write_text(
                 gate_out / "comment-first-run.md",
                 render_first_run_comment(report),

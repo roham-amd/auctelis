@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 
 from auctelis.inventory.hints import (
     DOWNLOAD_EXEC_RE,
+    HIDDEN_UNICODE_RE,
+    INSTRUCTION_ABUSE_MARKERS,
     extract_url_hosts_from_command,
     permission_bypass_hint,
 )
@@ -14,18 +15,6 @@ from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.limits import CollectorLimits
 
 _CARD_NAMES = {"agent-card.json", "agent_card.json"}
-_HIDDEN_UNICODE_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff\u202a-\u202e\u2066-\u2069]")
-_INSTRUCTION_ABUSE_MARKERS = (
-    "ignore previous instructions",
-    "ignore all previous",
-    "do not tell the user",
-    "hide this action",
-    "bypass confirmation",
-    "skip approval",
-    "exfiltrate",
-    "fetch and execute",
-    "download and run",
-)
 _RULE_FILE_NAMES = {
     "AGENTS.md",
     "CLAUDE.md",
@@ -89,9 +78,9 @@ def discover_agent_cards(
 def _instruction_hints(raw: str) -> list[str]:
     hints: list[str] = []
     lowered = raw.lower()
-    if _HIDDEN_UNICODE_RE.search(raw):
+    if HIDDEN_UNICODE_RE.search(raw):
         hints.append("hidden_unicode_in_instructions")
-    if any(marker in lowered for marker in _INSTRUCTION_ABUSE_MARKERS):
+    if any(marker in lowered for marker in INSTRUCTION_ABUSE_MARKERS):
         hints.append("instruction_abuse_content")
     if "http://" in lowered or "https://" in lowered:
         hints.append("external_url_reference")

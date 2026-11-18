@@ -94,3 +94,29 @@ def test_cli_scan_ignores_parent_policy(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert code == 0
     assert "Policy:" not in out
+
+
+def test_cli_check_json_pins_and_why(tmp_path: Path, capsys):
+    import json
+
+    root = tmp_path / "repo"
+    (root / ".cursor").mkdir(parents=True)
+    (root / ".cursor" / "mcp.json").write_text(
+        json.dumps({"mcpServers": {"demo": {"command": "npx", "args": ["-y", "demo-pkg"]}}}),
+        encoding="utf-8",
+    )
+
+    assert main(["check", str(root), "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["schema_version"] == "authority-diff/1"
+
+    assert main(["check", str(root), "--pins"]) == 0
+    pins_out = capsys.readouterr().out
+    assert "Unpinned MCP servers" in pins_out
+
+    assert main(["why", "demo", str(root)]) == 0
+    why_out = capsys.readouterr().out
+    assert ".cursor/mcp.json" in why_out
+
+    assert main(["why", "nonexistent", str(root)]) == 1
+    capsys.readouterr()

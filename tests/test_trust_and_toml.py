@@ -58,15 +58,16 @@ def test_toml_parse_and_discover(tmp_path: Path):
     data = _parse_simple_toml('[mcp_servers.demo]\ncommand = "npx"\nurl = "https://example.com"\n')
     assert data["mcp_servers"]["demo"]["command"] == "npx"
     root = tmp_path / "repo"
-    root.mkdir()
-    (root / "config.toml").write_text(
+    codex = root / ".codex"
+    codex.mkdir(parents=True)
+    (codex / "config.toml").write_text(
         '[mcp_servers.demo]\ncommand = "uvx"\n',
         encoding="utf-8",
     )
     events: list[dict] = []
     comps = discover_toml_mcp_configs(
         root,
-        files=[root / "config.toml"],
+        files=[codex / "config.toml"],
         limits=CollectorLimits(),
         events=events,
     )
@@ -80,15 +81,16 @@ def test_toml_inline_array_parses(tmp_path: Path):
     data = _parse_simple_toml('[mcp_servers.demo]\ncommand = "npx"\nargs = ["-y", "pkg"]\n')
     assert data["mcp_servers"]["demo"]["args"] == ["-y", "pkg"]
     root = tmp_path / "repo"
-    root.mkdir()
-    (root / "config.toml").write_text(
+    codex = root / ".codex"
+    codex.mkdir(parents=True)
+    (codex / "config.toml").write_text(
         '[mcp_servers.demo]\ncommand = "npx"\nargs = ["-y", "demo-pkg"]\n',
         encoding="utf-8",
     )
     events: list[dict] = []
     comps = discover_toml_mcp_configs(
         root,
-        files=[root / "config.toml"],
+        files=[codex / "config.toml"],
         limits=CollectorLimits(),
         events=events,
     )
@@ -99,17 +101,92 @@ def test_toml_inline_array_parses(tmp_path: Path):
 
 def test_toml_invalid_fails_closed(tmp_path: Path):
     root = tmp_path / "repo"
-    root.mkdir()
-    (root / "config.toml").write_text("broken = [\n", encoding="utf-8")
+    codex = root / ".codex"
+    codex.mkdir(parents=True)
+    (codex / "config.toml").write_text("broken = [\n", encoding="utf-8")
     events: list[dict] = []
     comps = discover_toml_mcp_configs(
         root,
-        files=[root / "config.toml"],
+        files=[codex / "config.toml"],
         limits=CollectorLimits(),
         events=events,
     )
     assert comps == []
     assert any(e.get("type") == "unparsed_agent_config" for e in events)
+
+
+def test_toml_ignores_cargo_config_and_extracts_codex_pins(tmp_path: Path):
+    from auctelis.check import build_check_report, render_pin_report
+
+    root = tmp_path / "repo"
+    cargo = root / ".cargo"
+    cargo.mkdir(parents=True)
+    (cargo / "config.toml").write_text("[build]\njobs = 4\n", encoding="utf-8")
+    codex = root / ".codex"
+    codex.mkdir(parents=True)
+    (codex / "config.toml").write_text(
+        '[mcp_servers.demo]\ncommand = "npx"\nargs = ["-y", "foo"]\n\n[mcp_servers.demo.env]\nAPI_KEY = "${API_KEY}"\n',
+        encoding="utf-8",
+    )
+    events: list[dict] = []
+    comps = discover_toml_mcp_configs(
+        root,
+        files=[cargo / "config.toml", codex / "config.toml"],
+        limits=CollectorLimits(),
+        events=events,
+    )
+    assert len(comps) == 1
+    assert comps[0]["repository_path"] == ".codex/config.toml"
+    assert comps[0]["env_keys"] == ["API_KEY"]
+    assert "unpinned_package_launcher" in comps[0]["priority_hints"]
+
+    summary, _, _ = build_check_report(root)
+    pins_text = render_pin_report(summary)
+    assert "floating" in pins_text
+    assert "demo" in pins_text
+
+
+def test_toml_mcp_parity_and_host_detection(tmp_path: Path):
+    from auctelis.inventory.adapters.hosts import discover_host_profiles
+
+    root = tmp_path / "repo"
+    cargo = root / ".cargo"
+    cargo.mkdir(parents=True)
+    (cargo / "config.toml").write_text("[build]\njobs = 4\n", encoding="utf-8")
+
+    cursor = root / ".cursor"
+    cursor.mkdir(parents=True)
+    (cursor / "config.toml").write_text(
+        "[mcp_servers.remote]\n"
+        'url = "http://insecure.example/mcp"\n'
+        "[mcp_servers.remote.env]\n"
+        'OPENAI_BASE_URL = "https://proxy.example/v1"\n'
+        'API_KEY = "sk-1234567890abcdef1234567890"\n',
+        encoding="utf-8",
+    )
+
+    events: list[dict] = []
+    comps = discover_toml_mcp_configs(
+        root,
+        files=[cargo / "config.toml", cursor / "config.toml"],
+        limits=CollectorLimits(),
+        events=events,
+    )
+    assert len(comps) == 1
+    entry = comps[0]
+    assert entry["host_id"] == "cursor"
+    assert "insecure_http_remote" in entry["priority_hints"]
+    assert "base_url_or_proxy_override" in entry["priority_hints"]
+    assert "literal_secret_in_env" in entry["priority_hints"]
+    assert "https://proxy.example/v1" in entry.get("destinations", [])
+
+    hosts = discover_host_profiles(
+        root,
+        files=[cargo / "config.toml"],
+        limits=CollectorLimits(),
+        events=[],
+    )
+    assert hosts == []
 
 
 def test_target_policy_ignored_by_default(tmp_path: Path, capsys):

@@ -1,6 +1,6 @@
 [project]
 name = "auctelis"
-version = "0.12.1"
+version = "0.12.2"
 description = "Auctelis — the authority lockfile and one-line diff for AI agent reach"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -42,6 +42,7 @@ Changelog = "https://github.com/roham-amd/auctelis/blob/main/CHANGELOG.md"
 
 [project.scripts]
 auctelis = "auctelis.cli:main"
+# Source-checkout / maintainer entry (auctelis_research is not shipped in the wheel).
 auctelis-dev = "auctelis.cli:main_dev"
 
 [dependency-groups]

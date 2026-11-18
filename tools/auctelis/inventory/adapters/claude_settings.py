@@ -18,8 +18,6 @@ from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.jsonc import loads_json_tolerant
 from auctelis.inventory.limits import CollectorLimits
 
-_DOWNLOAD_EXEC_RE = DOWNLOAD_EXEC_RE
-
 
 def _is_claude_settings(path: Path, root: Path) -> bool:
     rel = path.relative_to(root).as_posix().lower()
@@ -173,7 +171,7 @@ def discover_claude_settings(
             settings_destinations.extend(hosts)
             # Only curl|sh / wget|sh style pipes are download-and-execute; bare
             # `curl` (e.g. Slack notification) is network egress, not RCE.
-            if _DOWNLOAD_EXEC_RE.search(cmd):
+            if DOWNLOAD_EXEC_RE.search(cmd):
                 hints.append("download_and_execute")
                 hints.append("possible_execution_boundary")
             elif re.search(r"\bcurl\b|\bwget\b|\biwr\b", cmd, re.IGNORECASE):
@@ -217,9 +215,16 @@ def discover_claude_settings(
                 "session_start",
                 "pretooluse",
                 "pre_tool_use",
+                "userpromptsubmit",
             }:
                 hook_hints.append("pre_execution_lifecycle")
-            if _DOWNLOAD_EXEC_RE.search(cmd) or "$(env)" in cmd:
+            cmd_l = cmd.lower()
+            if (
+                DOWNLOAD_EXEC_RE.search(cmd)
+                or "$(env)" in cmd
+                or "${env}" in cmd_l
+                or "printenv" in cmd_l
+            ):
                 hook_hints.append("download_and_execute")
             hook_hosts = extract_url_hosts_from_command(cmd)
             results.append(

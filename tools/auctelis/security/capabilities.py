@@ -66,18 +66,8 @@ _TYPE_DEFAULTS: dict[str, list[tuple[CapabilityKind, VerificationStatus, str]]] 
     "Automation": [
         ("unattended_operation", "OBSERVED", "Automations may run without interactive approval."),
     ],
-    "CI Workflow": [
-        ("unattended_operation", "OBSERVED", "CI workflows execute with repository privileges."),
-        ("access_secrets", "POTENTIAL", "Workflows commonly inherit repository secrets."),
-    ],
-    "Workflow": [
-        ("unattended_operation", "OBSERVED", "Workflows may execute without interactive approval."),
-    ],
     "Subagent": [
         ("delegate_tasks", "OBSERVED", "Subagents receive delegated authority."),
-    ],
-    "Plugin": [
-        ("invoke_tools", "POTENTIAL", "Plugins often expose additional tools."),
     ],
     "MCP Server Registration": [
         ("invoke_tools", "OBSERVED", "MCP registration exposes tool surface to the host agent."),

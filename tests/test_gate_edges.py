@@ -95,3 +95,29 @@ def test_render_reduction_and_representation_notes():
         }
     )
     assert "not material reach" in representation
+
+
+def test_codeowners_glob_directory_boundary_and_fail_closed_paths(tmp_path):
+    from auctelis.authority_lock import write_authority_lock
+    from auctelis.gate import codeowners_covers_path, run_gate
+
+    owners = ".github/workflows/** @sec\n.github/actions/**/* @sec\n"
+    assert codeowners_covers_path(owners, ".github/workflows/ci.yml")
+    assert not codeowners_covers_path(owners, ".github/workflows-evil/ci.yml")
+    assert codeowners_covers_path(owners, ".github/actions/auctelis/action.yml")
+    assert not codeowners_covers_path(owners, ".github/actions-evil/action.yml")
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    report_dir, code_dir = run_gate(repo, base_lock=repo)
+    assert code_dir == 2
+    assert report_dir["verdict"] == "FAIL_CLOSED"
+
+    base_lock, _ = write_authority_lock(repo, path=tmp_path / "base.lock")
+    report_missing, code_missing = run_gate(
+        repo,
+        base_lock=base_lock,
+        head_lock=tmp_path / "missing.lock",
+    )
+    assert code_missing == 2
+    assert report_missing["verdict"] == "FAIL_CLOSED"

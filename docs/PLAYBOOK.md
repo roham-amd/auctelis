@@ -68,17 +68,17 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# PyPI one-line install; fall back to the git tag only if the index is unreachable.
-uvx auctelis check                          # aha: ranked reach cards
-uvx auctelis init --owner security          # comment-only default
-uvx auctelis init --owner security --enforce  # optional locked gate
+# Run directly with uvx (or `uv tool install` from the release tag; `uvx auctelis` once PyPI is live):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check                          # aha: ranked reach cards
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security          # comment-only default
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security --enforce  # optional locked gate
 
-# Advanced:
-uvx auctelis diff --base origin/main        # BASELINE_NEEDED if main has no lock
-uvx auctelis trust mcp.linear.app           # optional trusted destination
-uvx auctelis status --check                 # comment-only OK; enforce says "verify in GitHub"
-uvx auctelis demo                           # canned fixture + PR comment (exits 0)
-uvx auctelis gate --base-lock AUTHORITY.lock  # authority-growth verdict
+# Advanced (after `uv tool install` or via `uvx --from ... auctelis`):
+auctelis diff --base origin/main        # BASELINE_NEEDED if main has no lock
+auctelis trust mcp.linear.app           # optional trusted destination
+auctelis status --check                 # comment-only OK; enforce says "verify in GitHub"
+auctelis demo                           # canned fixture + PR comment (exits 0)
+auctelis gate --base-lock AUTHORITY.lock  # authority-growth verdict
 ```
 
 Empty baseline is expected: first growth under enforce is a CODEOWNERS review,

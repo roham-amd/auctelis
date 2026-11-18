@@ -4,7 +4,13 @@ import re
 from pathlib import Path
 from typing import Any
 
-from auctelis.inventory.hints import extract_url_hosts_from_command
+from auctelis.inventory.hints import (
+    DOWNLOAD_EXEC_RE,
+    HIDDEN_UNICODE_RE,
+    INSTRUCTION_ABUSE_MARKERS,
+    PERMISSION_BYPASS_RE,
+    extract_url_hosts_from_command,
+)
 from auctelis.inventory.io import safe_read_text, select_files
 from auctelis.inventory.limits import CollectorLimits
 
@@ -28,30 +34,6 @@ _PASSWORD_CRED_RE = re.compile(
 _NEGATION_RE = re.compile(
     r"\b(no|not|without|never|don't|do not|avoid|forbid(?:den)?|remove|removing)\b",
     re.IGNORECASE,
-)
-_HIDDEN_UNICODE_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff\u202a-\u202e\u2066-\u2069]")
-_DOWNLOAD_EXEC_RE = re.compile(
-    r"(curl\s+[^\n|;]*\|\s*(?:sudo\s+)?(?:ba)?sh|"
-    r"wget\s+[^\n|;]*\|\s*(?:sudo\s+)?(?:ba)?sh|"
-    r"iwr\s+[^\n|;]*\|\s*iex|invoke-webrequest[^\n|;]*\|\s*iex)",
-    re.IGNORECASE,
-)
-_PERMISSION_BYPASS_RE = re.compile(
-    r"(--dangerously-skip-permissions|--yolo\b|bypasspermissions|"
-    r"permissionmode\s*[:=]\s*bypass|auto[_-]?approve\s*[:=]\s*true|"
-    r"skip[_-]?permissions)",
-    re.IGNORECASE,
-)
-_INSTRUCTION_ABUSE_MARKERS = (
-    "ignore previous instructions",
-    "ignore all previous",
-    "do not tell the user",
-    "hide this action",
-    "bypass confirmation",
-    "skip approval",
-    "exfiltrate",
-    "fetch and execute",
-    "download and run",
 )
 _HTML_COMMENT_RE = re.compile(r"<!--([\s\S]*?)-->")
 _EXECUTABLE_EVIDENCE = {
@@ -86,7 +68,7 @@ def _mentions_identity_workflow(text: str) -> bool:
 def _html_comment_instruction_abuse(raw: str) -> bool:
     for match in _HTML_COMMENT_RE.finditer(raw):
         body = match.group(1).lower()
-        if any(marker in body for marker in _INSTRUCTION_ABUSE_MARKERS):
+        if any(marker in body for marker in INSTRUCTION_ABUSE_MARKERS):
             return True
         if "ignore previous" in body or "system prompt" in body:
             return True
@@ -133,13 +115,13 @@ def discover_skills(
         # Bundled helper scripts next to the skill raise authority questions.
         if any((path.parent / "scripts").glob("*")):
             hints.append("bundled_scripts_directory")
-        if _HIDDEN_UNICODE_RE.search(raw):
+        if HIDDEN_UNICODE_RE.search(raw):
             hints.append("hidden_unicode_in_instructions")
-        if _DOWNLOAD_EXEC_RE.search(raw):
+        if DOWNLOAD_EXEC_RE.search(raw):
             hints.append("download_and_execute")
-        if _PERMISSION_BYPASS_RE.search(raw):
+        if PERMISSION_BYPASS_RE.search(raw):
             hints.append("permission_bypass_flag")
-        if any(marker in lowered for marker in _INSTRUCTION_ABUSE_MARKERS):
+        if any(marker in lowered for marker in INSTRUCTION_ABUSE_MARKERS):
             hints.append("instruction_abuse_content")
         if _html_comment_instruction_abuse(raw):
             hints.append("instruction_abuse_content")

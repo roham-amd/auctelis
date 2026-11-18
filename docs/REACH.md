@@ -32,6 +32,11 @@ reach = destination host set ∩ launcher identity ∩ capabilities ∩ pin
 | 1 | comment | Network reach (including inferred doc links) |
 | 2 | fail | Execute, secrets, approvals, unattended, or new MCP/hook/host authority |
 
+Plain CI workflows without agent steps or unattended triggers stay below tier 2
+(tier 0 when no secrets are referenced, tier 1 when secrets are referenced) so
+normal repository CI edits do not page CODEOWNERS. Agent CI workflows escalate
+to tier 2 on agent-step evidence.
+
 Tier 2 requires **literal** evidence: declared `env_keys` or a launcher on the
 record. A record whose only evidence is `INFERRED_HINT` prose is capped at tier
 1 even when the prose mentions secrets or execution — a doc link cannot page a
