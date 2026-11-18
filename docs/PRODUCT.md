@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.12.0 · **Package:** `auctelis` 0.12.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.12.1 · **Package:** `auctelis` 0.12.1 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -29,7 +29,7 @@ One question drives the workflow:
 | Name | Role |
 | --- | --- |
 | **Auctelis** | Product name and primary CLI |
-| `auctelis` | Package name (git tag until PyPI publishes) |
+| `auctelis` | Package name on PyPI (`uvx auctelis`) |
 | `.auctelis.yml` | Policy file |
 | `AUTHORITY.lock` | Sealed repo authority |
 | `auctelis-out/` | Default artifact directory |
@@ -63,8 +63,8 @@ is an optional pin (drift-checked when present). Default Action is
 links stay comment-only; execute/secrets/new MCP fail under enforce. Comment-only
 mode never says `PASS` on unreviewed growth (it says `NEEDS_REVIEW`), and
 no-change PRs are quiet by default. Trusted destinations (`auctelis trust`) lower
-network-only reach to the comment tier but never hide secrets/execute/approvals.
-Reach: [`REACH.md`](REACH.md).
+network-only reach to the comment tier but never hide secrets/execute/approvals
+or records that declare a launcher. Reach: [`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  

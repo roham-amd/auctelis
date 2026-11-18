@@ -65,6 +65,16 @@ def _trusted_host(host: str, trusted: set[str]) -> bool:
     return h in trusted or any(h.endswith(f".{t}") for t in trusted if valid_trusted_host(t))
 
 
+def _literal_signal(record: dict[str, Any]) -> bool:
+    """True when a record declares literal reach (env keys or a launcher).
+
+    Tier 2 requires one of these. ``INFERRED_HINT`` prose by itself is capped at
+    the comment tier so a style-guide link cannot page CODEOWNERS the way a
+    committed ``env:`` block does.
+    """
+    return bool(record.get("env_keys")) or bool(record.get("launcher"))
+
+
 def record_reach_tier(
     record: dict[str, Any],
     *,
@@ -100,32 +110,25 @@ def record_reach_tier(
         else:
             tier = max(tier, TIER_COMMENT)
 
-    # Prose / inferred hints never alone escalate to fail — unless env/secrets
-    # or execute capabilities are already present on the record.
-    if (
-        evidence == "INFERRED_HINT"
-        and tier >= TIER_FAIL
-        and not record.get("env_keys")
-        and not any(c in {"execute", "access_secrets", "modify_approvals"} for c in caps)
-    ):
-        tier = TIER_COMMENT
-    if (
-        evidence == "INFERRED_HINT"
-        and not record.get("env_keys")
-        and set(caps)
-        <= {
-            "access_network",
-            "modify_agent_instructions",
-        }
-    ):
+    # Prose / inferred hints never alone page CODEOWNERS or fail the required
+    # check: a style-guide link cannot carry the same weight as literal config.
+    # Only a literal signal (declared env keys or a launcher) keeps fail tier.
+    # Applied before the trusted-host block; trust can only lower further.
+    if evidence == "INFERRED_HINT" and not _literal_signal(record):
         tier = min(tier, TIER_COMMENT)
 
     # Trusted destinations: a benign addition/expansion that only reaches
     # allowlisted hosts stays visible on the comment but never pages CODEOWNERS
     # or fails the required check. Execute / secrets / approval reach still
-    # fails — trust is about *where*, not *what* the record can do.
-    dangerous = bool(record.get("env_keys")) or bool(
-        set(caps) & {"execute", "access_secrets", "modify_approvals", "unattended_operation"}
+    # fails — trust is about *where*, not *what* the record can do. A record
+    # with a launcher is not network-only: trusting its host must not hide the
+    # executable it starts.
+    dangerous = (
+        bool(record.get("env_keys"))
+        or bool(launcher)
+        or bool(
+            set(caps) & {"execute", "access_secrets", "modify_approvals", "unattended_operation"}
+        )
     )
     if (
         trusted
@@ -147,6 +150,12 @@ def reach_reason(
     trusted = {h.lower() for h in (trusted_hosts or set()) if h}
     caps = {str(c) for c in (record.get("capabilities") or [])}
     posture = str(record.get("approval_posture") or "").strip().lower()
+    # Inferred prose with no literal signal is capped at the comment tier, so
+    # naming "secrets"/"execute" here would contradict the tier it is shown at.
+    if str(record.get("evidence_strength") or "") == "INFERRED_HINT" and not _literal_signal(
+        record
+    ):
+        return "inferred hint"
     if posture == "bypass":
         return "bypass permissions"
     if "execute" in caps:
@@ -206,17 +215,12 @@ def expansion_reach_tier(
             tier = max(tier, TIER_COMMENT)
 
     evidence = str(after.get("evidence_strength") or "")
-    # Doc-link / prose network alone stays comment (visible, non-fail).
-    if (
-        evidence == "INFERRED_HINT"
-        and added_caps <= {"access_network", "modify_agent_instructions"}
-        and not (after.get("launcher") and not before.get("launcher"))
-    ):
+    # Prose-inferred expansion stays visible on the comment; it never fails the
+    # required check unless the record carries a literal signal (env keys or a
+    # launcher). Instructions-only prose churn is representation (tier 0).
+    if evidence == "INFERRED_HINT" and not _literal_signal(after):
         if added_caps <= {"modify_agent_instructions"} and not added_dest:
             tier = TIER_SILENT
-        elif added_dest or "access_network" in added_caps:
-            # Keep on the comment; never escalate to fail for inferred hosts alone.
-            tier = TIER_COMMENT
         else:
             tier = min(tier, TIER_COMMENT)
     return tier

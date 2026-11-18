@@ -12,7 +12,7 @@ inputs:
     required: false
     default: "."
   mode:
-    description: scan (default). Legacy audit mode removed in 0.3.0.
+    description: scan (only supported value; kept for workflow compatibility)
     required: false
     default: "scan"
   baseline-inventory:
@@ -582,9 +582,11 @@ runs:
         DELTA="$AUCTELIS_OUTPUT_DIR/risk-delta.json"
         GATE_TXT="$AUCTELIS_OUTPUT_DIR/gate-report.txt"
         SKIP="$AUCTELIS_OUTPUT_DIR/comment-skip.txt"
+        FIRST_RUN="$AUCTELIS_OUTPUT_DIR/comment-first-run.md"
         # Quiet on NONE: no authority change means no new comment. If a sticky
         # comment exists from an earlier PR state, update it once to say so
-        # instead of leaving a stale PASS behind.
+        # instead of leaving a stale PASS behind. If it does not exist yet, this
+        # is a fresh install: post the first-run "watching" proof below.
         if [[ ! -f "$COMMENT" && -f "$SKIP" ]]; then
           echo "No authority change — comment skipped (comment-on-none=false)."
           echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
@@ -597,23 +599,30 @@ runs:
                 --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" 2>/dev/null \
                 | head -n 1 || true
             )"
-            if [[ -n "${existing_id}" ]]; then
-              NOCHANGE="$(mktemp)"
-              {
-                echo "$MARKER"
-                echo "### auctelis Authority Diff"
-                echo "**Verdict:** \`PASS\` · label \`NONE\`"
-                echo ""
-                echo "No authority change vs the base ref. No review required."
-              } >"$NOCHANGE"
-              if gh api "repos/${{ github.repository }}/issues/comments/${existing_id}" \
-                -X PATCH -F body=@"$NOCHANGE" >/dev/null 2>&1; then
-                echo "Updated sticky comment to no-change."
+            if [[ -z "${existing_id}" && -f "$FIRST_RUN" ]]; then
+              echo "First run on this PR and no sticky comment yet — posting installation check."
+              cp "$FIRST_RUN" "$COMMENT"
+            else
+              if [[ -n "${existing_id}" ]]; then
+                NOCHANGE="$(mktemp)"
+                {
+                  echo "$MARKER"
+                  echo "### auctelis Authority Diff"
+                  echo "**Verdict:** \`PASS\` · label \`NONE\`"
+                  echo ""
+                  echo "No authority change vs the base ref. No review required."
+                } >"$NOCHANGE"
+                if gh api "repos/${{ github.repository }}/issues/comments/${existing_id}" \
+                  -X PATCH -F body=@"$NOCHANGE" >/dev/null 2>&1; then
+                  echo "Updated sticky comment to no-change."
+                fi
+                rm -f "$NOCHANGE"
               fi
-              rm -f "$NOCHANGE"
+              exit 0
             fi
+          else
+            exit 0
           fi
-          exit 0
         fi
         # Adoption ceremony: no base lock + head lock must never sticky-comment as PASS.
         head_lock_rel="${AUCTELIS_LOCK_FILE:-AUTHORITY.lock}"

@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.12.0** |
-| Tooling package | **0.12.0** (`auctelis`) |
+| Product release | **0.12.1** |
+| Tooling package | **0.12.1** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -45,16 +45,20 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ## First user journey
 
 ```bash
-# Git tag is the supported install until PyPI returns the package.
-uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
+# PyPI one-line install (no permanent install step):
+uvx auctelis check                              # aha: ranked reach cards
 
-auctelis check                                  # aha: ranked reach cards
-auctelis diff --base origin/main                # BASELINE_NEEDED if no lock; no files written
+cd your-repo
+uvx auctelis init --owner security-owner        # comment-only setup
 # Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-auctelis init --owner security-owner            # comment-only setup
-auctelis init --owner security-owner --enforce  # optional locked gate
-auctelis trust mcp.linear.app                   # optional: network-only trust
+uvx auctelis init --owner security-owner --enforce  # optional locked gate
+```
+
+Fallback (if the index is unreachable):
+
+```bash
+uv tool install --python 3.12 \
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.1#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
@@ -83,7 +87,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.12.0`.
+Or pin the release tag: `@v0.12.1`.
 
 ### Modes
 
@@ -98,8 +102,12 @@ Or pin the release tag: `@v0.12.0`.
   unparsed / drift). A `NONE` PR gets no new comment; an existing sticky comment
   is updated once to "no authority change". The job summary always records the
   verdict.
+- **First run:** when no sticky comment exists yet, a quiet `NONE` PR posts one
+  "Watching" comment naming the reach surfaces the install can see. This is the
+  only time a no-change PR comments; it proves the Action is live. Later
+  no-change PRs are silent.
 - `comment-on-none: true` (Action) or `gate --comment-policy always` restores a
-  comment on every PR.
+  comment on every PR (and suppresses the separate first-run comment).
 - Default `init --enforce` + local `auctelis status --check` says
   "verify code-owner ruleset in GitHub" instead of failing offline. Use
   `status --check --require-protection` where a missing/UNVERIFIED ruleset must

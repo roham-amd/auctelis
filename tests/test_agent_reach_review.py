@@ -618,3 +618,100 @@ def test_pin_report_suggestion_for_docker():
         ]
     )
     assert "sha256" in pins["items"][0]["suggestion"]
+
+
+# --- AUCT-003 evidence-honest tiers ----------------------------------------
+
+
+def _skill(name: str) -> dict:
+    return {
+        "kind": "Skill",
+        "name": name,
+        "path": f"skills/{name}/SKILL.md",
+        "capabilities": [
+            "access_secrets",
+            "modify_agent_instructions",
+            "execute_commands",
+        ],
+        "destinations": ["example.com"],
+        "env_keys": [],
+        "launcher": "",
+        "evidence_strength": "INFERRED_HINT",
+    }
+
+
+def test_inferred_prose_secrets_is_comment_tier_not_fail():
+    from auctelis.reach_tiers import reach_reason
+
+    rec = _skill("docs-helper")
+    assert record_reach_tier(rec) == TIER_COMMENT
+    assert reach_reason(rec) == "inferred hint"
+    card = record_card(rec)
+    assert "tier 2" not in card
+    assert "tier 1 (inferred hint)" in card
+
+
+def test_literal_secrets_keeps_fail_tier():
+    rec = {**_skill("literal"), "evidence_strength": "LITERAL_CONFIG"}
+    assert record_reach_tier(rec) >= TIER_FAIL
+
+
+def test_inferred_with_literal_env_keys_keeps_fail_tier():
+    rec = {**_skill("with-env"), "env_keys": ["API_TOKEN"]}
+    assert record_reach_tier(rec) >= TIER_FAIL
+
+
+def test_inferred_with_launcher_keeps_fail_tier():
+    rec = {**_skill("with-launcher"), "launcher": "npx", "pin_state": "pinned"}
+    assert record_reach_tier(rec) >= TIER_FAIL
+
+
+def test_inferred_prose_expansion_never_fails():
+    from auctelis.reach_tiers import expansion_reach_tier
+
+    before = {
+        "kind": "Skill",
+        "capabilities": ["modify_agent_instructions"],
+        "destinations": [],
+        "evidence_strength": "INFERRED_HINT",
+    }
+    after = {
+        "kind": "Skill",
+        "capabilities": ["modify_agent_instructions", "access_secrets", "execute_commands"],
+        "destinations": ["example.com"],
+        "evidence_strength": "INFERRED_HINT",
+    }
+    assert expansion_reach_tier(before, after) < TIER_FAIL
+
+
+def test_skill_prose_secrets_never_fail_tier_end_to_end(tmp_path: Path):
+    """The dogfood failure mode: a SKILL.md that merely *mentions* secrets."""
+    from auctelis.authority_lock import build_authority_lock
+
+    root = tmp_path / "repo"
+    skill = root / "skills" / "docs-helper"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: docs-helper\n---\n\n# helper\n\nRead secrets from https://example.com/docs.\n",
+        encoding="utf-8",
+    )
+    head = build_authority_lock(root)
+    records = [r for r in head["records"] if "SKILL.md" in str(r.get("path"))]
+    assert records
+    rec = records[0]
+    assert rec["evidence_strength"] == "INFERRED_HINT"
+    assert "access_secrets" in rec["capabilities"]
+    assert record_reach_tier(rec) < TIER_FAIL
+
+    report, code = run_gate(
+        root,
+        base_lock=_write_base(tmp_path),
+        check_ruleset=False,
+        strict_ruleset=False,
+        comment_only=True,
+        trust_head_codeowners=True,
+    )
+    assert code == 0
+    assert report["label"] == "GROWTH"
+    assert report["max_reach_tier"] == TIER_COMMENT
+    assert report["needs_approval"] is False

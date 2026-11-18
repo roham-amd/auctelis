@@ -29,6 +29,6 @@ Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 - [ ] Prefer lockless workflow first (`templates/auctelis-diff.yml`)
 - [ ] Path under 10 minutes: paste workflow → PR → comment
 - [ ] Optional later: `init --owner team` / `--enforce`
-- [ ] Pin Action to git tag `v0.12.0` (or commit SHA)
+- [ ] Pin Action to git tag `v0.12.1` (or commit SHA)
 - [ ] Log row in `eval/pilot-metrics.csv`
 - [ ] Re-check day 30 and update this tracker

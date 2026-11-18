@@ -35,7 +35,13 @@ def _load_graph_analysis() -> Any:
 
 
 def load_report(path: Path) -> dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    """Load a JSON report object, failing closed with an actionable message."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"Cannot read report {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid JSON in report {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise SystemExit(f"Expected JSON object in {path}, got {type(data).__name__}")
     return data
@@ -61,7 +67,12 @@ def validate_graph_file(path: Path, *, semantic: bool = True) -> Any:
     graph = _load_graph_analysis()
     schema_path = repo_root() / "schemas" / "ecosystem-graph.schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    doc = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"Cannot read graph {path}: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"Invalid JSON in graph {path}: {exc}") from exc
     validator = Draft202012Validator(schema)
     errors = sorted(validator.iter_errors(doc), key=lambda e: list(e.path))
     if errors:

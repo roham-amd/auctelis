@@ -20,19 +20,18 @@ Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 ## Run
 
 ```bash
-# Install once (git tag; PyPI coming — see docs/INSTALL.md):
-uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.9.1#subdirectory=tools"
+# Install once (PyPI; git-tag fallback in docs/INSTALL.md):
+uvx auctelis check
 ```
 
 ```bash
 export AUCTELIS_AGENT=1
-auctelis check                # repo authority vs AUTHORITY.lock
-auctelis check --json         # authority-diff/1
-auctelis diff --base <ref>    # local PR Authority Diff simulator
-auctelis diff lock <base> <head>
-auctelis why <name>
-auctelis gate --base-lock <base.lock>   # read-only growth labels
+uvx auctelis check                # repo authority vs AUTHORITY.lock
+uvx auctelis check --json         # authority-diff/1
+uvx auctelis diff --base <ref>    # local PR Authority Diff simulator
+uvx auctelis diff lock <base> <head>
+uvx auctelis why <name>
+uvx auctelis gate --base-lock <base.lock>   # read-only growth labels
 ```
 
 Do **not** run `lock`, `init`, `ci init`, `run`, `snapshot --execute`, or

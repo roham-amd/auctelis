@@ -21,6 +21,7 @@ __all__ = [
     "AUCTELIS_COMMENT_MARKER",
     "escape_markdown",
     "render_authority_diff_comment",
+    "render_first_run_comment",
     "render_gate_pr_comment",
 ]
 
@@ -139,6 +140,60 @@ def render_gate_pr_comment(
         baseline_state=str(report.get("baseline_state") or "") or None,
         trusted_hosts=trusted_hosts,
     )
+
+
+def render_first_run_comment(report: dict[str, Any]) -> str:
+    """One "watching" comment on the first PR after install.
+
+    Quiet-on-``NONE`` makes a healthy install indistinguishable from a broken
+    one, so the Action posts this exactly once when no sticky comment exists
+    yet. It never claims ``PASS`` on growth, unparsed configs, or drift.
+    """
+    raw_reach = report.get("reach")
+    reach: dict[str, Any] = raw_reach if isinstance(raw_reach, dict) else {}
+    raw_counts = reach.get("tier_counts")
+    counts = raw_counts if isinstance(raw_counts, dict) else {}
+    total = int(reach.get("total") or 0)
+    tier2 = int(counts.get("tier2") or 0)
+    tier1 = int(counts.get("tier1") or 0)
+    tier0 = int(counts.get("tier0") or 0)
+    verdict = str(report.get("verdict") or "PASS").upper()
+    label = str(report.get("label") or "NONE").upper()
+    watching = (
+        verdict == "PASS"
+        and label == "NONE"
+        and not bool(report.get("meaningful_authority_change"))
+        and not bool(report.get("lock_tree_drift"))
+        and not int(report.get("unparsed") or 0)
+    )
+    if not watching:
+        # A first-run file must never present growth as a clean install check.
+        verdict = "NEEDS_REVIEW"
+    lines = [
+        "### auctelis Authority Diff",
+        f"**Verdict:** `{verdict}` · label `{label}` · first run",
+        f"**Watching:** {total} reach surface(s) — "
+        f"{tier2} fail tier · {tier1} comment tier · {tier0} silent",
+    ]
+    if total == 0:
+        lines.append(
+            "No agent configuration was discovered in this repository — "
+            "run `auctelis check` locally to see what auctelis can see."
+        )
+    top = [str(card) for card in (reach.get("top_cards") or []) if str(card).strip()][:3]
+    if top:
+        lines.append("**Top reach:**")
+        for card in top:
+            lines.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
+    if watching:
+        lines.append(
+            "**Next:** this PR did not change agent authority. The next PR that "
+            "adds or changes an MCP server, skill, hook, or permission will show "
+            "the Authority Diff."
+        )
+    else:
+        lines.append("**Next:** authority changed or could not be established — review the diff.")
+    return AUCTELIS_COMMENT_MARKER + "\n" + "\n".join(lines) + "\n"
 
 
 def render_authority_diff_comment(

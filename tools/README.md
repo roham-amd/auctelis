@@ -10,7 +10,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.12.0** · Product: auctelis **0.12.0** (install pin: `@v0.12.0` — see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.12.1** · Product: auctelis **0.12.1** (PyPI: `uvx auctelis`; fallback tag `@v0.12.1` — see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -37,15 +37,15 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 **User tool (recommended):**
 
 ```bash
-uv tool install --python 3.12 \
-  git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools
-# PyPI coming — git tag until the index returns the package.
-auctelis init --owner security             # policy + workflow + CODEOWNERS + lock
-auctelis check                             # repo authority vs AUTHORITY.lock
-auctelis lock --update                     # seal AUTHORITY.lock (empty baseline OK)
-auctelis diff --base origin/main           # local PR Authority Diff
-auctelis why <name>                        # exact config path
-auctelis demo                              # optional
+uvx auctelis check                         # no install step
+uvx auctelis init --owner security         # policy + workflow + CODEOWNERS + lock
+uvx auctelis lock --update                 # seal AUTHORITY.lock (empty baseline OK)
+uvx auctelis diff --base origin/main       # local PR Authority Diff
+uvx auctelis why <name>                    # exact config path
+uvx auctelis demo                          # optional
+
+# Persistent install (or fallback git tag if the index is unreachable):
+uv tool install --python 3.12 auctelis
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -145,17 +145,19 @@ uv run auctelis-dev lint [--fix] [--format] [--check-format]
 | `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
 | `authority_card.py` | One-line authority cards for PR comment |
 | `gate.py` | Base-lock growth labels + CODEOWNERS / ruleset check |
-| `security/` | Maintainer Guard engine: capabilities, rules, scan, baseline, report |
-| `security/rules.py` | Deterministic rules AUCTELIS-RULE-001…022 (pack 1.6) |
+| `security/` | Capabilities, evidence, gating, fingerprint, baseline/report models |
 | `inventory/` | Bounded I/O, adapter registry, collector, coverage |
 | `inventory/adapters/` | Skills, MCP, hooks, plugins, subagents, automations, A2A, workflows |
-| `export/` | SARIF, annotations, PR comment, agent digest |
+| `export/` | PR comment, agent digest, SARIF, authority SBOM |
 | `validate_report.py` / `semantic.py` | Schema + semantic validation |
-| `corpus/` | Tooling corpus runner |
-| `build.py` | Consistency checks (schemas, versions, links, pins) |
+| `build.py` | Consistency checks (schemas, versions, links, pins, install docs) |
 | `versioning.py` | Product/package version resolution |
 | `deps.py` / `pins.py` / `lint.py` | Engineering helpers |
 | `jsonio.py` / `textutil.py` | Shared I/O and escaping |
+
+Maintainer-only research lives in a separate package (`../tools/auctelis_research`):
+rules/corpus/eval/attack-replay, the annotate helpers, and the graph analysis used
+by corpus checks. It is not part of the product wheel.
 
 Library entry points: package docstring and [`../docs/CLI-REFERENCE.md`](../docs/CLI-REFERENCE.md).
 

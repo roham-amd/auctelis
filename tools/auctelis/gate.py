@@ -22,6 +22,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from auctelis.authority_card import reach_snapshot
 from auctelis.authority_lock import (
     LOCK_NAME,
     build_authority_lock,
@@ -29,6 +30,12 @@ from auctelis.authority_lock import (
     diff_authority_locks,
 )
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
+from auctelis.reach_tiers import (
+    TIER_COMMENT,
+    TIER_FAIL,
+    delta_max_reach_tier,
+    load_trusted_hosts,
+)
 from auctelis.security.engine import ScanResult, run_authority_inventory
 from auctelis.textutil import validated_http_url
 
@@ -602,13 +609,6 @@ def run_gate(
         not base_records and not (base.get("mcp_tools") or {}) and bool(head_records)
     )
 
-    from auctelis.reach_tiers import (
-        TIER_COMMENT,
-        TIER_FAIL,
-        delta_max_reach_tier,
-        load_trusted_hosts,
-    )
-
     owners = load_lock_owners(
         root, codeowners_path=codeowners_path, codeowners_text=codeowners_text
     )
@@ -849,6 +849,9 @@ def run_gate(
         "lines": report_lines,
         "authority_path_hints": list(AUTHORITY_PATH_HINTS),
         "head_source": "tree",
+        # Reach snapshot of head authority: lets the Action prove a fresh
+        # install is watching something even on a no-change ("quiet") PR.
+        "reach": reach_snapshot(head_records, limit=5, trusted_hosts=trusted_hosts),
     }
     if error:
         report["error"] = error

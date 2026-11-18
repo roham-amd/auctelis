@@ -68,19 +68,17 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# Git install only today — PyPI when the index returns the package; pin 0.12.0
-uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
+# PyPI one-line install; fall back to the git tag only if the index is unreachable.
+uvx auctelis check                          # aha: ranked reach cards
+uvx auctelis init --owner security          # comment-only default
+uvx auctelis init --owner security --enforce  # optional locked gate
 
-auctelis check                              # aha: ranked reach cards
-auctelis diff --base origin/main            # BASELINE_NEEDED if main has no lock
-# Lockless first: copy templates/auctelis-diff.yml → .github/workflows/
-auctelis init --owner security              # comment-only default
-auctelis init --owner security --enforce    # optional locked gate
-auctelis trust mcp.linear.app               # optional trusted destination
-auctelis status --check                     # comment-only OK; enforce says "verify in GitHub"
-auctelis demo                               # canned fixture + PR comment (exits 0)
-auctelis gate --base-lock AUTHORITY.lock    # authority-growth verdict
+# Advanced:
+uvx auctelis diff --base origin/main        # BASELINE_NEEDED if main has no lock
+uvx auctelis trust mcp.linear.app           # optional trusted destination
+uvx auctelis status --check                 # comment-only OK; enforce says "verify in GitHub"
+uvx auctelis demo                           # canned fixture + PR comment (exits 0)
+uvx auctelis gate --base-lock AUTHORITY.lock  # authority-growth verdict
 ```
 
 Empty baseline is expected: first growth under enforce is a CODEOWNERS review,

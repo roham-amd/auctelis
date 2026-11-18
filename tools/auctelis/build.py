@@ -283,8 +283,73 @@ def check_version_metadata() -> None:
             )
 
     check_install_doc_versions(product)
+    check_public_install_versions(product)
     check_bare_command_docs()
     check_policy_schema_contract()
+
+
+# First-run docs must agree on one install command. Anything else multiplies the
+# number of "valid first steps" before the user ever sees the product.
+_FIRST_RUN_DOCS = (
+    "README.md",
+    "docs/INSTALL.md",
+    "docs/AUCTELIS-GATE.md",
+    "docs/PLAYBOOK.md",
+    "skills/auctelis-auditor/SKILL.md",
+)
+
+# Every public doc that may name an install pin. A stale tag/PyPI pin is a trust
+# hit before the first command runs, so the build fails on it.
+_INSTALL_DOCS = (
+    *_FIRST_RUN_DOCS,
+    "docs/CLI-REFERENCE.md",
+    "docs/PRODUCT.md",
+    "docs/ROADMAP.md",
+    "docs/SECURITY-RULES.md",
+    "docs/pilots/RECRUITMENT.md",
+    "docs/auctelis-consumer-gate.example.yml",
+    "tools/README.md",
+    "SECURITY.md",
+)
+
+_GIT_TAG_PIN_RE = re.compile(
+    r"git\+https://github\.com/roham-amd/auctelis\.git@v([0-9][0-9A-Za-z.\-]*)"
+)
+_PACKAGE_PIN_RE = re.compile(r"auctelis==([0-9][0-9A-Za-z.\-]*)")
+
+
+def check_public_install_versions(product: str) -> None:
+    """Public install blocks must show ``uvx`` and never pin a stale version.
+
+    ``uvx auctelis`` is the one-line install; the git tag / wheel stay documented
+    as a fallback. Any ``git+…@vX`` or ``auctelis==X`` in a public doc must name
+    the current product version, so a release bump cannot leave a stale pin.
+    """
+    root = repo_root()
+    for rel in _INSTALL_DOCS:
+        path = root / rel
+        if not path.is_file():
+            raise SystemExit(f"Missing public install doc: {rel}")
+        text = path.read_text(encoding="utf-8")
+        for regex, label in (
+            (_GIT_TAG_PIN_RE, "git-tag pin"),
+            (_PACKAGE_PIN_RE, "package pin"),
+        ):
+            for match in regex.finditer(text):
+                found = match.group(1)
+                if found != product:
+                    raise SystemExit(
+                        f"{rel} pins {label} {found!r} but VERSION is {product!r}; "
+                        "update the install docs and the release pin together"
+                    )
+
+    for rel in _FIRST_RUN_DOCS:
+        text = (root / rel).read_text(encoding="utf-8")
+        if "uvx auctelis" not in text:
+            raise SystemExit(
+                f"{rel} must show `uvx auctelis` as the first-run install "
+                "(keep the git tag under a fallback heading)"
+            )
 
 
 def check_install_doc_versions(product: str) -> None:

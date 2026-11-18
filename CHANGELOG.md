@@ -7,6 +7,54 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.12.1] — 2026-11-18
+
+### Added
+- PyPI one-line install: `uvx auctelis check` is now the documented first run,
+  with the git tag and signed wheel kept under a fallback heading. The build
+  fails on any stale `git+…@vX` / `auctelis==X` install pin
+  (`check_public_install_versions`), so a release bump cannot leave the docs
+  behind.
+- First-run proof: the first quiet (`NONE`) PR after install posts one
+  "Watching: N reach surfaces …" comment. It is emitted only when no sticky
+  comment exists yet, so a healthy install is no longer indistinguishable from a
+  broken one. Later no-change PRs stay silent.
+- `gate` reports now carry a head reach snapshot (`reach`) used by the first-run
+  comment.
+
+### Fixed
+- Prose inference is capped at the comment tier. A record whose only evidence is
+  `INFERRED_HINT` no longer reaches tier 2 from a word like "secrets"; tier 2
+  requires a literal signal (declared `env_keys` or a launcher). Cards say
+  `tier 1 (inferred hint)` instead of naming a capability the config never
+  declared. Matches [`docs/REACH.md`](docs/REACH.md).
+- Trusted destinations no longer lower a record that declares a launcher. Host
+  trust covers network-only reach; a trusted host must not hide the executable
+  an MCP server starts. URL-only registrations are still lowered to the comment
+  tier.
+- `auctelis-dev run` works again: its positional argument no longer overwrites
+  the subcommand name, so `run -- <cmd>` executes instead of exiting 2.
+- Invalid JSON / unreadable report or graph files now fail with a clear message
+  instead of a traceback (`validate report`, `validate graph`, `export sarif`).
+- Stale 0.9.1 pins in the CLI reference, security-rules header, and explainer
+  skill; docs index now lists six public pages (everything else is documented
+  as maintainer depth); README first run shows two surfaces and the correct
+  diff-template path.
+
+### Changed
+- CLI architecture: `cli/dispatch.py` now holds only the product command
+  handlers (check/lock/init/status/gate/diff/trust/why/demo/ci); maintainer and
+  research handlers live in `cli/dev_commands.py`, so the product surface stays
+  small and the research boundary is explicit.
+- Reach tiering shares one `_literal_signal` helper instead of three copies of
+  the same condition; `gate` imports its tier/comment dependencies at module
+  scope.
+- Release 0.12.1 pins across templates, consumer example, pilot tracker, and
+  install docs.
+- Test suite: new coverage for the maintainer CLI split, reach-tier edges,
+  `require_review` class matching, report/graph validation errors, versioning
+  fallbacks, gate fail-closed paths, and the install-docs build guard.
+
 ## [0.12.0] — 2026-11-17
 
 ### Added

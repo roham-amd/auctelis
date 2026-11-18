@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.9.1** · product **0.9.1** · rule pack **1.6** (001–022).
+Package `auctelis` **0.12.1** · product **0.12.1** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -80,16 +80,17 @@ review, not forever `FAIL_CLOSED`.
 ## `auctelis init` (preferred) / `ci init` (legacy alias)
 
 ```bash
-auctelis init [PATH] --owner @TEAM [--force] [--enforce] [--apply]
-# legacy: auctelis ci init …
+auctelis init [PATH] --owner @TEAM [--force] [--enforce] [--advisory]
+# legacy alias: auctelis ci init … [--apply]
 ```
 
 Writes `.auctelis.yml`, `.github/workflows/auctelis-gate.yml`, CODEOWNERS
 (including discovered authority paths), and seals `AUTHORITY.lock`. Default
 mode is **comment-only** (`locked: false`); pass `--enforce` for the locked
-gate. `--apply` merges protection paths into an existing CODEOWNERS file and
-pins the Action to the release tag. Comment-only setup does not probe
-rulesets; enforce setup probes them as a warning (files are still written).
+gate. `init` always merges CODEOWNERS and pins the Action to the release tag
+(the `--apply` flag exists only on the `ci init` alias and is accepted there for
+backwards compatibility). Comment-only setup does not probe rulesets; enforce
+setup probes them as a warning (files are still written).
 
 ---
 
@@ -111,7 +112,9 @@ local use. CI should pass `--codeowners` from the base ref.
 
 `--comment-only` keeps the required check green but reports `NEEDS_REVIEW` on
 unreviewed growth (never `PASS`). `--comment-policy auto` (default) writes no
-`pr-comment.md` on `PASS`/`NONE`; `always` posts on every run.
+`pr-comment.md` on a quiet `PASS`/`NONE`; `always` posts on every run. On a quiet
+run the gate also writes `comment-first-run.md`; the Action posts it only when
+the PR has no sticky comment yet (first-run proof), then stays silent.
 
 ---
 
@@ -132,12 +135,12 @@ the same comment dialect as the Action. JSON includes `baseline_state`.
 ## `auctelis why`
 
 ```bash
-auctelis why NAME [PATH] [--home PATH]
+auctelis why NAME [PATH]
 ```
 
 Prints the exact config path, destination, launcher, permissions, and
 capabilities for one authority name. Default scope is the repository (`PATH`
-or cwd). `--home` uses the archived host inventory instead.
+or cwd).
 
 Exit `1` when nothing matches.
 

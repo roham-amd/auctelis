@@ -32,11 +32,19 @@ reach = destination host set ∩ launcher identity ∩ capabilities ∩ pin
 | 1 | comment | Network reach (including inferred doc links) |
 | 2 | fail | Execute, secrets, approvals, unattended, or new MCP/hook/host authority |
 
+Tier 2 requires **literal** evidence: declared `env_keys` or a launcher on the
+record. A record whose only evidence is `INFERRED_HINT` prose is capped at tier
+1 even when the prose mentions secrets or execution — a doc link cannot page a
+CODEOWNER the way a committed `env:` block does. The card says
+`tier 1 (inferred hint)` rather than naming a capability the config never
+declared.
+
 `.auctelis/trusted-hosts` (written by `auctelis trust <host>`) lowers
 **network-only** records whose destinations are all trusted to tier 1. It never
-lowers execute, secrets, approvals, unattended, or env-key reach. Entries must be
-specific hosts (TLD-only and wildcard entries are ignored). `trust --init`
-writes a starter list; nothing is trusted implicitly.
+lowers execute, secrets, approvals, unattended, env-key reach, or records that
+declare a launcher (a trusted host must not hide the executable it starts).
+Entries must be specific hosts (TLD-only and wildcard entries are ignored).
+`trust --init` writes a starter list; nothing is trusted implicitly.
 
 The trust file is itself authority: a PR could allowlist its own destination.
 The gate honors it only when CODEOWNERS covers `.auctelis/trusted-hosts` (or the

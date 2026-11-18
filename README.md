@@ -13,43 +13,36 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 
 ## First ten minutes
 
+There are exactly **two surfaces**: `check` locally, the Action on PRs.
+
 ```bash
-# Working install today (PyPI name reserved; package publish follows pilots):
-uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.0#subdirectory=tools"
-auctelis --version
+# 1. See the aha — no install step, no lock needed (2 min):
+uvx auctelis check
 
+# 2. In your repo: baseline + comment-only workflow + CODEOWNERS (2 min):
 cd your-repo
-auctelis check                    # aha: ranked reach cards (works with no lock)
-auctelis check --pins             # unpinned npx/uvx MCP servers + exact fixes
+uvx auctelis check
+uvx auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
 
-# Local Authority Diff — works even if the base ref has no AUTHORITY.lock
-# (verdict BASELINE_NEEDED; it does not write files).
-auctelis diff --base origin/main
-
-# Lockless (no init): paste templates/auctelis-diff.yml into .github/workflows/
-# Or comment-only setup:
-auctelis init --owner security    # advisory workflow + CODEOWNERS + lock
-# PowerShell: omit @ — auctelis adds it. Use --enforce for locked gate.
-# commit → PR → Authority Diff comment (only when authority changes)
-
-auctelis trust mcp.linear.app     # optional: benign network reach stays advisory
-auctelis status --check           # OK for comment-only; enforce says "verify in GitHub"
-auctelis why linear               # exact config path for one name
+# 3. Commit, open one PR, and read the first-run "Watching …" comment (2 min).
+#    The next PR that changes agent authority gets the Authority Diff.
 ```
 
-On a PR, the Action diffs **tree-derived** base→head authority (committed lock
-is drift-checked, never trusted as head) and posts the Authority Diff when
-authority changed. Default `init` is **comment-only** (advisory); pass
-`--enforce` for a required check. In comment-only mode, unreviewed growth is
-`NEEDS_REVIEW` — never a false `PASS` — and no-change PRs stay quiet
-(`comment-on-none: true` restores a comment on every PR). Auctelis **labels**
-growth and posts the diff — it does **not** count PR approvals; GitHub
-CODEOWNERS/rulesets do that when you enforce. Reach is tiered: inferred doc
-links stay comment-only; execute/secrets/new MCP fail under `--enforce`.
-Trusted destinations lower *network-only* reach to the comment tier but never
-hide secrets, execute, approvals, or unattended reach. Body-only instruction
-edits stay visible on the comment. An empty (0-record) base lock is
+The Action diffs **tree-derived** base→head authority (the committed lock is
+drift-checked, never trusted as head) and posts the Authority Diff when authority
+changed. Default `init` is **comment-only** (advisory); pass `--enforce` for a
+required check. In comment-only mode, unreviewed growth is `NEEDS_REVIEW` —
+never a false `PASS` — and no-change PRs stay quiet (`comment-on-none: true`
+restores a comment on every PR). The first PR after install posts one
+"Watching" comment as proof the gate is live, then silence is the product.
+
+Auctelis **labels** growth and posts the diff — it does **not** count PR
+approvals; GitHub CODEOWNERS/rulesets do that when you enforce. Reach is tiered:
+inferred doc links stay comment-only; literal execute/secrets/new MCP fail under
+`--enforce`. Trusted destinations lower *network-only* reach to the comment tier
+but never hide secrets, execute, approvals, unattended reach, or a record that
+declares a launcher. Body-only
+instruction edits stay visible on the comment. An empty (0-record) base lock is
 **empty-baseline growth**. Locally, `auctelis check` is the pre-push preflight.
 
 ```text
@@ -65,19 +58,32 @@ Agents must export `AUCTELIS_AGENT=1`; `lock`, `init`, and `ci init` are refused
 
 ---
 
-## Core commands
+## Advanced (not part of the first ten minutes)
+
+Everything below is a power-user surface. None of it is required for the two
+surfaces above.
 
 | Command | Purpose |
 | --- | --- |
-| `auctelis` / `check [--top N] [--pins]` | Ranked reach report vs `AUTHORITY.lock` (front door) |
 | `auctelis diff --base <ref>` | Local Authority Diff; `BASELINE_NEEDED` when the ref has no lock |
+| `auctelis check --pins` | Unpinned npx/uvx MCP servers + exact pin fixes |
 | `auctelis trust <host>` | Trusted destinations for network-only reach (`--list`, `--remove`, `--init`) |
-| `auctelis init --owner team` | Comment-only setup (`--enforce` for locked gate; `@` optional) |
-| `auctelis status [--check]` | Lock / workflow / CODEOWNERS / protection (`--require-protection` for CI) |
+| `auctelis status [--check]` | Lock / workflow / CODEOWNERS / protection status |
 | `auctelis lock --update` | Write / refresh the committed lock |
 | `auctelis gate --base-lock base.lock` | Tree-truth PR Authority Diff + CODEOWNERS gate |
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Packaged fixture (optional) |
+
+Lockless alternative to `init`: copy
+[`tools/auctelis/templates/auctelis-diff.yml`](tools/auctelis/templates/auctelis-diff.yml)
+into `.github/workflows/`.
+
+Fallback install (only if `uvx` cannot reach PyPI):
+
+```bash
+uv tool install --python 3.12 \
+  "git+https://github.com/roham-amd/auctelis.git@v0.12.1#subdirectory=tools"
+```
 
 Host tripwires were removed in 0.8.0. The product gate is **tree-truth** —
 research scan / annotate stay on `auctelis-dev` only and are not gate inputs.

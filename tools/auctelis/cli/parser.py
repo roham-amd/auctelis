@@ -496,7 +496,7 @@ def _add_dev_commands(sub: Any) -> None:
         help="Optional AUTHORITY.lock / AUTHORITY.lock.json",
     )
     run_cmd.add_argument(
-        "command",
+        "run_command",
         nargs=argparse.REMAINDER,
         help="Command after -- , e.g. auctelis-dev run -- npx -y server",
     )

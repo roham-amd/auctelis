@@ -21,7 +21,7 @@ jobs:
         # Tools are bundled in the Action — no pip install required.
         # High-assurance pin (recommended):
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.12.0
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.12.1
         with:
           path: .
           locked: "false"

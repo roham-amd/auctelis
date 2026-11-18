@@ -41,7 +41,7 @@ def write_scan_artifacts(
     Default (Authority Diff product path): findings, PR comment, short summary,
     SARIF, and authority snapshot/delta when present.
 
-    Pass ``full_report=True`` (``auctelis scan --full``) for inventory, graph,
+    Pass ``full_report=True`` (``auctelis-dev scan --full``) for inventory, graph,
     capabilities, long markdown/text reports, and profile metadata.
     """
     output_dir.mkdir(parents=True, exist_ok=True)

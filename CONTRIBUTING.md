@@ -38,9 +38,13 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
   sandbox limits.
 - Architecture: `lock_io` (schema/empty lock/seal hash) →
   `authority_lock` (build/diff) → `reach_tiers` (tier + trust) →
-  `authority_card` (cards/pins) → `export/pr_comment` (review UI) →
-  `gate` / `diff_base` (verdicts). Do not pull the research scanner into the
-  product gate path. Renderers must never invent evidence, hosts, or approvals.
+  `authority_card` (cards/pins) → `export/pr_comment` (review UI) → `gate` /
+  `diff_base` (verdicts). Do not pull the research scanner into the product
+  gate path. Renderers must never invent evidence, hosts, or approvals.
+- CLI: product handlers live in `cli/dispatch.py`; maintainer / research
+  handlers live in `cli/dev_commands.py` and are reached through the same
+  dispatcher. Keep `auctelis_research` imports lazy and behind
+  `require_research()` so the product wheel never depends on them.
 - Security: validate external URLs before `urlopen`; resolve executables with
   `shutil.which`; pass subprocess argv lists (never `shell=True`); keep target
   strings escaped before markdown/terminal output.

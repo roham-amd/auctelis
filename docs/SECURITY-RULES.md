@@ -6,7 +6,7 @@
 Rules live in `tools/auctelis/security/rules.py` and are applied by
 `auctelis-dev scan` (CI / maintainer annotation only).
 
-**Version:** rule pack **1.6** (tooling **0.9.1** / product **0.9.1**). Twenty-two rules (001-022), annotations behind `auctelis-dev scan` / the PR Authority Diff. Install from the git tag in [`INSTALL.md`](INSTALL.md) until PyPI returns the package.
+**Version:** rule pack **1.6** (tooling **0.12.1** / product **0.12.1**). Twenty-two rules (001-022), annotations behind `auctelis-dev scan` / the PR Authority Diff. Install with `uvx auctelis` (see [`INSTALL.md`](INSTALL.md)).
 
 **Discipline:** rules emit findings with confidence `OBSERVED` or `POTENTIAL`. They never claim confirmed runtime exploitation. Every finding references evidence and lists missing controls. Each finding also carries `evidence_strength` (`LITERAL_CONFIG` / `INFERRED_HINT` / `NAME_MARKER`). Severity and confidence stay separate. `NAME_MARKER` must not alone create a critical CI gate. See [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md).
 

@@ -20,8 +20,8 @@ jobs:
           fetch-depth: 0
 
       - name: auctelis Authority Diff
-        # Pinned by auctelis to release v0.12.0 (never consumer-repo HEAD)
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.12.0
+        # Pinned by auctelis to release v0.12.1 (never consumer-repo HEAD)
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.12.1
         with:
           path: .
           mode: scan
