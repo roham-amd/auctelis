@@ -63,13 +63,9 @@ def test_inventory_finds_skill_and_mcp():
     assert "adapter_matrix" in payload["coverage"]
 
 
-def test_preflight_graph_helpers(tmp_path: Path):
+def test_ecosystem_graph_helper(tmp_path: Path):
     from auctelis.jsonio import write_json
-    from auctelis.preflight import (
-        build_audit_context_md,
-        inventory_to_graph,
-        run_preflight,
-    )
+    from auctelis.preflight import inventory_to_graph
     from auctelis_devtools.validate_report import validate_graph_file
 
     root = (
@@ -81,12 +77,6 @@ def test_preflight_graph_helpers(tmp_path: Path):
     write_json(out, graph)
     result = validate_graph_file(out)
     assert result.ok, [f"{i.code}: {i.message}" for i in result.issues]
-    ctx = build_audit_context_md(inv, commit="deadbeef")
-    assert "NOT VERIFIED" in ctx
-    assert "deadbeef" in ctx
-    pf = run_preflight(root, output_dir=tmp_path / "pf-out")
-    assert pf["component_count"] >= 2
-    assert (tmp_path / "pf-out" / "inventory.json").is_file()
 
 
 def test_github_workflow_adapter(tmp_path: Path):

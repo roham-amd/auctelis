@@ -129,10 +129,13 @@ Each record may also seal:
 | `evidence_strength` | `LITERAL_CONFIG` / `INFERRED_HINT` / `NAME_MARKER` |
 
 Same identity with a different launcher/args/host is a **`replacement`** (needs approval).
-Opt-in: `auctelis lock --snapshot tools.json` merges `mcp_tools` description pins.
+Hidden maintainer-only (source checkout): `auctelis lock --snapshot tools.json`
+merges `mcp_tools` description pins; it is not part of the public product
+contract and is unavailable in the wheel.
 
 Host tripwires (`watch` / `allow` / `hook`) and public scanner CLIs are
-**removed**. Product path: diff --base → init --owner team → check → gate.
+**removed**. Product path: check → diff --base → lockless workflow or
+init --owner team → gate.
 
 ---
 
@@ -164,4 +167,5 @@ See [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md).
 - Rubber-stamping lock updates without reading expansion lines
 - Treating representation churn as a security regression
 - Using suppressions in `.auctelis.yml` instead of reviewing lock expansions
-- Letting a PR edit policy on the head ref without `trusted-policy` from base
+- Letting a PR edit `.auctelis.yml` without the base-ref policy-edit guard
+  (`trusted-policy=true`) and CODEOWNERS coverage

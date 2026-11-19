@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from auctelis.lock_io import load_authority_lock
-from auctelis.process_env import scrub_env
+from auctelis_research.process_env import scrub_env
 
 # Backward-compatible re-export (tests / older imports).
 __all__ = ["load_authority_lock", "run_brokered"]

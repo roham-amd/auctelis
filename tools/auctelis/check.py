@@ -14,11 +14,13 @@ from typing import Any
 
 from auctelis.authority_card import (
     delta_cards,
+    find_records_by_name,
     highlight_cards,
     kind_label,
     pin_report,
     reach_snapshot,
     sealable_records,
+    why_record,
 )
 from auctelis.authority_lock import (
     LOCK_NAME,
@@ -29,6 +31,7 @@ from auctelis.authority_lock import (
 )
 from auctelis.lock_io import AuthorityLockError, empty_authority_lock, load_authority_lock
 from auctelis.security.engine import ScanResult, run_authority_inventory
+from auctelis.textutil import sanitize_terminal_line, strip_control
 
 _REACH_KEYS = (
     "mcp",
@@ -62,11 +65,11 @@ def _counts(records: list[dict[str, Any]]) -> dict[str, int]:
 def _unparsed_count(scan: ScanResult | None) -> int:
     if scan is None:
         return 0
-    coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
-    try:
-        return int(coverage.get("unparsed_agent_config_count") or 0)
-    except (TypeError, ValueError):
-        return 0
+    from auctelis.inventory.coverage import unparsed_agent_config_count_from_coverage
+
+    return unparsed_agent_config_count_from_coverage(
+        scan.coverage if isinstance(scan.coverage, dict) else {}
+    )
 
 
 def _gated_finding_count(scan: ScanResult | None) -> int:
@@ -155,14 +158,13 @@ def build_check_report(
             return report, [], scan
     else:
         report["first_run"] = True
-        cards, highlight_total, inventory_total = highlight_cards(head_records)
+        # Counts only; cards come from the ranked reach snapshot unless the
+        # caller explicitly asked for the full first-run inventory (--top 0
+        # means hide cards, so no render is needed there either).
+        _unused_cards, highlight_total, inventory_total = highlight_cards(head_records, limit=0)
         report["highlight_total"] = highlight_total
         report["inventory_total"] = inventory_total
-        # Five-card reach report first; the full inventory stays in JSON / lock.
-        if top <= 0:
-            cards = []
-        elif report["reach"].get("top_cards"):
-            cards = list(report["reach"]["top_cards"])
+        cards = list(report["reach"].get("top_cards") or [])
         report["meaningful"] = False
         report["label"] = "NONE"
         report["verdict"] = "BASELINE_NEEDED"
@@ -214,21 +216,19 @@ def why_repo(
     root: Path | None = None,
 ) -> tuple[list[str], int]:
     """Resolve ``auctelis why <name>`` against the current repository."""
-    from auctelis.authority_card import find_records_by_name, why_record
-
     repo = (root or Path.cwd()).expanduser().resolve()
     scan = run_authority_inventory(repo)
     head = build_authority_lock(repo, scan=scan)
     matches = find_records_by_name(list(head.get("records") or []), query)
     if not matches:
-        return [f'auctelis why: no authority record matched "{query}"'], 1
+        return [f'auctelis why: no authority record matched "{strip_control(query)}"'], 1
     lines: list[str] = []
     for record in matches[:5]:
         lines.extend(why_record(record))
         lines.append("")
     if len(matches) > 5:
         lines.append(f"… +{len(matches) - 5} more matches")
-    return lines, 0
+    return [sanitize_terminal_line(line) for line in lines], 0
 
 
 def _inventory_line(report: dict[str, Any]) -> str:
@@ -274,7 +274,8 @@ def _pins_line(report: dict[str, Any]) -> str:
     total = int(pins.get("total") or 0)
     if not unpinned:
         return ""
-    noun = "server" if unpinned == 1 else "servers"
+    # "1 of 2 MCP servers": the noun agrees with the total, not the subset.
+    noun = "server" if total == 1 else "servers"
     return (
         f"Pins: {unpinned} of {total} MCP {noun} unpinned (run `auctelis check --pins` for fixes)"
     )
@@ -293,7 +294,12 @@ def render_pin_report(report: dict[str, Any]) -> str:
         env = f" · env {', '.join(item['env_keys'])}" if item.get("env_keys") else ""
         lines.append(f"  {item['name']}{where} · pin {item['pin_state']}{env}")
         lines.append(f"    → {item['suggestion']}")
-    return "\n".join(lines)
+    return "\n".join(sanitize_terminal_line(line) for line in lines)
+
+
+def _terminal(lines: list[str]) -> str:
+    """Join CLI output, stripping control/bidi characters from repo-controlled text."""
+    return "\n".join(sanitize_terminal_line(line) for line in lines)
 
 
 def render_check(
@@ -303,7 +309,7 @@ def render_check(
     """Render the one-screen repo authority check."""
     error = report.get("error")
     if error:
-        return f"auctelis check: {error}\nFail-closed: fix or reseal {LOCK_NAME}."
+        return _terminal([f"auctelis check: {error}", f"Fail-closed: fix or reseal {LOCK_NAME}."])
 
     lines: list[str] = []
     repo = report.get("repository") or "."
@@ -348,12 +354,11 @@ def render_check(
         lines.append("")
         lines.append(f"Verdict: {verdict} · label {label}")
         lines.append(
-            "Next: auctelis check --report out/  # HTML/MD/JSON Reach Report, or paste "
-            "templates/auctelis-diff.yml for lockless PR Watching "
-            f"(optional enforce: auctelis lock --update → {LOCK_NAME})"
+            "Next: auctelis init --lockless  # one-file comment-only PR Watch, or "
+            "auctelis check --report out/ for an HTML/MD/JSON Reach Report"
         )
         lines.extend(_coverage_footer())
-        return "\n".join(lines)
+        return _terminal(lines)
 
     if not report.get("meaningful"):
         lines.append(f"auctelis check · {LOCK_NAME} matches · {label}")
@@ -367,7 +372,7 @@ def render_check(
         if pins_line:
             lines.append(pins_line)
         lines.extend(_coverage_footer())
-        return "\n".join(lines)
+        return _terminal(lines)
 
     lines.append(f"auctelis check · {verdict} · {label}")
     if unparsed:
@@ -386,7 +391,7 @@ def render_check(
     lines.append("")
     lines.append(f"Next: review the delta, then `auctelis lock --update` and commit {LOCK_NAME}")
     lines.extend(_coverage_footer())
-    return "\n".join(lines)
+    return _terminal(lines)
 
 
 def check_exit_code(report: dict[str, Any]) -> int:

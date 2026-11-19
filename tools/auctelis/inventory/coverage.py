@@ -137,23 +137,50 @@ _AGENT_CONFIG_MARKERS = (
 
 
 def count_unparsed_agent_configs(events: list[Any] | None) -> int:
+    """Count distinct agent-config files that could not be parsed.
+
+    Adapters may emit both ``parse_error`` and ``unparsed_agent_config`` for the
+    same file; counting events would double-report one broken config and make
+    ``NOT PARSED`` look worse than the evidence. Key by normalized path.
+    """
+    seen: set[str] = set()
     count = 0
-    for event in events or []:
+    for index, event in enumerate(events or []):
         if not isinstance(event, dict):
             continue
         etype = str(event.get("type") or "")
         path = str(event.get("path") or "").replace("\\", "/").lower()
-        if etype == "unparsed_agent_config":
-            count += 1
+        matched = etype == "unparsed_agent_config" or (
+            etype
+            in {
+                "parse_error",
+                "parse_skipped_size",
+                "skipped_oversize",
+                "file_too_large",
+            }
+            and any(marker in path for marker in _AGENT_CONFIG_MARKERS)
+        )
+        if not matched:
             continue
-        if etype in {
-            "parse_error",
-            "parse_skipped_size",
-            "skipped_oversize",
-            "file_too_large",
-        } and any(marker in path for marker in _AGENT_CONFIG_MARKERS):
-            count += 1
+        key = path or f"#event-{index}"
+        if key in seen:
+            continue
+        seen.add(key)
+        count += 1
     return count
+
+
+def unparsed_agent_config_count_from_coverage(coverage: dict[str, Any] | None) -> int:
+    """Read the stored count, falling back to parser events for legacy payloads."""
+    cov = coverage if isinstance(coverage, dict) else {}
+    stored = cov.get("unparsed_agent_config_count")
+    if stored is not None:
+        try:
+            return int(stored)
+        except (TypeError, ValueError):
+            return 0
+    events = cov.get("parser_events")
+    return count_unparsed_agent_configs(events if isinstance(events, list) else [])
 
 
 def count_truncation_events(events: list[Any] | None) -> dict[str, int]:
@@ -211,20 +238,28 @@ def family_coverage_line_from_coverage(
     *,
     unparsed: int | None = None,
 ) -> str:
-    """Honest maturity counts — never present supported_ratio as a clearance %."""
+    """Honest maturity counts — never present supported_ratio as a clearance %.
+
+    Discovered-component maturity and uninspected-family counts are different
+    facts. ``component_counts_by_maturity`` says how well the components this
+    scan *found* were parsed; it is 0 MANUAL_ONLY whenever every discovered
+    component happens to use an adapter, even though families with no adapter
+    at all still need manual review. Report both so a zero cannot be misread
+    as "nothing needs a human".
+    """
     if not isinstance(coverage, dict):
         return "Coverage: (unavailable)"
     by = coverage.get("component_counts_by_maturity") or {}
     supported = int(by.get("SUPPORTED") or 0)
     partial = int(by.get("PARTIAL") or 0)
-    manual = int(by.get("MANUAL_ONLY") or 0)
-    unsupported = int(by.get("UNSUPPORTED") or 0)
     if unparsed is None:
         unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
+    manual_families = sum(1 for row in ADAPTER_COVERAGE if row["maturity"] == "MANUAL_ONLY")
+    unsupported_families = sum(1 for row in ADAPTER_COVERAGE if row["maturity"] == "UNSUPPORTED")
     return (
-        f"Coverage: SUPPORTED {supported} · PARTIAL {partial} · "
-        f"MANUAL_ONLY {manual} · UNSUPPORTED {unsupported}"
-        + (f" · NOT PARSED {unparsed}" if unparsed else "")
+        f"Coverage: discovered SUPPORTED {supported} · PARTIAL {partial} | "
+        f"uninspected families: {manual_families} MANUAL_ONLY · "
+        f"{unsupported_families} UNSUPPORTED" + (f" · NOT PARSED {unparsed}" if unparsed else "")
     )
 
 

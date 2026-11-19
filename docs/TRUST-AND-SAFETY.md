@@ -16,7 +16,7 @@ Related: [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md), [`POLICY.md`](POLICY.md),
 | Filesystem safety | Bound traversal, file size, parser time, artifact count; handle symlinks | `CollectorLimits` + path containment in inventory I/O |
 | Network safety | No MCP or production-endpoint contact during passive inspection | Passive commands do not fetch remote MCP tools or install packages. `gate` may query GitHub rulesets with a token |
 | Secret handling | Redact literal credentials in terminal/reports while preserving that a credential-like value was found | Findings cite evidence without echoing secrets; env values not hashed into digests |
-| Policy integrity | PR authors cannot grant themselves trust | Action loads `.auctelis.yml` from base ref when `trusted-policy=true` |
+| Policy integrity | PR authors cannot grant themselves trust | With `trusted-policy=true`, the Action fails edits to an existing `.auctelis.yml` unless base-ref CODEOWNERS covers it; policy changes appear in the tree-truth diff |
 | Provenance | Reports record assessed commit, scanner version, rules version, parsers | `findings.json` → `provenance` + evidence `rule_pack_version` / digests |
 | Human approval | Lock and policy updates are reviewable | `AUTHORITY.lock` + CODEOWNERS + branch protection |
 | Honest coverage | Unsupported surfaces never silently disappear | `coverage.adapter_matrix` + unparsed fail-closed |

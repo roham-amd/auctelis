@@ -16,18 +16,12 @@ inputs:
       modes were removed; do not use mode to disable the gate).
     required: false
     default: "scan"
-  policy:
-    description: >-
-      Explicit path to .auctelis.yml. When empty and trusted-policy=true on a PR,
-      policy is loaded from the base ref. Otherwise only the scan-target file is
-      used (never a parent outside the target).
-    required: false
-    default: ""
   trusted-policy:
     description: >-
-      If true on pull_request events, load .auctelis.yml from the base ref so the PR
-      author cannot weaken the gate by editing policy on the head ref. Also fails
-      the job when the PR modifies .auctelis.yml (authority-surface change).
+      If true on pull_request events, fail the job when the PR modifies an
+      existing .auctelis.yml unless base-ref CODEOWNERS covers that file. The
+      gate diffs the policy hash from tree-truth; it does not execute policy
+      rules from the head ref.
     required: false
     default: "true"
   output-dir:
@@ -219,8 +213,9 @@ runs:
         if git diff --name-only "${base}..HEAD" | grep -E '(^|/)\.auctelis\.yml$' >/dev/null; then
           # First-adoption PRs that *add* .auctelis.yml (absent on base) must not fail the gate.
           if git cat-file -e "${base}:.auctelis.yml" 2>/dev/null; then
-            # Policy edits are allowed when trusted base-ref CODEOWNERS covers .auctelis.yml;
-            # the gate still loads the trusted base-ref policy for this PR.
+            # Policy edits are allowed only when trusted base-ref CODEOWNERS
+            # covers .auctelis.yml. The gate still diffs the head policy hash
+            # against the tree-truth base lock, so an approved edit is visible.
             owners_text=""
             for cand in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
               if owners_text="$(git show "${base}:${cand}" 2>/dev/null)"; then
@@ -229,7 +224,7 @@ runs:
               owners_text=""
             done
             if [[ -n "$owners_text" ]] && printf '%s\n' "$owners_text" | grep -E '(^|[[:space:]])\.auctelis\.yml([[:space:]]|$)' >/dev/null 2>&1; then
-              echo "::notice::PR edits .auctelis.yml under base CODEOWNERS; gate still uses base-ref policy for this run."
+              echo "::notice::PR edits .auctelis.yml under base CODEOWNERS; the diff will show the policy change for review."
             else
               echo "::error::PR modifies existing .auctelis.yml without base CODEOWNERS coverage. Add a .auctelis.yml owner, or keep policy edits on their own PR."
               exit 1
@@ -239,43 +234,6 @@ runs:
           fi
         fi
         echo "No blocking .auctelis.yml edits in this PR."
-
-    - name: Resolve trusted policy path
-      if: steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan'
-      id: trusted_policy
-      shell: bash
-      env:
-        AUCTELIS_PATH: ${{ inputs.path }}
-        AUCTELIS_BASE_REF: ${{ github.base_ref }}
-        AUCTELIS_TRUSTED: ${{ inputs.trusted-policy }}
-        AUCTELIS_POLICY_INPUT: ${{ inputs.policy }}
-        AUCTELIS_EVENT: ${{ github.event_name }}
-      run: |
-        set -euo pipefail
-        echo "path=" >> "$GITHUB_OUTPUT"
-        if [[ -n "${AUCTELIS_POLICY_INPUT}" ]]; then
-          exit 0
-        fi
-        if [[ "${AUCTELIS_TRUSTED}" != "true" || "${AUCTELIS_EVENT}" != "pull_request" ]]; then
-          exit 0
-        fi
-        out="${RUNNER_TEMP}/auctelis-trusted-policy.yml"
-        rm -f "$out"
-        base="origin/${AUCTELIS_BASE_REF}"
-        if ! git rev-parse --verify "$base" >/dev/null 2>&1; then
-          base="${AUCTELIS_BASE_REF}"
-        fi
-        rel="${AUCTELIS_PATH%/}/.auctelis.yml"
-        rel="${rel#./}"
-        if git show "${base}:${rel}" >"$out" 2>/dev/null; then
-          echo "Loaded trusted policy from ${base}:${rel}"
-          echo "path=${out}" >> "$GITHUB_OUTPUT"
-        elif git show "${base}:.auctelis.yml" >"$out" 2>/dev/null; then
-          echo "Loaded trusted policy from ${base}:.auctelis.yml"
-          echo "path=${out}" >> "$GITHUB_OUTPUT"
-        else
-          echo "No base-ref .auctelis.yml; scan will proceed without a trusted policy file."
-        fi
 
     - name: Extract base-ref AUTHORITY.lock (tree-truth)
       id: auth_diff

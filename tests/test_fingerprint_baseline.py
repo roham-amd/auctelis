@@ -5,13 +5,13 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from auctelis.security.baseline import diff_against_baseline, save_baseline
 from auctelis.security.engine import run_security_scan
 from auctelis.security.fingerprint import (
     component_fingerprint,
     finding_key,
     paths_by_fingerprint,
 )
+from auctelis_research.baseline import diff_against_baseline, save_baseline
 
 
 def _write_skill(root: Path, folder: str, body: str, *, name: str | None = None) -> Path:

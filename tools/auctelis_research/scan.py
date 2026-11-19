@@ -16,10 +16,10 @@ from auctelis.security.authority import (
     diff_authority_snapshots,
     render_component_delta_lines,
 )
-from auctelis.security.baseline import diff_against_baseline, load_baseline, save_baseline
 from auctelis.security.engine import ScanResult, run_security_scan
 from auctelis.security.gating import compute_exit_code
-from auctelis.security.report import render_markdown_summary, render_terminal_report
+from auctelis_research.baseline import diff_against_baseline, load_baseline, save_baseline
+from auctelis_research.report import render_markdown_summary, render_terminal_report
 
 
 def write_scan_artifacts(

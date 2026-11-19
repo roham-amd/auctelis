@@ -8,9 +8,9 @@ Repository-level defaults for the **Action mode label** and optional
 | --- | --- |
 | Contract | **1.3** (`require_review` / suppressions apply to maintainer scan) |
 | Product default | `mode: advisory` (comment-only); `fail_on: never` (no promotion) |
-| Local CLI | Target `.auctelis.yml` ignored by product `check`/`lock`/`gate` unless a maintainer scan opts in |
+| Local CLI | Product `check`/`lock`/`gate` do **not** honor `fail_on` or suppressions, but `lock` seals the policy hash and any policy change is diffed as review-worthy (tier-2 growth) |
 | Discovery (when trusted) | Look for `.auctelis.yml` **inside the scan target tree only** |
-| CI trust | Action `trusted-policy=true` loads `.auctelis.yml` from the **PR base ref**; CODEOWNERS-covered policy edits are allowed, but the gate still uses the base-ref copy |
+| CI trust | Action `trusted-policy=true` fails edits to an existing `.auctelis.yml` unless **base-ref CODEOWNERS** covers it; the tree-truth diff still shows the policy-hash change for review |
 | Override | Explicit CLI flags always win |
 | Disable research policy | `auctelis-dev scan --no-policy` |
 
@@ -92,7 +92,8 @@ A policy file that the PR author can edit is not a gate. In CI:
 
 1. Set Action input `trusted-policy: true` (default).
 2. Default shallow checkout works (`action.yml` fetches the base ref at `--depth=1` automatically; `fetch-depth: 0` is not required).
-3. Prefer the **Action-bundled tools** (no consumer `pip install`). If using
-   `install-tools-from: path`, pin a release-tag checkout — never PR `./tools`.
-4. CODEOWNERS must cover `.auctelis.yml` for policy edits; the Action still
-   loads the trusted base-ref policy for that run.
+3. Prefer the **Action-bundled tools** (no consumer `pip install`). The literal
+   values `path` / `pypi` use a preinstalled `auctelis` on `PATH`; any directory
+   input must be a pinned release checkout — never PR `./tools`.
+4. CODEOWNERS must cover `.auctelis.yml` for policy edits; the tree-truth diff
+   shows the policy-hash change for review even when the edit is authorized.

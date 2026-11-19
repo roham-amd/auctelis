@@ -9,8 +9,8 @@ from auctelis.security.authority import (
     build_authority_snapshot,
     diff_authority_snapshots,
 )
-from auctelis.security.baseline import diff_against_baseline, save_baseline
 from auctelis.security.decision import compute_decision
+from auctelis_research.baseline import diff_against_baseline, save_baseline
 from auctelis_research.scan import run_scan
 
 

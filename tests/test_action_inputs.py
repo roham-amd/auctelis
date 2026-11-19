@@ -48,6 +48,15 @@ def test_deprecated_research_inputs_removed():
     assert "\n  baseline-inventory:\n" not in text
 
 
+def test_unused_policy_input_and_resolution_step_are_gone():
+    """The gate diffs tree-truth policy hashes; it never consumed a resolved policy path."""
+    text = _action_text()
+    assert "\n  policy:\n" not in text
+    assert "Resolve trusted policy path" not in text
+    assert "trusted_policy.outputs" not in text
+    assert "trusted-policy:" in text  # the edit guard remains
+
+
 def test_strict_defaults_on_when_locked():
     text = _action_text()
     strict_block = text.split("strict-ruleset:", 1)[1][:800]

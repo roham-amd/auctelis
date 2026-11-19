@@ -22,7 +22,7 @@ reach = destination host set ∩ launcher identity ∩ capabilities ∩ pin
 | New executable | A launcher / argv digest change on an identity |
 | New secrets | New `env_keys` or secrets-class capabilities |
 | Permission posture | Host settings `approval_posture` / `permission_allows` (e.g. bypass) |
-| Inventory | Skills, commands, and other sealable records — **all shown before seal** |
+| Inventory | Skills, commands, and other sealable records — **all sealed and available via `--top` / `--json` / the lock**; the terminal shows the top N by default |
 
 ## Tiers and trust
 

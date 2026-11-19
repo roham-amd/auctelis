@@ -32,6 +32,10 @@ from auctelis.gate import render_gate_report, run_gate
 from auctelis.jsonio import print_json, read_json, write_json, write_text
 from auctelis.lock_io import load_authority_lock
 from auctelis.policy import load_policy
+from auctelis.textutil import sanitize_terminal_line
+
+# Materialized packaged-demo trees; TemporaryDirectory finalizers clean them up.
+_DEMO_TEMP_DIRS: list[object] = []
 
 
 def dispatch(args: argparse.Namespace) -> int:
@@ -240,7 +244,11 @@ def _materialize_packaged_demo(source: Path) -> Path:
     import shutil
     import tempfile
 
-    dest = Path(tempfile.mkdtemp(prefix="auctelis-demo-"))
+    # Keep the TemporaryDirectory alive for the process lifetime; its finalizer
+    # removes the materialized fixture instead of leaking one tree per `demo`.
+    tmp = tempfile.TemporaryDirectory(prefix="auctelis-demo-")
+    _DEMO_TEMP_DIRS.append(tmp)
+    dest = Path(tmp.name)
     mapping = (
         (Path("README.md"), Path("README.md")),
         (Path("skills") / "bootstrap" / "SKILL.md", Path("skills") / "bootstrap" / "SKILL.md"),
@@ -441,6 +449,8 @@ def _cmd_init(args: argparse.Namespace) -> int:
     refused = refuse_agent_mutation("init")
     if refused is not None:
         return refused
+    if bool(getattr(args, "lockless", False)):
+        return _cmd_init_lockless(args)
     # Prefer apply semantics (merge CODEOWNERS, pin release, probe ruleset).
     args.apply = True
     args.advisory = bool(getattr(args, "advisory", False))
@@ -448,6 +458,42 @@ def _cmd_init(args: argparse.Namespace) -> int:
     args.accept_gated = bool(getattr(args, "accept_gated", False))
     args.ci_command = "init"
     return _cmd_init_gate(args)
+
+
+def _cmd_init_lockless(args: argparse.Namespace) -> int:
+    """Write only the comment-only Authority Diff workflow (no lock ceremony).
+
+    Lockless is the lowest-friction first contact: one YAML file, no owner,
+    no ``.auctelis.yml``, no CODEOWNERS, no ``AUTHORITY.lock``. The Action's
+    tree-truth diff works from the PR base ref alone and stays quiet on NONE.
+    """
+    if bool(getattr(args, "enforce", False)):
+        print(
+            "--lockless writes a comment-only workflow and cannot be combined with "
+            "--enforce.\nFor enforce, run `auctelis init --owner @team --enforce`."
+        )
+        return 2
+    root = args.path.resolve()
+    workflow_dir = root / ".github" / "workflows"
+    workflow_path = workflow_dir / "auctelis.yml"
+    template_path = Path(__file__).resolve().parents[1] / "templates" / "auctelis-diff.yml"
+    workflow_body = _pin_workflow_to_release(template_path.read_text(encoding="utf-8"))
+    if workflow_path.exists() and not bool(getattr(args, "force", False)):
+        print(f"Exists (use --force): {workflow_path}")
+    else:
+        workflow_dir.mkdir(parents=True, exist_ok=True)
+        workflow_path.write_text(workflow_body, encoding="utf-8", newline="\n")
+        print(f"Wrote: {workflow_path}")
+    pin = _resolve_action_pin_ref()
+    print(f"Action pin: roham-amd/auctelis/.github/actions/auctelis-gate@{pin}")
+    print("Next: git add .github/workflows/auctelis.yml")
+    print(
+        'Commit and open the install PR: it gets one PASS "Watching" comment; '
+        "after that, only PRs that change agent authority get the diff."
+    )
+    print("Lockless: no AUTHORITY.lock, .auctelis.yml, or CODEOWNERS written.")
+    print("Optional enforce later: auctelis init --owner @team --enforce")
+    return 0
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
@@ -475,6 +521,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
     comment_only = False
     locked = False
     has_gate = False
+
+    def _emit() -> None:
+        # Lock/policy errors embed repo-controlled field names; keep stdout line-safe.
+        print("\n".join(sanitize_terminal_line(line) for line in lines))
 
     if lock_path.is_file():
         try:
@@ -509,16 +559,17 @@ def _cmd_status(args: argparse.Namespace) -> int:
         body = workflow_file.read_text(encoding="utf-8")
         has_gate, locked, pin = _workflow_locked_state(body)
         comment_only = not locked
+        visible_body = _visible_workflow_text(body)
         # Prefer the Action input; fall back to CLI flag presence for older workflows.
         strict_m = re.search(
             r"strict-ruleset:\s*[\"']?(true|false)[\"']?",
-            body,
+            visible_body,
             flags=re.IGNORECASE,
         )
         if strict_m:
             workflow_strict = strict_m.group(1).lower() == "true"
         else:
-            workflow_strict = "--no-strict-ruleset" not in body
+            workflow_strict = "--no-strict-ruleset" not in visible_body
         install = "local-action" if local_action.is_file() else "remote-action"
         rel = str(workflow_file.relative_to(root)).replace("\\", "/")
         lines.append(
@@ -533,10 +584,14 @@ def _cmd_status(args: argparse.Namespace) -> int:
         if not has_gate:
             problems.append("workflow lacks auctelis-gate action")
     else:
-        lines.append("Workflow: missing — paste templates/auctelis-diff.yml or run init")
+        lines.append("Workflow: missing — run `auctelis init --lockless` (one file, no lock)")
         problems.append("missing auctelis workflow")
 
-    co_text = load_codeowners_text(root)
+    try:
+        co_text = load_codeowners_text(root)
+    except OSError as exc:
+        co_text = ""
+        lines.append(f"CODEOWNERS: unreadable — {exc}")
     existing_co = _find_existing_codeowners(root)
     if co_text and codeowners_covers_lock(co_text):
         protection_ok, missing = codeowners_covers_protection(co_text, root=root)
@@ -597,20 +652,20 @@ def _cmd_status(args: argparse.Namespace) -> int:
             # Default install is comment-only; do not fail on missing enforce armor.
             if hard:
                 lines.append("Comment-only ready: NO — " + "; ".join(hard))
-                print("\n".join(lines))
+                _emit()
                 return 1
             lines.append("Comment-only ready: YES")
-            print("\n".join(lines))
+            _emit()
             return 0
         if problems:
             lines.append("Gate armed: NO — " + "; ".join(problems))
-            print("\n".join(lines))
+            _emit()
             return 1
         if offline_unverified:
             lines.append("Gate armed: YES (locally) — verify code-owner ruleset in GitHub")
         else:
             lines.append("Gate armed: YES")
-    print("\n".join(lines))
+    _emit()
     return 0
 
 
@@ -704,15 +759,31 @@ def _merge_codeowners_authority(
     return text.rstrip() + block
 
 
+def _visible_workflow_text(body: str) -> str:
+    """Strip YAML comments so documented opt-ins never look like live inputs."""
+    visible: list[str] = []
+    for line in body.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        # Inline comment; generated workflows have no ' #' inside values.
+        visible.append(line.split(" #", 1)[0])
+    return "\n".join(visible)
+
+
 def _workflow_locked_state(body: str) -> tuple[bool, bool, str]:
-    """Return ``(has_gate_action, locked, pin)`` from an existing workflow body."""
-    has_gate = "auctelis-gate" in body and (
-        "roham-amd/auctelis" in body or "./.github/actions/auctelis-gate" in body
+    """Return ``(has_gate_action, locked, pin)`` from an existing workflow body.
+
+    Comments are stripped first: templates document ``locked: "true"`` as an
+    opt-in, and a comment must never be mistaken for the live Action input.
+    """
+    visible = _visible_workflow_text(body)
+    has_gate = "auctelis-gate" in visible and (
+        "roham-amd/auctelis" in visible or "./.github/actions/auctelis-gate" in visible
     )
-    locked = bool(re.search(r"locked:\s*[\"']?true[\"']?", body, flags=re.IGNORECASE))
+    locked = bool(re.search(r"locked:\s*[\"']?true[\"']?", visible, flags=re.IGNORECASE))
     pin_m = re.search(
         r"(?:roham-amd/auctelis/\.github/actions/auctelis-gate@|auctelis-gate@)([^\s#]+)",
-        body,
+        visible,
     )
     pin = pin_m.group(1) if pin_m else "(unpinned)"
     return has_gate, locked, pin
@@ -759,11 +830,15 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     refused = refuse_agent_mutation("ci init")
     if refused is not None:
         return refused
+    if bool(getattr(args, "lockless", False)):
+        return _cmd_init_lockless(args)
     owner = (getattr(args, "owner", None) or "").strip()
     if not owner or owner in {"@YOUR_TEAM", "YOUR_TEAM"}:
         print(
-            "ci init requires --owner @team-or-user (refusing placeholder @YOUR_TEAM).\n"
-            "Example: auctelis ci init --owner @security-owners"
+            "init requires --owner @team-or-user unless --lockless "
+            "(refusing placeholder @YOUR_TEAM).\n"
+            "Example: auctelis init --owner @security-owners\n"
+            "         auctelis init --lockless   # one-file comment-only workflow"
         )
         return 2
     if not owner.startswith("@"):
@@ -816,7 +891,9 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         _snapshot(path)
         created = not path.is_file()
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(body, encoding="utf-8")
+        # Generated policy/workflow/CODEOWNERS are LF on every OS; git attributes
+        # normalize the same way, and Windows editors handle LF fine.
+        path.write_text(body, encoding="utf-8", newline="\n")
         if created:
             created_paths.append(path)
 
@@ -830,7 +907,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             if previous is None:
                 continue
             with contextlib.suppress(OSError):
-                path.write_text(previous, encoding="utf-8")
+                path.write_text(previous, encoding="utf-8", newline="\n")
 
     reported_locked = not advisory
     reported_mode = "advisory" if advisory else "enforce"
@@ -913,6 +990,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         check=False,
         update=True,
         accept_gated=accept_gated,
+        scan=init_scan,
     )
     print(msg)
     if lock_code != 0:
@@ -922,7 +1000,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
                 lock_path.unlink()
         elif lock_existed and prior_text.get(lock_path) is not None:
             with contextlib.suppress(OSError):
-                lock_path.write_text(prior_text[lock_path] or "", encoding="utf-8")
+                lock_path.write_text(prior_text[lock_path] or "", encoding="utf-8", newline="\n")
         warnings.append(
             "AUTHORITY.lock not sealed — init rolled back newly written setup files. "
             "Remediate configs (unparsed/gated) then re-run."

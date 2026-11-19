@@ -224,7 +224,7 @@ A hash proves digest match — not safety. Model agreement is not independent ve
 - Do not gate critical CI fails on `NAME_MARKER` alone.
 - Abstain: unparseable / oversized / unsupported → explicit gap, never silent clean.
 - Suppressions remain visible in findings (`suppressed: true`) with justification.
-- Untrusted PR policy is never auto-trusted (`trusted-policy` loads base ref).
+- Untrusted PR policy is never auto-trusted: `trusted-policy=true` refuses edits to an existing `.auctelis.yml` unless base-ref CODEOWNERS covers it, and the diff shows the policy-hash change.
 - Clean result ≠ safe component; reports must state what was not tested.
 
 ---

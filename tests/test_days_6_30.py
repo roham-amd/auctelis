@@ -226,10 +226,53 @@ def test_gate_cli_strict_ruleset_flag(tmp_path: Path, monkeypatch, capsys):
     monkeypatch.delenv("GITHUB_TOKEN", raising=False)
     monkeypatch.delenv("GH_TOKEN", raising=False)
     monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
-    code = main(["gate", str(root), "--base-lock", str(base), "--strict-ruleset"])
+    # Trust head CODEOWNERS so the test reaches the strict-ruleset branch
+    # instead of passing through the earlier "untrusted CODEOWNERS" branch.
+    code = main(
+        [
+            "gate",
+            str(root),
+            "--base-lock",
+            str(base),
+            "--strict-ruleset",
+            "--trust-head-codeowners",
+        ]
+    )
     out = capsys.readouterr().out
     assert code == 1
-    assert "NEEDS_REVIEW" in out or "UNVERIFIED" in out or "strict" in out.lower()
+    assert "NEEDS_REVIEW" in out
+    assert "UNVERIFIED under --strict-ruleset" in out
+    assert "CODEOWNERS was read from the head tree" not in out
+
+
+def test_comment_only_growth_never_leaks_stale_pass_label(tmp_path: Path, monkeypatch):
+    """Comment-only growth reports NEEDS_REVIEW and no `PASS / ...` prefix."""
+    root = tmp_path / "repo"
+    _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    _owners(root)
+    assert main(["lock", str(root)]) == 0
+    base = tmp_path / "base.lock"
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+    _mcp(
+        root,
+        {
+            "a": {"command": "node", "args": ["a.js"]},
+            "b": {"command": "node", "args": ["b.js"]},
+        },
+    )
+    report, code = run_gate(
+        root,
+        base_lock=base,
+        comment_only=True,
+        check_ruleset=False,
+        trust_head_codeowners=True,
+    )
+    assert code == 0
+    assert report["verdict"] == "NEEDS_REVIEW"
+    assert not str(report.get("error") or "").lstrip().startswith("PASS")
+    text = render_gate_report(report)
+    assert "mode comment-only" in text
+    assert "PASS" not in text
 
 
 def test_render_lock_diff_addition_includes_path():

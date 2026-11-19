@@ -9,6 +9,5 @@ Maintainer CLI (``auctelis-dev``): ``scan`` / ``annotate`` via ``auctelis_resear
 Libraries: ``auctelis.check``, ``auctelis.authority_lock``, ``auctelis.gate``.
 """
 
-__version__ = "0.15.0"
-__product_version__ = "0.15.0"
-__product_name__ = "auctelis"
+__version__ = "0.16.0"
+__product_version__ = "0.16.0"

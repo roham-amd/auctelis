@@ -9,16 +9,15 @@ from pathlib import Path
 import pytest
 
 from auctelis.lock_io import load_authority_lock
-from auctelis.process_env import scrub_env
 from auctelis.security.decision import compute_decision, decision_sentences
 from auctelis_research.artifact_vet import parse_artifact_spec
 from auctelis_research.broker import run_brokered
 from auctelis_research.mcp_snapshot import (
-    diff_tool_locks,
     snapshot_execute,
     snapshot_from_file,
     tools_from_list_payload,
 )
+from auctelis_research.process_env import scrub_env
 from auctelis_research.scan import run_scan
 
 
@@ -62,15 +61,6 @@ def test_snapshot_from_tools_list(tmp_path: Path):
     assert doc["ok"] is True
     assert doc["tool_count"] == 1
     assert "read_file" in doc["authority_lock_fragment"]["mcp_tools"]
-
-
-def test_diff_tool_locks_detects_change():
-    a = {"read": "sha256:" + "ab" * 32}
-    b = {"read": "sha256:" + "cd" * 32, "write": "sha256:" + "ef" * 32}
-    delta = diff_tool_locks(a, b)
-    assert "write" in delta["tools_added"]
-    assert "read" in delta["description_hash_changed"]
-    assert delta["rug_pull_suspect"] is True
 
 
 def test_snapshot_execute_python_json(tmp_path: Path):

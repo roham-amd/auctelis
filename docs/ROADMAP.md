@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.15.0** (install-PR Watching fix + tree-truth `diff --base` + wheel diet) · lock schema 1 · tooling 0.15.0
+**Current:** **0.16.0** (one-file lockless install + fleet reach report + fail-closed/status honesty fixes) · lock schema 1 · tooling 0.16.0
 
 ## North star (Gate Zero)
 
@@ -34,7 +34,7 @@ are removed.
 | **0.10.0** | Lockless default; reach tiers; tomllib; CODEOWNERS path fix; research out of wheel; dogfood/release matrix | **done** |
 | **0.11.0** | Lean Action (`uv sync --no-editable`); remove locked=false warning; `--comment-only` gate; CI/Plugin/Subagent paging fix; status comment-only OK; doc pin reset; wheel-smoke research omit | **done** |
 | **0.12.0** | Agent Reach Review: day-zero `diff --base` (`BASELINE_NEEDED`); honest comment-only verdict; quiet-on-NONE; ranked reach report; env/tier on cards; offline enforce status; trusted destinations; MCP pin doctor | **done** |
-| **0.12.1** | PyPI one-line install (`uvx auctelis`); first-run "watching" comment; prose inference capped at comment tier; two-surface docs | **done** |
+| **0.12.1** | PyPI one-line install (superseded by the 0.13.0 install-truth guard; `pypi_live=false`); first-run "watching" comment; prose inference capped at comment tier; two-surface docs | **done** |
 | **0.12.2** | Real-repo CI/TOML signal fix; quiet-PR silence + working `BASELINE_ADOPTED`; shallow fast lockless Action; working `uvx --from` install | **done** |
 | **0.13.0** | Install truth (`pypi_live` guard); Reach Report (`check --report`); enforce integrity (lock delete / legacy inputs / first-run / trust / truncation); org reusable workflow | **done** |
 | **0.13.1** | Reseal dogfood `AUTHORITY.lock` after 0.13.0 workflow edits; keep CI check green | **done** |
@@ -42,6 +42,7 @@ are removed.
 | **0.13.3** | Release pipeline installs `auctelis-dev` before metadata verify / SBOM | **done** |
 | **0.14.0** | Complete Reach Report; lockless tree-truth `diff --base`; honest install-PR Watching; monorepo walk limits; lean Action (drop deprecated research inputs) | **done** |
 | **0.15.0** | Live install-PR Watching bugfix; pure tree-truth `diff --base`; product wheel diet (`auctelis_devtools`); lockless funnel CTA | **done** |
+| **0.16.0** | One-file `init --lockless`; fleet reach report; honest coverage/pins/terminal rendering; fail-closed truncation + lockless `status`; research/dev modules out of the wheel | **done** |
 | Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate

@@ -135,6 +135,16 @@ def test_lockless_template_and_action_shallow_skip():
     assert "--depth=1" in action
 
 
+def test_trust_copy_does_not_lower_new_mcp_authority():
+    """AUCT-015: docs match reach_tiers — trust never lowers new MCP/Hook authority."""
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "docs" / "CLI-REFERENCE.md").read_text(encoding="utf-8")
+    assert "benign MCP" not in text
+    section = text.split("## `auctelis trust`", 1)[1].split("\n---", 1)[0]
+    assert "network-only" in section
+    assert "MCP / Hook / Host Settings" in section
+
+
 def test_product_md_release_line_matches_version():
     root = Path(__file__).resolve().parents[1]
     text = (root / "docs" / "PRODUCT.md").read_text(encoding="utf-8")

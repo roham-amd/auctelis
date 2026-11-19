@@ -7,6 +7,10 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from auctelis.inventory.coverage import (
+    count_unparsed_agent_configs,
+    unparsed_agent_config_count_from_coverage,
+)
 from auctelis.security.finding_fields import finding_class, finding_severity
 from auctelis.security.gating import HIGH_SEVERITIES, is_gate_finding, is_high_gate_finding
 
@@ -24,49 +28,20 @@ AuthorityEstablishment = Literal[
     "AUTHORITY_NOT_ESTABLISHED",
 ]
 
-_AGENT_CONFIG_MARKERS = (
-    "mcp.json",
-    ".mcp.json",
-    "mcp_config",
-    ".claude/",
-    ".cursor/",
-    ".vscode/mcp",
-    "hooks.json",
-    "settings.json",
-    "SKILL.md",
-)
-
 
 def unparsed_agent_config_count(
     coverage: dict[str, Any] | None = None,
     parser_events: list[dict[str, Any]] | None = None,
 ) -> int:
-    """Count agent-config parse/skip events that must fail closed."""
+    """Count agent-config parse/skip events that must fail closed.
+
+    Delegates to the single coverage implementation so the gate, check, and
+    research decision layer cannot disagree about which files count.
+    """
     cov = coverage or {}
-    if "unparsed_agent_config_count" in cov:
-        return int(cov.get("unparsed_agent_config_count") or 0)
-    events = parser_events or cov.get("parser_events") or []
-    count = 0
-    for event in events:
-        if not isinstance(event, dict):
-            continue
-        etype = str(event.get("type") or "")
-        path = str(event.get("path") or "").replace("\\", "/").lower()
-        if etype == "unparsed_agent_config":
-            count += 1
-            continue
-        if etype in {
-            "parse_error",
-            "parse_skipped_size",
-            "skipped_oversize",
-            "file_too_large",
-        } and _looks_agent_config(path):
-            count += 1
-    return count
-
-
-def _looks_agent_config(path: str) -> bool:
-    return any(marker in path for marker in _AGENT_CONFIG_MARKERS)
+    if parser_events:
+        return count_unparsed_agent_configs(parser_events)
+    return unparsed_agent_config_count_from_coverage(cov)
 
 
 def authority_establishment(

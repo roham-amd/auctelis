@@ -19,18 +19,20 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from auctelis.lock_io import SEAL_EXCLUDE, load_authority_lock
+from auctelis.lock_io import compute_lock_hash, load_authority_lock
 from auctelis.security.authority import (
     build_authority_snapshot,
     logical_authority_id,
 )
 from auctelis.security.engine import ScanResult, run_authority_inventory
+from auctelis.textutil import sanitize_terminal_line
 from auctelis.versioning import product_version
 
 # Re-export for callers that historically imported from authority_lock.
 __all__ = [
     "LOCK_NAME",
     "LOCK_VERSION",
+    "args_digest",
     "build_authority_lock",
     "check_locked",
     "classify_record_change",
@@ -43,6 +45,7 @@ __all__ = [
     "normalize_lock_for_compare",
     "render_lock_diff_lines",
     "run_lock_command",
+    "url_host",
     "write_authority_lock",
 ]
 
@@ -118,7 +121,6 @@ _REPRESENTATION_FIELDS = (
     "parser_version",
     "source_commit",
 )
-_PIN_IDENTITY_FIELDS = ("launcher", "args_digest", "url_host")
 
 
 def args_digest(args: list[Any] | tuple[Any, ...] | None) -> str:
@@ -129,8 +131,6 @@ def args_digest(args: list[Any] | tuple[Any, ...] | None) -> str:
 
 
 def url_host(url: str | None) -> str:
-    from urllib.parse import urlparse
-
     text = str(url or "").strip()
     if not text:
         return ""
@@ -353,12 +353,7 @@ def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[
     # (merge conflicts on hash alone with identical records).
     # Legacy decorative fields (approvals / approved_findings / mcp_servers) are
     # no longer emitted — CODEOWNERS / rulesets are the approval system.
-    canonical = json.dumps(
-        {k: v for k, v in body.items() if k not in SEAL_EXCLUDE},
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    body["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+    body["lock_hash"] = compute_lock_hash(body)
     body["audited_commit"] = scan.commit
     return body
 
@@ -376,11 +371,11 @@ def _gated_lock_blockers(scan: ScanResult) -> list[str]:
 
 
 def _unparsed_agent_config_count(scan: ScanResult) -> int:
-    coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
-    try:
-        return int(coverage.get("unparsed_agent_config_count") or 0)
-    except (TypeError, ValueError):
-        return 0
+    from auctelis.inventory.coverage import unparsed_agent_config_count_from_coverage
+
+    return unparsed_agent_config_count_from_coverage(
+        scan.coverage if isinstance(scan.coverage, dict) else {}
+    )
 
 
 def write_authority_lock(
@@ -498,14 +493,12 @@ def classify_record_change(
     grew = False
     shrank = False
     authority_touched = False
-    representation_only = True
 
     for field in _AUTHORITY_FIELDS:
         b_val, a_val = before.get(field), after.get(field)
         if b_val == a_val:
             continue
         authority_touched = True
-        representation_only = False
         if field in {"capabilities", "destinations", "env_keys", "permission_allows"}:
             up, down = _set_delta(
                 [str(x) for x in (b_val or [])],
@@ -523,19 +516,12 @@ def classify_record_change(
             a_rank = _APPROVAL_RANK.get(str(a_val or "unknown"), 1)
             grew = grew or a_rank > b_rank
             shrank = shrank or a_rank < b_rank
-        elif field in _PIN_IDENTITY_FIELDS:
-            # Same-name pin identity change → replacement (handled below).
-            pass
-
-    for field in _REPRESENTATION_FIELDS:
-        if before.get(field) != after.get(field):
-            # Path/digest/fingerprint churn alone is representation.
-            pass
+        # Pin identity fields (launcher / args / host) change authority but are
+        # neither set growth nor shrink → replacement below.
 
     if not authority_touched:
-        # Name/host/kind identity is fixed by matching key; leftover diffs are packaging.
-        if any(before.get(f) != after.get(f) for f in (*_REPRESENTATION_FIELDS, "id")):
-            return "representation"
+        # Identity is fixed by the matching key; leftover diffs (path, digest,
+        # fingerprint, id) are packaging and do not add reach.
         return "representation"
 
     if grew and shrank:
@@ -544,9 +530,8 @@ def classify_record_change(
         return "expansion"
     if shrank:
         return "reduction"
-    # Authority field changed without clear grow/shrink (e.g. equal-size set rewrite).
-    if representation_only:
-        return "representation"
+    # Authority field changed without clear grow/shrink (e.g. equal-size set
+    # rewrite or a new launcher at the same name).
     return "replacement"
 
 
@@ -791,7 +776,7 @@ def render_lock_diff_lines(
         lines.append(
             f"~ {klass} {after.get('kind') or before.get('kind')} `{label}`{path_bit}: {detail}"
         )
-    return lines
+    return [sanitize_terminal_line(line) for line in lines]
 
 
 def check_locked(
@@ -842,12 +827,7 @@ def merge_mcp_tools_into_lock(
     tools = dict(merged.get("mcp_tools") or {})
     tools.update({str(k): str(v) for k, v in mcp_tools.items() if k and v})
     merged["mcp_tools"] = dict(sorted(tools.items()))
-    canonical = json.dumps(
-        {k: v for k, v in merged.items() if k not in SEAL_EXCLUDE},
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    merged["lock_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:32]
+    merged["lock_hash"] = compute_lock_hash(merged)
     return merged
 
 
@@ -859,6 +839,7 @@ def run_lock_command(
     lock_path: Path | None = None,
     accept_gated: bool = False,
     mcp_tools: dict[str, str] | None = None,
+    scan: ScanResult | None = None,
 ) -> tuple[str, int]:
     root = root.resolve()
     path = lock_path or default_lock_path(root)
@@ -877,6 +858,7 @@ def run_lock_command(
             root,
             path=path,
             accept_gated=accept_gated,
+            scan=scan,
         )
     except ValueError as exc:
         return str(exc), 1

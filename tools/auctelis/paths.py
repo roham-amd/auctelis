@@ -6,11 +6,11 @@ DEFAULT_OUTPUT_DIR_NAME = "auctelis-out"
 
 
 def repo_root() -> Path:
-    """Return the monorepo root when running from a git checkout.
+    """Return the checkout root (a location that may not exist in a wheel).
 
     Installed wheels do not ship the monorepo layout. Callers that need
-    checkout-only assets (schemas, corpus, prompts) must handle ``None`` /
-    missing paths — never assume this resolves under site-packages.
+    checkout-only assets (schemas, corpus, prompts) must check ``is_file()`` —
+    never assume this path resolves to real files under site-packages.
     """
     return Path(__file__).resolve().parents[2]
 

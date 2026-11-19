@@ -22,9 +22,6 @@ Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init
 (AUCTELIS_AGENT is a speed bump, not a security control).
 """
 
-# Hidden from default --help; still fully callable.
-_ADV = argparse.SUPPRESS
-
 # Enforceable public mental model — GitHub-native Authority Diff front door.
 CORE_PUBLIC_COMMANDS = frozenset(
     {"check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status", "trust"}
@@ -110,7 +107,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "check",
         help="Repo authority vs AUTHORITY.lock (front door; no host scan)",
     )
-    check.add_argument("path", type=Path, nargs="?", default=Path("."))
+    check.add_argument(
+        "path",
+        type=Path,
+        nargs="*",
+        default=None,
+        metavar="PATH",
+        help="Repository root(s); more than one path requires --report (fleet report)",
+    )
     check.add_argument(
         "--lock-file",
         type=Path,
@@ -155,15 +159,26 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     init_cmd = sub.add_parser(
         "init",
-        help="One-command setup: policy + workflow + CODEOWNERS + lock (preferred)",
+        help="One-command setup: lockless workflow, or policy + CODEOWNERS + lock",
     )
     init_cmd.add_argument("path", type=Path, nargs="?", default=Path("."))
     init_cmd.add_argument("--force", action="store_true")
     init_cmd.add_argument(
+        "--lockless",
+        action="store_true",
+        help=(
+            "Write only .github/workflows/auctelis.yml (comment-only PR Watch; "
+            "no lock, policy, or CODEOWNERS; --owner not required)"
+        ),
+    )
+    init_cmd.add_argument(
         "--owner",
         metavar="TEAM",
-        required=True,
-        help="CODEOWNERS identity for AUTHORITY.lock (e.g. security; @ optional)",
+        required=False,
+        help=(
+            "CODEOWNERS identity for AUTHORITY.lock (e.g. security; @ optional); "
+            "required unless --lockless"
+        ),
     )
     init_cmd.add_argument(
         "--enforce",
@@ -210,6 +225,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     )
     ci_init.add_argument("path", type=Path, nargs="?", default=Path("."))
     ci_init.add_argument("--force", action="store_true")
+    ci_init.add_argument(
+        "--lockless",
+        action="store_true",
+        help=(
+            "Write only .github/workflows/auctelis.yml (comment-only PR Watch; "
+            "no lock, policy, or CODEOWNERS; --owner not required)"
+        ),
+    )
     ci_init.add_argument(
         "--owner",
         metavar="TEAM",
@@ -457,8 +480,5 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Emit JSON instead of line-oriented text",
     )
-
-    # argparse still registers help=SUPPRESS choices; drop them from --help listing.
-    sub._choices_actions = [a for a in sub._choices_actions if a.help != _ADV]
 
     return parser

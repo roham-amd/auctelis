@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.15.0 · **Package:** `auctelis` 0.15.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.16.0 · **Package:** `auctelis` 0.16.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -43,9 +43,10 @@ Public path: **check → check --report → diff --base → lockless workflow or
 
 | Command | Job |
 | --- | --- |
-| `auctelis check [--top N] [--pins]` | Ranked reach report vs `AUTHORITY.lock` (front door; inventory-only) |
+| `auctelis check [PATH ...] [--top N] [--pins] [--report DIR]` | Ranked reach report vs `AUTHORITY.lock` (front door; inventory-only); multiple paths require `--report` and write one ranked fleet report |
 | `auctelis diff --base <ref>` | Local Authority Diff; tree-truth first (`baseline_state=tree`), Action-parity |
 | `auctelis trust <host>` | Trusted destinations for network-only reach (`--list`, `--remove`, `--init`) |
+| `auctelis init --lockless` | One-file comment-only PR Watch; no lock, policy, CODEOWNERS, or `--owner` |
 | `auctelis init --owner team` | Comment-only setup (default); `--enforce` for locked gate (`@` optional) |
 | `auctelis status` | Lock / workflow / CODEOWNERS / protection summary (`--check`; `--require-protection` for CI) |
 | `auctelis lock --update` | Write / refresh the committed lock (optional pin) |
@@ -61,10 +62,12 @@ is an optional pin (drift-checked when present). Default Action is
 **comment-only**; research scan/annotate stays out of the product wheel
 (`auctelis_research` / `auctelis-dev` from source). Reach tiers: inferred doc
 links stay comment-only; execute/secrets/new MCP fail under enforce. Comment-only
-mode never says `PASS` on unreviewed growth (it says `NEEDS_REVIEW`), and
-no-change PRs are quiet by default. Trusted destinations (`auctelis trust`) lower
-network-only reach to the comment tier but never hide secrets/execute/approvals
-or records that declare a launcher. Reach: [`REACH.md`](REACH.md).
+mode never says `PASS` on unreviewed **material (tier 1+)** growth (it says
+`NEEDS_REVIEW`); tier-0 instructions-only growth stays `PASS`, and no-change PRs
+are quiet by default. Trusted destinations (`auctelis trust`) lower network-only
+reach to the comment tier but never hide secrets/execute/approvals, records that
+declare a launcher, or new MCP / Hook / Host Settings authority. Reach:
+[`REACH.md`](REACH.md).
 
 **Exit codes (check):** `0` quiet / first-run · `1` sealed delta · `2` lock error  
 **Labels:** `GROWTH` | `REDUCTION` | `NONE`  

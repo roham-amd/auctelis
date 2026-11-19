@@ -108,7 +108,10 @@ def test_gate_rejects_directory_base_lock(tmp_path: Path):
     assert "directory" in str(report.get("error") or "").lower()
 
 
-def test_gate_rejects_untrusted_head_codeowners(tmp_path: Path):
+def test_gate_rejects_untrusted_head_codeowners(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.delenv("GITHUB_REPOSITORY", raising=False)
     root = tmp_path / "repo"
     _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
     owners = root / ".github"

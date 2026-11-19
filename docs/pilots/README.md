@@ -9,12 +9,13 @@ Metrics log: [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv).
 
 ## What counts as a pilot
 
-A slot is **active** when the **team path** holds for 30 consecutive days:
+A slot is **active** when the chosen install path holds for 30 consecutive days:
 
-- Outside repository runs the Action (or equivalent `auctelis gate`) with
-  `AUTHORITY.lock` committed and CODEOWNERS-protected, required on the default
-  branch.
-- At least one growth PR was actually reviewed by a CODEOWNER.
+- **Lockless:** the Action is retained on the default branch and at least one
+  authority-changing PR produced a reviewed Authority Diff comment.
+- **Enforce:** outside repository runs the Action (or equivalent `auctelis gate`)
+  with `AUTHORITY.lock` committed and CODEOWNERS-protected, required on the
+  default branch, and at least one growth PR was reviewed by a CODEOWNER.
 
 Setup path: `diff --base main` → `init --owner team` → PR comment (add `--enforce` when ready)
 (under 10 minutes). Empty baseline is fine; first growth is CODEOWNERS review.

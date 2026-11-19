@@ -7,6 +7,57 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-11-19
+
+### Added
+- **AUCT-013 (`init --lockless`):** writes only
+  `.github/workflows/auctelis.yml` (pinned to the release tag) and exits — no
+  `--owner`, no `AUTHORITY.lock`, `.auctelis.yml`, or CODEOWNERS. The first-run
+  `check` footer now points at it instead of a template path that does not
+  exist on user machines. The legacy `ci init` alias accepts the same flag.
+- **AUCT-014 (Fleet Reach Report):** `auctelis check repo-a repo-b --report out/`
+  scans several repositories into one ranked, self-contained fleet report
+  (`auctelis.fleet_reach_report.v1`, ordered by tier-2 reach). The HTML report
+  now carries the Unpinned MCP launchers table and the uninspected-family list
+  that already appeared in Markdown, plus a next-step footer. Fleet runs reject
+  single-repo flags (`--lock-file`, `--baseline`, `--pins`) and aggregate exit
+  codes across repositories.
+
+### Changed
+- **AUCT-016 (Wheel diet, follow-up):** research-only `security/report.py`,
+  `security/baseline.py`, and `process_env.py` moved to `auctelis_research`;
+  package-name normalization moved to `auctelis_devtools`; unconsumed packaged
+  metadata (`release-manifest.json`, `authority-policy.schema.json`,
+  `known-component-names.json`) is excluded from the wheel. `init` reuses one
+  inventory scan instead of walking the tree twice.
+- **AUCT-017 (Architecture cleanup):** one unparsed-config counter and one seal
+  hash implementation; capability/fingerprint indexes replace per-component
+  scans; product inventories no longer emit unused relationship graphs;
+  CODEOWNERS is read once per gate run; dead helpers/constants and a no-op
+  example validator were removed.
+
+### Fixed
+- **AUCT-015 (Honesty):** the `check` coverage line separates discovered
+  component maturity from uninspected families (no more misleading
+  `MANUAL_ONLY 0`); `diff --base` stdout prints literal text
+  (`(no authority change)`) while the PR-body payload keeps markdown escaping;
+  the pin line pluralizes on the total (`1 of 2 MCP servers`); and the
+  `CLI-REFERENCE` trust copy no longer claims benign MCP additions are lowered.
+- **AUCT-018 (Fail-closed fixes):** the gate keeps the accurate truncation
+  counts stored by `summarize_coverage` instead of re-deriving them from the
+  capped 50-event list (a truncated scan could otherwise PASS); duplicate
+  `parse_error` + `unparsed_agent_config` events count one file; invalid UTF-8
+  locks fail closed.
+- **AUCT-019 (CLI correctness):** `check` rejects missing paths and plain files
+  with exit 2 instead of silently scanning an empty tree or crashing; invalid
+  `--baseline` input is a usage error; `status` no longer mistakes a comments
+  line (`# Add locked: "true" later`) for a locked workflow, so `init
+  --lockless` reports comment-only; `--json --report` keeps stdout pure JSON.
+- **AUCT-020 (Rendering hygiene):** terminal output strips ANSI/bidi/zero-width
+  characters from repo-controlled names; Markdown reach reports escape
+  target-controlled names, paths, reasons, and suggestions; Windows launcher
+  paths render as a basename; packaged demos clean up their temporary tree.
+
 ## [0.15.0] — 2026-11-19
 
 ### Fixed

@@ -16,10 +16,13 @@ from auctelis.versioning import load_versions, package_version, product_version
 def build_authority_sbom(scan: ScanResult) -> dict[str, Any]:
     """Build an authority SBOM document from a completed scan."""
     versions = load_versions()
+    caps_by_cid: dict[str, list[dict[str, Any]]] = {}
+    for cap in scan.capabilities:
+        caps_by_cid.setdefault(str(cap.component_id), []).append(cap.to_dict())
     components: list[dict[str, Any]] = []
     for comp in scan.inventory.get("components") or []:
         cid = str(comp.get("component_id") or comp.get("name") or "unknown")
-        caps = [c.to_dict() for c in scan.capabilities if c.component_id == cid]
+        caps = list(caps_by_cid.get(cid, []))
         components.append(
             {
                 "component_id": cid,

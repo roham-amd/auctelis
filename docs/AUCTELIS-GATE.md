@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.15.0** |
-| Tooling package | **0.15.0** (`auctelis`) |
+| Product release | **0.16.0** |
+| Tooling package | **0.16.0** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -46,26 +46,26 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 
 ```bash
 # One-line run without permanent install (see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check                              # aha: ranked reach cards
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis check                              # aha: ranked reach cards
 
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security-owner        # comment-only setup
-# Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --lockless                     # one-file lockless PR Watch (no owner / lock)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --owner security-owner        # full comment-only setup
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
 ```
 
 Persistent install:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
 forever `FAIL_CLOSED`.
 
 Recipes:
-- Lockless: [`../tools/auctelis/templates/auctelis-diff.yml`](../tools/auctelis/templates/auctelis-diff.yml)
+- Lockless (written by `auctelis init --lockless`): [`../tools/auctelis/templates/auctelis-diff.yml`](../tools/auctelis/templates/auctelis-diff.yml)
 - Enforce example: [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)
 
 ### Branch protection / rulesets (when enforcing)
@@ -87,7 +87,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.15.0`. The Action fetches the base ref at `--depth=1`
+Or pin the release tag: `@v0.16.0`. The Action fetches the base ref at `--depth=1`
 automatically (no `fetch-depth: 0` required) and short-circuits setup in
 lockless mode when no watched agent-config or workflow paths changed.
 
@@ -95,7 +95,7 @@ lockless mode when no watched agent-config or workflow paths changed.
 
 | Mode | How | Behavior |
 | --- | --- | --- |
-| **Comment-only** (default) | lockless template / `init` / `locked: false` | Posts Authority Diff as `NEEDS_REVIEW` on growth; check stays green; quiet on `NONE` |
+| **Comment-only** (default) | lockless template / `init` / `locked: false` | Posts Authority Diff as `NEEDS_REVIEW` on tier-1+ growth (tier-0 instructions-only growth stays `PASS`); check stays green; quiet on `NONE` |
 | **Enforce** | `init --enforce` / `locked: true` | Fails on tier≥fail growth, drift, unparsed, missing CODEOWNERS/ruleset |
 
 ### Comment policy

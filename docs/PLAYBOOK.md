@@ -69,16 +69,18 @@ AUTHORITY.lock  @security-owner
 
 ```bash
 # Run directly with uvx (or `uv tool install` from the release tag; `uvx auctelis` see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check                          # aha: ranked reach cards
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security          # comment-only default
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security --enforce  # optional locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis check                          # aha: ranked reach cards
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --owner security          # comment-only default
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --owner security --enforce  # optional locked gate
 
 # Advanced (after `uv tool install` or via `uvx --from ... auctelis`):
 auctelis diff --base origin/main        # tree-truth Authority Diff (no lock required)
 auctelis trust mcp.linear.app           # optional trusted destination
 auctelis status --check                 # comment-only OK; enforce says "verify in GitHub"
 auctelis demo                           # canned fixture + PR comment (exits 0)
-auctelis gate --base-lock AUTHORITY.lock  # authority-growth verdict
+# gate needs the *base-ref* lock, never the head lock:
+git show origin/main:AUTHORITY.lock > /tmp/base.lock
+auctelis gate --base-lock /tmp/base.lock  # authority-growth verdict
 ```
 
 Empty baseline is expected: first growth under enforce is a CODEOWNERS review,

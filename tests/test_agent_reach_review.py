@@ -27,7 +27,12 @@ def test_validated_http_url_rejects_non_http_schemes():
     assert validated_http_url("https://api.github.com/repos/x/y") == (
         "https://api.github.com/repos/x/y"
     )
-    for bad in ("file:///etc/passwd", "javascript:alert(1)", "ftp://example.com", "/local"):
+    for bad in (
+        "file:///etc/passwd",
+        "javascript:alert(1)",
+        "ftp://example.com",
+        "/local",
+    ):
         try:
             validated_http_url(bad)
         except ValueError:
@@ -103,6 +108,22 @@ def test_diff_base_lockless_tree_truth_pass_when_unchanged(tmp_path: Path):
     assert payload["label"] == "NONE"
     assert "FAIL_CLOSED" not in text
     assert "BASELINE_NEEDED" not in text
+
+
+def test_diff_base_text_stdout_is_not_markdown_escaped(tmp_path: Path):
+    """AUCT-015: terminal text stays literal; the PR-body payload stays escaped."""
+    root = tmp_path / "repo"
+    _init_repo(root)
+    _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    _git(root, "add", ".")
+    _git(root, "commit", "-m", "base")
+
+    text, payload, code = run_diff_base(root, base_ref="HEAD")
+    assert code == 0
+    assert "(no authority change)" in text
+    assert r"\(no authority change\)" not in text
+    # PR bodies keep markdown escaping so target strings cannot inject markdown.
+    assert r"\(no authority change\)" in payload["comment"]
 
 
 def test_diff_base_lockless_tree_truth_growth(tmp_path: Path):
@@ -754,7 +775,11 @@ def test_inferred_prose_expansion_never_fails():
     }
     after = {
         "kind": "Skill",
-        "capabilities": ["modify_agent_instructions", "access_secrets", "execute_commands"],
+        "capabilities": [
+            "modify_agent_instructions",
+            "access_secrets",
+            "execute_commands",
+        ],
         "destinations": ["example.com"],
         "evidence_strength": "INFERRED_HINT",
     }

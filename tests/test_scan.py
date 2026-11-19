@@ -80,7 +80,7 @@ def test_capability_origin_on_type_defaults(tmp_path: Path):
 
 
 def test_baseline_fingerprints(tmp_path: Path):
-    from auctelis.security.baseline import diff_against_baseline, save_baseline
+    from auctelis_research.baseline import diff_against_baseline, save_baseline
 
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "skill-to-mcp-path"

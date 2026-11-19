@@ -1,8 +1,8 @@
 # auctelis-dev scan — annotation layer (maintainer)
 
 > **Maintainer research surface (`auctelis-dev`). Not part of the product gate.**
-> Product path: [`PRODUCT.md`](PRODUCT.md) — check → lock --update →
-> init --owner team → gate / diff / why.
+> Product path: [`PRODUCT.md`](PRODUCT.md) — check → diff --base →
+> lockless workflow or init --enforce → gate.
 
 Guard scan path for maintainers: deterministic discovery plus evidence-backed
 observations via `auctelis-dev scan` / `annotate`, with capability / exposure /
@@ -10,9 +10,10 @@ finding separation. This is an annotation layer behind the product, not the
 first screen. Default terminal output is ≤15 lines (`--full` for the long
 report). Artifacts land in cwd `./auctelis-out` (not inside the target tree).
 
-Product front door: `auctelis check` → `auctelis lock --update` →
-`auctelis init --owner team` → PR `gate`. Public `scan` / `vet` /
-`explain` / `watch` / `allow` / `hook` CLIs are **removed**.
+Product front door: `auctelis check` → `auctelis diff --base <ref>` →
+(`auctelis init --lockless` or `auctelis init --owner team [--enforce]`) →
+PR `gate`. Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook`
+CLIs are **removed**.
 
 Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md),
 [`COVERAGE-MATRIX.md`](COVERAGE-MATRIX.md), [`CLI-REFERENCE.md`](CLI-REFERENCE.md),
@@ -36,7 +37,7 @@ Companion docs: [`PRODUCT.md`](PRODUCT.md), [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK
 | Artifact | Role |
 | --- | --- |
 | `AUTHORITY.lock` | **Product source of truth** for “what authority is approved”. CODEOWNERS-reviewed. |
-| `baseline.json` | Finding/fingerprint risk delta for PR Authority Diff comments. |
+| `baseline.json` | Legacy maintainer-only finding/fingerprint baseline; not an Action input since 0.14. |
 | `authority-sbom.json` | Export of observed authority components (advisory inventory, not a lock). |
 
 It does **not**:
@@ -195,8 +196,7 @@ Composite action: [`.github/actions/auctelis-gate`](../.github/actions/auctelis-
 | --- | --- | --- |
 | `path` | `.` | Target path (passed via env, not shell-interpolated) |
 | `mode` | `scan` | Only `scan` is supported; any other value fails the job loudly |
-| `policy` | empty | Explicit `.auctelis.yml` path (otherwise target / base-ref policy) |
-| `trusted-policy` | `true` | Load `.auctelis.yml` from PR base ref; fail on policy edits |
+| `trusted-policy` | `true` | Fail edits to an existing `.auctelis.yml` unless base-ref CODEOWNERS covers it |
 | `authority-diff` | `true` | Extract base-ref tree authority for the Authority Diff gate |
 | `locked` | `false` | Comment-only default; set `true` / `init --enforce` to fail on growth |
 | `lock-file` | `AUTHORITY.lock` | Lock path relative to the target |
@@ -219,7 +219,7 @@ Never `uv sync` a PR-controlled `tools/` directory as the scanner.
 2. Run `auctelis check` / `auctelis diff --base <ref>` / `auctelis gate` (read-only).
 3. Point the agent at the Authority Diff cards (`--json` or PR comment).
 4. Agent may explain the delta only — never run `lock`, never mutate policy.
-5. Product path: `diff --base → init --owner team → check → gate / diff / why`.
+5. Product path: `check → diff --base → init --lockless / init --owner team → gate`.
 
 ---
 

@@ -25,6 +25,11 @@ _PYPI = "https://pypi.org/pypi/{name}/json"
 _USER_AGENT = f"auctelis-deps/{product_version()} (+https://github.com/roham-amd/auctelis)"
 
 
+def normalize_package_name(name: str) -> str:
+    """PEP 503-ish normalization: lowercase with underscores as hyphens."""
+    return name.replace("_", "-").lower()
+
+
 @dataclass(frozen=True, slots=True)
 class PinStatus:
     name: str

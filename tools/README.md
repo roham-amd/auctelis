@@ -13,7 +13,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.15.0** · Product: auctelis **0.15.0** (tag `@v0.15.0`; see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.16.0** · Product: auctelis **0.16.0** (tag `@v0.16.0`; see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -40,8 +40,8 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 **User tool (recommended):**
 
 ```bash
-# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools"`):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check
+# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools"`):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis check
 
 auctelis check                         # repo authority vs AUTHORITY.lock
 auctelis init --owner security         # policy + workflow + CODEOWNERS + lock
@@ -114,9 +114,12 @@ uv run --locked auctelis-dev corpus run
 ### Product (`auctelis`)
 
 ```bash
-uv run auctelis check [PATH] [--json]
+uv run auctelis check [PATH ...] [--json] [--pins] [--report DIR]
 uv run auctelis lock [PATH] [--check] [--update] [--accept-gated]
+uv run auctelis init [PATH] --lockless                    # one-file PR Watch
 uv run auctelis init --owner TEAM [PATH] [--force] [--enforce]
+uv run auctelis status [PATH] [--check]
+uv run auctelis trust HOST [--list | --remove | --init]
 uv run auctelis gate [PATH] --base-lock PATH
 uv run auctelis diff --base REF [--repo PATH]
 uv run auctelis why NAME [PATH]
@@ -140,7 +143,9 @@ uv run auctelis-dev lint [--fix] [--format] [--check-format]
 
 ---
 
-## Code layout (`tools/auctelis`)
+## Code layout
+
+Product wheel (`tools/auctelis`):
 
 | Module / package | Responsibility |
 | --- | --- |
@@ -148,15 +153,22 @@ uv run auctelis-dev lint [--fix] [--format] [--check-format]
 | `authority_lock.py` / `lock_io.py` | AUTHORITY.lock v1 write / check / diff / load |
 | `authority_card.py` | One-line authority cards for PR comment |
 | `gate.py` | Base-lock growth labels + CODEOWNERS / ruleset check |
-| `security/` | Capabilities, evidence, gating, fingerprint, baseline/report models |
+| `security/` | Capabilities, evidence, gating, fingerprint, decision models |
 | `inventory/` | Bounded I/O, adapter registry, collector, coverage |
 | `inventory/adapters/` | Skills, MCP, hooks, plugins, subagents, automations, A2A, workflows |
-| `export/` | PR comment, agent digest, SARIF, authority SBOM |
-| `validate_report.py` / `semantic.py` | Schema + semantic validation |
-| `build.py` | Consistency checks (schemas, versions, links, pins, install docs) |
+| `export/` | PR comment, authority SBOM, reach report (HTML/MD/JSON) |
 | `versioning.py` | Product/package version resolution |
-| `deps.py` / `pins.py` / `lint.py` | Engineering helpers |
-| `jsonio.py` / `textutil.py` | Shared I/O and escaping |
+| `jsonio.py` / `textutil.py` | Shared I/O, escaping, terminal hygiene |
+
+Source-only maintainer package (`tools/dev/auctelis_devtools`, `auctelis-dev`):
+
+| Module / package | Responsibility |
+| --- | --- |
+| `cli/` | Maintainer argparse extension + dev command handlers |
+| `build.py` | Consistency checks (schemas, versions, links, pins, install docs) |
+| `semantic.py` / `validate_report.py` | Schema + semantic validation |
+| `export/sarif.py` / `export/agent_digest.py` | SARIF and agent digest exports |
+| `deps.py` / `lint.py` | Engineering helpers (package-name normalization, dependency checks) |
 
 Maintainer-only research lives in a separate package (`../tools/auctelis_research`):
 rules/corpus/eval/attack-replay, the annotate helpers, and the graph analysis used

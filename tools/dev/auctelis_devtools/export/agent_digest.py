@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from auctelis.export.pr_comment import escape_markdown
 from auctelis.security.decision import compute_decision, coverage_score_line, decision_sentences
 from auctelis.security.gating import is_gate_finding
+from auctelis.textutil import escape_markdown
 
 _DEFAULT_TOKEN_BUDGET = 1800
 

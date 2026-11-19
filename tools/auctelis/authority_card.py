@@ -14,6 +14,8 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlparse
 
+from auctelis.reach_tiers import reach_reason, record_reach_tier
+
 _KIND_LABELS: dict[str, str] = {
     "mcp server registration": "mcp",
     "mcp server": "mcp",
@@ -112,7 +114,10 @@ def launcher(record: dict[str, Any]) -> str:
     text = str(record.get("launcher") or "").strip()
     if not text:
         return ""
-    return text.replace("\\", "/").rsplit("/", 1)[-1] if "/" in text else text
+    # Normalize both separators first: `C:\Python\Scripts\npx.exe` has no "/"
+    # in the original string and must still display as `npx.exe`.
+    normalized = text.replace("\\", "/")
+    return normalized.rsplit("/", 1)[-1] if "/" in normalized else text
 
 
 def _short(value: str, *, width: int = 44) -> str:
@@ -152,8 +157,6 @@ def _tier_bit(
     *,
     trusted_hosts: set[str] | None = None,
 ) -> str:
-    from auctelis.reach_tiers import reach_reason, record_reach_tier
-
     tier = record_reach_tier(record, trusted_hosts=trusted_hosts)
     if tier <= 0:
         return ""
@@ -618,8 +621,6 @@ def reach_snapshot(
     trusted_hosts: set[str] | None = None,
 ) -> dict[str, Any]:
     """Ranked reach summary for `auctelis check` (tiers + top cards)."""
-    from auctelis.reach_tiers import reach_reason, record_reach_tier
-
     inventory = [r for r in (records or []) if _is_renderable(r)]
     tier_counts = {"tier0": 0, "tier1": 0, "tier2": 0}
     scored: list[tuple[int, int, dict[str, Any]]] = []
@@ -635,23 +636,26 @@ def reach_snapshot(
             str(row[2].get("path") or ""),
         )
     )
-    records_out: list[dict[str, Any]] = []
-    for tier, _score, record in scored:
-        records_out.append(
-            {
-                "kind": kind_label(record.get("kind")),
-                "name": str(record.get("name") or record.get("id") or "?"),
-                "path": str(record.get("path") or ""),
-                "tier": tier,
-                "reason": reach_reason(record, trusted_hosts=trusted_hosts),
-                "card": record_card(record, trusted_hosts=trusted_hosts),
-            }
-        )
-    top = records_out[: max(int(limit or 0), 0)]
+    records_out: list[dict[str, Any]] = [
+        {
+            "kind": kind_label(record.get("kind")),
+            "name": str(record.get("name") or record.get("id") or "?"),
+            "path": str(record.get("path") or ""),
+            "tier": tier,
+            "reason": reach_reason(record, trusted_hosts=trusted_hosts),
+        }
+        for tier, _score, record in scored
+    ]
+    top_n = max(int(limit or 0), 0)
+    # Cards are O(record fields) each; render them only for the requested top
+    # slice instead of materializing one per record in every JSON artifact.
+    top_cards = [
+        record_card(record, trusted_hosts=trusted_hosts) for _tier, _score, record in scored[:top_n]
+    ]
     return {
         "total": len(inventory),
         "tier_counts": tier_counts,
         "records": records_out,
-        "top": top,
-        "top_cards": [item["card"] for item in top],
+        "top": records_out[:top_n],
+        "top_cards": top_cards,
     }

@@ -15,7 +15,7 @@ from auctelis.authority_card import delta_cards
 from auctelis.authority_lock import delta_label
 from auctelis.security.authority import render_component_delta_lines
 from auctelis.security.gating import is_gate_finding
-from auctelis.textutil import escape_markdown
+from auctelis.textutil import escape_markdown, sanitize_terminal_text
 
 __all__ = [
     "AUCTELIS_COMMENT_MARKER",
@@ -299,16 +299,28 @@ def render_authority_diff_comment(
     baseline_state: str | None = None,
     trusted_hosts: set[str] | None = None,
     max_lines: int = 20,
+    plain_text: bool = False,
 ) -> str:
     """Render a short PR body: complete compact reach table (≤5 delta cards).
 
     Finding IDs and rule IDs stay out of the comment body. The line carries
     name, destination/launcher, env, pin, capabilities, and evidence strength.
     Advisory and enforce comments share this authority section shape.
+
+    ``plain_text`` keeps the same layout for terminal stdout while skipping
+    markdown escaping (control sequences are still stripped), so local
+    ``diff --base`` output reads ``(no authority change)`` rather than
+    ``\\(no authority change\\)``. PR bodies keep the escaped form.
     """
     del authority_snapshot  # reserved
     # policy_mode no longer changes the authority section (lock-only contract).
     del policy_mode
+
+    def _esc(value: str, *, max_len: int = 160) -> str:
+        if plain_text:
+            return sanitize_terminal_text(value, max_len=max_len)
+        return escape_markdown(value, max_len=max_len)
+
     findings_doc = findings_doc if isinstance(findings_doc, dict) else {}
     findings = list(findings_doc.get("findings") or [])
     coverage = findings_doc.get("coverage") or {}
@@ -399,7 +411,7 @@ def render_authority_diff_comment(
             changed_bits.append(
                 "no new authority vs baseline" if has_baseline else "absolute head reach"
             )
-    visible.append("**Changed:** " + escape_markdown(", ".join(changed_bits), max_len=140))
+    visible.append("**Changed:** " + _esc(", ".join(changed_bits), max_len=140))
     if baseline_absent:
         visible.append(
             "**Baseline:** none at the base ref — showing absolute head reach. "
@@ -423,17 +435,16 @@ def render_authority_diff_comment(
         cards = [f"- {line.lstrip('+-~ ')}" for line in component_lines[:5]]
     if not cards and new_powers:
         cards = [
-            f"- {escape_markdown(_sev(finding), max_len=12)} "
-            f"{escape_markdown(_title(finding), max_len=120)}"
+            f"- {_esc(_sev(finding), max_len=12)} {_esc(_title(finding), max_len=120)}"
             for finding in new_powers[:5]
         ]
     if not cards:
         unparsed = int((findings_doc.get("coverage") or {}).get("unparsed_agent_config_count") or 0)
         cards = ["- NOT PARSED (coverage gap)" if unparsed else "- (no authority change)"]
     for card in cards:
-        visible.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
+        visible.append(f"- {_esc(card.lstrip('+-~ '), max_len=180)}")
 
-    visible.append(escape_markdown(_unknowns_line(coverage), max_len=200))
+    visible.append(_esc(_unknowns_line(coverage), max_len=200))
 
     required = _required_action(
         verdict,

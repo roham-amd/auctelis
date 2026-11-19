@@ -156,10 +156,9 @@ def run_diff_base(
     summary = dict(delta.get("summary") or {})
     label = delta_label(summary)
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
-    try:
-        unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
-    except (TypeError, ValueError):
-        unparsed = 0
+    from auctelis.inventory.coverage import unparsed_agent_config_count_from_coverage
+
+    unparsed = unparsed_agent_config_count_from_coverage(coverage)
 
     head_records = list(head.get("records") or [])
     growth = label == "GROWTH"
@@ -185,6 +184,15 @@ def run_diff_base(
         baseline_state=baseline_state,
         trusted_hosts=trusted_hosts,
     )
+    # Terminal stdout shows literal text; the payload keeps the escaped PR body.
+    terminal_comment = render_authority_diff_comment(
+        findings_doc,
+        lock_delta=delta,
+        verdict=verdict,
+        baseline_state=baseline_state,
+        trusted_hosts=trusted_hosts,
+        plain_text=True,
+    )
     result: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "base_ref": base_ref,
@@ -202,7 +210,7 @@ def run_diff_base(
     lines = [
         f"auctelis diff --base {base_ref}",
         f"Verdict: {verdict} · label {label}",
-        comment,
+        terminal_comment,
     ]
     if base_lock_drift:
         lines.append(

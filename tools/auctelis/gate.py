@@ -37,7 +37,7 @@ from auctelis.reach_tiers import (
     load_trusted_hosts,
 )
 from auctelis.security.engine import ScanResult, run_authority_inventory
-from auctelis.textutil import validated_http_url
+from auctelis.textutil import sanitize_terminal_line, validated_http_url
 
 TRUST_FILE = ".auctelis/trusted-hosts"
 
@@ -590,20 +590,31 @@ def run_gate(
     except (AuthorityLockError, FileNotFoundError, OSError, ValueError) as exc:
         return _fail_closed_gate_report(str(exc))
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
-    try:
-        unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
-    except (TypeError, ValueError):
-        unparsed = 0
-    from auctelis.inventory.coverage import count_truncation_events
+    from auctelis.inventory.coverage import (
+        count_truncation_events,
+        unparsed_agent_config_count_from_coverage,
+    )
 
+    unparsed = unparsed_agent_config_count_from_coverage(coverage)
+
+    # ``summarize_coverage`` caps ``parser_events`` at 50 but stores accurate
+    # counts. Never re-derive (and overwrite) them from the capped list: that
+    # would turn a truncated scan into a clean PASS. Recompute only when the
+    # producer did not supply the count keys (synthetic / legacy coverage).
     trunc = count_truncation_events(coverage.get("parser_events"))
     coverage = {
         **coverage,
-        "depth_limit_count": trunc["depth_limit"],
-        "file_limit_reached_count": trunc["file_limit_reached"],
-        "read_error_count": trunc["read_error"],
-        "truncated": bool(trunc["depth_limit"] or trunc["file_limit_reached"]),
+        "depth_limit_count": coverage.get("depth_limit_count", trunc["depth_limit"]),
+        "file_limit_reached_count": coverage.get(
+            "file_limit_reached_count", trunc["file_limit_reached"]
+        ),
+        "read_error_count": coverage.get("read_error_count", trunc["read_error"]),
     }
+    coverage["truncated"] = bool(
+        coverage.get("truncated")
+        or coverage["depth_limit_count"]
+        or coverage["file_limit_reached_count"]
+    )
 
     base_records = list(base.get("records") or [])
     head_records = list(head.get("records") or [])
@@ -620,14 +631,16 @@ def run_gate(
         not base_records and not (base.get("mcp_tools") or {}) and bool(head_records)
     )
 
-    owners = load_lock_owners(
-        root, codeowners_path=codeowners_path, codeowners_text=codeowners_text
-    )
-    co_text = (
-        codeowners_text
-        if codeowners_text is not None
-        else load_codeowners_text(root, codeowners_path=codeowners_path)
-    )
+    try:
+        co_text = (
+            codeowners_text
+            if codeowners_text is not None
+            else load_codeowners_text(root, codeowners_path=codeowners_path)
+        )
+    except OSError as exc:
+        return _fail_closed_gate_report(f"cannot read CODEOWNERS: {exc}")
+    # Load the file once; both the lock-owner lookup and coverage checks use it.
+    owners = load_lock_owners(root, codeowners_text=co_text)
     # Trusted hosts are as attacker-writable as head CODEOWNERS on a PR. Honor
     # them only when the trust file itself is CODEOWNERS-covered; otherwise a PR
     # could allowlist its own destination and lower its own reach tier. Deleting
@@ -947,4 +960,4 @@ def render_gate_report(report: dict[str, Any]) -> str:
             "Advisory: review the growth above; the required check does not fail "
             "until enforce is armed."
         )
-    return "\n".join(lines)
+    return "\n".join(sanitize_terminal_line(line) for line in lines)

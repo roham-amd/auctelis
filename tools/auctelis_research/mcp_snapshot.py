@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from auctelis.process_env import scrub_env
+from auctelis_research.process_env import scrub_env
 
 
 @dataclass(slots=True)
@@ -154,16 +154,4 @@ def snapshot_execute(
             "Pin description hashes into AUTHORITY.lock and re-diff on upgrades.",
             "`allow_network` records intent only — it does not open or close sockets.",
         ],
-    }
-
-
-def diff_tool_locks(base: dict[str, str], head: dict[str, str]) -> dict[str, Any]:
-    added = sorted(set(head) - set(base))
-    removed = sorted(set(base) - set(head))
-    changed = sorted(k for k in set(base) & set(head) if base[k] != head[k])
-    return {
-        "tools_added": added,
-        "tools_removed": removed,
-        "description_hash_changed": changed,
-        "rug_pull_suspect": bool(changed),
     }

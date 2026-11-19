@@ -212,7 +212,11 @@ def test_first_run_renderer_names_zero_reach_honestly():
         {
             "verdict": "PASS",
             "label": "NONE",
-            "reach": {"total": 0, "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 0}, "top": []},
+            "reach": {
+                "total": 0,
+                "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 0},
+                "top": [],
+            },
         }
     )
     assert "No agent configuration was discovered" in body
@@ -372,6 +376,9 @@ def test_check_first_run_footer_points_at_report_not_lock_only(tmp_path: Path):
     report, cards, _scan = build_check_report(root)
     text = render_check(report, cards)
     assert "check --report" in text
-    assert "auctelis-diff.yml" in text or "lockless" in text.lower()
+    assert "auctelis init --lockless" in text
+    # No dead template path: the CLI writes the workflow itself.
+    assert "templates/" not in text
+    assert "auctelis-diff.yml" not in text
     # Optional enforce still mentioned, but not as the sole next step.
     assert "Next: auctelis lock --update" not in text

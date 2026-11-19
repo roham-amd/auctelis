@@ -24,6 +24,32 @@ def _empty_lock(tmp_path: Path) -> Path:
     return path
 
 
+def test_truncation_survives_the_capped_parser_event_list(tmp_path: Path):
+    """The gate must not re-derive truncation from ``parser_events[:50]``."""
+    from auctelis.inventory.coverage import summarize_coverage
+    from auctelis.security.engine import run_authority_inventory
+
+    root = _root(tmp_path)
+    (root / "README.md").write_text("x\n", encoding="utf-8")
+    scan = run_authority_inventory(root)
+    events = [{"type": "default_exclude"} for _ in range(60)]
+    events.append({"type": "depth_limit", "path": "deep/"})
+    scan.coverage = summarize_coverage([], parser_events=events)
+    assert scan.coverage["truncated"] is True
+    assert len(scan.coverage["parser_events"]) == 50
+
+    report, code = run_gate(
+        root,
+        base_lock=_empty_lock(tmp_path),
+        scan=scan,
+        check_ruleset=False,
+        trust_head_codeowners=True,
+    )
+    assert report["verdict"] == "NEEDS_REVIEW"
+    assert "inventory truncated" in str(report.get("error") or "")
+    assert code == 1
+
+
 def test_missing_base_lock_fails_closed(tmp_path: Path):
     report, code = run_gate(_root(tmp_path), base_lock=tmp_path / "missing.lock")
     assert code == 2

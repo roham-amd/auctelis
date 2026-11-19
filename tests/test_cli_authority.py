@@ -6,6 +6,7 @@ from pathlib import Path
 
 from auctelis.cli import main
 from auctelis.cli.parser import build_parser, normalize_argv
+from auctelis.versioning import product_version
 from auctelis_devtools.cli import main_dev
 
 
@@ -33,7 +34,8 @@ def test_auctelis_path_runs_check(tmp_path: Path, capsys):
     # First-run / no lock → exit 0 (BASELINE_NEEDED).
     assert code == 0
     captured = capsys.readouterr().out
-    assert "auctelis check" in captured or "BASELINE_NEEDED" in captured or "Inventory:" in captured
+    assert "Verdict: BASELINE_NEEDED · label NONE" in captured
+    assert "Inventory: 0 records" in captured
 
 
 def test_product_help_hides_advanced_shows_core():
@@ -80,6 +82,71 @@ def test_cli_ci_init_writes_files(tmp_path: Path, capsys):
     out2 = capsys.readouterr().out
     assert code2 == 0
     assert "Exists" in out2
+
+
+def test_init_lockless_writes_only_workflow(tmp_path: Path, capsys):
+    """AUCT-013: one file, no owner, no lock/CODEOWNERS/policy ceremony."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    code = main(["init", str(root), "--lockless"])
+    out = capsys.readouterr().out
+    assert code == 0
+    workflow = root / ".github" / "workflows" / "auctelis.yml"
+    assert workflow.is_file()
+    body = workflow.read_text(encoding="utf-8")
+    assert f"auctelis-gate@v{product_version()}" in body
+    assert 'locked: "false"' in body
+    # Only the workflow is written.
+    assert not (root / ".auctelis.yml").exists()
+    assert not (root / ".github" / "CODEOWNERS").exists()
+    assert not (root / "AUTHORITY.lock").exists()
+    assert "git add .github/workflows/auctelis.yml" in out
+
+    # Re-run without --force keeps the existing file.
+    code2 = main(["init", str(root), "--lockless"])
+    assert code2 == 0
+    assert "Exists (use --force)" in capsys.readouterr().out
+
+
+def test_init_lockless_rejects_enforce(tmp_path: Path, capsys):
+    root = tmp_path / "repo"
+    code = main(["init", str(root), "--lockless", "--enforce"])
+    assert code == 2
+    assert "--lockless" in capsys.readouterr().out
+    assert not (root / ".github").exists()
+
+
+def test_init_lockless_refused_for_agent(tmp_path: Path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    monkeypatch.setenv("AUCTELIS_AGENT", "1")
+    assert main(["init", str(root), "--lockless"]) == 2
+    assert not (root / ".github").exists()
+
+
+def test_init_without_lockless_still_requires_owner(tmp_path: Path, capsys):
+    root = tmp_path / "repo"
+    root.mkdir()
+    assert main(["init", str(root)]) == 2
+    out = capsys.readouterr().out
+    assert "--owner" in out and "--lockless" in out
+    assert not (root / ".auctelis.yml").exists()
+
+
+def test_init_lockless_force_rewrites_and_ci_alias_is_equivalent(tmp_path: Path, capsys):
+    """The legacy ``ci init`` alias reaches the same lockless writer."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    assert main(["ci", "init", str(root), "--lockless"]) == 0
+    workflow = root / ".github" / "workflows" / "auctelis.yml"
+    assert workflow.is_file()
+    assert not (root / ".auctelis.yml").exists()
+    first = workflow.read_text(encoding="utf-8")
+
+    assert main(["init", str(root), "--lockless", "--force"]) == 0
+    assert workflow.read_text(encoding="utf-8") == first
+    out = capsys.readouterr().out
+    assert "Wrote:" in out
 
 
 def test_cli_scan_ignores_parent_policy(tmp_path: Path, capsys):

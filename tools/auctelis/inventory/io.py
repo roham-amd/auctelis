@@ -56,14 +56,6 @@ _DEFAULT_EXCLUDE_DIRS = {
 }
 
 
-def is_under_root(path: Path, root: Path) -> bool:
-    try:
-        path.resolve().relative_to(root.resolve())
-        return True
-    except ValueError:
-        return False
-
-
 def iter_repo_files(
     root: Path,
     *,

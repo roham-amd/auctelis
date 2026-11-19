@@ -125,7 +125,12 @@ def load_authority_lock(path: Path) -> dict[str, Any]:
     """Load AUTHORITY.lock (JSON preferred; tiny YAML subset for legacy)."""
     if not path.is_file():
         raise FileNotFoundError(path)
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise AuthorityLockError(f"AUTHORITY.lock is not valid UTF-8 ({path})") from exc
+    except OSError as exc:
+        raise AuthorityLockError(f"cannot read AUTHORITY.lock ({path}): {exc}") from exc
     suffix = path.suffix.lower()
     name = path.name.lower()
     if suffix == ".json" or name.endswith(".lock.json"):

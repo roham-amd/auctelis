@@ -192,6 +192,17 @@ def _capabilities(
 
 def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
     """Build a canonical Authority Snapshot from a scan result."""
+    # Index evidence once: filtering the full capability/finding lists per
+    # component is quadratic on large inventories.
+    caps_by_cid: dict[str, list[Any]] = {}
+    for cap in scan.capabilities:
+        cap_cid = str(getattr(cap, "component_id", "") or "")
+        caps_by_cid.setdefault(cap_cid, []).append(cap)
+    findings_by_cid: dict[str, list[Any]] = {}
+    for finding in scan.findings:
+        for finding_cid in getattr(finding, "component_ids", []) or []:
+            findings_by_cid.setdefault(str(finding_cid), []).append(finding)
+
     components_out: list[dict[str, Any]] = []
     for raw in scan.inventory.get("components") or []:
         if not isinstance(raw, dict):
@@ -223,7 +234,8 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
         if kind not in authority_kinds and not hints:
             continue
         fp = str(raw.get("fingerprint") or component_fingerprint(raw))
-        cid = str(raw.get("component_id") or fp)
+        lookup_cid = str(raw.get("component_id") or "")
+        cid = lookup_cid or fp
         name = str(raw.get("name") or "")
         comp = AuthorityComponent(
             id=cid,
@@ -232,7 +244,11 @@ def build_authority_snapshot(scan: ScanResult) -> dict[str, Any]:
             path=str(raw.get("repository_path") or raw.get("name") or ""),
             fingerprint=fp,
             name=name,
-            capabilities=_capabilities(raw, scan.findings, declared=scan.capabilities),
+            capabilities=_capabilities(
+                raw,
+                findings_by_cid.get(lookup_cid, []) if lookup_cid else scan.findings,
+                declared=caps_by_cid.get(lookup_cid, []) if lookup_cid else scan.capabilities,
+            ),
             destinations=_destinations(raw),
             identity=_identity(raw),
             approval_posture=_approval_posture(raw),

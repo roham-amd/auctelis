@@ -13,10 +13,8 @@ _REPLAY = Path(__file__).resolve().parents[1] / "examples" / "attack-replay"
 _DEMO = Path(__file__).resolve().parents[1] / "examples" / "demo-vulnerable"
 
 
-@pytest.mark.parametrize("root", [_DEMO, *_REPLAY.iterdir()])
+@pytest.mark.parametrize("root", [_DEMO, *(p for p in _REPLAY.iterdir() if p.is_dir())])
 def test_high_critical_not_inferred_hint_only(tmp_path: Path, root: Path):
-    if not root.is_dir():
-        pytest.skip("not a directory")
     scan, _payload, _code = run_scan(root, output_dir=tmp_path / root.name, fail_on="never")
     bad = [
         f

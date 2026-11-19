@@ -127,10 +127,10 @@ def run_security_scan(
     enrich_component_provenance(components, root=target)
     for component in components:
         component["fingerprint"] = component_fingerprint(component)
-    # Mirror fingerprints into serialized inventory.
+    # Mirror fingerprints into serialized inventory (index once; avoid O(n²)).
+    components_by_id = {c.get("component_id"): c for c in components}
     for inv_comp in inventory.get("components") or []:
-        cid = inv_comp.get("component_id")
-        match = next((c for c in components if c.get("component_id") == cid), None)
+        match = components_by_id.get(inv_comp.get("component_id"))
         if match:
             inv_comp["content_digest"] = match.get("content_digest")
             inv_comp["fingerprint"] = match.get("fingerprint")
@@ -180,7 +180,10 @@ def run_security_scan(
         for c in capabilities
         if c.kind == "access_network" and c.status in {"OBSERVED", "POTENTIAL", "CONFIRMED"}
     )
-    relationships = emit_relationships(components)
+    # Cross-component relationship graphs are research output. The product
+    # check/lock/gate paths never read them, and emitting them here is
+    # quadratic on large repositories.
+    relationships = emit_relationships(components) if apply_rules else []
 
     return ScanResult(
         repository_path=str(target),

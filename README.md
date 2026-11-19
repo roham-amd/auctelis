@@ -17,14 +17,15 @@ There are exactly **two surfaces**: `check` locally, the Action on PRs.
 
 ```bash
 # 1. See the aha — no install step, no lock needed (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis check
 
 # 2. Shareable audit artifact for your ticket / security lead (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check --report out/
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis check --report out/
 
-# 3. In your repo: baseline + comment-only workflow + CODEOWNERS (2 min):
+# 3. In your repo, pick one (2 min):
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --lockless          # one file: lockless PR Watch (no owner, no lock)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools" auctelis init --owner security    # full setup: policy + workflow + CODEOWNERS + lock; add --enforce for a locked gate
 
 # 4. Commit, open the install PR, and read the first-run "Watching …" comment (2 min).
 #    Later no-change PRs stay silent; PRs that change agent authority get the Authority Diff.
@@ -33,17 +34,19 @@ uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=t
 The Action diffs **tree-derived** base→head authority (the committed lock is
 drift-checked, never trusted as head) and posts the Authority Diff when authority
 changed. Default `init` is **comment-only** (advisory); pass `--enforce` for a
-required check. In comment-only mode, unreviewed growth is `NEEDS_REVIEW` —
-never a false `PASS` — and no-change PRs stay quiet (`comment-on-none: true`
-restores a comment on every PR). The PR that adds the Auctelis workflow posts
-one "Watching" comment as proof the gate is live, then silence is the product.
+required check. In comment-only mode, unreviewed **material (tier 1+)** growth is
+`NEEDS_REVIEW` — never a false `PASS` — and no-change PRs stay quiet
+(`comment-on-none: true` restores a comment on every PR). Tier-0
+instructions-only growth stays `PASS` (visible on the comment, not a gate).
+The PR that adds the Auctelis workflow posts one "Watching" comment as proof the
+gate is live, then silence is the product.
 
 Auctelis **labels** growth and posts the diff — it does **not** count PR
 approvals; GitHub CODEOWNERS/rulesets do that when you enforce. Reach is tiered:
 inferred doc links stay comment-only; literal execute/secrets/new MCP fail under
 `--enforce`. Trusted destinations lower *network-only* reach to the comment tier
-but never hide secrets, execute, approvals, unattended reach, or a record that
-declares a launcher. Body-only
+but never hide secrets, execute, approvals, unattended reach, a record that
+declares a launcher, or new **MCP / Hook / Host Settings** authority. Body-only
 instruction edits stay visible on the comment. An empty (0-record) base lock is
 **empty-baseline growth**. Locally, `auctelis check` is the pre-push preflight.
 
@@ -77,15 +80,17 @@ surfaces above.
 | `auctelis why <name>` | Exact config path / fields for one record |
 | `auctelis demo` | Packaged fixture (optional) |
 
-Lockless alternative to `init`: copy
+Lockless alternative to full `init`: `auctelis init --lockless` writes
 [`tools/auctelis/templates/auctelis-diff.yml`](tools/auctelis/templates/auctelis-diff.yml)
-into `.github/workflows/`.
+to `.github/workflows/auctelis.yml` (no owner, lock, policy, or CODEOWNERS).
+Auditing several repos at once: `auctelis check repo-a repo-b --report out/`
+writes one ranked fleet report.
 
 Persistent CLI install (git tag; see docs/INSTALL.md):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.16.0#subdirectory=tools"
 ```
 
 Host tripwires were removed in 0.8.0. The product gate is **tree-truth** —

@@ -1,10 +1,10 @@
 {
-  "audited_commit": "ab606ee266dba609925648572cec4f4e9b7aa7c0",
-  "lock_hash": "66c09bdc3e332b8a6c67cfb4ed2bd90e",
+  "audited_commit": "e023d88e17fae1d924f02d7bb431fe050ec85fe0",
+  "lock_hash": "2cfe13efe6af9eb1b593b2c776ceee79",
   "mcp_tools": {},
   "policy_hash": "sha256:a8c2859829cdcc55c39319e381e1301a9e0e4608357be1f214f2ad9d89030c54",
   "product": "auctelis",
-  "product_version": "0.15.0",
+  "product_version": "0.16.0",
   "records": [
     {
       "approval_posture": "unknown",
@@ -113,10 +113,10 @@
       "destinations": [
         "github.com"
       ],
-      "digest": "sha256:cb46ba84c2c9cacf6f34e50f37ee91f83dfbb4ad5d03998bb2429adf4407cb85",
+      "digest": "sha256:1a79d7f048c2dbd76c0a095cd3f15d2d5136772d7981f001048a2eb0185f8f8f",
       "env_keys": [],
       "evidence_strength": "INFERRED_HINT",
-      "fingerprint": "a9884f6f4c1e3b8c",
+      "fingerprint": "a77a4d0c6432aac3",
       "host": "github.com",
       "id": "skill_md/Skill/auctelis-auditor@skills/auctelis-auditor/SKILL.md",
       "identity_key": "skill_md|skill|auctelis-auditor",
@@ -127,7 +127,7 @@
       "path": "skills/auctelis-auditor/SKILL.md",
       "permission_allows": [],
       "pin_state": "n/a",
-      "script_digest": "sha256:cb46ba84c2c9cacf6f34e50f37ee91f83dfbb4ad5d03998bb2429adf4407cb85",
+      "script_digest": "sha256:1a79d7f048c2dbd76c0a095cd3f15d2d5136772d7981f001048a2eb0185f8f8f",
       "url_host": "github.com"
     }
   ],

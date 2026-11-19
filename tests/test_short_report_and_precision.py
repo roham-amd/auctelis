@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from auctelis.cli import main
-from auctelis.security.report import (
+from auctelis_research.report import (
     render_short_terminal_report,
     render_terminal_report,
 )

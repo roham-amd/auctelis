@@ -12,9 +12,9 @@ from auctelis.paths import (
     repo_root,
     version_file_path,
 )
-from auctelis.pins import normalize_package_name
 from auctelis.supply_chain.digest import sha256_file
 from auctelis.versioning import load_versions as load_canonical_versions
+from auctelis_devtools.deps import normalize_package_name
 
 
 def sync_schemas() -> list[str]:
@@ -560,21 +560,6 @@ def validate_json_schema_document() -> None:
     Draft202012Validator.check_schema(schema)
 
 
-def validate_examples() -> list[str]:
-    root = repo_root()
-    schema = json.loads(canonical_schema_path().read_text(encoding="utf-8"))
-    validator = Draft202012Validator(schema)
-    results: list[str] = []
-    for example in sorted((root / "examples").glob("*.json")):
-        doc = json.loads(example.read_text(encoding="utf-8"))
-        errors = sorted(validator.iter_errors(doc), key=lambda e: e.path)
-        if errors:
-            msgs = "; ".join(f"{list(e.path)}: {e.message}" for e in errors[:5])
-            raise SystemExit(f"Example failed schema validation: {example.name}: {msgs}")
-        results.append(f"ok {example.name}")
-    return results
-
-
 _LINK_RE = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
 
 
@@ -710,25 +695,15 @@ def check_wheel_omits_research() -> list[str]:
             return ["skip wheel research check (no dist/*.whl; run uv build first)"]
         wheel = wheels[-1]
     banned = (
-        "auctelis/security/rules.py",
-        "auctelis/security/scan.py",
-        "auctelis/broker.py",
-        "auctelis/typosquat.py",
-        "auctelis/mcp_snapshot.py",
-        "auctelis/artifact_vet.py",
-        "auctelis/export/annotate.py",
-        "auctelis/corpus/",
-        "auctelis/graph/",
+        # Research package (separate import root; source-checkout only).
         "auctelis_research/",
-        # AUCT-012: maintainer modules must not ship in the product wheel.
-        "auctelis/build.py",
-        "auctelis/deps.py",
-        "auctelis/lint.py",
-        "auctelis/semantic.py",
-        "auctelis/validate_report.py",
-        "auctelis/cli/dev_commands.py",
-        "auctelis/export/sarif.py",
-        "auctelis/export/agent_digest.py",
+        # Maintainer package (separate import root; source-checkout only).
+        "auctelis_devtools/",
+        # AUCT-016: source-only modules that used to ride in the product wheel.
+        "auctelis/security/report.py",
+        "auctelis/security/baseline.py",
+        "auctelis/process_env.py",
+        "auctelis/pins.py",
     )
     with zipfile.ZipFile(wheel) as zf:
         names = zf.namelist()
@@ -752,13 +727,11 @@ def build_all() -> dict[str, object]:
     check_requires_python()
     dep_pins = check_dependency_pins()
     validate_json_schema_document()
-    examples = validate_examples()
     links = check_internal_markdown_links()
     wheel_lean = check_wheel_omits_research()
     return {
         "schemas": sync,
         "packaged_metadata": packaged,
-        "examples": examples,
         "dependency_pins": dep_pins,
         "markdown_files_link_checked": links,
         "wheel_omits_research": wheel_lean,
