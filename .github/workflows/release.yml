@@ -148,9 +148,9 @@ jobs:
           grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|NEEDS_REVIEW' /tmp/auctelis-wheel-demo/pr-comment.md
           /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable | grep -E 'BASELINE_NEEDED|Inventory'
           /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable --pins | grep -E 'Unpinned MCP servers'
-          # Research scanner must not ship in the product wheel.
+          # Research / maintainer modules must not ship in the product wheel.
           # -P: do not prepend the tools/ cwd (source checkout) onto sys.path.
-          /tmp/auctelis-wheel-smoke/bin/python -P -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('auctelis_research') is None else 1)"
+          /tmp/auctelis-wheel-smoke/bin/python -P -c "import importlib.util,sys; mods=('auctelis_research','auctelis.build','auctelis.cli.dev_commands','auctelis.export.sarif'); sys.exit(0 if all(importlib.util.find_spec(m) is None for m in mods) else 1)"
 
   release:
     needs: [validate, pytest-matrix, wheel-smoke]

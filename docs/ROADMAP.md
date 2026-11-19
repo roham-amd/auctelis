@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.14.0** (complete report + lockless tree-truth diff + lean Action) · lock schema 1 · tooling 0.14.0
+**Current:** **0.15.0** (install-PR Watching fix + tree-truth `diff --base` + wheel diet) · lock schema 1 · tooling 0.15.0
 
 ## North star (Gate Zero)
 
@@ -41,6 +41,7 @@ are removed.
 | **0.13.2** | LF-stable authority digests across Windows and Linux | **done** |
 | **0.13.3** | Release pipeline installs `auctelis-dev` before metadata verify / SBOM | **done** |
 | **0.14.0** | Complete Reach Report; lockless tree-truth `diff --base`; honest install-PR Watching; monorepo walk limits; lean Action (drop deprecated research inputs) | **done** |
+| **0.15.0** | Live install-PR Watching bugfix; pure tree-truth `diff --base`; product wheel diet (`auctelis_devtools`); lockless funnel CTA | **done** |
 | Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate

@@ -7,9 +7,9 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from auctelis.build import validate_json_schema_document
 from auctelis.paths import canonical_schema_path, repo_root
-from auctelis.semantic import SemanticResult, validate_semantics
+from auctelis_devtools.build import validate_json_schema_document
+from auctelis_devtools.semantic import SemanticResult, validate_semantics
 
 
 def _load_graph_analysis() -> Any:

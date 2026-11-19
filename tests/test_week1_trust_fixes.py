@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main_dev
-from auctelis.export.agent_digest import render_agent_digest
 from auctelis.security.authority import (
     build_authority_snapshot,
     diff_authority_snapshots,
@@ -15,6 +13,8 @@ from auctelis.security.baseline import diff_against_baseline, save_baseline
 from auctelis.security.decision import compute_decision
 from auctelis.security.engine import run_security_scan
 from auctelis.security.gating import compute_exit_code
+from auctelis_devtools.cli import main_dev
+from auctelis_devtools.export.agent_digest import render_agent_digest
 
 
 def _write_multi_mcp(root: Path, servers: dict) -> Path:

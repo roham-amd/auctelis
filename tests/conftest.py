@@ -10,6 +10,11 @@ _TOOLS = Path(__file__).resolve().parents[1] / "tools"
 _TOOLS_STR = str(_TOOLS)
 if _TOOLS_STR not in sys.path:
     sys.path.insert(0, _TOOLS_STR)
+# Maintainer package lives under tools/dev/ (not in the product wheel).
+_DEV = _TOOLS / "dev"
+_DEV_STR = str(_DEV)
+if _DEV_STR not in sys.path:
+    sys.path.insert(0, _DEV_STR)
 
 
 def pytest_load_initial_conftests(early_config, parser, args: list[str]) -> None:

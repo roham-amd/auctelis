@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.14.0 · **Package:** `auctelis` 0.14.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.15.0 · **Package:** `auctelis` 0.15.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -44,7 +44,7 @@ Public path: **check → check --report → diff --base → lockless workflow or
 | Command | Job |
 | --- | --- |
 | `auctelis check [--top N] [--pins]` | Ranked reach report vs `AUTHORITY.lock` (front door; inventory-only) |
-| `auctelis diff --base <ref>` | Local Authority Diff; lockless refs use tree-truth (`baseline_state=tree`) |
+| `auctelis diff --base <ref>` | Local Authority Diff; tree-truth first (`baseline_state=tree`), Action-parity |
 | `auctelis trust <host>` | Trusted destinations for network-only reach (`--list`, `--remove`, `--init`) |
 | `auctelis init --owner team` | Comment-only setup (default); `--enforce` for locked gate (`@` optional) |
 | `auctelis status` | Lock / workflow / CODEOWNERS / protection summary (`--check`; `--require-protection` for CI) |

@@ -7,7 +7,7 @@ from typing import Any
 
 from auctelis.export.authority_sbom import build_authority_sbom
 from auctelis.export.pr_comment import render_authority_diff_comment
-from auctelis.export.sarif import findings_doc_to_sarif
+from auctelis_devtools.export.sarif import findings_doc_to_sarif
 from auctelis.jsonio import write_json, write_text
 from auctelis.paths import resolve_default_output_dir
 from auctelis.policy import AuctelisPolicy

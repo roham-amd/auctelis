@@ -2,12 +2,12 @@ from pathlib import Path
 
 from auctelis.inventory.collector import collect_inventory, inventory_to_json
 from auctelis.inventory.limits import CollectorLimits
-from auctelis.validate_report import analyze_graph_paths
+from auctelis_devtools.validate_report import analyze_graph_paths
 from auctelis_research.corpus.runner import run_corpus
 
 
 def test_dependency_pins_consistent():
-    from auctelis.build import check_dependency_pins, check_requires_python
+    from auctelis_devtools.build import check_dependency_pins, check_requires_python
 
     check_requires_python()
     actions = check_dependency_pins()
@@ -16,7 +16,7 @@ def test_dependency_pins_consistent():
 
 
 def test_deps_outdated_report_structure(monkeypatch):
-    from auctelis import deps
+    from auctelis_devtools import deps
 
     pins = deps.parse_lock_pins()
     assert "jsonschema" in pins
@@ -70,7 +70,7 @@ def test_preflight_graph_helpers(tmp_path: Path):
         inventory_to_graph,
         run_preflight,
     )
-    from auctelis.validate_report import validate_graph_file
+    from auctelis_devtools.validate_report import validate_graph_file
 
     root = (
         Path(__file__).resolve().parents[1] / "tests" / "corpus" / "fixtures" / "benign-skill-mcp"

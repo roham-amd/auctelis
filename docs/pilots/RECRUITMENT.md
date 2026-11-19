@@ -14,18 +14,20 @@ until a real outside repo is installed.
 **A — Lockless (preferred first contact)**
 
 ```bash
-# In the pilot repo:
+# In the pilot repo — report first, then paste the workflow:
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check --report out/
+# Forward out/reach-report.html to the team, then:
 mkdir -p .github/workflows
 # Copy tools/auctelis/templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-# Or curl the raw file from the auctelis tag v0.14.0, then open a PR that adds an MCP.
+# Or curl the raw file from the auctelis tag v0.15.0, then open a PR that adds an MCP.
 ```
 
 **B — Comment-only init**
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis check
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis diff --base origin/main
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis init --owner security   # advisory workflow + CODEOWNERS + lock
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis diff --base origin/main
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security   # advisory workflow + CODEOWNERS + lock
 ```
 
 **C — Enforce (slot 3)**

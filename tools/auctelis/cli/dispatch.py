@@ -2,8 +2,7 @@
 
 Product surface: ``check``, ``lock``, ``init``, ``status``, ``gate``, ``diff``,
 ``trust``, ``why``, ``demo``, and the ``ci`` alias. Maintainer / research
-handlers live in :mod:`auctelis.cli.dev_commands`; this module only routes to
-them so the product path stays reviewable.
+handlers live in :mod:`auctelis_devtools` (``auctelis-dev`` only).
 """
 
 from __future__ import annotations
@@ -23,24 +22,7 @@ from auctelis.cli.authority_commands import (
     cmd_check,
     cmd_why,
 )
-from auctelis.cli.dev_commands import (
-    cmd_annotate,
-    cmd_artifact_vet,
-    cmd_build,
-    cmd_corpus,
-    cmd_deps,
-    cmd_export,
-    cmd_hosts,
-    cmd_inventory,
-    cmd_lint,
-    cmd_run,
-    cmd_scan,
-    cmd_snapshot,
-    cmd_validate,
-    cmd_verify,
-    require_research,
-)
-from auctelis.cli.guards import refuse_agent_mutation
+from auctelis.cli.guards import refuse_agent_mutation, require_research
 from auctelis.export.pr_comment import (
     render_authority_diff_comment,
     render_first_run_comment,
@@ -68,42 +50,14 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_init(args)
         case "status":
             return _cmd_status(args)
-        case "scan":
-            return cmd_scan(args)
         case "demo":
             return _cmd_demo(args)
         case "lock":
             return _cmd_lock(args)
         case "gate":
             return _cmd_gate(args)
-        case "build":
-            return cmd_build(args)
-        case "validate":
-            return cmd_validate(args)
-        case "inventory":
-            return cmd_inventory(args)
-        case "verify":
-            return cmd_verify(args)
         case "diff":
             return _cmd_diff(args)
-        case "export":
-            return cmd_export(args)
-        case "annotate":
-            return cmd_annotate(args)
-        case "hosts":
-            return cmd_hosts(args)
-        case "corpus":
-            return cmd_corpus()
-        case "deps":
-            return cmd_deps(args)
-        case "lint":
-            return cmd_lint(args)
-        case "run":
-            return cmd_run(args)
-        case "snapshot":
-            return cmd_snapshot(args)
-        case "artifact-vet":
-            return cmd_artifact_vet(args)
         case _:
             return 2
 

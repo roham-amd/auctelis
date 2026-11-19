@@ -347,7 +347,11 @@ def render_check(
             lines.append(pins_line)
         lines.append("")
         lines.append(f"Verdict: {verdict} · label {label}")
-        lines.append(f"Next: auctelis lock --update  # write {LOCK_NAME}, then commit")
+        lines.append(
+            "Next: auctelis check --report out/  # HTML/MD/JSON Reach Report, or paste "
+            "templates/auctelis-diff.yml for lockless PR Watching "
+            f"(optional enforce: auctelis lock --update → {LOCK_NAME})"
+        )
         lines.extend(_coverage_footer())
         return "\n".join(lines)
 

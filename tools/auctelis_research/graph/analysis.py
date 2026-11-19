@@ -4,7 +4,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
-from auctelis.semantic import SemanticIssue, issue
+from auctelis_devtools.semantic import SemanticIssue, issue
 
 
 @dataclass

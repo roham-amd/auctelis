@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main, main_dev
+from auctelis.cli import main
 from auctelis.gate import run_gate
+from auctelis_devtools.cli import main_dev
 
 
 def _mcp(root: Path, servers: dict) -> None:

@@ -1,8 +1,9 @@
 """Local PR Authority Diff simulator — ``auctelis diff --base <ref>``.
 
-When ``base_ref`` has a committed ``AUTHORITY.lock``, that lock is the baseline.
-When it does not, extract base authority from a temporary detached worktree
-(tree-truth), matching the lockless PR Action path.
+Always extract base authority from a temporary detached worktree first
+(tree-truth), matching the lockless PR Action path. Fall back to a committed
+``AUTHORITY.lock`` on the base ref only when worktree extract fails. When both
+succeed and disagree, surface ``base_lock_drift`` so local pre-push stays honest.
 """
 
 from __future__ import annotations
@@ -85,6 +86,26 @@ def _extract_tree_authority(repo: Path, base_ref: str) -> dict[str, Any] | None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _load_committed_base_lock(
+    repo: Path,
+    base_ref: str,
+    lock_name: str,
+) -> dict[str, Any] | None:
+    """Return the committed base lock, or ``None`` if missing / unusable."""
+    if not _git_has_file(repo, base_ref, lock_name):
+        return None
+    raw = _git_show(repo, base_ref, lock_name)
+    if raw is None:
+        return None
+    with tempfile.TemporaryDirectory(prefix="auctelis-diff-base-") as tmp:
+        base_path = Path(tmp) / lock_name
+        base_path.write_text(raw, encoding="utf-8")
+        try:
+            return load_authority_lock(base_path)
+        except (AuthorityLockError, OSError):
+            return None
+
+
 def run_diff_base(
     root: Path,
     *,
@@ -106,47 +127,27 @@ def run_diff_base(
         }
         return f"auctelis diff --base: {payload['error']}", payload, 2
 
-    # Prefer committed lock when present; otherwise tree-truth via worktree.
-    has_lock = _git_has_file(repo, base_ref, lock_name)
+    # Tree-truth first (Action parity). Committed lock is a fallback / drift signal.
+    extracted = _extract_tree_authority(repo, base_ref)
+    committed = _load_committed_base_lock(repo, base_ref, lock_name)
+    base_lock_drift = False
     baseline_state: str
     base: dict[str, Any]
-    if has_lock:
+
+    if extracted is not None:
+        baseline_state = "tree"
+        base = extracted
+        if committed is not None:
+            drift_delta = diff_authority_locks(committed, extracted)
+            drift_summary = drift_delta.get("summary") or {}
+            if bool(drift_summary.get("authority_changed")):
+                base_lock_drift = True
+    elif committed is not None:
         baseline_state = "present"
-        raw = _git_show(repo, base_ref, lock_name)
-        if raw is None:
-            payload = {
-                "schema_version": SCHEMA_VERSION,
-                "verdict": "FAIL_CLOSED",
-                "error": (
-                    f"cannot read {lock_name} from git ref {base_ref!r} "
-                    f"(git show {base_ref}:{lock_name})"
-                ),
-                "base_ref": base_ref,
-                "baseline_state": baseline_state,
-            }
-            return f"auctelis diff --base: {payload['error']}", payload, 2
-        with tempfile.TemporaryDirectory(prefix="auctelis-diff-base-") as tmp:
-            base_path = Path(tmp) / lock_name
-            base_path.write_text(raw, encoding="utf-8")
-            try:
-                base = load_authority_lock(base_path)
-            except (AuthorityLockError, OSError) as exc:
-                payload = {
-                    "schema_version": SCHEMA_VERSION,
-                    "verdict": "FAIL_CLOSED",
-                    "error": f"base lock from {base_ref!r} is unusable: {exc}",
-                    "base_ref": base_ref,
-                    "baseline_state": baseline_state,
-                }
-                return f"auctelis diff --base: {payload['error']}", payload, 2
+        base = committed
     else:
-        extracted = _extract_tree_authority(repo, base_ref)
-        if extracted is not None:
-            baseline_state = "tree"
-            base = extracted
-        else:
-            baseline_state = "absent"
-            base = empty_authority_lock()
+        baseline_state = "absent"
+        base = empty_authority_lock()
 
     trusted_hosts = load_trusted_hosts(repo)
     scan = run_authority_inventory(repo)
@@ -169,7 +170,7 @@ def run_diff_base(
         label = "NONE"
         code = 0
     else:
-        # ``present`` (committed lock) or ``tree`` (worktree extract).
+        # ``tree`` (worktree extract) or ``present`` (committed-lock fallback).
         verdict = "NEEDS_REVIEW" if unparsed or growth or material else "PASS"
         code = 0 if verdict == "PASS" else 1
 
@@ -196,10 +197,16 @@ def run_diff_base(
         "comment": comment,
         "base_lock_hash": base.get("lock_hash"),
         "head_lock_hash": head.get("lock_hash"),
+        "base_lock_drift": base_lock_drift,
     }
     lines = [
         f"auctelis diff --base {base_ref}",
         f"Verdict: {verdict} · label {label}",
         comment,
     ]
+    if base_lock_drift:
+        lines.append(
+            "Note: committed base AUTHORITY.lock drifts from base tree-truth "
+            "(diff used tree; reseal the lock on the base branch)."
+        )
     return "\n".join(lines), result, code

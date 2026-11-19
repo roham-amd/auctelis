@@ -102,7 +102,7 @@ def test_validate_report_rejects_non_report_doc(tmp_path: Path):
     import pytest
 
     from auctelis.jsonio import write_json
-    from auctelis.validate_report import validate_report_file
+    from auctelis_devtools.validate_report import validate_report_file
 
     path = tmp_path / "findings.json"
     write_json(path, {"findings": "not-a-list"})

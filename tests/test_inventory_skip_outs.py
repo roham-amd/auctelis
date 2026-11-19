@@ -36,8 +36,8 @@ def test_iter_repo_files_skips_auctelis_out_prefix(tmp_path: Path):
 
 
 def test_iter_repo_files_skips_caches_sorted_and_safe_read_guards(tmp_path: Path):
-    from auctelis.build import _skip_markdown_path
     from auctelis.inventory.io import safe_read_text
+    from auctelis_devtools.build import _skip_markdown_path
 
     root = tmp_path / "repo"
     (root / ".uv-cache").mkdir(parents=True)

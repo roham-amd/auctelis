@@ -1,6 +1,6 @@
 [project]
 name = "auctelis"
-version = "0.14.0"
+version = "0.15.0"
 description = "Auctelis — the authority lockfile and one-line diff for AI agent reach"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -61,7 +61,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["../tests"]
 # ``.`` is tools/ when rootdir is tools; conftest also injects tools/ for research.
-pythonpath = ["."]
+pythonpath = [".", "dev"]
 addopts = [
   "--cov=auctelis",
   "--cov-report=term-missing",
@@ -95,7 +95,7 @@ ignore_missing_imports = true
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["auctelis", "../tests"]
+src = ["auctelis", "dev/auctelis_devtools", "../tests"]
 extend-exclude = [
   ".venv",
   "venv",
@@ -118,7 +118,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["auctelis", "auctelis_research"]
+known-first-party = ["auctelis", "auctelis_devtools", "auctelis_research"]
 
 [tool.ruff.format]
 quote-style = "double"

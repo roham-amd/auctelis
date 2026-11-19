@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import write_authority_lock
-from auctelis.cli import main, main_dev
+from auctelis.cli import main
 from auctelis.cli.parser import build_parser
+from auctelis_devtools.cli import main_dev
 
 
 def test_diff_lock_cli(tmp_path: Path, capsys):

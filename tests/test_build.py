@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from auctelis import build
-from auctelis.build import build_all, check_public_install_versions, check_schema_parity
 from auctelis.versioning import product_version
+from auctelis_devtools import build
+from auctelis_devtools.build import build_all, check_public_install_versions, check_schema_parity
 
 
 def test_build_all_succeeds():

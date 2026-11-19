@@ -13,7 +13,6 @@ that needs ``auctelis_research`` calls :func:`require_research`.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -22,9 +21,7 @@ from auctelis.authority_lock import (
     check_locked,
     diff_authority_locks,
 )
-from auctelis.export.agent_digest import render_agent_digest
 from auctelis.export.pr_comment import render_authority_diff_comment
-from auctelis.export.sarif import report_to_sarif
 from auctelis.gate import load_lock_owners
 from auctelis.hosts.profiles import get_host_profile, list_host_profiles
 from auctelis.inventory.collector import collect_inventory, inventory_to_json
@@ -32,34 +29,16 @@ from auctelis.jsonio import print_json, read_json, write_json, write_text
 from auctelis.lock_io import load_authority_lock
 from auctelis.policy import apply_policy_defaults, discover_policy_file, load_policy
 from auctelis.supply_chain.digest import sha256_file, verify_file_digest
-from auctelis.validate_report import validate_report_file
+from auctelis_devtools.export.agent_digest import render_agent_digest
+from auctelis_devtools.export.sarif import report_to_sarif
+from auctelis_devtools.validate_report import validate_report_file
 
 
 def require_research() -> None:
     """Research scanner lives outside the product wheel (source / editable only)."""
-    try:
-        import auctelis_research as _research
+    from auctelis.cli.guards import require_research as _require
 
-        _ = _research
-        return
-    except ImportError:
-        pass
-    # Source checkout: sibling of the installed ``auctelis`` package under tools/.
-    import auctelis as _pkg
-
-    tools_dir = Path(_pkg.__file__).resolve().parents[1]
-    tools_s = str(tools_dir)
-    if tools_s not in sys.path:
-        sys.path.insert(0, tools_s)
-    try:
-        import auctelis_research as _research
-
-        _ = _research
-    except ImportError as exc:
-        raise SystemExit(
-            "auctelis-dev research commands require a source checkout "
-            "(auctelis_research is not shipped in the product wheel)."
-        ) from exc
+    _require()
 
 
 def _print_validation(path: Path, *, ok: bool, issues: list) -> int:
@@ -281,7 +260,7 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
 
 def cmd_build(args: argparse.Namespace) -> int:
-    from auctelis.build import build_all, sync_schemas
+    from auctelis_devtools.build import build_all, sync_schemas
 
     match args.target:
         case "schemas":
@@ -387,7 +366,7 @@ def cmd_corpus() -> int:
 
 
 def cmd_deps(args: argparse.Namespace) -> int:
-    from auctelis.deps import outdated_report, upgrade_pins
+    from auctelis_devtools.deps import outdated_report, upgrade_pins
 
     match args.deps_cmd:
         case "outdated":
@@ -403,7 +382,7 @@ def cmd_deps(args: argparse.Namespace) -> int:
 
 
 def cmd_lint(args: argparse.Namespace) -> int:
-    from auctelis.lint import run_ruff
+    from auctelis_devtools.lint import run_ruff
 
     summary = run_ruff(
         fix=args.fix,

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from auctelis.validate_report import (
+from auctelis_devtools.validate_report import (
     load_report,
     validate_graph_file,
     validate_report_file,

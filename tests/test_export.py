@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from auctelis.export.sarif import report_to_sarif
+from auctelis_devtools.export.sarif import report_to_sarif
 
 
 def test_sarif_export_from_sample():

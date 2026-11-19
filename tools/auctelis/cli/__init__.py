@@ -27,12 +27,4 @@ def main(argv: list[str] | None = None) -> int:
     return dispatch(args)
 
 
-def main_dev(argv: list[str] | None = None) -> int:
-    """Maintainer entry point (`auctelis-dev`) with build/lint/corpus/…"""
-    _ensure_utf8_stdout()
-    parser = build_parser(include_dev=True)
-    args = parser.parse_args(argv)
-    return dispatch(args)
-
-
-__all__ = ["main", "main_dev", "normalize_argv"]
+__all__ = ["main", "normalize_argv"]

@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from auctelis.cli import dev_commands, main_dev
-from auctelis.lint import run_ruff
+from auctelis_devtools.cli import dev_commands, main_dev
+from auctelis_devtools.lint import run_ruff
 
 
 def _mcp(root: Path) -> None:
@@ -46,7 +46,7 @@ def test_require_research_reports_missing_package(monkeypatch):
 def _fake_ruff(monkeypatch, tmp_path: Path, returncodes: list[int]) -> list[list[str]]:
     (tmp_path / "tools" / "auctelis").mkdir(parents=True)
     (tmp_path / "tests").mkdir()
-    monkeypatch.setattr("auctelis.lint.repo_root", lambda: tmp_path)
+    monkeypatch.setattr("auctelis_devtools.lint.repo_root", lambda: tmp_path)
     calls: list[list[str]] = []
     codes = iter(returncodes)
 
@@ -54,7 +54,7 @@ def _fake_ruff(monkeypatch, tmp_path: Path, returncodes: list[int]) -> list[list
         calls.append(list(cmd))
         return subprocess.CompletedProcess(cmd, next(codes), "out", "")
 
-    monkeypatch.setattr("auctelis.lint.subprocess.run", fake_run)
+    monkeypatch.setattr("auctelis_devtools.lint.subprocess.run", fake_run)
     return calls
 
 
@@ -75,7 +75,7 @@ def test_run_ruff_failure_is_reported(monkeypatch, tmp_path: Path):
 
 
 def test_run_ruff_without_python_roots(monkeypatch, tmp_path: Path):
-    monkeypatch.setattr("auctelis.lint.repo_root", lambda: tmp_path / "missing")
+    monkeypatch.setattr("auctelis_devtools.lint.repo_root", lambda: tmp_path / "missing")
     assert run_ruff()["ok"] is False
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from auctelis.semantic import validate_semantics
+from auctelis_devtools.semantic import validate_semantics
 
 
 def _valid_report() -> dict[str, Any]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tomllib
 import urllib.error
@@ -168,12 +169,24 @@ def _uv_executable() -> str:
 
 
 def _run_uv(args: list[str]) -> subprocess.CompletedProcess[str]:
+    # Prefer a repo-local temp dir so nested ``uv`` works under sandboxes that
+    # deny writes to the system TEMP (Access Denied on ``.tmp*`` / cache locks).
+    env = os.environ.copy()
+    tmp = tools_dir() / ".tmp-uv"
+    tmp.mkdir(parents=True, exist_ok=True)
+    env["TMPDIR"] = str(tmp)
+    env["TEMP"] = str(tmp)
+    env["TMP"] = str(tmp)
+    cache = tmp / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    env.setdefault("UV_CACHE_DIR", str(cache))
     return subprocess.run(
         [_uv_executable(), *args],
         cwd=tools_dir(),
         check=False,
         text=True,
         capture_output=True,
+        env=env,
     )
 
 

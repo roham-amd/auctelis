@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.14.0** · product **0.14.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.15.0** · product **0.15.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -52,7 +52,7 @@ rules, subagents, plugins, CI) and diffs them against the committed
 five cards even when the lock matches (`--top 0` hides cards). `--report` always
 lists every tier-2 record (not just the top cards).
 
-- No lock yet → inventory + `BASELINE_NEEDED`; next step `auctelis lock --update`
+- No lock yet → inventory + `BASELINE_NEEDED`; next step `check --report` or paste lockless workflow (`lock --update` optional for enforce)
 - Lock matches → `LOCKED`, still showing reach counts and top cards
 - Lock drifts → cards with `@ path` + `NEEDS_REVIEW`
 - `--pins` → unpinned/floating MCP launchers with a concrete pin suggestion
@@ -130,12 +130,14 @@ auctelis diff --base <git-ref> [--repo PATH] [--json]
 auctelis diff lock <base.lock> <head.lock>
 ```
 
-Local PR Authority Diff simulator: resolves the git ref, reads committed
-`AUTHORITY.lock` when present (`baseline_state=present`), otherwise extracts
-tree-truth authority from a temporary detached worktree
-(`baseline_state=tree`). Invalid ref → `FAIL_CLOSED`, exit 2. Regenerates head
-from the working tree and prints the same comment dialect as the Action. JSON
-includes `baseline_state`.
+Local PR Authority Diff simulator: always extracts tree-truth authority from a
+temporary detached worktree first (`baseline_state=tree`), matching the PR
+Action. Falls back to a committed `AUTHORITY.lock` on the base ref
+(`baseline_state=present`) only when worktree extract fails. When both succeed
+and disagree, JSON sets `base_lock_drift=true` and text notes the drift.
+Invalid ref → `FAIL_CLOSED`, exit 2. Regenerates head from the working tree and
+prints the same comment dialect as the Action. Use `diff lock` to compare two
+committed lock files directly.
 
 ---
 

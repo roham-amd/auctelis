@@ -12,7 +12,11 @@ from auctelis.paths import repo_root
 
 def _python_roots() -> list[Path]:
     tools = repo_root() / "tools"
-    return [tools / "auctelis", repo_root() / "tests"]
+    return [
+        tools / "auctelis",
+        tools / "dev" / "auctelis_devtools",
+        repo_root() / "tests",
+    ]
 
 
 def run_ruff(

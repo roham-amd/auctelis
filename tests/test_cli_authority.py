@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from auctelis.cli import main, main_dev
+from auctelis.cli import main
 from auctelis.cli.parser import build_parser, normalize_argv
+from auctelis_devtools.cli import main_dev
 
 
 def test_normalize_argv_defaults_check_or_scan(tmp_path: Path):

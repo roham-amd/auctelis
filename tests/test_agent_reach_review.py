@@ -182,9 +182,56 @@ def test_diff_base_with_lock_does_not_say_absolute_head_scan(tmp_path: Path):
 
     _text, payload, code = run_diff_base(root, base_ref="HEAD")
     assert code == 1
-    assert payload["baseline_state"] == "present"
+    # AUCT-011: tree-truth first even when a committed lock exists.
+    assert payload["baseline_state"] == "tree"
     assert payload["label"] == "GROWTH"
     assert "absolute head" not in payload["comment"].lower()
+
+
+def test_diff_base_stale_lock_uses_tree_and_flags_drift(tmp_path: Path):
+    """AUCT-011: stale committed base lock still diffs against base tree."""
+    from auctelis.lock_io import compute_lock_hash, empty_authority_lock
+
+    root = tmp_path / "repo"
+    _init_repo(root)
+    _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    # Commit a hollow / stale lock that does not match the base tree.
+    hollow = empty_authority_lock()
+    hollow["lock_hash"] = compute_lock_hash(hollow)
+    (root / "AUTHORITY.lock").write_text(json.dumps(hollow, indent=2) + "\n", encoding="utf-8")
+    _git(root, "add", ".")
+    _git(root, "commit", "-m", "stale lock + mcp")
+
+    text, payload, code = run_diff_base(root, base_ref="HEAD")
+    assert code == 0
+    assert payload["baseline_state"] == "tree"
+    assert payload["base_lock_drift"] is True
+    assert payload["verdict"] == "PASS"
+    assert payload["label"] == "NONE"
+    assert "base_lock_drift" in payload
+    assert "drifts from base tree-truth" in text
+
+
+def test_diff_base_unchanged_tree_with_stale_lock_is_pass(tmp_path: Path):
+    """AUCT-011: unchanged working tree vs stale base lock → PASS + drift note."""
+    from auctelis.lock_io import compute_lock_hash, empty_authority_lock
+
+    root = tmp_path / "repo"
+    _init_repo(root)
+    _mcp(root, {"linear": {"command": "npx", "args": ["-y", "@linear/mcp"]}})
+    hollow = empty_authority_lock()
+    hollow["lock_hash"] = compute_lock_hash(hollow)
+    (root / "AUTHORITY.lock").write_text(json.dumps(hollow, indent=2) + "\n", encoding="utf-8")
+    _git(root, "add", ".")
+    _git(root, "commit", "-m", "stale")
+
+    text, payload, code = run_diff_base(root, base_ref="HEAD")
+    assert code == 0
+    assert payload["baseline_state"] == "tree"
+    assert payload["base_lock_drift"] is True
+    assert payload["verdict"] == "PASS"
+    assert "phantom" not in text.lower()
+    assert "drifts from base tree-truth" in text
 
 
 # --- AUCT-002 honest verdict ------------------------------------------------

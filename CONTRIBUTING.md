@@ -44,9 +44,9 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
   `authority_card` (cards/pins) → `export/pr_comment` (review UI) → `gate` /
   `diff_base` (verdicts). Do not pull the research scanner into the product
   gate path. Renderers must never invent evidence, hosts, or approvals.
-- CLI: product handlers live in `cli/dispatch.py`; maintainer / research
-  handlers live in `cli/dev_commands.py` and are reached through the same
-  dispatcher. Keep `auctelis_research` imports lazy and behind
+- CLI: product handlers live in `tools/auctelis/cli/dispatch.py`; maintainer /
+  research handlers live in `tools/dev/auctelis_devtools/` and are reached only
+  via `auctelis-dev`. Keep `auctelis_research` imports lazy and behind
   `require_research()` so the product wheel never depends on them.
 - Security: validate external URLs before `urlopen`; resolve executables with
   `shutil.which`; pass subprocess argv lists (never `shell=True`); keep target

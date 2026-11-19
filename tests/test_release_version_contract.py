@@ -5,13 +5,13 @@ from pathlib import Path
 
 from auctelis import __product_version__, __version__
 from auctelis.authority_lock import LOCK_VERSION
-from auctelis.build import (
+from auctelis.versioning import package_version, product_version
+from auctelis_devtools.build import (
     check_bare_command_docs,
     check_install_doc_versions,
     check_policy_schema_contract,
     check_version_metadata,
 )
-from auctelis.versioning import package_version, product_version
 
 _ROOT = Path(__file__).resolve().parents[1]
 _EXPECTED = (_ROOT / "VERSION").read_text(encoding="utf-8").strip()

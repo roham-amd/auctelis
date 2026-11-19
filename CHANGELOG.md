@@ -7,6 +7,29 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-11-19
+
+### Fixed
+- **AUCT-010 (Honest install PR):** First-run Watching comments read
+  `delta["changes"]` (with legacy `records` fallback) so live `run_gate()`
+  output marks workflow-only and clean `init` (first `.auctelis.yml`) installs
+  as `PASS` Watching; MCP/hook growth on the same PR stays `NEEDS_REVIEW`.
+  `check` first-run CTA points at `--report` / lockless workflow instead of
+  only `lock --update`. Lockless template drops redundant `strict-ruleset`.
+
+### Changed
+- **AUCT-011 (Tree-truth `diff --base`):** Local `diff --base` always extracts
+  base tree-truth first (Action parity). Committed base lock is a fallback;
+  when both exist and disagree, JSON sets `base_lock_drift` and text notes it.
+  `check_public_install_versions` enforces bare `uvx auctelis check` before any
+  git-tag fallback when `pypi_live=true`.
+- **AUCT-012 (Product wheel diet):** Maintainer modules (`build`, `deps`,
+  `lint`, `semantic`, `validate_report`, `cli/dev_commands`, `export/sarif`,
+  `export/agent_digest`) moved to source-only `auctelis_devtools`
+  (`auctelis-dev`). Product wheel and `auctelis` CLI no longer import them.
+- Nested `uv` lock checks use a repo-local temp/cache dir so maintainer
+  `build all` / `deps` stay reliable under restricted TEMP sandboxes.
+
 ## [0.14.0] — 2026-11-19
 
 ### Added

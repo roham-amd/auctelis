@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from auctelis import build
-from auctelis.build import check_public_install_versions
 from auctelis.versioning import product_version
+from auctelis_devtools import build
+from auctelis_devtools.build import check_public_install_versions
 
 
 def _fake_repo(tmp_path: Path, *, pypi_live: bool = False) -> Path:
@@ -95,6 +95,22 @@ def test_pypi_live_requires_bare_uvx(monkeypatch, tmp_path: Path):
     root = _fake_repo(tmp_path, pypi_live=True)
     monkeypatch.setattr(build, "repo_root", lambda: root)
     check_public_install_versions(product_version())
+
+
+def test_pypi_live_requires_bare_check_before_git_fallback(monkeypatch, tmp_path: Path):
+    """AUCT-011: pypi_live=true docs must lead with uvx auctelis check."""
+    root = _fake_repo(tmp_path, pypi_live=True)
+    product = product_version()
+    # Put git-tag install before bare uvx — must fail ordering guard.
+    bad = (
+        f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{product}'
+        f'#subdirectory=tools" auctelis check\n'
+        "uvx auctelis check\n"
+    )
+    (root / "README.md").write_text(bad, encoding="utf-8")
+    monkeypatch.setattr(build, "repo_root", lambda: root)
+    with pytest.raises(SystemExit, match=r"lead with bare|before any"):
+        check_public_install_versions(product)
 
 
 def test_no_public_doc_names_a_0_9_pin():

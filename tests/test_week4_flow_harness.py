@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main, main_dev
+from auctelis.cli import main
 from auctelis.policy import load_policy
+from auctelis_devtools.cli import main_dev
 
 
 def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):

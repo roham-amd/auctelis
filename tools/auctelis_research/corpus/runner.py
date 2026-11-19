@@ -4,9 +4,9 @@ import json
 
 from auctelis.inventory.collector import collect_inventory
 from auctelis.paths import repo_root
-from auctelis.semantic import validate_semantics
+from auctelis_devtools.semantic import validate_semantics
 from auctelis.supply_chain.digest import verify_file_digest
-from auctelis.validate_report import analyze_graph_paths, validate_graph_file, validate_report_file
+from auctelis_devtools.validate_report import analyze_graph_paths, validate_graph_file, validate_report_file
 from auctelis.versioning import load_versions
 
 
@@ -119,7 +119,7 @@ def run_corpus() -> dict:
         sarif_cfg = case.get("sarif_export")
         report_rel = case.get("report_fixture")
         if sarif_cfg and report_rel:
-            from auctelis.export.sarif import report_to_sarif
+            from auctelis_devtools.export.sarif import report_to_sarif
 
             report_path = (root / report_rel).resolve()
             if not report_path.is_file():

@@ -154,10 +154,16 @@ def _is_auctelis_workflow_path(path: str) -> bool:
 def _delta_record_paths(
     report: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Return ``(added_or_changed_records, removed_records)`` from a gate report."""
+    """Return ``(added_or_changed_records, removed_records)`` from a gate report.
+
+    Live ``diff_authority_locks`` emits ``delta["changes"]``; older callers /
+    synthetic tests may still pass ``delta["records"]``.
+    """
     raw_delta = report.get("delta")
     delta: dict[str, Any] = raw_delta if isinstance(raw_delta, dict) else {}
-    raw_records = delta.get("records")
+    raw_records = delta.get("changes")
+    if not isinstance(raw_records, dict):
+        raw_records = delta.get("records")
     records: dict[str, Any] = raw_records if isinstance(raw_records, dict) else {}
     added = [r for r in (records.get("added") or []) if isinstance(r, dict)]
     removed = [r for r in (records.get("removed") or []) if isinstance(r, dict)]
@@ -172,7 +178,11 @@ def _delta_record_paths(
 
 
 def _install_workflow_only(report: dict[str, Any]) -> bool:
-    """True when the only authority delta is adding/changing auctelis workflow YAML."""
+    """True when the only authority delta is adding/changing auctelis workflow YAML.
+
+    Initial ``.auctelis.yml`` from ``auctelis init`` (``policy_added``) is allowed;
+    edits to an existing policy (``policy_modified`` / ``policy_removed``) are not.
+    """
     if bool(report.get("lock_tree_drift")) or int(report.get("unparsed") or 0):
         return False
     raw_delta = report.get("delta")
@@ -182,8 +192,13 @@ def _install_workflow_only(report: dict[str, Any]) -> bool:
     if (
         int(summary.get("mcp_tools_added") or 0)
         or int(summary.get("mcp_tools_changed") or 0)
-        or bool(summary.get("policy_changed"))
+        or bool(summary.get("policy_modified"))
+        or bool(summary.get("policy_removed"))
     ):
+        return False
+    # Allow policy_changed only for the initial `.auctelis.yml` (policy_added).
+    # Legacy reports without policy_added reject any policy_changed.
+    if bool(summary.get("policy_changed")) and not bool(summary.get("policy_added")):
         return False
     changed, removed = _delta_record_paths(report)
     if removed or not changed:

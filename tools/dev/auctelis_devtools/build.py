@@ -358,14 +358,32 @@ def check_public_install_versions(product: str) -> None:
                     )
 
     bare_promise = re.compile(r"(?<![\w\-])uvx auctelis(?!\S)")
+    bare_check = re.compile(r"(?<![\w\-])uvx auctelis check\b")
+    git_from = re.compile(r"uvx\s+--from\s+[\"']?git\+")
     once_published = re.compile(r"once\s+(?:published|PyPI|pypi)", re.IGNORECASE)
     for rel in _FIRST_RUN_DOCS:
         text = (root / rel).read_text(encoding="utf-8")
         if pypi_live:
-            if "uvx auctelis" not in text:
+            bare_m = bare_check.search(text)
+            if bare_m is None:
                 raise SystemExit(
-                    f"{rel} must show `uvx auctelis` as the first-run install "
+                    f"{rel} must show `uvx auctelis check` as the first-run install "
                     "(pypi_live=true in release-manifest)"
+                )
+            git_m = git_from.search(text)
+            if git_m is not None and git_m.start() < bare_m.start():
+                raise SystemExit(
+                    f"{rel} must lead with bare `uvx auctelis check` before any "
+                    "`uvx --from git+…` fallback (pypi_live=true)"
+                )
+            # Awkward parenthetical workarounds next to the primary install.
+            if rel == "docs/AUCTELIS-GATE.md" and re.search(
+                r"uvx auctelis check\s*\([^)]*INSTALL",
+                text,
+            ):
+                raise SystemExit(
+                    f"{rel} must not wrap the primary install in a parenthetical "
+                    "INSTALL.md workaround when pypi_live=true"
                 )
             continue
         if "uvx --from" not in text:
@@ -406,7 +424,7 @@ def check_install_doc_versions(product: str) -> None:
 
     cli_ref = repo_root() / "docs" / "CLI-REFERENCE.md"
     cli_text = cli_ref.read_text(encoding="utf-8")
-    # e.g. Package `auctelis` **0.14.0** · product **0.14.0**
+    # e.g. Package `auctelis` **0.15.0** · product **0.15.0**
     pkg = re.search(r"Package\s+`auctelis`\s+\*\*([^*]+)\*\*", cli_text)
     prod = re.search(r"product\s+\*\*([^*]+)\*\*", cli_text, re.IGNORECASE)
     if not pkg or not prod:
@@ -583,7 +601,13 @@ _SKIP_MD_PARTS = frozenset(
 def _skip_markdown_path(path: Path) -> bool:
     if _SKIP_MD_PARTS.intersection(path.parts):
         return True
-    return any(part == "auctelis-out" or part.startswith("auctelis-out-") for part in path.parts)
+    return any(
+        part == "auctelis-out"
+        or part.startswith("auctelis-out-")
+        or part.startswith("pytest-of-")
+        or part in {".tmp-uv", "auctelis-pytest"}
+        for part in path.parts
+    )
 
 
 def check_internal_markdown_links() -> list[str]:
@@ -605,7 +629,11 @@ def check_internal_markdown_links() -> list[str]:
 
 def check_dependency_pins() -> list[str]:
     """Ensure ``uv.lock`` is in sync and satisfies declared ``pyproject.toml`` constraints."""
-    from auctelis.deps import ensure_lock_in_sync, parse_declared_requirements, parse_lock_pins
+    from auctelis_devtools.deps import (
+        ensure_lock_in_sync,
+        parse_declared_requirements,
+        parse_lock_pins,
+    )
 
     ensure_lock_in_sync()
     lock = parse_lock_pins()
@@ -667,7 +695,8 @@ def check_wheel_omits_research() -> list[str]:
 
     from auctelis.versioning import product_version
 
-    dist = Path(__file__).resolve().parents[1] / "dist"
+    # tools/dev/auctelis_devtools/build.py → tools/dist
+    dist = Path(__file__).resolve().parents[2] / "dist"
     if not dist.is_dir():
         return ["skip wheel research check (no dist/*.whl; run uv build first)"]
     ver = product_version()
@@ -691,15 +720,27 @@ def check_wheel_omits_research() -> list[str]:
         "auctelis/corpus/",
         "auctelis/graph/",
         "auctelis_research/",
+        # AUCT-012: maintainer modules must not ship in the product wheel.
+        "auctelis/build.py",
+        "auctelis/deps.py",
+        "auctelis/lint.py",
+        "auctelis/semantic.py",
+        "auctelis/validate_report.py",
+        "auctelis/cli/dev_commands.py",
+        "auctelis/export/sarif.py",
+        "auctelis/export/agent_digest.py",
     )
     with zipfile.ZipFile(wheel) as zf:
         names = zf.namelist()
     hits = [b for b in banned if any(b in n for n in names)]
     if hits:
-        raise SystemExit(f"{wheel.name} still contains research modules: {hits}")
+        raise SystemExit(f"{wheel.name} still contains maintainer/research modules: {hits}")
     if ver not in wheel.name:
-        return [f"ok {wheel.name} omits research scanner (warning: expected auctelis-{ver}-*.whl)"]
-    return [f"ok {wheel.name} omits research scanner"]
+        return [
+            f"ok {wheel.name} omits maintainer/research modules "
+            f"(warning: expected auctelis-{ver}-*.whl)"
+        ]
+    return [f"ok {wheel.name} omits maintainer/research modules"]
 
 
 def build_all() -> dict[str, object]:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from auctelis.cli import main_dev
 from auctelis.export.pr_comment import (
     AUCTELIS_COMMENT_MARKER,
     render_authority_diff_comment,
@@ -16,6 +15,7 @@ from auctelis.inventory.adapters.toml_config import (
 from auctelis.inventory.limits import CollectorLimits
 from auctelis.security.decision import compute_decision
 from auctelis.security.models import Finding
+from auctelis_devtools.cli import main_dev
 from auctelis_research.scan import run_scan
 
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main_dev
 from auctelis.inventory.collector import collect_inventory
+from auctelis_devtools.cli import main_dev
 
 
 def test_default_excludes_skip_tests_dir(tmp_path: Path):

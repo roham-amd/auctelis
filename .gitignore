@@ -103,6 +103,7 @@ htmlcov/
 uv-cache/
 .uv-cache/
 python-installs/
+tools/.tmp-uv/
 
 # Node (accidental)
 node_modules/

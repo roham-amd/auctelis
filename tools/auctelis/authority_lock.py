@@ -596,7 +596,14 @@ def diff_authority_locks(
     tools_changed = sorted(
         name for name in set(base_tools) & set(head_tools) if base_tools[name] != head_tools[name]
     )
-    policy_changed = base_n.get("policy_hash") != head_n.get("policy_hash")
+    base_policy = base_n.get("policy_hash")
+    head_policy = head_n.get("policy_hash")
+    policy_changed = base_policy != head_policy
+    # Distinguishes first `.auctelis.yml` (init install) from edits to an
+    # existing policy — install-PR Watching allows only the former.
+    policy_added = base_policy is None and head_policy is not None
+    policy_removed = base_policy is not None and head_policy is None
+    policy_modified = policy_changed and not policy_added and not policy_removed
     classes = [str(a.get("change_class")) for a in added]
     classes.extend(str(r.get("change_class")) for r in removed)
     classes.extend(str(c.get("change_class")) for c in changed)
@@ -634,6 +641,9 @@ def diff_authority_locks(
         "mcp_tools_removed": len(tools_removed),
         "mcp_tools_changed": len(tools_changed),
         "policy_changed": policy_changed,
+        "policy_added": policy_added,
+        "policy_removed": policy_removed,
+        "policy_modified": policy_modified,
         "authority_changed": authority_changed,
         "meaningful_authority_change": meaningful,
     }

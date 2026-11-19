@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.14.0** |
-| Tooling package | **0.14.0** (`auctelis`) |
+| Product release | **0.15.0** |
+| Tooling package | **0.15.0** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -45,20 +45,20 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ## First user journey
 
 ```bash
-# One-line run without permanent install (uvx auctelis check see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis check                              # aha: ranked reach cards
+# One-line run without permanent install (see docs/INSTALL.md):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis check                              # aha: ranked reach cards
 
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis init --owner security-owner        # comment-only setup
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security-owner        # comment-only setup
 # Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
 ```
 
 Persistent install:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.15.0#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
@@ -87,7 +87,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.14.0`. The Action fetches the base ref at `--depth=1`
+Or pin the release tag: `@v0.15.0`. The Action fetches the base ref at `--depth=1`
 automatically (no `fetch-depth: 0` required) and short-circuits setup in
 lockless mode when no watched agent-config or workflow paths changed.
 
