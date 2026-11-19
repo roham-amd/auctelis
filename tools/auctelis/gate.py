@@ -438,19 +438,38 @@ def committed_lock_drift(
     tree_head: dict[str, Any],
     *,
     head_lock: Path | None = None,
+    require_committed: bool = False,
+    base_had_records: bool = False,
 ) -> tuple[bool, list[str], str | None]:
     """Compare a committed AUTHORITY.lock to tree-derived head authority.
 
     Returns ``(drifted, lines, error)``. ``--head-lock`` is comparison-only —
     never the gate's head authority source.
+
+    When ``require_committed`` is true (enforce) and the base lock sealed
+    records, deleting the head lock is drift — not a silent lockless PASS.
     """
     path = head_lock
     if path is None:
         candidate = root / LOCK_NAME
         path = candidate if candidate.is_file() else None
     if path is None:
+        if require_committed and base_had_records:
+            return (
+                True,
+                [],
+                "AUTHORITY.lock absent on head while base lock has sealed records "
+                "(deleting the lock is not a bypass — switch locked=false first, "
+                "then remove the lock)",
+            )
         return False, [], None
     if not path.is_file():
+        if require_committed and base_had_records:
+            return (
+                True,
+                [],
+                f"AUTHORITY.lock absent on head ({path}) while base lock has sealed records",
+            )
         return True, [], f"head lock not found: {path}"
     try:
         committed = load_authority_lock(path)
@@ -575,11 +594,26 @@ def run_gate(
         unparsed = int(coverage.get("unparsed_agent_config_count") or 0)
     except (TypeError, ValueError):
         unparsed = 0
+    from auctelis.inventory.coverage import count_truncation_events
 
-    lock_drift, drift_lines, drift_error = committed_lock_drift(root, head, head_lock=head_lock)
+    trunc = count_truncation_events(coverage.get("parser_events"))
+    coverage = {
+        **coverage,
+        "depth_limit_count": trunc["depth_limit"],
+        "file_limit_reached_count": trunc["file_limit_reached"],
+        "read_error_count": trunc["read_error"],
+        "truncated": bool(trunc["depth_limit"] or trunc["file_limit_reached"]),
+    }
 
     base_records = list(base.get("records") or [])
     head_records = list(head.get("records") or [])
+    lock_drift, drift_lines, drift_error = committed_lock_drift(
+        root,
+        head,
+        head_lock=head_lock,
+        require_committed=not comment_only,
+        base_had_records=bool(base_records) or bool(base.get("mcp_tools") or {}),
+    )
     # Empty (0-record) base locks are a valid seal of a clean tree. First real
     # authority is GROWTH that needs CODEOWNERS — never a permanent FAIL_CLOSED.
     empty_baseline_growth = (
@@ -724,6 +758,18 @@ def run_gate(
         )
         _append_review_error(detail)
 
+    # Walk truncation under enforce is the same class of incomplete authority as
+    # unparsed configs — never green-light a scan that hit file/depth caps.
+    truncated = bool(coverage.get("truncated"))
+    if truncated and not comment_only:
+        ok = False
+        verdict = "NEEDS_REVIEW"
+        detail = (
+            "inventory truncated (file or depth limit reached) — "
+            "review incomplete coverage before merge, or raise scan limits."
+        )
+        _append_review_error(detail)
+
     # Committed lock must match the tree; otherwise the gate would green-light
     # authority that never entered the lock (the classic bypass).
     if lock_drift or drift_error:
@@ -773,7 +819,7 @@ def run_gate(
         # honest: unreviewed network-or-worse growth is NEEDS_REVIEW, never PASS.
         # Only NONE / REDUCTION / tier-0 growth can say PASS.
         ok = True
-        if unparsed or lock_drift:
+        if unparsed or lock_drift or truncated:
             note = "comment-only — advisory; required check does not fail, review still required."
         elif label == "GROWTH" and max_tier >= TIER_COMMENT:
             verdict = "NEEDS_REVIEW"

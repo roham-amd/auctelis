@@ -35,7 +35,7 @@ jobs:
         run: uv python install 3.12.16
 
       - name: Install dependencies
-        run: uv sync --locked
+        run: uv sync --all-packages --locked
 
       - name: Lint (Ruff)
         run: uv run --locked auctelis-dev lint --check-format
@@ -166,6 +166,16 @@ jobs:
 
       - name: Set up Python
         run: uv python install 3.12.16
+
+      - name: Verify tag matches VERSION
+        run: |
+          set -euo pipefail
+          expected="v$(tr -d '[:space:]' < VERSION)"
+          actual="${GITHUB_REF_NAME}"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Release tag '$actual' does not match VERSION ('$expected')"
+            exit 1
+          fi
 
       - name: Verify version metadata
         run: uv run --directory tools --locked auctelis-dev build all

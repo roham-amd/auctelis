@@ -1,6 +1,6 @@
 [project]
 name = "auctelis"
-version = "0.12.2"
+version = "0.13.0"
 description = "Auctelis — the authority lockfile and one-line diff for AI agent reach"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -42,8 +42,12 @@ Changelog = "https://github.com/roham-amd/auctelis/blob/main/CHANGELOG.md"
 
 [project.scripts]
 auctelis = "auctelis.cli:main"
-# Source-checkout / maintainer entry (auctelis_research is not shipped in the wheel).
-auctelis-dev = "auctelis.cli:main_dev"
+
+# Maintainer entry lives in the source-only workspace member tools/dev/
+# (auctelis-devtools → auctelis-dev). Never ship it in the product wheel.
+
+[tool.uv.workspace]
+members = ["dev"]
 
 [dependency-groups]
 dev = [

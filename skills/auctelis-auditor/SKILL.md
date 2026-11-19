@@ -20,8 +20,8 @@ Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 ## Run
 
 ```bash
-# Run once (uvx git-tag one-liner; `uvx auctelis check` once PyPI is live; fallback in docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check
+# Run once (uvx git-tag one-liner; `uvx auctelis check` see docs/INSTALL.md; fallback in docs/INSTALL.md):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check
 ```
 
 ```bash

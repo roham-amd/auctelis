@@ -79,20 +79,12 @@ def _gated_finding_count(scan: ScanResult | None) -> int:
 
 def _family_coverage_line(scan: ScanResult | None) -> str:
     """Honest maturity counts — never present supported_ratio as a clearance %."""
+    from auctelis.inventory.coverage import family_coverage_line_from_coverage
+
     if scan is None:
-        return "Coverage: (unavailable)"
+        return family_coverage_line_from_coverage(None)
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
-    by = coverage.get("component_counts_by_maturity") or {}
-    supported = int(by.get("SUPPORTED") or 0)
-    partial = int(by.get("PARTIAL") or 0)
-    manual = int(by.get("MANUAL_ONLY") or 0)
-    unsupported = int(by.get("UNSUPPORTED") or 0)
-    unparsed = _unparsed_count(scan)
-    return (
-        f"Coverage: SUPPORTED {supported} · PARTIAL {partial} · "
-        f"MANUAL_ONLY {manual} · UNSUPPORTED {unsupported}"
-        + (f" · NOT PARSED {unparsed}" if unparsed else "")
-    )
+    return family_coverage_line_from_coverage(coverage, unparsed=_unparsed_count(scan))
 
 
 def build_check_report(

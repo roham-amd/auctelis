@@ -17,13 +17,16 @@ There are exactly **two surfaces**: `check` locally, the Action on PRs.
 
 ```bash
 # 1. See the aha — no install step, no lock needed (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check
 
-# 2. In your repo: baseline + comment-only workflow + CODEOWNERS (2 min):
+# 2. Shareable audit artifact for your ticket / security lead (2 min):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check --report out/
+
+# 3. In your repo: baseline + comment-only workflow + CODEOWNERS (2 min):
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
 
-# 3. Commit, open the install PR, and read the first-run "Watching …" comment (2 min).
+# 4. Commit, open the install PR, and read the first-run "Watching …" comment (2 min).
 #    Later no-change PRs stay silent; PRs that change agent authority get the Authority Diff.
 ```
 
@@ -65,6 +68,7 @@ surfaces above.
 | Command | Purpose |
 | --- | --- |
 | `auctelis diff --base <ref>` | Local Authority Diff; `BASELINE_NEEDED` when the ref has no lock |
+| `auctelis check --report DIR` | Shareable HTML+MD+JSON+SBOM reach report |
 | `auctelis check --pins` | Unpinned npx/uvx MCP servers + exact pin fixes |
 | `auctelis trust <host>` | Trusted destinations for network-only reach (`--list`, `--remove`, `--init`) |
 | `auctelis status [--check]` | Lock / workflow / CODEOWNERS / protection status |
@@ -77,11 +81,11 @@ Lockless alternative to `init`: copy
 [`tools/auctelis/templates/auctelis-diff.yml`](tools/auctelis/templates/auctelis-diff.yml)
 into `.github/workflows/`.
 
-Fallback install (persistent CLI, or once published to PyPI `uvx auctelis check`):
+Persistent CLI install (git tag; see docs/INSTALL.md):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools"
 ```
 
 Host tripwires were removed in 0.8.0. The product gate is **tree-truth** —

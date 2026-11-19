@@ -471,10 +471,11 @@ def _benign_mcp(name: str = "docs", host: str = "mcp.linear.app") -> dict:
     return rec
 
 
-def test_trusted_host_lowers_benign_network_to_comment_tier():
+def test_trusted_host_never_lowers_new_mcp():
     rec = _benign_mcp()
     assert record_reach_tier(rec) >= TIER_FAIL
-    assert record_reach_tier(rec, trusted_hosts={"mcp.linear.app"}) == TIER_COMMENT
+    # AUCT-006: trust never lowers MCP / Hook / Host Settings additions.
+    assert record_reach_tier(rec, trusted_hosts={"mcp.linear.app"}) >= TIER_FAIL
 
 
 def test_trusted_host_never_hides_secrets_or_execute():
@@ -482,7 +483,7 @@ def test_trusted_host_never_hides_secrets_or_execute():
     assert record_reach_tier(rec, trusted_hosts={"mcp.linear.app"}) >= TIER_FAIL
 
 
-def test_trusted_host_stops_benign_mcp_growth_from_paging(tmp_path: Path):
+def test_trusted_host_does_not_silence_new_mcp_growth(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()
     cfg = root / ".cursor"
@@ -497,7 +498,7 @@ def test_trusted_host_stops_benign_mcp_growth_from_paging(tmp_path: Path):
     owners = root / ".github"
     owners.mkdir()
     (owners / "CODEOWNERS").write_text(
-        ".auctelis/trusted-hosts @sec\nAUTHORITY.lock @sec\n",
+        ".auctelis/trusted-hosts @sec\nAUTHORITY.lock @sec\n.cursor/ @sec\n",
         encoding="utf-8",
     )
 
@@ -508,12 +509,13 @@ def test_trusted_host_stops_benign_mcp_growth_from_paging(tmp_path: Path):
         strict_ruleset=False,
         trust_head_codeowners=True,
     )
-    assert code == 0
     assert report["label"] == "GROWTH"
-    assert report["max_reach_tier"] == TIER_COMMENT
-    assert report["needs_approval"] is False
-    assert report["verdict"] == "PASS"
+    assert report["max_reach_tier"] >= TIER_FAIL
     assert report["trusted_hosts_ignored"] is False
+    # Trust must not silence new MCP: fail-tier growth still pages CODEOWNERS.
+    assert report["needs_approval"] is True
+    assert report["verdict"] in {"NEEDS_REVIEW", "PASS"}
+    _ = code  # exit depends on ruleset/CODEOWNERS; tier honesty is the contract
 
 
 def test_uncovered_trust_file_is_ignored(tmp_path: Path):

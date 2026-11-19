@@ -117,3 +117,8 @@ temp/
 *.tmp
 *.temp
 *.bak
+
+# Local pytest cache dirs
+pytest-of-*/
+tools/pytest-of-*/
+

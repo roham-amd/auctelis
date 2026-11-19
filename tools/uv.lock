@@ -6,6 +6,12 @@ resolution-markers = [
     "python_full_version < '3.15'",
 ]
 
+[manifest]
+members = [
+    "auctelis",
+    "auctelis-devtools",
+]
+
 [[package]]
 name = "ast-serialize"
 version = "0.13.1"
@@ -81,7 +87,7 @@ wheels = [
 
 [[package]]
 name = "auctelis"
-version = "0.12.2"
+version = "0.13.0"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
@@ -109,6 +115,17 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "ruff", specifier = ">=0.17.3" },
 ]
+
+[[package]]
+name = "auctelis-devtools"
+version = "0.13.0"
+source = { editable = "dev" }
+dependencies = [
+    { name = "auctelis" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "auctelis", editable = "." }]
 
 [[package]]
 name = "boolean-py"

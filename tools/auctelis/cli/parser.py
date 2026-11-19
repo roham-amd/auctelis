@@ -134,6 +134,18 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Show unpinned/floating MCP servers with concrete pin fixes",
     )
+    check.add_argument(
+        "--report",
+        type=Path,
+        metavar="DIR",
+        help="Write shareable reach report (HTML+MD+JSON+SBOM) under DIR",
+    )
+    check.add_argument(
+        "--baseline",
+        type=Path,
+        metavar="PATH",
+        help="Prior reach-report.json (or check --json) to diff against when using --report",
+    )
 
     init_cmd = sub.add_parser(
         "init",

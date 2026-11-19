@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.12.2** (real-repo CI/TOML signal fix, quiet-PR silence & `BASELINE_ADOPTED`, shallow fast lockless Action, working `uvx --from` first run) · lock schema 1 · tooling 0.12.2
+**Current:** **0.13.0** (audit-first: honest install docs, `check --report`, enforce integrity, org reusable workflow) · lock schema 1 · tooling 0.13.0
 
 ## North star (Gate Zero)
 
@@ -36,7 +36,8 @@ are removed.
 | **0.12.0** | Agent Reach Review: day-zero `diff --base` (`BASELINE_NEEDED`); honest comment-only verdict; quiet-on-NONE; ranked reach report; env/tier on cards; offline enforce status; trusted destinations; MCP pin doctor | **done** |
 | **0.12.1** | PyPI one-line install (`uvx auctelis`); first-run "watching" comment; prose inference capped at comment tier; two-surface docs | **done** |
 | **0.12.2** | Real-repo CI/TOML signal fix; quiet-PR silence + working `BASELINE_ADOPTED`; shallow fast lockless Action; working `uvx --from` install | **done** |
-| Next | Five outside pilots; physical `auctelis_research` repo split if unused | open |
+| **0.13.0** | Install truth (`pypi_live` guard); Reach Report (`check --report`); enforce integrity (lock delete / legacy inputs / first-run / trust / truncation); org reusable workflow | **done** |
+| Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate
 
@@ -54,17 +55,20 @@ broker before five outside repos retain the gate.
 - Public 22-rule scanner in the product wheel (moved to `auctelis_research`)
 - `vet`, `harden`, `explain`, audit/ecosystem-graph as product gate inputs
 - Docker as the Authority Diff install story (removed in 0.9.0)
-- PyPI ceremony until five pilots retain the gate
+- Circular “PyPI waits for five pilots” rule (killed in 0.13 — install must work for strangers)
 - Marketplace / badge / “Authority Watch” product copy
 - Drift-as-failure and default strict-ruleset on comment-only installs
 - Action `locked=false` “growth unchecked” warning (removed in 0.11.0)
 - Treating every CI workflow / Plugin / Subagent as fail-tier (fixed in 0.11.0)
+- Legacy Action inputs that neutralized the gate (`baseline` skipping auth-diff; warn-and-ignore in 0.13, delete in 0.14)
+- `auctelis-dev` in the product wheel (moved to `tools/dev` workspace member)
 
-Keep: `diff --base`, lockless workflow, `init`, `status`, `check`, `lock`, `ci`, `gate`, `why`, `demo`.
+Keep: `diff --base`, lockless workflow, `init`, `status`, `check` (+ `--report`), `lock`, `ci`, `gate`, `why`, `demo`.
 
 ## Success metrics
 
-- Five outside repos with the Action required on the default branch for 30 days
+- 10 non-dogfood reach reports in 30 days
+- Five outside repos with the Action retained for 30 days
 - ≥3 growth PRs code-owner-reviewed outside this repository
-- Median time-to-first-delta under 10 minutes
+- Median time-to-first-report under 10 minutes; report→workflow conversion ≥30%
 - Known open gate bypasses: 0

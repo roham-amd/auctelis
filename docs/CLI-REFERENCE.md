@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.12.2** · product **0.12.2** · rule pack **1.6** (001–022).
+Package `auctelis` **0.13.0** · product **0.13.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -21,7 +21,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | Tier | Command | Purpose |
 | --- | --- | --- |
 | Core | `init --owner team` | One-command setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [--top N] [--pins]` | Ranked reach report vs `AUTHORITY.lock` (front door) |
+| Core | `check [--top N] [--pins] [--report DIR] [--baseline PATH]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--report` writes HTML+MD+JSON+SBOM |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -42,7 +42,7 @@ Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 ## `auctelis check`
 
 ```bash
-auctelis check [PATH] [--lock-file PATH] [--json] [--top N] [--pins]
+auctelis check [PATH] [--lock-file PATH] [--json] [--top N] [--pins] [--report DIR] [--baseline PATH]
 ```
 
 Inventories agent configs in a repository (MCP, skills, instructions, hooks,
@@ -54,6 +54,8 @@ five cards even when the lock matches (`--top 0` hides cards).
 - Lock matches → `LOCKED`, still showing reach counts and top cards
 - Lock drifts → cards with `@ path` + `NEEDS_REVIEW`
 - `--pins` → unpinned/floating MCP launchers with a concrete pin suggestion
+- `--report DIR` → write `reach-report.html` / `.md` / `.json` and `authority-sbom.json` (shareable audit artifact)
+- `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
 
 `--json` emits `schema_version: authority-diff/1` plus `reach` (tier counts and
 top cards) and `pins`.

@@ -185,6 +185,9 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         # Quiet on NONE: the Authority Diff comment is the product, but a
         # no-change comment on every PR trains maintainers to disable the Job.
         # Silence is the feature; job summary still records PASS/NONE.
+        coverage_raw = report.get("coverage")
+        coverage = coverage_raw if isinstance(coverage_raw, dict) else {}
+        truncated = bool(coverage.get("truncated"))
         quiet = (
             str(getattr(args, "comment_policy", "auto") or "auto") == "auto"
             and str(report.get("verdict") or "") == "PASS"
@@ -193,6 +196,14 @@ def _cmd_gate(args: argparse.Namespace) -> int:
             and not bool(report.get("lock_tree_drift"))
             and not bool(report.get("meaningful_authority_change"))
             and not bool(report.get("representation_only"))
+            and not truncated
+        )
+        # Always write the first-run proof payload. Install-shaped PRs often
+        # produce GROWTH (new workflow CI record) and would otherwise only write
+        # pr-comment.md — leaving the Action unable to post "Watching …".
+        write_text(
+            gate_out / "comment-first-run.md",
+            render_first_run_comment(report),
         )
         if quiet:
             write_text(
@@ -202,13 +213,6 @@ def _cmd_gate(args: argparse.Namespace) -> int:
             )
             with contextlib.suppress(OSError):
                 comment_path.unlink(missing_ok=True)
-            # First-run proof: a healthy install is otherwise indistinguishable
-            # from a broken one (quiet-on-NONE). The Action posts this file only
-            # when the PR itself adds the Auctelis workflow file.
-            write_text(
-                gate_out / "comment-first-run.md",
-                render_first_run_comment(report),
-            )
         else:
             with contextlib.suppress(OSError):
                 skip_path.unlink(missing_ok=True)
@@ -217,9 +221,9 @@ def _cmd_gate(args: argparse.Namespace) -> int:
             findings_path = gate_out / "findings.json"
             findings_doc = read_json(findings_path) if findings_path.is_file() else None
             if isinstance(findings_doc, dict):
-                coverage = findings_doc.get("coverage")
-                if isinstance(coverage, dict) and not report.get("coverage"):
-                    report["coverage"] = coverage
+                cov = findings_doc.get("coverage")
+                if isinstance(cov, dict) and not report.get("coverage"):
+                    report["coverage"] = cov
                 write_text(
                     comment_path,
                     render_authority_diff_comment(

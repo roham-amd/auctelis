@@ -108,7 +108,9 @@ def test_action_yml_passes_no_strict_ruleset():
         Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
     )
     text = action.read_text(encoding="utf-8")
+    # Comment-only still passes --no-strict-ruleset; locked=true defaults strict on.
     assert "--no-strict-ruleset" in text
+    assert "locked=true default" in text
 
 
 def test_claude_slash_command_in_authority_kinds():

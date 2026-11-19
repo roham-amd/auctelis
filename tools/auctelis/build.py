@@ -318,14 +318,28 @@ _GIT_TAG_PIN_RE = re.compile(
 _PACKAGE_PIN_RE = re.compile(r"auctelis==([0-9][0-9A-Za-z.\-]*)")
 
 
-def check_public_install_versions(product: str) -> None:
-    """Public install blocks must show ``uvx`` and never pin a stale version.
+def _pypi_live() -> bool:
+    """Read ``pypi_live`` from the release manifest (default false until published)."""
+    manifest_path = repo_root() / "canonical" / "release-manifest.json"
+    if not manifest_path.is_file():
+        return False
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return bool(data.get("pypi_live"))
 
-    ``uvx auctelis`` is the one-line install; the git tag / wheel stay documented
-    as a fallback. Any ``git+…@vX`` or ``auctelis==X`` in a public doc must name
-    the current product version, so a release bump cannot leave a stale pin.
+
+def check_public_install_versions(product: str) -> None:
+    """Public install blocks must name a command that works at this release.
+
+    When ``pypi_live`` is true, first-run docs require bare ``uvx auctelis``.
+    When false, they require the pinned ``uvx --from git+…@v<current>`` form and
+    must not promise unqualified ``uvx auctelis`` as if PyPI already works.
+    Any ``git+…@vX`` or ``auctelis==X`` pin must match the current product version.
     """
     root = repo_root()
+    pypi_live = _pypi_live()
     for rel in _INSTALL_DOCS:
         path = root / rel
         if not path.is_file():
@@ -343,12 +357,40 @@ def check_public_install_versions(product: str) -> None:
                         "update the install docs and the release pin together"
                     )
 
+    bare_promise = re.compile(r"(?<![\w\-])uvx auctelis(?!\S)")
+    once_published = re.compile(r"once\s+(?:published|PyPI|pypi)", re.IGNORECASE)
     for rel in _FIRST_RUN_DOCS:
         text = (root / rel).read_text(encoding="utf-8")
-        if "uvx auctelis" not in text and "uvx --from" not in text:
-            raise SystemExit(
-                f"{rel} must show `uvx auctelis` or `uvx --from` as the first-run install"
-            )
+        if pypi_live:
+            if "uvx auctelis" not in text:
+                raise SystemExit(
+                    f"{rel} must show `uvx auctelis` as the first-run install "
+                    "(pypi_live=true in release-manifest)"
+                )
+            continue
+        if "uvx --from" not in text:
+            raise SystemExit(f"{rel} must show `uvx --from git+…@v{product}` while pypi_live=false")
+        # Unqualified bare uvx auctelis as a working command is a false promise.
+        for match in bare_promise.finditer(text):
+            window = text[max(0, match.start() - 80) : match.end() + 80]
+            if once_published.search(window):
+                raise SystemExit(
+                    f"{rel} still defers `uvx auctelis` with 'once published' copy; "
+                    "while pypi_live=false document the git-tag install as primary"
+                )
+            # Bare command without a clear "not yet" qualifier next to it.
+            lowered = window.lower()
+            if (
+                "not yet" not in lowered
+                and "when pypi" not in lowered
+                and "pypi_live" not in lowered
+                and "git+" not in window
+                and "--from" not in window
+            ):
+                raise SystemExit(
+                    f"{rel} promises bare `uvx auctelis` but pypi_live=false; "
+                    "use the git-tag pin as the primary install command"
+                )
 
 
 def check_install_doc_versions(product: str) -> None:
@@ -603,7 +645,6 @@ def check_dependency_pins() -> list[str]:
 def check_wheel_omits_research() -> list[str]:
     """Fail the build if the product wheel still ships the research scanner."""
     import zipfile
-    from pathlib import Path
 
     from auctelis.versioning import product_version
 

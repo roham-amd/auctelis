@@ -17,15 +17,15 @@ until a real outside repo is installed.
 # In the pilot repo:
 mkdir -p .github/workflows
 # Copy tools/auctelis/templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-# Or curl the raw file from the auctelis tag v0.12.2, then open a PR that adds an MCP.
+# Or curl the raw file from the auctelis tag v0.13.0, then open a PR that adds an MCP.
 ```
 
 **B — Comment-only init**
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis diff --base origin/main
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security   # advisory workflow + CODEOWNERS + lock
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis diff --base origin/main
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis init --owner security   # advisory workflow + CODEOWNERS + lock
 ```
 
 **C — Enforce (slot 3)**
@@ -40,10 +40,11 @@ auctelis init --owner security --enforce
 2. Append/update the matching row in [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv).
 3. Re-check day 30 (`action_still_enabled_day30`).
 
-## PyPI readiness (do not publish until pilots ask)
+## PyPI readiness (claim name, then publish)
 
-Trusted Publishing is already wired in
+Trusted Publishing is wired in
 [`.github/workflows/publish-pypi.yml`](../../.github/workflows/publish-pypi.yml).
-Trigger only via `workflow_dispatch` after the PyPI project `auctelis` is claimed
-and five pilots are running. Until then, lead install docs with the git-tag line.
-The index currently 404s for `auctelis` — do not invent publish success.
+Claim the `auctelis` project on PyPI, trigger `workflow_dispatch`, then flip
+`pypi_live` to `true` in `canonical/release-manifest.json` so first-run docs
+lead with bare `uvx auctelis`. Until then, install docs lead with the git-tag
+line. Pilots should start from `check --report` before the workflow.

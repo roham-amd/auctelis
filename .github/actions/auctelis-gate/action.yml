@@ -12,23 +12,27 @@ inputs:
     required: false
     default: "."
   mode:
-    description: scan (only supported value; kept for workflow compatibility)
+    description: >-
+      Only `scan` is supported. Any other value fails the Action loudly (legacy
+      modes were removed; do not use mode to disable the gate).
     required: false
     default: "scan"
   baseline-inventory:
-    description: Optional path to previous inventory.json for component-path diff
+    description: >-
+      DEPRECATED no-op (0.13). Accepted for one release with a warning; does not
+      skip or weaken the Authority Diff gate. Remove before 0.14.
     required: false
     default: ""
   baseline:
     description: >-
-      Optional path to previous baseline.json for risk delta.
-      When empty, trusted/base policy.baseline is used if present.
+      DEPRECATED no-op (0.13). Accepted for one release with a warning; does not
+      skip auth-diff or weaken the gate. Remove before 0.14.
     required: false
     default: ""
   fail-on:
     description: >-
-      never | high | any. Leave empty to defer to trusted .auctelis.yml (or never when
-      no policy). Explicit values always override the policy file.
+      DEPRECATED for the product gate (0.13). Research annotate path may still
+      read it; it never fails the required Authority Diff check.
     required: false
     default: ""
   policy:
@@ -39,7 +43,9 @@ inputs:
     required: false
     default: ""
   no-policy:
-    description: If true, ignore .auctelis.yml even when present
+    description: >-
+      DEPRECATED no-op for the product gate (0.13). Accepted with a warning;
+      research annotate may still honor it. Remove before 0.14.
     required: false
     default: "false"
   trusted-policy:
@@ -62,7 +68,9 @@ inputs:
     required: false
     default: ""
   upload-sarif:
-    description: If true, print path to findings.sarif.json for workflow upload
+    description: >-
+      DEPRECATED no-op (0.13). Accepted with a warning; SARIF is not uploaded by
+      the product gate. Remove before 0.14.
     required: false
     default: "false"
   annotate:
@@ -70,7 +78,8 @@ inputs:
       If true, also run the research scanner (advisory), emit findings
       annotations, and enrich the sticky comment from findings.json. Default
       false — the gate posts the Authority Diff from the lock delta alone;
-      research findings are never a gate input.
+      research findings are never a gate input. Deprecated as a gate input;
+      does not affect the required check.
     required: false
     default: "false"
   authority-diff:
@@ -97,11 +106,12 @@ inputs:
     default: ""
   strict-ruleset:
     description: >-
-      If true, authority growth with UNVERIFIED ruleset/branch-protection status
-      fails the gate. Default false matches lockless comment-only. Set true with
-      locked=true for enforce. MISSING rulesets still fail when locked=true.
+      When locked=true, defaults to true (UNVERIFIED ruleset fails growth) unless
+      explicitly set to false. When locked=false (comment-only), defaults to false
+      unless explicitly true. Leave empty to use that locked-aware default.
+      MISSING rulesets still fail when locked=true.
     required: false
-    default: "false"
+    default: ""
   comment-on-none:
     description: >-
       If true, post the Authority Diff on every PR even when authority did not
@@ -114,6 +124,53 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Reject unsupported mode
+      if: inputs.mode != 'scan'
+      shell: bash
+      env:
+        AUCTELIS_MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        echo "::error::auctelis-gate mode='${AUCTELIS_MODE}' is not supported; only mode=scan is valid. Do not use mode to disable the gate."
+        exit 1
+
+    - name: Warn on deprecated gate-neutralizing inputs
+      if: >-
+        inputs.baseline != '' ||
+        inputs.baseline-inventory != '' ||
+        inputs.fail-on != '' ||
+        inputs.no-policy == 'true' ||
+        inputs.upload-sarif == 'true' ||
+        inputs.annotate == 'true'
+      shell: bash
+      env:
+        AUCTELIS_BASELINE: ${{ inputs.baseline }}
+        AUCTELIS_BASELINE_INV: ${{ inputs.baseline-inventory }}
+        AUCTELIS_FAIL_ON: ${{ inputs.fail-on }}
+        AUCTELIS_NO_POLICY: ${{ inputs.no-policy }}
+        AUCTELIS_UPLOAD_SARIF: ${{ inputs.upload-sarif }}
+        AUCTELIS_ANNOTATE: ${{ inputs.annotate }}
+      run: |
+        set -euo pipefail
+        if [[ -n "${AUCTELIS_BASELINE}" ]]; then
+          echo "::warning::inputs.baseline is deprecated and ignored by the Authority Diff gate (0.13). It no longer skips auth-diff."
+        fi
+        if [[ -n "${AUCTELIS_BASELINE_INV}" ]]; then
+          echo "::warning::inputs.baseline-inventory is deprecated and ignored by the product gate (0.13)."
+        fi
+        if [[ -n "${AUCTELIS_FAIL_ON}" ]]; then
+          echo "::warning::inputs.fail-on never fails the required Authority Diff check; research-only."
+        fi
+        if [[ "${AUCTELIS_NO_POLICY}" == "true" ]]; then
+          echo "::warning::inputs.no-policy is deprecated for the product gate (0.13)."
+        fi
+        if [[ "${AUCTELIS_UPLOAD_SARIF}" == "true" ]]; then
+          echo "::warning::inputs.upload-sarif is a no-op in 0.13; remove before 0.14."
+        fi
+        if [[ "${AUCTELIS_ANNOTATE}" == "true" ]]; then
+          echo "::warning::inputs.annotate runs advisory research only and never gates the required check."
+        fi
+
     - name: Check watched agent paths on PR
       id: path_filter
       if: github.event_name == 'pull_request' && inputs.locked != 'true' && inputs.comment-on-none != 'true'
@@ -316,14 +373,13 @@ runs:
           echo "No base-ref .auctelis.yml; scan will proceed without a trusted policy file."
         fi
 
-    - name: Build base-ref Authority Diff baseline
+    - name: Extract base-ref AUTHORITY.lock (tree-truth)
       id: auth_diff
       if: >-
         steps.path_filter.outputs.skip != 'true' &&
         inputs.mode == 'scan' &&
         inputs.authority-diff == 'true' &&
-        github.event_name == 'pull_request' &&
-        inputs.baseline == ''
+        github.event_name == 'pull_request'
       shell: bash
       env:
         AUCTELIS_PATH: ${{ inputs.path }}
@@ -537,13 +593,24 @@ runs:
           gate_args+=(--codeowners "$AUCTELIS_BASE_CODEOWNERS")
           echo "Using trusted base-ref CODEOWNERS: $AUCTELIS_BASE_CODEOWNERS"
         fi
-        if [[ "${AUCTELIS_STRICT_RULESET}" == "true" ]]; then
-          gate_args+=(--strict-ruleset)
-          echo "Strict ruleset: UNVERIFIED fails growth"
+        # locked=true → strict on unless explicitly false; locked=false → strict
+        # off unless explicitly true. Empty input uses that locked-aware default.
+        if [[ "${AUCTELIS_LOCKED}" == "true" ]]; then
+          if [[ "${AUCTELIS_STRICT_RULESET}" == "false" ]]; then
+            gate_args+=(--no-strict-ruleset)
+            echo "Strict ruleset: off (explicit opt-out under locked=true)"
+          else
+            gate_args+=(--strict-ruleset)
+            echo "Strict ruleset: on (locked=true default)"
+          fi
         else
-          # CLI defaults --strict-ruleset on; must pass the negative form explicitly.
-          gate_args+=(--no-strict-ruleset)
-          echo "Strict ruleset: off (best-effort / comment-only)"
+          if [[ "${AUCTELIS_STRICT_RULESET}" == "true" ]]; then
+            gate_args+=(--strict-ruleset)
+            echo "Strict ruleset: UNVERIFIED fails growth"
+          else
+            gate_args+=(--no-strict-ruleset)
+            echo "Strict ruleset: off (comment-only default)"
+          fi
         fi
         if [[ "${AUCTELIS_LOCKED}" != "true" ]]; then
           gate_args+=(--comment-only)
@@ -632,54 +699,58 @@ runs:
         GATE_TXT="$AUCTELIS_OUTPUT_DIR/gate-report.txt"
         SKIP="$AUCTELIS_OUTPUT_DIR/comment-skip.txt"
         FIRST_RUN="$AUCTELIS_OUTPUT_DIR/comment-first-run.md"
+        MARKER="<!-- auctelis-authority-diff -->"
+        PR_NUM="${{ github.event.pull_request.number }}"
+        workflow_added=0
+        base_ref="origin/${AUCTELIS_BASE_REF:-}"
+        if [[ -n "${AUCTELIS_BASE_REF:-}" ]] && git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+          while IFS= read -r wf; do
+            [[ -z "$wf" ]] && continue
+            if ! git cat-file -e "${base_ref}:${wf}" 2>/dev/null; then
+              workflow_added=1
+              break
+            fi
+          done < <(git diff --name-only "${base_ref}..HEAD" -- '.github/workflows/auctelis*.yml' 2>/dev/null || true)
+        fi
+        existing_id=""
+        if command -v gh >/dev/null 2>&1 && [[ -n "${GITHUB_TOKEN:-}" ]]; then
+          existing_id="$(
+            gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" --paginate \
+              --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" 2>/dev/null \
+              | head -n 1 || true
+          )"
+        fi
+        # Install-shaped PRs add the workflow (often GROWTH → pr-comment.md). Prefer
+        # the Watching proof when no sticky exists yet so README "Watching" is true.
+        if [[ -z "${existing_id}" && -f "$FIRST_RUN" && "$workflow_added" -eq 1 ]]; then
+          echo "Workflow install PR and no sticky comment yet — posting installation check."
+          cp "$FIRST_RUN" "$COMMENT"
+          rm -f "$SKIP"
+        fi
         # Quiet on NONE: no authority change means no new comment. If a sticky
         # comment exists from an earlier PR state, update it once to say so
-        # instead of leaving a stale PASS behind. Only post the first-run
-        # "watching" proof when this PR itself adds the Auctelis workflow file.
+        # instead of leaving a stale PASS behind.
         if [[ ! -f "$COMMENT" && -f "$SKIP" ]]; then
           echo "No authority change — comment skipped (comment-on-none=false)."
           echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
           cat "$SKIP" >> "$GITHUB_STEP_SUMMARY"
           if command -v gh >/dev/null 2>&1 && [[ -n "${GITHUB_TOKEN:-}" ]]; then
-            PR_NUM="${{ github.event.pull_request.number }}"
-            MARKER="<!-- auctelis-authority-diff -->"
-            existing_id="$(
-              gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" --paginate \
-                --jq ".[] | select(.body | contains(\"${MARKER}\")) | .id" 2>/dev/null \
-                | head -n 1 || true
-            )"
-            workflow_added=0
-            base_ref="origin/${AUCTELIS_BASE_REF:-}"
-            if [[ -n "${AUCTELIS_BASE_REF:-}" ]] && git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
-              while IFS= read -r wf; do
-                [[ -z "$wf" ]] && continue
-                if ! git cat-file -e "${base_ref}:${wf}" 2>/dev/null; then
-                  workflow_added=1
-                  break
-                fi
-              done < <(git diff --name-only "${base_ref}..HEAD" -- '.github/workflows/auctelis*.yml' 2>/dev/null || true)
-            fi
-            if [[ -z "${existing_id}" && -f "$FIRST_RUN" && "$workflow_added" -eq 1 ]]; then
-              echo "Workflow install PR and no sticky comment yet — posting installation check."
-              cp "$FIRST_RUN" "$COMMENT"
-            else
-              if [[ -n "${existing_id}" ]]; then
-                NOCHANGE="$(mktemp)"
-                {
-                  echo "$MARKER"
-                  echo "### auctelis Authority Diff"
-                  echo "**Verdict:** \`PASS\` · label \`NONE\`"
-                  echo ""
-                  echo "No authority change vs the base ref. No review required."
-                } >"$NOCHANGE"
-                if gh api "repos/${{ github.repository }}/issues/comments/${existing_id}" \
-                  -X PATCH -F body=@"$NOCHANGE" >/dev/null 2>&1; then
-                  echo "Updated sticky comment to no-change."
-                fi
-                rm -f "$NOCHANGE"
+            if [[ -n "${existing_id}" ]]; then
+              NOCHANGE="$(mktemp)"
+              {
+                echo "$MARKER"
+                echo "### auctelis Authority Diff"
+                echo "**Verdict:** \`PASS\` · label \`NONE\`"
+                echo ""
+                echo "No authority change vs the base ref. No review required."
+              } >"$NOCHANGE"
+              if gh api "repos/${{ github.repository }}/issues/comments/${existing_id}" \
+                -X PATCH -F body=@"$NOCHANGE" >/dev/null 2>&1; then
+                echo "Updated sticky comment to no-change."
               fi
-              exit 0
+              rm -f "$NOCHANGE"
             fi
+            exit 0
           else
             exit 0
           fi
@@ -808,7 +879,10 @@ runs:
         " "$BASE" "$CUR" "$OUT"
 
     - name: Report incomplete coverage
-      if: always() && steps.path_filter.outputs.skip != 'true'
+      if: >-
+        always() &&
+        steps.path_filter.outputs.skip != 'true' &&
+        inputs.annotate == 'true'
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -832,7 +906,12 @@ runs:
         " "$INV"
 
     - name: Note SARIF path
-      if: always() && steps.path_filter.outputs.skip != 'true' && inputs.upload-sarif == 'true' && inputs.mode == 'scan'
+      if: >-
+        always() &&
+        steps.path_filter.outputs.skip != 'true' &&
+        inputs.upload-sarif == 'true' &&
+        inputs.annotate == 'true' &&
+        inputs.mode == 'scan'
       shell: bash
       env:
         AUCTELIS_OUTPUT_DIR: ${{ inputs.output-dir }}
@@ -853,7 +932,7 @@ runs:
         path: ${{ inputs.output-dir }}
         if-no-files-found: warn
 
-    - name: Fail job on gate verdict (inventory-only)
+    - name: Fail job on gate verdict
       if: always() && steps.path_filter.outputs.skip != 'true' && inputs.mode == 'scan'
       shell: bash
       env:
@@ -931,7 +1010,7 @@ runs:
           exit "$gate_code"
         fi
         if [[ ( -z "${AUCTELIS_BASE_LOCK}" || "${AUCTELIS_BASE_LOCK_COMMITTED:-true}" == "false" ) && "${AUCTELIS_LOCKED}" == "true" && "${AUCTELIS_EVENT_NAME}" == "pull_request" && -f "$head_lock_path" ]]; then
-          echo "auctelis adoption ceremony complete (BASELINE_ADOPTED); inventory gate path passed."
+          echo "auctelis adoption ceremony complete (BASELINE_ADOPTED)."
         else
-          echo "auctelis inventory gate passed (research scan advisory)."
+          echo "auctelis Authority Diff gate passed (research annotate remains advisory)."
         fi

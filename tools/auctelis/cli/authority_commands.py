@@ -17,11 +17,28 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
 
     top = int(getattr(args, "top", 5))
-    report, cards, _scan = build_check_report(
+    report, cards, scan = build_check_report(
         getattr(args, "path", None),
         lock_file=getattr(args, "lock_file", None),
         top=top,
     )
+    report_dir = getattr(args, "report", None)
+    if report_dir is not None:
+        from auctelis.export.reach_report import (
+            load_reach_baseline,
+            write_reach_report_artifacts,
+        )
+
+        baseline_path = getattr(args, "baseline", None)
+        baseline = load_reach_baseline(baseline_path) if baseline_path is not None else None
+        write_reach_report_artifacts(
+            report_dir,
+            report,
+            scan,
+            cards=cards,
+            baseline=baseline,
+        )
+        print(f"Wrote reach report to {report_dir}")
     if getattr(args, "json", False):
         print_json(report)
     elif getattr(args, "pins", False):

@@ -32,6 +32,10 @@ jobs:
         with:
           python-version: "3.12.16"
 
+      - name: Install workspace (product + auctelis-dev)
+        working-directory: tools
+        run: uv sync --all-packages --locked
+
       - name: Verify version metadata
         run: uv run --directory tools --locked auctelis-dev build all
 
@@ -42,3 +46,20 @@ jobs:
       - name: Publish to PyPI
         working-directory: tools
         run: uv publish
+
+      - name: Assert PyPI index serves this version
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < VERSION)"
+          url="https://pypi.org/pypi/auctelis/${ver}/json"
+          code="$(curl -sS -o /tmp/auctelis-pypi.json -w '%{http_code}' "$url")"
+          if [[ "$code" != "200" ]]; then
+            echo "::error::PyPI returned HTTP $code for $url"
+            exit 1
+          fi
+          got="$(python -c "import json; print(json.load(open('/tmp/auctelis-pypi.json'))['info']['version'])")"
+          if [[ "$got" != "$ver" ]]; then
+            echo "::error::PyPI version '$got' != VERSION '$ver'"
+            exit 1
+          fi
+          echo "PyPI live for auctelis==${ver}"

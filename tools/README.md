@@ -2,7 +2,9 @@
 
 **Product CLI (`auctelis`):** `init --owner` → `check` → `lock --update` → `gate` / `diff` / `why` / `demo`.
 
-**Maintainer CLI (`auctelis-dev`):** `scan`, `annotate`, `build`, `lint`, `deps`, `corpus`, `validate`, `inventory`, … — not the product gate.
+**Maintainer CLI (`auctelis-dev`):** workspace member `tools/dev` (not in the
+product wheel). `scan`, `annotate`, `build`, `lint`, `deps`, `corpus`,
+`validate`, `inventory`, … — not the product gate.
 
 Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs were **removed**.
 
@@ -10,7 +12,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.12.2** · Product: auctelis **0.12.2** (tag `@v0.12.2`; PyPI `uvx auctelis` once published — see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.13.0** · Product: auctelis **0.13.0** (tag `@v0.13.0`; see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -37,8 +39,8 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 **User tool (recommended):**
 
 ```bash
-# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"`):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check
+# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools"`):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check
 
 auctelis check                         # repo authority vs AUTHORITY.lock
 auctelis init --owner security         # policy + workflow + CODEOWNERS + lock

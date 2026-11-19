@@ -7,6 +7,42 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-11-19
+
+### Distribution
+- **AUCT-004 (Install truth):** Product wheel ships only the `auctelis` console
+  script; maintainer `auctelis-dev` moved to source-only workspace member
+  `tools/dev`. Release refuses tag ≠ `v$(VERSION)`. Publish workflow asserts
+  PyPI HTTP 200 for the released version. `pypi_live` in
+  `canonical/release-manifest.json` drives install-doc guards (git-tag primary
+  while false). Docs no longer claim PyPI is done or defer with "once published".
+
+### Added
+- **AUCT-005 (Reach Report):** `auctelis check --report DIR` writes
+  `reach-report.html` / `.md` / `.json` plus `authority-sbom.json`, with an
+  honesty panel (coverage, NOT PARSED, truncation, declared-only). Optional
+  `--baseline PATH` diffs against a prior report JSON.
+- **Org reusable workflow:** `docs/auctelis-org-reusable.yml` for
+  `workflow_call` from an org `.github` repo.
+
+### Fixed
+- **AUCT-006 (Enforce integrity):** Deleting `AUTHORITY.lock` under enforce
+  while the base lock had records is drift (`NEEDS_REVIEW`), not a silent PASS.
+  Legacy Action inputs (`baseline`, `baseline-inventory`, …) warn and no longer
+  skip auth-diff. `strict-ruleset` defaults on when `locked=true`. Install PRs
+  always get a Watching proof comment (CLI always writes
+  `comment-first-run.md`; Action prefers it when the workflow file is new).
+  Trusted hosts never lower new MCP / Hook / Host Settings. Walk truncation is
+  surfaced and fails enforce like unparsed configs.
+
+### Changed
+- Kill list: circular "PyPI waits for five pilots" rule removed. Positioning
+  centers the shareable Agent Reach Report; gate remains the second surface.
+- Cleanup: shared truncation/coverage honesty helpers in `inventory/coverage.py`;
+  Action research coverage/SARIF notes gated on `annotate=true`; base-ref step
+  renamed to tree-truth lock extraction; CONTRIBUTING documents `tools/dev`
+  workspace + `check --report`.
+
 ## [0.12.2] — 2026-11-19
 
 ### Fixed

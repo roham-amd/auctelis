@@ -120,8 +120,44 @@ def test_action_posts_first_run_only_without_sticky():
     )
     text = action.read_text(encoding="utf-8")
     assert "comment-first-run.md" in text
-    block = text.split('if [[ ! -f "$COMMENT" && -f "$SKIP" ]]', 1)[1].split("exit 0", 1)[0]
-    assert "FIRST_RUN" in block
-    assert "existing_id" in block
-    assert "workflow_added" in block
-    assert ".github/workflows/auctelis*.yml" in block
+    assert "FIRST_RUN" in text
+    assert "existing_id" in text
+    assert "workflow_added" in text
+    assert ".github/workflows/auctelis*.yml" in text
+    assert 'cp "$FIRST_RUN" "$COMMENT"' in text
+
+
+def test_install_shaped_growth_still_writes_first_run(tmp_path: Path, monkeypatch):
+    """Growth (e.g. new workflow CI record) must still emit comment-first-run.md."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    base, _lock = write_authority_lock(root)
+    # Add a second MCP → GROWTH vs sealed base.
+    _mcp(
+        root,
+        {
+            "a": {"command": "node", "args": ["a.js"]},
+            "b": {
+                "command": "npx",
+                "args": ["-y", "@new/mcp"],
+                "env": {"TOKEN": "x"},
+            },
+        },
+    )
+    out = tmp_path / "out"
+    monkeypatch.setenv("AUCTELIS_OUTPUT_DIR", str(out))
+    code = main(
+        [
+            "gate",
+            str(root),
+            "--base-lock",
+            str(base),
+            "--skip-ruleset-check",
+            "--comment-only",
+        ]
+    )
+    assert code == 0
+    assert (out / "pr-comment.md").is_file()
+    assert (out / "comment-first-run.md").is_file()
+    assert "**Watching:**" in (out / "comment-first-run.md").read_text(encoding="utf-8")

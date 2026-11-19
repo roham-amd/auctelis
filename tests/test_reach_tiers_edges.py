@@ -97,20 +97,35 @@ def test_posture_and_capability_reasons():
     )
 
 
-def test_trusted_destination_lowers_network_only():
+def test_trusted_destination_never_lowers_mcp_hook_host():
     record = {
         "kind": "MCP Server Registration",
         "capabilities": ["access_network"],
         "destinations": ["mcp.linear.app"],
         "evidence_strength": "LITERAL_CONFIG",
     }
-    # A URL-only MCP registration is trusted down to the comment tier.
-    assert record_reach_tier(record, trusted_hosts={"mcp.linear.app"}) == TIER_COMMENT
-    # A trusted host never hides a launcher: the record is not network-only.
+    # AUCT-006: new MCP / Hook / Host Settings stay fail-tier under trust.
+    assert record_reach_tier(record, trusted_hosts={"mcp.linear.app"}) == TIER_FAIL
+    hook = {
+        "kind": "Hook",
+        "capabilities": ["access_network"],
+        "destinations": ["mcp.linear.app"],
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert record_reach_tier(hook, trusted_hosts={"mcp.linear.app"}) == TIER_FAIL
+    # A trusted host never hides a launcher either.
     unpinned = {**record, "launcher": "npx", "pin_state": "floating"}
     assert record_reach_tier(unpinned, trusted_hosts={"mcp.linear.app"}) >= TIER_FAIL
-    pinned = {**record, "launcher": "npx", "pin_state": "pinned"}
-    assert record_reach_tier(pinned, trusted_hosts={"mcp.linear.app"}) >= TIER_FAIL
+
+
+def test_trusted_destination_lowers_network_only_non_addition_kinds():
+    record = {
+        "kind": "Instructions",
+        "capabilities": ["access_network"],
+        "destinations": ["mcp.linear.app"],
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert record_reach_tier(record, trusted_hosts={"mcp.linear.app"}) == TIER_COMMENT
 
 
 def test_valid_trusted_host_rejects_suffix_wide_entries():

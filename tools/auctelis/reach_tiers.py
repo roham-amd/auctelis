@@ -135,9 +135,12 @@ def record_reach_tier(
     # fails — trust is about *where*, not *what* the record can do. A record
     # with a launcher is not network-only: trusting its host must not hide the
     # executable it starts.
+    # Trust never lowers new MCP / Hook / Host Settings authority — those kinds
+    # stay at fail tier even when every destination is allowlisted.
     dangerous = (
         bool(record.get("env_keys"))
         or bool(launcher)
+        or kind in _ADDITION_FAIL_KINDS
         or bool(
             set(caps)
             & {

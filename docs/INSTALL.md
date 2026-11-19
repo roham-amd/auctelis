@@ -3,36 +3,45 @@
 ## Requirements
 
 - Python **3.12+** (uv can fetch a managed interpreter)
-- Git (only for the checkout / fallback install)
+- Git (only for the checkout / git-tag install)
 
 ## One-line install (canonical)
 
-`uvx` runs the package without a permanent install (once PyPI `auctelis` is
-published, `uvx auctelis check` also works directly):
+PyPI `auctelis` is not live yet (`pypi_live=false`). Use the signed release tag:
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check                     # aha: ranked reach cards (no lock needed)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check                     # aha: ranked reach cards (no lock needed)
+```
+
+Shareable audit artifact (step 2 of the first ten minutes):
+
+```bash
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check --report out/
 ```
 
 For a persistent CLI:
 
 ```bash
-uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
+uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools"
 auctelis --version
 ```
+
+When Trusted Publishing lands and `canonical/release-manifest.json` flips
+`pypi_live` to true, the primary becomes `uvx auctelis check` / `uvx auctelis check --report out/`.
 
 ## First run
 
 ```bash
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check                          # repo authority vs AUTHORITY.lock
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security          # comment-only; @ optional; PowerShell-safe
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis init --owner security --enforce  # optional locked + strict ruleset
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check                          # repo authority vs AUTHORITY.lock
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check --report out/             # HTML+MD+JSON+SBOM
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis init --owner security          # comment-only; @ optional; PowerShell-safe
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis init --owner security --enforce  # optional locked + strict ruleset
 # commit → open install PR → first-run "Watching …" comment → later PRs get the diff
 ```
 
 Bare `auctelis` runs `check` (repo-only). Product path:
-**check → init (or the lockless workflow) → Action / gate** (tree-truth; lock
+**check → check --report → init (or the lockless workflow) → Action / gate** (tree-truth; lock
 optional pin).
 
 An empty baseline is normal: the first growth PR is a CODEOWNERS review of
@@ -45,15 +54,12 @@ and the [`CLI-REFERENCE`](CLI-REFERENCE.md).
 
 ## Fallback installs
 
-Use these only when the PyPI index cannot be reached.
+Use these when you already have a downloaded wheel, or after PyPI is live and
+the index is temporarily unreachable.
 
 ```bash
-# Git tag (signed release assets are on the GitHub Release):
-uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools"
-
-# Or a downloaded wheel:
-uv tool install --python 3.12 ./auctelis-0.12.2-py3-none-any.whl
+# Downloaded wheel (signed release assets are on the GitHub Release):
+uv tool install --python 3.12 ./auctelis-0.13.0-py3-none-any.whl
 ```
 
 ### Signed wheel (release assets)
@@ -62,14 +68,14 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.12.2-py3-none-any.whl.cosign.bundle \
-  auctelis-0.12.2-py3-none-any.whl
+  --bundle auctelis-0.13.0-py3-none-any.whl.cosign.bundle \
+  auctelis-0.13.0-py3-none-any.whl
 ```
 
 Trusted Publishing workflow:
 [`.github/workflows/publish-pypi.yml`](../.github/workflows/publish-pypi.yml).
-Trigger via `workflow_dispatch` after the PyPI project is claimed — do not invent
-publish success until the index returns 200.
+Trigger via `workflow_dispatch` after the PyPI project is claimed. The workflow
+asserts the index returns 200 for the published version.
 
 ## From a checkout
 
@@ -77,15 +83,24 @@ publish success until the index returns 200.
 cd tools
 uv sync --locked
 uv run auctelis check .
+uv run auctelis check --report /tmp/auctelis-report
 uv run auctelis demo -o /tmp/auctelis-demo
+# Maintainer surface (workspace member tools/dev):
+uv run auctelis-dev build all
 ```
+
+## Org reusable workflow
+
+Install once in your org `.github` repo using
+[`auctelis-org-reusable.yml`](auctelis-org-reusable.yml), then each application
+repo calls it with two lines (see that file).
 
 ## Verify
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis --version
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis check --help
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.12.2#subdirectory=tools" auctelis demo -o /tmp/auctelis-demo
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis --version
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis check --help
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.0#subdirectory=tools" auctelis demo -o /tmp/auctelis-demo
 ```
 
 See [`PRODUCT.md`](PRODUCT.md) for the command contract and
@@ -95,5 +110,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.12.2 |
-| Package `auctelis` | 0.12.2 |
+| Product (`VERSION`) | 0.13.0 |
+| Package `auctelis` | 0.13.0 |

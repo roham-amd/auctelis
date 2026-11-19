@@ -46,9 +46,10 @@ declared.
 
 `.auctelis/trusted-hosts` (written by `auctelis trust <host>`) lowers
 **network-only** records whose destinations are all trusted to tier 1. It never
-lowers execute, secrets, approvals, unattended, env-key reach, or records that
-declare a launcher (a trusted host must not hide the executable it starts).
-Entries must be specific hosts (TLD-only and wildcard entries are ignored).
+lowers execute, secrets, approvals, unattended, env-key reach, records that
+declare a launcher, or **new MCP / Hook / Host Settings** authority (those
+kinds stay at tier 2 even when every destination is allowlisted). Entries must
+be specific hosts (TLD-only and wildcard entries are ignored).
 `trust --init` writes a starter list; nothing is trusted implicitly.
 
 The trust file is itself authority: a PR could allowlist its own destination.
