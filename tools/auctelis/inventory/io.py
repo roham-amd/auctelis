@@ -32,6 +32,11 @@ def _is_auctelis_output_dir(name: str) -> bool:
     return name == "auctelis-out" or name.startswith("auctelis-out-")
 
 
+def _is_pytest_temp_dir(name: str) -> bool:
+    """Skip pytest basetemp trees left under the repo."""
+    return name.startswith("pytest-of-") or name == "auctelis-pytest"
+
+
 # Default authority-noise dirs (fixtures / docs / tests / canned demos).
 # Opt out with ``default_excludes=False`` / ``scan --include-fixtures``.
 _DEFAULT_EXCLUDE_DIRS = {
@@ -89,7 +94,7 @@ def iter_repo_files(
             continue
         kept: list[str] = []
         for d in dirnames:
-            if d in skip_dirs or _is_auctelis_output_dir(d):
+            if d in skip_dirs or _is_auctelis_output_dir(d) or _is_pytest_temp_dir(d):
                 if d in _DEFAULT_EXCLUDE_DIRS and default_excludes:
                     events.append(
                         {

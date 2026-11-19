@@ -121,4 +121,6 @@ temp/
 # Local pytest cache dirs
 pytest-of-*/
 tools/pytest-of-*/
+auctelis-pytest/
+tools/auctelis-pytest/
 

@@ -7,6 +7,12 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.13.2] — 2026-11-19
+
+### Fixed
+- Authority content digests normalize CR/LF to LF so Windows working trees seal the same `AUTHORITY.lock` digests as Linux CI (dogfood representation drift).
+- Inventory walk skips `pytest-of-*` / `auctelis-pytest` basetemp trees so local pytest leftovers cannot pollute dogfood `check` / `lock`.
+
 ## [0.13.1] — 2026-11-19
 
 ### Fixed

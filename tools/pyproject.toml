@@ -1,6 +1,6 @@
 [project]
 name = "auctelis"
-version = "0.13.1"
+version = "0.13.2"
 description = "Auctelis — the authority lockfile and one-line diff for AI agent reach"
 readme = "README.md"
 requires-python = ">=3.12"

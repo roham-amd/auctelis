@@ -17,14 +17,14 @@ There are exactly **two surfaces**: `check` locally, the Action on PRs.
 
 ```bash
 # 1. See the aha — no install step, no lock needed (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.1#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.2#subdirectory=tools" auctelis check
 
 # 2. Shareable audit artifact for your ticket / security lead (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.1#subdirectory=tools" auctelis check --report out/
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.2#subdirectory=tools" auctelis check --report out/
 
 # 3. In your repo: baseline + comment-only workflow + CODEOWNERS (2 min):
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.1#subdirectory=tools" auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.2#subdirectory=tools" auctelis init --owner security    # PowerShell: omit @; add --enforce for a locked gate
 
 # 4. Commit, open the install PR, and read the first-run "Watching …" comment (2 min).
 #    Later no-change PRs stay silent; PRs that change agent authority get the Authority Diff.
@@ -85,7 +85,7 @@ Persistent CLI install (git tag; see docs/INSTALL.md):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.13.1#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.13.2#subdirectory=tools"
 ```
 
 Host tripwires were removed in 0.8.0. The product gate is **tree-truth** —

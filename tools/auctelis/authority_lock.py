@@ -162,8 +162,9 @@ def _policy_hash(root: Path) -> str | None:
     for name in (".auctelis.yml", ".auctelis.yaml"):
         path = root / name
         if path.is_file():
-            digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            return f"sha256:{digest}"
+            from auctelis.supply_chain.digest import sha256_file
+
+            return f"sha256:{sha256_file(path, text_newlines=True)}"
     return None
 
 

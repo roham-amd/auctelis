@@ -85,7 +85,9 @@ def component_content_digest(root: Path | None, component: dict[str, Any]) -> st
     path = resolve_source_file(root, component.get("repository_path"))
     if path is None:
         return None
-    return f"sha256:{sha256_file(path)}"
+    # Text configs are hashed with LF-normalized bytes so Windows checkouts
+    # (CRLF working trees) seal the same digests as Linux CI.
+    return f"sha256:{sha256_file(path, text_newlines=True)}"
 
 
 def enrich_component_provenance(
