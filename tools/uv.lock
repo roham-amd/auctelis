@@ -87,7 +87,7 @@ wheels = [
 
 [[package]]
 name = "auctelis"
-version = "0.13.2"
+version = "0.13.3"
 source = { editable = "." }
 dependencies = [
     { name = "jsonschema" },
@@ -118,7 +118,7 @@ dev = [
 
 [[package]]
 name = "auctelis-devtools"
-version = "0.13.2"
+version = "0.13.3"
 source = { editable = "dev" }
 dependencies = [
     { name = "auctelis" },

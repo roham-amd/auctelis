@@ -167,6 +167,11 @@ jobs:
       - name: Set up Python
         run: uv python install 3.12.16
 
+      - name: Install dependencies
+        working-directory: tools
+        # auctelis-dev lives in workspace member tools/dev — need --all-packages.
+        run: uv sync --all-packages --locked
+
       - name: Verify tag matches VERSION
         run: |
           set -euo pipefail
@@ -189,7 +194,6 @@ jobs:
       - name: Generate SBOM
         working-directory: tools
         run: |
-          uv sync --locked
           uv run --locked pip-audit -f cyclonedx-json -o ../auctelis-out-sbom/sbom.cdx.json \
             || uv run --locked pip-audit -f json -o ../auctelis-out-sbom/sbom.json
 

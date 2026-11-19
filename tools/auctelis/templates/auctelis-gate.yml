@@ -18,8 +18,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: auctelis Authority Diff
-        # Pinned by auctelis to release v0.13.2 (never consumer-repo HEAD)
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.13.2
+        # Pinned by auctelis to release v0.13.3 (never consumer-repo HEAD)
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.13.3
         with:
           path: .
           mode: scan

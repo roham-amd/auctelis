@@ -7,6 +7,11 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.13.3] — 2026-11-19
+
+### Fixed
+- Release workflow installs workspace member `auctelis-dev` via `uv sync --all-packages` before metadata verify / SBOM (unblocked GitHub Release assets).
+
 ## [0.13.2] — 2026-11-19
 
 ### Fixed
