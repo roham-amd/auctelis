@@ -7,6 +7,11 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.13.1] — 2026-11-19
+
+### Fixed
+- Resealed `AUTHORITY.lock` after 0.13.0 workflow edits so dogfood `check` / `lock --check` stay green on CI.
+
 ## [0.13.0] — 2026-11-19
 
 ### Distribution

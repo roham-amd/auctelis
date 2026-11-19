@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.13.0** (audit-first: honest install docs, `check --report`, enforce integrity, org reusable workflow) · lock schema 1 · tooling 0.13.0
+**Current:** **0.13.1** (0.13.0 audit-first cut + dogfood lock reseal) · lock schema 1 · tooling 0.13.1
 
 ## North star (Gate Zero)
 
@@ -37,6 +37,7 @@ are removed.
 | **0.12.1** | PyPI one-line install (`uvx auctelis`); first-run "watching" comment; prose inference capped at comment tier; two-surface docs | **done** |
 | **0.12.2** | Real-repo CI/TOML signal fix; quiet-PR silence + working `BASELINE_ADOPTED`; shallow fast lockless Action; working `uvx --from` install | **done** |
 | **0.13.0** | Install truth (`pypi_live` guard); Reach Report (`check --report`); enforce integrity (lock delete / legacy inputs / first-run / trust / truncation); org reusable workflow | **done** |
+| **0.13.1** | Reseal dogfood `AUTHORITY.lock` after 0.13.0 workflow edits; keep CI check green | **done** |
 | Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate
