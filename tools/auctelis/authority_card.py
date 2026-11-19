@@ -635,9 +635,9 @@ def reach_snapshot(
             str(row[2].get("path") or ""),
         )
     )
-    top: list[dict[str, Any]] = []
-    for tier, _score, record in scored[: max(int(limit or 0), 0)]:
-        top.append(
+    records_out: list[dict[str, Any]] = []
+    for tier, _score, record in scored:
+        records_out.append(
             {
                 "kind": kind_label(record.get("kind")),
                 "name": str(record.get("name") or record.get("id") or "?"),
@@ -647,9 +647,11 @@ def reach_snapshot(
                 "card": record_card(record, trusted_hosts=trusted_hosts),
             }
         )
+    top = records_out[: max(int(limit or 0), 0)]
     return {
         "total": len(inventory),
         "tier_counts": tier_counts,
+        "records": records_out,
         "top": top,
         "top_cards": [item["card"] for item in top],
     }

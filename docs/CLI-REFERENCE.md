@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.13.0** · product **0.13.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.14.0** · product **0.14.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -21,7 +21,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | Tier | Command | Purpose |
 | --- | --- | --- |
 | Core | `init --owner team` | One-command setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [--top N] [--pins] [--report DIR] [--baseline PATH]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--report` writes HTML+MD+JSON+SBOM |
+| Core | `check [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--report` writes HTML+MD+JSON+SBOM |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -42,13 +42,15 @@ Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 ## `auctelis check`
 
 ```bash
-auctelis check [PATH] [--lock-file PATH] [--json] [--top N] [--pins] [--report DIR] [--baseline PATH]
+auctelis check [PATH] [--lock-file PATH] [--json] [--top N] [--pins]
+               [--report DIR] [--baseline PATH] [--max-files N]
 ```
 
 Inventories agent configs in a repository (MCP, skills, instructions, hooks,
 rules, subagents, plugins, CI) and diffs them against the committed
 `AUTHORITY.lock`. No host home scan. Prints a ranked reach summary and the top
-five cards even when the lock matches (`--top 0` hides cards).
+five cards even when the lock matches (`--top 0` hides cards). `--report` always
+lists every tier-2 record (not just the top cards).
 
 - No lock yet → inventory + `BASELINE_NEEDED`; next step `auctelis lock --update`
 - Lock matches → `LOCKED`, still showing reach counts and top cards
@@ -56,9 +58,10 @@ five cards even when the lock matches (`--top 0` hides cards).
 - `--pins` → unpinned/floating MCP launchers with a concrete pin suggestion
 - `--report DIR` → write `reach-report.html` / `.md` / `.json` and `authority-sbom.json` (shareable audit artifact)
 - `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
+- `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
 
-`--json` emits `schema_version: authority-diff/1` plus `reach` (tier counts and
-top cards) and `pins`.
+`--json` emits `schema_version: authority-diff/1` plus `reach` (tier counts,
+full `records`, and capped `top` / `top_cards`) and `pins`.
 
 Exit codes: `0` quiet / first-run; `1` meaningful delta; `2` unusable lock.
 
@@ -68,7 +71,7 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta; `2` unusable lock.
 
 ```bash
 auctelis lock [PATH] [--check] [--update] [--lock-file PATH]
-              [--accept-gated]
+              [--accept-gated] [--max-files N]
 ```
 
 Writes or verifies repo `AUTHORITY.lock`. `--check` is read-only. Writes are
@@ -101,7 +104,7 @@ setup probes them as a warning (files are still written).
 ```bash
 auctelis gate [PATH] --base-lock PATH [--head-lock PATH]
               [--codeowners PATH] [--strict-ruleset | --no-strict-ruleset]
-              [--skip-ruleset-check] [--trust-head-codeowners]
+              [--skip-ruleset-check] [--trust-head-codeowners] [--max-files N]
               [--comment-only] [--comment-policy auto|always] [--agent]
 ```
 
@@ -127,10 +130,12 @@ auctelis diff --base <git-ref> [--repo PATH] [--json]
 auctelis diff lock <base.lock> <head.lock>
 ```
 
-Local PR Authority Diff simulator: resolves the git ref, reads `AUTHORITY.lock`
-via `git show` (absent → `BASELINE_NEEDED`, exit 0, no files written; invalid
-ref → `FAIL_CLOSED`, exit 2), regenerates head from the working tree, and prints
-the same comment dialect as the Action. JSON includes `baseline_state`.
+Local PR Authority Diff simulator: resolves the git ref, reads committed
+`AUTHORITY.lock` when present (`baseline_state=present`), otherwise extracts
+tree-truth authority from a temporary detached worktree
+(`baseline_state=tree`). Invalid ref → `FAIL_CLOSED`, exit 2. Regenerates head
+from the working tree and prints the same comment dialect as the Action. JSON
+includes `baseline_state`.
 
 ---
 
@@ -198,7 +203,7 @@ use `check` / `gate` / `diff --base` for Authority Diff.
 | `check` | quiet / first-run | meaningful delta | lock error |
 | `lock --check` | matches | drift | — |
 | `gate` | PASS / BASELINE_ADOPTED (comment-only: also NEEDS_REVIEW) | NEEDS_REVIEW / FAIL_CLOSED (enforce) | usage |
-| `diff --base` | PASS / BASELINE_NEEDED | NEEDS_REVIEW | FAIL_CLOSED / invalid ref |
+| `diff --base` | PASS (or BASELINE_NEEDED only if tree extract failed) | NEEDS_REVIEW | FAIL_CLOSED / invalid ref |
 
 Agents must set `AUCTELIS_AGENT=1`; mutation commands (`lock`, `ci init`) are
 refused. That env var is a speed bump, not a security control.

@@ -107,6 +107,7 @@ def iter_repo_files(
         kept.sort()
         dirnames[:] = kept
         for name in sorted(filenames):
+            # Count only kept (non-symlink, non-oversize) files toward max_files.
             if file_count >= limits.max_files:
                 truncated = True
                 events.append({"type": "file_limit_reached", "path": str(rel_dir)})
@@ -120,7 +121,6 @@ def iter_repo_files(
                     files,
                 )
             p = Path(dirpath) / name
-            file_count += 1
             if p.is_symlink():
                 symlink_count += 1
                 events.append(
@@ -153,6 +153,7 @@ def iter_repo_files(
                 )
                 continue
             files.append(p)
+            file_count += 1
 
     return (
         {

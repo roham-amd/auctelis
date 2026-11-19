@@ -108,12 +108,19 @@ def dispatch(args: argparse.Namespace) -> int:
             return 2
 
 
+def _apply_max_files_env(args: argparse.Namespace) -> None:
+    max_files = getattr(args, "max_files", None)
+    if max_files is not None:
+        os.environ["AUCTELIS_MAX_FILES"] = str(int(max_files))
+
+
 def _cmd_lock(args: argparse.Namespace) -> int:
     # `--check` is read-only; writes/updates require a human (not AUCTELIS_AGENT).
     if not bool(getattr(args, "check", False)):
         refused = refuse_agent_mutation("lock")
         if refused is not None:
             return refused
+    _apply_max_files_env(args)
 
     root = args.path
     lock_path = getattr(args, "lock_file", None)
@@ -138,7 +145,6 @@ def _cmd_lock(args: argparse.Namespace) -> int:
         check=bool(getattr(args, "check", False)),
         update=bool(getattr(args, "update", False)),
         lock_path=lock_path,
-        approval=getattr(args, "approval", None),
         accept_gated=bool(getattr(args, "accept_gated", False)),
         mcp_tools=mcp_tools,
     )
@@ -153,6 +159,7 @@ def _cmd_lock(args: argparse.Namespace) -> int:
 
 def _cmd_gate(args: argparse.Namespace) -> int:
     """Base→head lock gate: growth label + CODEOWNERS / ruleset check."""
+    _apply_max_files_env(args)
     report, code = run_gate(
         args.path,
         base_lock=args.base_lock,
@@ -951,7 +958,6 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         lock_path=lock_path,
         check=False,
         update=True,
-        approval=None,
         accept_gated=accept_gated,
     )
     print(msg)

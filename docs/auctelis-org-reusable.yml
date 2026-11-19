@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: auctelis Authority Diff
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.13.3
+        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.14.0
         with:
           path: ${{ inputs.path }}
           mode: scan
@@ -50,5 +50,4 @@ jobs:
           authority-diff: "true"
           locked: ${{ inputs.locked && 'true' || 'false' }}
           comment-on-none: ${{ inputs.comment-on-none && 'true' || 'false' }}
-          annotate: false
           output-dir: auctelis-out

@@ -97,10 +97,17 @@ def diff_reach_reports(
         path = str(item.get("path") or "")
         return f"{kind}|{name}|{path}"
 
-    def _top_map(doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    def _record_list(doc: dict[str, Any]) -> list[Any]:
+        """Prefer full ``records``; fall back to capped ``top`` for legacy JSON."""
         reach = _as_dict(doc.get("reach"))
+        records = _as_list(reach.get("records"))
+        if records:
+            return records
+        return _as_list(reach.get("top"))
+
+    def _top_map(doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
         out: dict[str, dict[str, Any]] = {}
-        for item in _as_list(reach.get("top")):
+        for item in _record_list(doc):
             if isinstance(item, dict):
                 out[_identity(item)] = item
         return out
@@ -170,10 +177,10 @@ def render_reach_md(
         lines.append("- No walk truncation reported for this scan.")
     lines.append("- Inventory is DECLARED/CONFIGURED only.")
     lines.extend(["", "## Tier-2 reach", ""])
-    top = _as_list(reach.get("top"))
-    tier2 = [item for item in top if isinstance(item, dict) and int(item.get("tier") or 0) >= 2]
+    ranked = _as_list(reach.get("records")) or _as_list(reach.get("top"))
+    tier2 = [item for item in ranked if isinstance(item, dict) and int(item.get("tier") or 0) >= 2]
     if not tier2:
-        lines.append("_No tier-2 records in the top ranking._")
+        lines.append("_No tier-2 records in this inventory._")
     else:
         for item in tier2:
             name = str(item.get("name") or "")
@@ -185,6 +192,10 @@ def render_reach_md(
         lines.extend(["", "## Cards", ""])
         for card in cards:
             lines.append(f"- {card}")
+        total = int(reach.get("total") or 0)
+        shown = len(cards)
+        if total > shown:
+            lines.append(f"- _+{total - shown} more (see Tier-2 / full JSON)._")
     pins = _as_dict(doc.get("pins"))
     unpinned = _as_list(pins.get("items"))
     if unpinned:
@@ -229,8 +240,9 @@ def render_reach_html(
     if not trunc_html:
         trunc_html = "<li>No walk truncation reported for this scan.</li>"
 
+    ranked = _as_list(reach.get("records")) or _as_list(reach.get("top"))
     tier2_rows: list[str] = []
-    for item in _as_list(reach.get("top")):
+    for item in ranked:
         if not isinstance(item, dict) or int(item.get("tier") or 0) < 2:
             continue
         tier2_rows.append(
@@ -241,11 +253,15 @@ def render_reach_html(
             "</tr>"
         )
     if not tier2_rows:
-        tier2_body = "<tr><td colspan='3'><em>No tier-2 records in the top ranking.</em></td></tr>"
+        tier2_body = "<tr><td colspan='3'><em>No tier-2 records in this inventory.</em></td></tr>"
     else:
         tier2_body = "".join(tier2_rows)
 
-    cards_html = "".join(_li(str(c)) for c in _as_list(doc.get("cards")))
+    cards = _as_list(doc.get("cards"))
+    cards_html = "".join(_li(str(c)) for c in cards)
+    total = int(reach.get("total") or 0)
+    if total > len(cards) > 0:
+        cards_html += _li(f"+{total - len(cards)} more (see Tier-2 / full JSON).")
     baseline_section = ""
     if baseline_diff:
         parts = [

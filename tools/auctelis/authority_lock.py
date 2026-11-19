@@ -387,7 +387,6 @@ def write_authority_lock(
     root: Path,
     *,
     path: Path | None = None,
-    approval_owner: str | None = None,
     accept_gated: bool = False,
     scan: ScanResult | None = None,
 ) -> tuple[Path, dict[str, Any]]:
@@ -410,13 +409,13 @@ def write_authority_lock(
             "refusing to lock a tree with high/critical gated findings without "
             f"--accept-gated. Seen: {preview}{more}"
         )
-    del approval_owner  # deprecated: CODEOWNERS is the approval system
     lock = build_authority_lock(root, scan=scan)
     # Lock-only product: approval fields are never written. GitHub CODEOWNERS /
     # rulesets enforce review; `--accept-gated` remains for findings-bearing
     # scans passed explicitly (auctelis-dev) and is a no-op on inventory-only.
-    lock["approvals"] = []
-    lock["approved_findings"] = []
+    # Do not emit empty approvals / approved_findings (legacy optional on read).
+    lock.pop("approvals", None)
+    lock.pop("approved_findings", None)
     dest = path or default_lock_path(root)
     dest.write_text(
         json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
@@ -848,7 +847,6 @@ def run_lock_command(
     check: bool = False,
     update: bool = False,
     lock_path: Path | None = None,
-    approval: str | None = None,
     accept_gated: bool = False,
     mcp_tools: dict[str, str] | None = None,
 ) -> tuple[str, int]:
@@ -868,7 +866,6 @@ def run_lock_command(
         dest, lock = write_authority_lock(
             root,
             path=path,
-            approval_owner=approval,
             accept_gated=accept_gated,
         )
     except ValueError as exc:

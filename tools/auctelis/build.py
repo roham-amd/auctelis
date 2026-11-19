@@ -394,7 +394,7 @@ def check_public_install_versions(product: str) -> None:
 
 
 def check_install_doc_versions(product: str) -> None:
-    """INSTALL.md version table must match root VERSION / package version."""
+    """INSTALL.md / CLI-REFERENCE.md version headers must match root VERSION."""
     install = repo_root() / "docs" / "INSTALL.md"
     text = install.read_text(encoding="utf-8")
     for label in ("Product (`VERSION`)", "Package `auctelis`"):
@@ -403,6 +403,25 @@ def check_install_doc_versions(product: str) -> None:
             raise SystemExit(f"docs/INSTALL.md missing version row for {label}")
         if match.group(1) != product:
             raise SystemExit(f"docs/INSTALL.md {label} is {match.group(1)!r}, expected {product!r}")
+
+    cli_ref = repo_root() / "docs" / "CLI-REFERENCE.md"
+    cli_text = cli_ref.read_text(encoding="utf-8")
+    # e.g. Package `auctelis` **0.14.0** · product **0.14.0**
+    pkg = re.search(r"Package\s+`auctelis`\s+\*\*([^*]+)\*\*", cli_text)
+    prod = re.search(r"product\s+\*\*([^*]+)\*\*", cli_text, re.IGNORECASE)
+    if not pkg or not prod:
+        raise SystemExit(
+            "docs/CLI-REFERENCE.md missing Package/product version header "
+            "(expected: Package `auctelis` **X** · product **X**)"
+        )
+    if pkg.group(1).strip() != product:
+        raise SystemExit(
+            f"docs/CLI-REFERENCE.md package version is {pkg.group(1)!r}, expected {product!r}"
+        )
+    if prod.group(1).strip() != product:
+        raise SystemExit(
+            f"docs/CLI-REFERENCE.md product version is {prod.group(1)!r}, expected {product!r}"
+        )
 
 
 def check_bare_command_docs() -> None:

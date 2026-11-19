@@ -5,5 +5,4 @@ policy:
   mode: advisory
   fail_on: never
   output_dir: auctelis-out
-  # baseline: .auctelis/baseline.json
   ignore: []

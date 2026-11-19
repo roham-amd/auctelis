@@ -83,7 +83,8 @@ def test_lock_seals_vulnerable_tree_without_approval_theater(tmp_path: Path):
     assert main(["lock", str(root)]) == 0
     assert (root / "AUTHORITY.lock").is_file()
     lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
-    assert lock.get("approvals") in ([], None)
+    assert "approvals" not in lock
+    assert "approved_findings" not in lock
 
 
 def test_lock_hash_stable_across_path_and_commit(tmp_path: Path, monkeypatch):

@@ -142,12 +142,66 @@ def render_gate_pr_comment(
     )
 
 
-def render_first_run_comment(report: dict[str, Any]) -> str:
+def _is_auctelis_workflow_path(path: str) -> bool:
+    """True for ``.github/workflows/auctelis*.yml`` install surfaces (tier 0)."""
+    norm = str(path or "").replace("\\", "/").lower()
+    if not norm.startswith(".github/workflows/"):
+        return False
+    name = norm.rsplit("/", 1)[-1]
+    return name.startswith("auctelis") and name.endswith((".yml", ".yaml"))
+
+
+def _delta_record_paths(
+    report: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Return ``(added_or_changed_records, removed_records)`` from a gate report."""
+    raw_delta = report.get("delta")
+    delta: dict[str, Any] = raw_delta if isinstance(raw_delta, dict) else {}
+    raw_records = delta.get("records")
+    records: dict[str, Any] = raw_records if isinstance(raw_records, dict) else {}
+    added = [r for r in (records.get("added") or []) if isinstance(r, dict)]
+    removed = [r for r in (records.get("removed") or []) if isinstance(r, dict)]
+    changed_out: list[dict[str, Any]] = []
+    for item in records.get("changed") or []:
+        if not isinstance(item, dict):
+            continue
+        after = item.get("after") or item.get("head") or item
+        if isinstance(after, dict):
+            changed_out.append(after)
+    return [*added, *changed_out], removed
+
+
+def _install_workflow_only(report: dict[str, Any]) -> bool:
+    """True when the only authority delta is adding/changing auctelis workflow YAML."""
+    if bool(report.get("lock_tree_drift")) or int(report.get("unparsed") or 0):
+        return False
+    raw_delta = report.get("delta")
+    delta: dict[str, Any] = raw_delta if isinstance(raw_delta, dict) else {}
+    raw_summary = delta.get("summary")
+    summary: dict[str, Any] = raw_summary if isinstance(raw_summary, dict) else {}
+    if (
+        int(summary.get("mcp_tools_added") or 0)
+        or int(summary.get("mcp_tools_changed") or 0)
+        or bool(summary.get("policy_changed"))
+    ):
+        return False
+    changed, removed = _delta_record_paths(report)
+    if removed or not changed:
+        return False
+    return all(_is_auctelis_workflow_path(str(r.get("path") or "")) for r in changed)
+
+
+def render_first_run_comment(
+    report: dict[str, Any],
+    *,
+    install_only: bool | None = None,
+) -> str:
     """One "watching" comment on the first PR after install.
 
     Quiet-on-``NONE`` makes a healthy install indistinguishable from a broken
     one, so the Action posts this exactly once when no sticky comment exists
-    yet. It never claims ``PASS`` on growth, unparsed configs, or drift.
+    yet. Clean install PRs that only add ``.github/workflows/auctelis*.yml``
+    stay ``PASS``; any other authority growth stays ``NEEDS_REVIEW`` with cards.
     """
     raw_reach = report.get("reach")
     reach: dict[str, Any] = raw_reach if isinstance(raw_reach, dict) else {}
@@ -159,14 +213,21 @@ def render_first_run_comment(report: dict[str, Any]) -> str:
     tier0 = int(counts.get("tier0") or 0)
     verdict = str(report.get("verdict") or "PASS").upper()
     label = str(report.get("label") or "NONE").upper()
+    if install_only is None:
+        install_only = _install_workflow_only(report)
     watching = (
         verdict == "PASS"
         and label == "NONE"
         and not bool(report.get("meaningful_authority_change"))
         and not bool(report.get("lock_tree_drift"))
         and not int(report.get("unparsed") or 0)
-    )
-    if not watching:
+    ) or bool(install_only)
+    if watching:
+        verdict = "PASS"
+        if install_only and label == "GROWTH":
+            # Install workflow alone is expected growth — do not alarm.
+            label = "NONE"
+    else:
         # A first-run file must never present growth as a clean install check.
         verdict = "NEEDS_REVIEW"
     lines = [
@@ -180,18 +241,31 @@ def render_first_run_comment(report: dict[str, Any]) -> str:
             "No agent configuration was discovered in this repository — "
             "run `auctelis check` locally to see what auctelis can see."
         )
-    top = [str(card) for card in (reach.get("top_cards") or []) if str(card).strip()][:3]
-    if top:
-        lines.append("**Top reach:**")
-        for card in top:
-            lines.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
     if watching:
+        top = [str(card) for card in (reach.get("top_cards") or []) if str(card).strip()][:3]
+        if top:
+            lines.append("**Top reach:**")
+            for card in top:
+                lines.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
         lines.append(
             "**Next:** this PR did not change agent authority. The next PR that "
             "adds or changes an MCP server, skill, hook, or permission will show "
             "the Authority Diff."
         )
     else:
+        # Surface non-install growth (e.g. smuggled MCP) so the Action cannot
+        # hide it by preferring a Watching-only first-run file.
+        cards = delta_cards(
+            report.get("delta") if isinstance(report.get("delta"), dict) else None,
+            limit=5,
+            include_overflow_summary=True,
+        )
+        if not cards:
+            cards = [str(card) for card in (reach.get("top_cards") or []) if str(card).strip()][:5]
+        if cards:
+            lines.append("**Authority delta:**")
+            for card in cards:
+                lines.append(f"- {escape_markdown(str(card).lstrip('+-~ '), max_len=180)}")
         lines.append("**Next:** authority changed or could not be established — review the diff.")
     return AUCTELIS_COMMENT_MARKER + "\n" + "\n".join(lines) + "\n"
 
@@ -227,14 +301,13 @@ def render_authority_diff_comment(
     if summary is None and risk_delta and "gated_findings_added" in risk_delta:
         summary = risk_delta
 
-    baseline_absent = str(baseline_state or "").strip().lower() == "absent"
+    baseline_norm = str(baseline_state or "").strip().lower()
+    baseline_absent = baseline_norm == "absent"
     new_powers: list[Any] = []
-    # A real base lock is a baseline even when the delta is empty. Only a
-    # truly lockless ref may call this an absolute head scan.
+    # A real base (committed lock or tree-truth extract) is a baseline even when
+    # the delta is empty. Only a failed lockless extract may call this absolute.
     has_baseline = (
-        risk_delta is not None
-        or lock_delta is not None
-        or str(baseline_state or "").strip().lower() == "present"
+        risk_delta is not None or lock_delta is not None or baseline_norm in {"present", "tree"}
     )
     if baseline_absent:
         has_baseline = False

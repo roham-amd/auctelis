@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.13.3** |
-| Tooling package | **0.13.3** (`auctelis`) |
+| Product release | **0.14.0** |
+| Tooling package | **0.14.0** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -28,8 +28,8 @@ The valuable artifact is the **PR Authority Diff comment** (≤12 lines): one
 verdict, at most five ranked cards, the unknowns, and the action. The Action
 posts this comment from the tree-truth gate lock delta when authority changed
 (base authority is extracted from the base worktree — no committed lock required
-for comment-only). Research `annotate: true` is optional enrichment — never a
-gate input. Inferred doc-link network stays comment-tier; execute / secrets / new
+for comment-only). The Action is lock-diff only (research annotate inputs were
+removed in 0.14). Inferred doc-link network stays comment-tier; execute / secrets / new
 MCP fail only when `locked=true`. Comment-only growth is `NEEDS_REVIEW`, never a
 false `PASS`; no-change PRs are quiet unless `comment-on-none: true`.
 
@@ -46,19 +46,19 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 
 ```bash
 # One-line run without permanent install (uvx auctelis check see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.3#subdirectory=tools" auctelis check                              # aha: ranked reach cards
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis check                              # aha: ranked reach cards
 
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.3#subdirectory=tools" auctelis init --owner security-owner        # comment-only setup
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis init --owner security-owner        # comment-only setup
 # Lockless: copy templates/auctelis-diff.yml → .github/workflows/auctelis.yml
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.13.3#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
 ```
 
 Persistent install:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.13.3#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.14.0#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
@@ -87,7 +87,7 @@ Prefer an immutable commit SHA for the Action in high-assurance repos:
 uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.13.3`. The Action fetches the base ref at `--depth=1`
+Or pin the release tag: `@v0.14.0`. The Action fetches the base ref at `--depth=1`
 automatically (no `fetch-depth: 0` required) and short-circuits setup in
 lockless mode when no watched agent-config or workflow paths changed.
 
@@ -105,9 +105,12 @@ lockless mode when no watched agent-config or workflow paths changed.
   is updated once to "no authority change". The job summary always records the
   verdict.
 - **First run:** when the PR itself adds the Auctelis workflow file (`.github/workflows/auctelis*.yml`)
-  and no sticky comment exists yet, a quiet `NONE` PR posts one "Watching" comment naming the
-  reach surfaces the install can see. This is the only time a no-change PR comments; it proves
-  the Action is live. All other no-change PRs stay silent.
+  and no sticky comment exists yet, a clean install posts one `PASS` "Watching" comment naming the
+  reach surfaces. If the same PR also adds other authority (MCP/hook/…), the comment stays
+  `NEEDS_REVIEW` and shows those delta cards (the Action never hides smuggled growth behind
+  Watching-only). All other no-change PRs stay silent.
+- **Walk limits:** default inventory cap is 50 000 kept files / depth 16. Override with
+  `AUCTELIS_MAX_FILES` / `AUCTELIS_MAX_DEPTH` or CLI `--max-files`. Truncation fails enforce.
 - `comment-on-none: true` (Action) or `gate --comment-policy always` restores a
   comment on every PR (and suppresses the separate first-run comment).
 - Default `init --enforce` + local `auctelis status --check` says

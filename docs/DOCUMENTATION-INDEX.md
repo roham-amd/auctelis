@@ -1,4 +1,4 @@
-# Documentation index (auctelis 0.13.3)
+# Documentation index (auctelis 0.14.0)
 
 Two surfaces — `check` locally (including `--report`), the Action on PRs — and
 **six** public pages. Everything else is maintainer or reference depth; it is

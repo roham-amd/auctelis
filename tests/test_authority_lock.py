@@ -244,3 +244,25 @@ def test_lock_cli_roundtrip(tmp_path: Path):
         )
         == 1
     )
+
+
+def test_write_omits_approvals_legacy_locks_still_load(tmp_path: Path):
+    """AUCT-009: new locks omit approvals; v1 locks that still have them load fine."""
+    root = tmp_path / "repo"
+    _repo_with_mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    dest, lock = write_authority_lock(root)
+    assert "approvals" not in lock
+    assert "approved_findings" not in lock
+
+    legacy = dict(lock)
+    legacy["approvals"] = []
+    legacy["approved_findings"] = []
+    path = tmp_path / "legacy.lock"
+    path.write_text(json.dumps(legacy, indent=2) + "\n", encoding="utf-8")
+    loaded = load_authority_lock(path)
+    assert loaded.get("approvals") == []
+    assert loaded.get("approved_findings") == []
+    head = build_authority_lock(root)
+    delta = diff_authority_locks(loaded, head)
+    assert delta["summary"]["authority_changed"] in {True, False}
+    assert dest.is_file()

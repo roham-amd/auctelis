@@ -207,9 +207,9 @@ approval record is the Git history plus CODEOWNERS/rulesets:
 | Ruleset requiring code-owner review | Enforcement of that reviewer |
 | PR discussion / commit message | Why the state was accepted |
 
-`approvals[]` and `approved_findings[]` are emitted empty for compatibility and
-are never gate inputs. `auctelis gate` labels growth and checks protection; it
-does not count PR approvals.
+`approvals[]` and `approved_findings[]` are omitted on write (optional on read
+for older v1 locks) and are never gate inputs. `auctelis gate` labels growth and
+checks protection; it does not count PR approvals.
 
 ### Freshness vs strength
 

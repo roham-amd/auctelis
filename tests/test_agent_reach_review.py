@@ -88,7 +88,8 @@ def _write_base(tmp_path: Path, lock: dict | None = None) -> Path:
 # --- AUCT-001 day-zero diff -------------------------------------------------
 
 
-def test_diff_base_without_lock_is_baseline_needed(tmp_path: Path):
+def test_diff_base_lockless_tree_truth_pass_when_unchanged(tmp_path: Path):
+    """AUCT-007: lockless base uses worktree extract; unchanged tree → PASS."""
     root = tmp_path / "repo"
     _init_repo(root)
     _mcp(root, {"linear": {"command": "npx", "args": ["-y", "@linear/mcp"]}})
@@ -97,17 +98,44 @@ def test_diff_base_without_lock_is_baseline_needed(tmp_path: Path):
 
     text, payload, code = run_diff_base(root, base_ref="HEAD")
     assert code == 0
-    assert payload["verdict"] == "BASELINE_NEEDED"
-    assert payload["baseline_state"] == "absent"
+    assert payload["baseline_state"] == "tree"
+    assert payload["verdict"] == "PASS"
     assert payload["label"] == "NONE"
-    assert "BASELINE_NEEDED" in text
-    assert 'mcp "linear"' in text
-    assert "absolute head reach" in text
-    assert "auctelis lock --update" in text
     assert "FAIL_CLOSED" not in text
+    assert "BASELINE_NEEDED" not in text
 
 
-def test_diff_base_absent_and_no_head_authority_is_pass(tmp_path: Path):
+def test_diff_base_lockless_tree_truth_growth(tmp_path: Path):
+    """AUCT-007: lockless base + new MCP on working tree → NEEDS_REVIEW."""
+    root = tmp_path / "repo"
+    _init_repo(root)
+    _mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    _git(root, "add", ".")
+    _git(root, "commit", "-m", "base mcp")
+    _mcp(
+        root,
+        {
+            "a": {"command": "node", "args": ["a.js"]},
+            "b": {
+                "command": "npx",
+                "args": ["-y", "@new/mcp"],
+                "env": {"TOKEN": "x"},
+            },
+        },
+    )
+
+    _text, payload, code = run_diff_base(root, base_ref="HEAD")
+    assert code == 1
+    assert payload["baseline_state"] == "tree"
+    assert payload["verdict"] == "NEEDS_REVIEW"
+    assert payload["label"] == "GROWTH"
+    added = (payload.get("delta") or {}).get("changes", {}).get("added") or []
+    names = {str(r.get("name") or "") for r in added if isinstance(r, dict)}
+    assert "b" in names
+    assert "a" not in names or len(names) == 1
+
+
+def test_diff_base_empty_tree_is_pass(tmp_path: Path):
     root = tmp_path / "repo"
     _init_repo(root)
     (root / "README.md").write_text("x\n", encoding="utf-8")
@@ -116,7 +144,7 @@ def test_diff_base_absent_and_no_head_authority_is_pass(tmp_path: Path):
 
     _text, payload, code = run_diff_base(root, base_ref="HEAD")
     assert code == 0
-    assert payload["baseline_state"] == "absent"
+    assert payload["baseline_state"] == "tree"
     assert payload["verdict"] == "PASS"
     assert payload["label"] == "NONE"
 

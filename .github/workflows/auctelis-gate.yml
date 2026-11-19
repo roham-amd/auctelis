@@ -39,5 +39,4 @@ jobs:
           # locked=true defaults strict-ruleset on; set explicitly for dogfood clarity
           strict-ruleset: "true"
           install-tools-from: path
-          annotate: false
           output-dir: auctelis-out

@@ -58,7 +58,7 @@ def test_flow_mcp_addition_base_lock_then_accept(tmp_path: Path):
     )
     assert main(["gate", str(root), "--base-lock", str(base), "--skip-ruleset-check"]) == 0
 
-    assert main(["lock", str(root), "--accept-gated", "--approval", "@sec"]) == 0
+    assert main(["lock", str(root), "--accept-gated"]) == 0
     out_ok = tmp_path / "out-ok"
     fresh_base = root / "AUTHORITY.lock"
     assert (

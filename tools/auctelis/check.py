@@ -92,10 +92,14 @@ def build_check_report(
     *,
     lock_file: Path | None = None,
     top: int = 5,
+    limits: object | None = None,
 ) -> tuple[dict[str, Any], list[str], ScanResult | None]:
     """Return ``(report, cards, scan)`` for repo authority vs ``AUTHORITY.lock``."""
+    from auctelis.inventory.limits import CollectorLimits
+
     repo = (root or Path.cwd()).expanduser().resolve()
     lock_path = lock_file.expanduser().resolve() if lock_file else default_lock_path(repo)
+    scan_limits = limits if isinstance(limits, CollectorLimits) else None
 
     report: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -122,7 +126,7 @@ def build_check_report(
     from auctelis.reach_tiers import load_trusted_hosts
 
     trusted_hosts = load_trusted_hosts(repo)
-    scan = run_authority_inventory(repo)
+    scan = run_authority_inventory(repo, limits=scan_limits)
     head = build_authority_lock(repo, scan=scan)
     head_records = list(head.get("records") or [])
     sealable = sealable_records(head_records)

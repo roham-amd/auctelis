@@ -146,6 +146,13 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         metavar="PATH",
         help="Prior reach-report.json (or check --json) to diff against when using --report",
     )
+    check.add_argument(
+        "--max-files",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Inventory walk file cap (default: 50000 or AUCTELIS_MAX_FILES)",
+    )
 
     init_cmd = sub.add_parser(
         "init",
@@ -309,20 +316,19 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Lock destination/path (default: <path>/AUTHORITY.lock)",
     )
     lock_cmd.add_argument(
-        "--approval",
-        metavar="OWNER",
-        help=(
-            "Deprecated no-op. CODEOWNERS + rulesets are the approval system; "
-            "no approval fields are written."
-        ),
-    )
-    lock_cmd.add_argument(
         "--accept-gated",
         action="store_true",
         help=(
             "Allow writing a lock when the tree has HIGH/CRITICAL gated findings. "
             "Use for intentional baseline seals; prefer remediating first."
         ),
+    )
+    lock_cmd.add_argument(
+        "--max-files",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Inventory walk file cap (default: 50000 or AUCTELIS_MAX_FILES)",
     )
     lock_cmd.add_argument(
         "--snapshot",
@@ -400,6 +406,13 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Emit JSON gate report",
     )
+    gate_cmd.add_argument(
+        "--max-files",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Inventory walk file cap (default: 50000 or AUCTELIS_MAX_FILES)",
+    )
 
     if include_dev:
         _add_dev_commands(sub)
@@ -411,7 +424,10 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
     diff_parser.add_argument(
         "--base",
         metavar="REF",
-        help="Git ref whose AUTHORITY.lock is the approved base (git show)",
+        help=(
+            "Git ref for the approved base: committed AUTHORITY.lock when present, "
+            "otherwise tree-truth extract via detached worktree"
+        ),
     )
     diff_parser.add_argument(
         "--repo",

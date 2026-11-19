@@ -766,7 +766,8 @@ def run_gate(
         verdict = "NEEDS_REVIEW"
         detail = (
             "inventory truncated (file or depth limit reached) — "
-            "review incomplete coverage before merge, or raise scan limits."
+            "review incomplete coverage before merge, or raise limits via "
+            "--max-files / AUCTELIS_MAX_FILES (and AUCTELIS_MAX_DEPTH)."
         )
         _append_review_error(detail)
 

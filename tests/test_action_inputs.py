@@ -1,4 +1,4 @@
-"""AUCT-006 — Action inputs cannot neutralize the gate."""
+"""AUCT-006 / AUCT-009 — Action inputs cannot neutralize the gate; lean 0.14 surface."""
 
 from __future__ import annotations
 
@@ -28,10 +28,24 @@ def test_mode_invalid_fails_loudly():
     assert "only mode=scan is valid" in text
 
 
-def test_deprecated_inputs_warn():
+def test_deprecated_research_inputs_removed():
+    """AUCT-009: deprecated research inputs and auctelis-dev are gone."""
     text = _action_text()
-    assert "Warn on deprecated gate-neutralizing inputs" in text
-    assert "inputs.baseline is deprecated" in text
+    assert "Warn on deprecated gate-neutralizing inputs" not in text
+    for banned in (
+        "baseline-inventory:",
+        "upload-sarif:",
+        "annotate:",
+        "fail-on:",
+        "no-policy:",
+        "auctelis-dev",
+    ):
+        # Inputs use "name:" form; also ban step invocations.
+        assert banned not in text
+    # Keep a bare `baseline:` from sneaking back as an input key (tree-truth
+    # prose may still say "baseline" in comments — only the input form is banned).
+    assert "\n  baseline:\n" not in text
+    assert "\n  baseline-inventory:\n" not in text
 
 
 def test_strict_defaults_on_when_locked():
@@ -44,19 +58,18 @@ def test_strict_defaults_on_when_locked():
 
 def test_first_run_prefers_watching_on_workflow_add():
     text = _action_text()
-    assert "Workflow install PR and no sticky comment yet" in text
-    # Prefer FIRST_RUN even when a growth pr-comment.md already exists.
+    assert "Workflow install PR and no sticky comment yet" in text or "installation check" in text
     assert 'cp "$FIRST_RUN" "$COMMENT"' in text
     assert "workflow_added" in text
+    assert "prepending Watching banner" in text
 
 
-def test_research_baseline_skipped_unless_annotate():
+def test_tree_truth_base_extract_without_research():
     text = _action_text()
-    assert "Research baseline skipped (annotate=false)" in text
     assert "Extract base-ref AUTHORITY.lock (tree-truth)" in text
-    # Coverage report is research-only (needs inventory.json from annotate).
-    block = text.split("Report incomplete coverage", 1)[1].split("Note SARIF path", 1)[0]
-    assert "inputs.annotate == 'true'" in block
+    assert "Research baseline skipped" not in text
+    assert "Report incomplete coverage" not in text
+    assert "Note SARIF path" not in text
 
 
 def test_org_reusable_workflow_pins_current_release():
@@ -68,3 +81,4 @@ def test_org_reusable_workflow_pins_current_release():
     text = path.read_text(encoding="utf-8")
     assert "workflow_call" in text
     assert f"auctelis-gate@v{product_version()}" in text
+    assert "annotate" not in text

@@ -88,9 +88,8 @@ def test_ci_init_seals_inventory_without_approval_theater(tmp_path: Path):
     code = main(["ci", "init", str(root), "--owner", "@sec-owners"])
     assert code == 0
     lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
-    assert lock.get("approvals") in ([], None)
-    assert not lock.get("approvals")
-    assert not lock.get("approved_findings")
+    assert "approvals" not in lock
+    assert "approved_findings" not in lock
 
 
 def test_lock_accept_writes_no_approval_fields(tmp_path: Path):
@@ -111,11 +110,11 @@ def test_lock_accept_writes_no_approval_fields(tmp_path: Path):
         ),
         encoding="utf-8",
     )
-    assert main(["lock", str(root), "--accept-gated", "--approval", "@owner"]) == 0
+    assert main(["lock", str(root), "--accept-gated"]) == 0
     lock = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
     # Approval fields are never written; CODEOWNERS/rulesets are the approval system.
-    assert lock.get("approved_findings") == []
-    assert lock.get("approvals") in ([], None)
+    assert "approvals" not in lock
+    assert "approved_findings" not in lock
     assert lock.get("lock_hash")
 
 

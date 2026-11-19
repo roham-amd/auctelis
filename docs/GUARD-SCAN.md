@@ -194,21 +194,19 @@ Composite action: [`.github/actions/auctelis-gate`](../.github/actions/auctelis-
 | Input | Default | Notes |
 | --- | --- | --- |
 | `path` | `.` | Target path (passed via env, not shell-interpolated) |
-| `mode` | `scan` | Only `scan` is supported; other values do not run the scanner |
-| `baseline` | — | Guard `baseline.json` |
-| `baseline-inventory` | — | Optional inventory path diff |
-| `fail-on` | empty → policy / never | `never` \| `high` \| `any` |
+| `mode` | `scan` | Only `scan` is supported; any other value fails the job loudly |
+| `policy` | empty | Explicit `.auctelis.yml` path (otherwise target / base-ref policy) |
 | `trusted-policy` | `true` | Load `.auctelis.yml` from PR base ref; fail on policy edits |
-| `no-policy` | `false` | Ignore policy even if present |
-| `authority-diff` | `true` | Extract base-ref tree authority for the growth gate |
+| `authority-diff` | `true` | Extract base-ref tree authority for the Authority Diff gate |
 | `locked` | `false` | Comment-only default; set `true` / `init --enforce` to fail on growth |
 | `lock-file` | `AUTHORITY.lock` | Lock path relative to the target |
-| `strict-ruleset` | `false` | Comment-only default; set `true` with `locked=true` for enforce |
+| `strict-ruleset` | empty | Locked-aware default (`true` when `locked=true`, else `false`) |
 | `comment-on-none` | `false` | Post the Authority Diff even when authority did not change (default: quiet on `NONE`, sticky updated once) |
-| `annotate` | `false` | Opt-in research scan + findings annotations; sticky Authority Diff posts from the gate lock delta when authority changed (or always with `comment-on-none: true`) |
 | `output-dir` | `auctelis-out` | Artifact dir |
 | `install-tools-from` | empty → Action-bundled tools | Prefer pinned kit; refuse accidental PR `./tools` |
-| `upload-sarif` | `false` | Opt in to print the SARIF path for upload |
+
+Deprecated research inputs (`baseline`, `baseline-inventory`, `fail-on`,
+`no-policy`, `annotate`, `upload-sarif`) were **removed in 0.14.0**.
 
 Hardening note: inputs are mapped to environment variables before bash uses them.
 Never `uv sync` a PR-controlled `tools/` directory as the scanner.

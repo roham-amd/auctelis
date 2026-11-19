@@ -79,7 +79,8 @@ def test_addition_class_and_empty_approvals(tmp_path: Path):
     )
     dest, lock = write_authority_lock(root, accept_gated=True)
     assert dest.is_file()
-    assert lock.get("approvals") == []
+    assert "approvals" not in lock
+    assert "approved_findings" not in lock
 
     (mcp / "mcp.json").write_text(
         json.dumps(
@@ -97,11 +98,11 @@ def test_addition_class_and_empty_approvals(tmp_path: Path):
     assert delta["summary"]["additions"] >= 1
     assert any(c.get("change_class") == "addition" for c in delta["changes"]["added"])
 
-    code = main(["lock", str(root), "--approval", "@security-owners", "--accept-gated"])
+    code = main(["lock", str(root), "--accept-gated"])
     assert code == 0
     sealed = json.loads((root / "AUTHORITY.lock").read_text(encoding="utf-8"))
-    assert sealed.get("approvals") in ([], None)
-    assert sealed.get("approved_findings") == []
+    assert "approvals" not in sealed
+    assert "approved_findings" not in sealed
     assert sealed.get("lock_hash")
 
 
@@ -250,18 +251,16 @@ def test_gate_writes_pr_comment_without_findings(tmp_path: Path, monkeypatch):
     assert AUCTELIS_COMMENT_MARKER in rendered
 
 
-def test_action_posts_comment_when_annotate_false():
+def test_action_posts_comment_without_research_annotate():
     action = (
         Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
     )
     text = action.read_text(encoding="utf-8")
     assert "name: Authority Diff PR comment" in text
-    # Comment step must not require annotate=true.
     block = text.split("name: Authority Diff PR comment", 1)[1].split("\n    - name:", 1)[0]
-    assert "inputs.annotate == 'true'" not in block
+    assert "annotate" not in block
+    assert "auctelis-dev" not in text
     assert "github.event_name == 'pull_request'" in block
-    # Research scan is opt-in with annotate.
-    assert "inputs.mode == 'scan' && inputs.annotate == 'true'" in text
     template = (
         Path(__file__).resolve().parents[1]
         / "tools"
@@ -269,7 +268,7 @@ def test_action_posts_comment_when_annotate_false():
         / "templates"
         / "auctelis-gate.yml"
     )
-    assert "annotate: false" in template.read_text(encoding="utf-8")
+    assert "annotate" not in template.read_text(encoding="utf-8")
 
 
 def test_status_check_comment_only_ok_without_ruleset(tmp_path: Path, monkeypatch):

@@ -78,17 +78,17 @@ doc-link growth.
 
 ## Human review (GitHub-native)
 
-`approvals[]` on the lock is **legacy / empty** — auctelis does not treat
-self-asserted lock approvals as a gate input. Review is enforced by:
+Self-asserted lock approvals are **not** a gate input. Review is enforced by:
 
 1. CODEOWNERS coverage for `AUTHORITY.lock` (and other authority paths)
 2. A GitHub ruleset (or branch protection) requiring code-owner review
 3. `auctelis gate` labeling GROWTH vs REDUCTION vs the base-ref lock
 
-`approvals[]` and `approved_findings[]` are emitted **empty** for schema
-compatibility and are never gate inputs. `--accept-gated` is only an explicit
-human override to seal the current (imperfect) state; it records no approval.
-Agents must not mutate locks (`AUCTELIS_AGENT=1`).
+`approvals[]` and `approved_findings[]` are **omitted on write** (0.14+). Older
+v1 locks that still contain them remain valid on read and are never gate inputs.
+`--accept-gated` is only an explicit human override to seal the current
+(imperfect) state; it records no approval. Agents must not mutate locks
+(`AUCTELIS_AGENT=1`).
 
 ---
 

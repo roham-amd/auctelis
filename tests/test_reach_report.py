@@ -151,6 +151,83 @@ def test_check_report_flag_cli(tmp_path: Path):
     assert data["reach"]["total"] >= 1
 
 
+def test_report_includes_all_tier2_beyond_top_limit(tmp_path: Path):
+    """AUCT-007: default --top 5 must not drop tier-2 rows from the HTML/MD report."""
+    root = tmp_path / "repo"
+    cfg = root / ".cursor"
+    cfg.mkdir(parents=True)
+    servers = {
+        f"srv{i}": {
+            "command": "npx",
+            "args": ["-y", f"@demo/mcp-{i}"],
+            "env": {f"TOKEN_{i}": "x"},
+        }
+        for i in range(8)
+    }
+    (cfg / "mcp.json").write_text(json.dumps({"mcpServers": servers}, indent=2) + "\n")
+    out = tmp_path / "out"
+    code = main(["check", str(root), "--report", str(out)])
+    assert code in {0, 1}
+    data = json.loads((out / "reach-report.json").read_text(encoding="utf-8"))
+    records = data["reach"]["records"]
+    assert len(records) >= 8
+    assert len(data["reach"]["top"]) == 5
+    html = (out / "reach-report.html").read_text(encoding="utf-8")
+    md = (out / "reach-report.md").read_text(encoding="utf-8")
+    for i in range(8):
+        assert f"srv{i}" in html
+        assert f"srv{i}" in md
+
+    before = {
+        "reach": {
+            "records": [
+                {
+                    "kind": "mcp",
+                    "name": f"srv{i}",
+                    "path": ".cursor/mcp.json",
+                    "tier": 2,
+                    "reason": "secrets",
+                }
+                for i in range(8)
+            ],
+            "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 8},
+        }
+    }
+    after = {
+        "reach": {
+            "records": [
+                *[
+                    {
+                        "kind": "mcp",
+                        "name": f"srv{i}",
+                        "path": ".cursor/mcp.json",
+                        "tier": 2,
+                        "reason": "secrets",
+                    }
+                    for i in range(6)
+                ],
+                {
+                    "kind": "mcp",
+                    "name": "srv6",
+                    "path": ".cursor/mcp.json",
+                    "tier": 2,
+                    "reason": "execute",
+                },
+                {
+                    "kind": "mcp",
+                    "name": "srv7",
+                    "path": ".cursor/mcp.json",
+                    "tier": 2,
+                    "reason": "secrets",
+                },
+            ],
+            "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 8},
+        }
+    }
+    diff = diff_reach_reports(before, after)
+    assert any((c.get("before") or {}).get("name") == "srv6" for c in diff["changed"])
+
+
 def test_build_reach_report_md_golden_shape():
     doc = build_reach_report(
         {

@@ -10,7 +10,7 @@ from typing import Any
 from auctelis.inventory.adapters.registry import DISCOVERY_ADAPTERS
 from auctelis.inventory.coverage import summarize_coverage
 from auctelis.inventory.io import iter_repo_files
-from auctelis.inventory.limits import CollectorLimits
+from auctelis.inventory.limits import CollectorLimits, resolve_collector_limits
 from auctelis.inventory.types import (
     ComponentRecord,
     DiscoveryAdapter,
@@ -41,7 +41,7 @@ def collect_inventory(
     adapters: tuple[DiscoveryAdapter, ...] | None = None,
     default_excludes: bool = True,
 ) -> InventoryResult:
-    limits = limits or CollectorLimits()
+    limits = limits or resolve_collector_limits()
     adapters = adapters or DISCOVERY_ADAPTERS
     target = target.resolve()
     if not target.exists():

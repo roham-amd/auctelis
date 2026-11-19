@@ -97,10 +97,112 @@ def test_first_run_renderer_never_says_pass_on_growth():
                 "tier_counts": {"tier0": 0, "tier1": 1, "tier2": 2},
                 "top_cards": ['+ mcp "linear" → mcp.linear.app · tier 2 (secrets)'],
             },
+            "delta": {
+                "summary": {"additions": 1, "mcp_tools_added": 0},
+                "records": {
+                    "added": [
+                        {
+                            "kind": "MCP Server Registration",
+                            "name": "linear",
+                            "path": ".cursor/mcp.json",
+                        }
+                    ],
+                    "changed": [],
+                    "removed": [],
+                },
+            },
         }
     )
     assert "**Verdict:** `NEEDS_REVIEW`" in body
     assert "**Verdict:** `PASS`" not in body
+    assert "linear" in body
+
+
+def test_first_run_install_workflow_only_is_pass():
+    body = render_first_run_comment(
+        {
+            "verdict": "NEEDS_REVIEW",
+            "label": "GROWTH",
+            "meaningful_authority_change": True,
+            "unparsed": 0,
+            "lock_tree_drift": False,
+            "reach": {
+                "total": 1,
+                "tier_counts": {"tier0": 1, "tier1": 0, "tier2": 0},
+                "top_cards": ['+ ci "auctelis"'],
+            },
+            "delta": {
+                "summary": {
+                    "additions": 1,
+                    "mcp_tools_added": 0,
+                    "mcp_tools_changed": 0,
+                    "policy_changed": False,
+                },
+                "records": {
+                    "added": [
+                        {
+                            "kind": "CI Workflow",
+                            "name": "auctelis",
+                            "path": ".github/workflows/auctelis.yml",
+                        }
+                    ],
+                    "changed": [],
+                    "removed": [],
+                },
+            },
+        }
+    )
+    assert "**Verdict:** `PASS`" in body
+    assert "**Watching:**" in body
+
+
+def test_first_run_install_plus_mcp_shows_needs_review_and_card():
+    body = render_first_run_comment(
+        {
+            "verdict": "NEEDS_REVIEW",
+            "label": "GROWTH",
+            "meaningful_authority_change": True,
+            "unparsed": 0,
+            "reach": {
+                "total": 2,
+                "tier_counts": {"tier0": 1, "tier1": 0, "tier2": 1},
+                "top_cards": [
+                    '+ mcp "smuggle" → tier 2 (secrets)',
+                    '+ ci "auctelis"',
+                ],
+            },
+            "delta": {
+                "summary": {
+                    "additions": 2,
+                    "mcp_tools_added": 0,
+                    "mcp_tools_changed": 0,
+                    "policy_changed": False,
+                },
+                "records": {
+                    "added": [
+                        {
+                            "kind": "CI Workflow",
+                            "name": "auctelis",
+                            "path": ".github/workflows/auctelis.yml",
+                        },
+                        {
+                            "kind": "MCP Server Registration",
+                            "name": "smuggle",
+                            "path": ".cursor/mcp.json",
+                            "env_keys": ["TOKEN"],
+                            "capabilities": ["access_secrets"],
+                            "evidence_strength": "LITERAL_CONFIG",
+                        },
+                    ],
+                    "changed": [],
+                    "removed": [],
+                },
+            },
+        }
+    )
+    assert "**Verdict:** `NEEDS_REVIEW`" in body
+    assert "smuggle" in body
+    assert "**Watching:**" in body
 
 
 def test_first_run_renderer_names_zero_reach_honestly():
@@ -125,6 +227,8 @@ def test_action_posts_first_run_only_without_sticky():
     assert "workflow_added" in text
     assert ".github/workflows/auctelis*.yml" in text
     assert 'cp "$FIRST_RUN" "$COMMENT"' in text
+    assert "prepending Watching banner" in text
+    assert "auctelis-dev" not in text
 
 
 def test_install_shaped_growth_still_writes_first_run(tmp_path: Path, monkeypatch):

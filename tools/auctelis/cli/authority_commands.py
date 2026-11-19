@@ -17,10 +17,17 @@ def cmd_check(args: argparse.Namespace) -> int:
     )
 
     top = int(getattr(args, "top", 5))
+    max_files = getattr(args, "max_files", None)
+    limits = None
+    if max_files is not None:
+        from auctelis.inventory.limits import resolve_collector_limits
+
+        limits = resolve_collector_limits(max_files=max_files)
     report, cards, scan = build_check_report(
         getattr(args, "path", None),
         lock_file=getattr(args, "lock_file", None),
         top=top,
+        limits=limits,
     )
     report_dir = getattr(args, "report", None)
     if report_dir is not None:

@@ -1,12 +1,10 @@
 {
-  "approvals": [],
-  "approved_findings": [],
-  "audited_commit": "a4bcd45057acbc8c52339c11f042ac1ca37378cf",
-  "lock_hash": "963040b07ed654a8f8619eb6638b0916",
+  "audited_commit": "480ef876022a660d2fad97d3cb40feafc940a3f4",
+  "lock_hash": "8b44aba4cad2171bb5674959b531219c",
   "mcp_tools": {},
   "policy_hash": "sha256:a8c2859829cdcc55c39319e381e1301a9e0e4608357be1f214f2ad9d89030c54",
   "product": "auctelis",
-  "product_version": "0.13.3",
+  "product_version": "0.14.0",
   "records": [
     {
       "approval_posture": "unknown",
@@ -14,10 +12,10 @@
       "capabilities": [],
       "capability_origin": "DECLARED",
       "destinations": [],
-      "digest": "sha256:5d97679351afcc1d0c498bad6028c6470f8fd9ad76ed34985f36ee97eca807c6",
+      "digest": "sha256:df87f0f956eae37fa45a146a8d2e22410d50a133327db1356f35bd0f9fd95ae1",
       "env_keys": [],
       "evidence_strength": "LITERAL_CONFIG",
-      "fingerprint": "95d6f1f2bf68d1e3",
+      "fingerprint": "40adfda76fda70f2",
       "host": "github_workflows",
       "id": "github_workflows/CI Workflow/auctelis-gate@.github/workflows/auctelis-gate.yml",
       "identity_key": "github_workflows|ci workflow|auctelis-gate",
@@ -115,10 +113,10 @@
       "destinations": [
         "github.com"
       ],
-      "digest": "sha256:e12ab493557dd33e83d683111871a1f5c12a96c8c3560f8d865f11ac4e28a48d",
+      "digest": "sha256:8d757b0206529811894d92c2de072eb9b86b48a7ae69d1170d2befcf00613ead",
       "env_keys": [],
       "evidence_strength": "INFERRED_HINT",
-      "fingerprint": "bf6ac897097b8176",
+      "fingerprint": "75a73872f5906ecf",
       "host": "github.com",
       "id": "skill_md/Skill/auctelis-auditor@skills/auctelis-auditor/SKILL.md",
       "identity_key": "skill_md|skill|auctelis-auditor",
@@ -129,7 +127,7 @@
       "path": "skills/auctelis-auditor/SKILL.md",
       "permission_allows": [],
       "pin_state": "n/a",
-      "script_digest": "sha256:e12ab493557dd33e83d683111871a1f5c12a96c8c3560f8d865f11ac4e28a48d",
+      "script_digest": "sha256:8d757b0206529811894d92c2de072eb9b86b48a7ae69d1170d2befcf00613ead",
       "url_host": "github.com"
     }
   ],

@@ -1,7 +1,8 @@
 """Local PR Authority Diff simulator — ``auctelis diff --base <ref>``.
 
-Reads the base ``AUTHORITY.lock`` via ``git show``, regenerates the head lock
-from the working tree, and renders the same comment dialect as the Action.
+When ``base_ref`` has a committed ``AUTHORITY.lock``, that lock is the baseline.
+When it does not, extract base authority from a temporary detached worktree
+(tree-truth), matching the lockless PR Action path.
 """
 
 from __future__ import annotations
@@ -65,6 +66,25 @@ def _git_has_file(repo: Path, ref: str, relpath: str) -> bool:
     return proc is not None and proc.returncode == 0
 
 
+def _extract_tree_authority(repo: Path, base_ref: str) -> dict[str, Any] | None:
+    """Build an AUTHORITY.lock-shaped dict from ``base_ref`` via detached worktree."""
+    tmp = tempfile.mkdtemp(prefix="auctelis-diff-wt-")
+    work = Path(tmp) / "wt"
+    try:
+        proc = _git(repo, "worktree", "add", "--detach", str(work), base_ref)
+        if proc is None or proc.returncode != 0:
+            return None
+        try:
+            scan = run_authority_inventory(work)
+            return build_authority_lock(work, scan=scan)
+        finally:
+            _git(repo, "worktree", "remove", "--force", str(work))
+    except (OSError, AuthorityLockError, ValueError):
+        return None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def run_diff_base(
     root: Path,
     *,
@@ -86,13 +106,12 @@ def run_diff_base(
         }
         return f"auctelis diff --base: {payload['error']}", payload, 2
 
-    # A ref that exists but has no lock is day-zero, not an error. Distinguish
-    # "no lock on this ref" from "unusable lock" so the advertised first command
-    # works on a repo that has never sealed a baseline.
+    # Prefer committed lock when present; otherwise tree-truth via worktree.
     has_lock = _git_has_file(repo, base_ref, lock_name)
-    baseline_state = "present" if has_lock else "absent"
+    baseline_state: str
     base: dict[str, Any]
     if has_lock:
+        baseline_state = "present"
         raw = _git_show(repo, base_ref, lock_name)
         if raw is None:
             payload = {
@@ -121,7 +140,13 @@ def run_diff_base(
                 }
                 return f"auctelis diff --base: {payload['error']}", payload, 2
     else:
-        base = empty_authority_lock()
+        extracted = _extract_tree_authority(repo, base_ref)
+        if extracted is not None:
+            baseline_state = "tree"
+            base = extracted
+        else:
+            baseline_state = "absent"
+            base = empty_authority_lock()
 
     trusted_hosts = load_trusted_hosts(repo)
     scan = run_authority_inventory(repo)
@@ -144,6 +169,7 @@ def run_diff_base(
         label = "NONE"
         code = 0
     else:
+        # ``present`` (committed lock) or ``tree`` (worktree extract).
         verdict = "NEEDS_REVIEW" if unparsed or growth or material else "PASS"
         code = 0 if verdict == "PASS" else 1
 

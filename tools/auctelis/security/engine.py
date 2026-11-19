@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from auctelis.inventory.collector import collect_inventory, inventory_to_json
+from auctelis.inventory.limits import CollectorLimits
 from auctelis.preflight import inventory_to_graph, resolve_git_commit
 from auctelis.security.capabilities import authority_bearing_component_ids, extract_capabilities
 from auctelis.security.evidence_util import EvidenceContext, enrich_component_provenance
@@ -107,6 +108,7 @@ def run_security_scan(
     *,
     default_excludes: bool = True,
     apply_rules: bool = True,
+    limits: CollectorLimits | None = None,
 ) -> ScanResult:
     """Inventory a tree and optionally apply the research rule pack.
 
@@ -114,7 +116,7 @@ def run_security_scan(
     the gate is lock-only. ``auctelis-dev scan`` keeps ``apply_rules=True``.
     """
     target = target.resolve()
-    result = collect_inventory(target, default_excludes=default_excludes)
+    result = collect_inventory(target, default_excludes=default_excludes, limits=limits)
     commit = resolve_git_commit(target)
     collected_at = result.collected_at_utc
     inventory = inventory_to_json(result)
@@ -199,6 +201,16 @@ def run_security_scan(
     )
 
 
-def run_authority_inventory(target: Path, *, default_excludes: bool = True) -> ScanResult:
+def run_authority_inventory(
+    target: Path,
+    *,
+    default_excludes: bool = True,
+    limits: CollectorLimits | None = None,
+) -> ScanResult:
     """Product inventory: adapters + capabilities, no rule findings."""
-    return run_security_scan(target, default_excludes=default_excludes, apply_rules=False)
+    return run_security_scan(
+        target,
+        default_excludes=default_excludes,
+        apply_rules=False,
+        limits=limits,
+    )

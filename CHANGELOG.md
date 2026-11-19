@@ -7,6 +7,37 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-11-19
+
+### Added
+- **AUCT-007 (Complete Reach Report):** `reach_snapshot` now includes uncapped
+  `records` alongside capped `top` / `top_cards`. `check --report` Tier-2 tables
+  and `--baseline` diffs use the full inventory (legacy JSON still falls back to
+  `top`).
+- **AUCT-007 (Lockless `diff --base`):** When the base ref has no
+  `AUTHORITY.lock`, extract tree-truth authority via a temporary detached
+  worktree (`baseline_state=tree`) and emit a real base→head Authority Diff.
+- **AUCT-008 (Scan limits):** Default walk caps raised to 50 000 files /
+  depth 16; count only kept files; override with `--max-files` or
+  `AUCTELIS_MAX_FILES` / `AUCTELIS_MAX_DEPTH`.
+
+### Fixed
+- **AUCT-008 (Honest install PR):** First-run comments stay `PASS` / Watching
+  when the only growth is `.github/workflows/auctelis*.yml`; install PRs that
+  also add MCP/hook growth keep `NEEDS_REVIEW` with delta cards. The Action no
+  longer overwrites a material `pr-comment.md` with a Watching-only file.
+
+### Changed
+- **AUCT-009 (Lean Action):** Removed deprecated Action inputs (`baseline`,
+  `baseline-inventory`, `fail-on`, `no-policy`, `upload-sarif`, `annotate`) and
+  all `auctelis-dev` / research / SARIF steps from `auctelis-gate`. Templates
+  drop `annotate: false`.
+- **AUCT-009 (Lock write):** New `AUTHORITY.lock` files omit empty `approvals` /
+  `approved_findings` (legacy locks with those fields still load). Dropped
+  deprecated `lock --approval`.
+- Build guards `docs/CLI-REFERENCE.md` package/product version against
+  `VERSION`.
+
 ## [0.13.3] — 2026-11-19
 
 ### Fixed

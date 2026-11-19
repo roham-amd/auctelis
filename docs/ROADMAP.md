@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.13.3** (release pipeline + LF-stable digests) · lock schema 1 · tooling 0.13.3
+**Current:** **0.14.0** (complete report + lockless tree-truth diff + lean Action) · lock schema 1 · tooling 0.14.0
 
 ## North star (Gate Zero)
 
@@ -38,7 +38,9 @@ are removed.
 | **0.12.2** | Real-repo CI/TOML signal fix; quiet-PR silence + working `BASELINE_ADOPTED`; shallow fast lockless Action; working `uvx --from` install | **done** |
 | **0.13.0** | Install truth (`pypi_live` guard); Reach Report (`check --report`); enforce integrity (lock delete / legacy inputs / first-run / trust / truncation); org reusable workflow | **done** |
 | **0.13.1** | Reseal dogfood `AUTHORITY.lock` after 0.13.0 workflow edits; keep CI check green | **done** |
-| **0.13.3** | Normalize CR/LF in authority content digests so Windows seal matches Linux CI | **done** |
+| **0.13.2** | LF-stable authority digests across Windows and Linux | **done** |
+| **0.13.3** | Release pipeline installs `auctelis-dev` before metadata verify / SBOM | **done** |
+| **0.14.0** | Complete Reach Report; lockless tree-truth `diff --base`; honest install-PR Watching; monorepo walk limits; lean Action (drop deprecated research inputs) | **done** |
 | Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate
