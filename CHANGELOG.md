@@ -7,6 +7,28 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-11-20
+
+### Added
+- **AUCT-021 (Root Marketplace Action + PyPI/wheel fast path):** root
+  `action.yml` with Marketplace `branding` and optional `auctelis-version`;
+  `init --lockless` / templates emit `uses: roham-amd/auctelis@vX` (legacy
+  subpath `.github/actions/auctelis-gate` kept in parity). Action install tries
+  PyPI when version is known, then falls back to bundled `tools/`.
+- **AUCT-022 (`check --github`):** zero-clone org/repo Reach Audit via GitHub
+  Trees+Blobs API (`GITHUB_TOKEN` / `GH_TOKEN`, `GITHUB_API_URL` for GHES).
+  Watched agent-config paths only; fleet/single reports labeled `owner/repo`.
+- **AUCT-023 (2026 adapter parity + pin polish):** discover
+  `.github/instructions/`, `.vscode/settings.json` (`mcp.servers`),
+  `.windsurf/rules/`, `.clinerules/`, and Copilot/Gemini/OpenHands/Aider CI
+  steps; `check --pins` names the concrete package/image; lockless `check`
+  drops `AUTHORITY.lock match` jargon and moves publisher caveat to the footer.
+
+### Changed
+- Shared `watched_paths.PATH_FILTER_GREP` is the contract for Action path_filter
+  and GitHub audits; dual `action.yml` copies must stay byte-identical.
+- Lockless docs/help copy lead with tree-truth reach (AUTHORITY.lock optional).
+
 ## [0.16.0] — 2026-11-19
 
 ### Added

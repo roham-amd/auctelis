@@ -4,6 +4,9 @@ description: >-
   unreviewed growth honestly, and post a sticky PR comment when authority
   changes (opt into every-PR with comment-on-none). Does not execute target
   application code or contact MCP endpoints.
+branding:
+  icon: shield
+  color: blue
 
 inputs:
   path:
@@ -74,6 +77,13 @@ inputs:
       Growth, reduction, unparsed configs, and drift always comment.
     required: false
     default: "false"
+  auctelis-version:
+    description: >-
+      Exact PyPI / uv version to install when using the PyPI fast path
+      (e.g. 0.17.0). Empty (default) derives from the Action ref tag when it
+      looks like vX.Y.Z; otherwise falls back to Action-bundled tools/.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -114,7 +124,7 @@ runs:
           echo "No changed files vs base ref — skipped setup." >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
-        if ! printf '%s\n' "$changed" | grep -iE '(^|/)(\.cursor|\.claude|\.codex|\.gemini|\.vscode|\.zed|\.config/zed|\.continue|\.kiro|\.roo|\.amazonq|\.opencode|\.windsurf|windsurf|\.github/workflows|\.github/actions|\.github/instructions|\.auctelis)/|(^|/)(\.github/CODEOWNERS|\.github/copilot-instructions\.md|\.mcp\.json|\.claude\.json|opencode\.json|mcp[^/]*\.json|[^/]*mcp[^/]*\.toml|codex\.toml|SKILL\.md|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.gemini\.md|CODEX\.md|\.cursorrules|\.windsurfrules|windsurfrules|\.clinerules|copilot-instructions\.md|hooks\.(json|ya?ml)|hooks/[^/]+\.(json|md|py)|plugin\.(json|ya?ml)|\.cursor-plugin|[^/]*plugin[^/]*/package\.json|(sub)?agents\.json|(sub)?agents/[^/]+\.(md|json|ya?ml)|automations?\.json|automation\.ya?ml|automations/[^/]+\.(json|ya?ml|md)|agent[-_]card\.json|AUTHORITY\.lock|\.auctelis\.yml|CODEOWNERS)$' >/dev/null 2>&1; then
+        if ! printf '%s\n' "$changed" | grep -iE '(^|/)(\.cursor|\.claude|\.codex|\.gemini|\.vscode|\.zed|\.config/zed|\.continue|\.kiro|\.roo|\.amazonq|\.opencode|\.windsurf|windsurf|\.github/workflows|\.github/actions|\.github/instructions|\.auctelis|\.clinerules)/|(^|/)(\.github/CODEOWNERS|\.github/copilot-instructions\.md|\.mcp\.json|\.claude\.json|opencode\.json|mcp[^/]*\.json|[^/]*mcp[^/]*\.toml|codex\.toml|SKILL\.md|AGENTS\.md|CLAUDE\.md|GEMINI\.md|\.gemini\.md|CODEX\.md|\.cursorrules|\.windsurfrules|windsurfrules|\.clinerules|copilot-instructions\.md|hooks\.(json|ya?ml)|hooks/[^/]+\.(json|md|py)|plugin\.(json|ya?ml)|\.cursor-plugin|[^/]*plugin[^/]*/package\.json|(sub)?agents\.json|(sub)?agents/[^/]+\.(md|json|ya?ml)|automations?\.json|automation\.ya?ml|automations/[^/]+\.(json|ya?ml|md)|agent[-_]card\.json|AUTHORITY\.lock|\.auctelis\.yml|CODEOWNERS)$' >/dev/null 2>&1; then
           echo "skip=true" >> "$GITHUB_OUTPUT"
           echo "No agent-config or workflow paths changed — skipping uv sync."
           echo "## auctelis Authority Diff" >> "$GITHUB_STEP_SUMMARY"
@@ -128,15 +138,30 @@ runs:
       env:
         AUCTELIS_INSTALL_TOOLS_FROM: ${{ inputs.install-tools-from }}
         AUCTELIS_ACTION_PATH: ${{ github.action_path }}
+        AUCTELIS_VERSION_INPUT: ${{ inputs.auctelis-version }}
+        AUCTELIS_ACTION_REF: ${{ github.action_ref }}
       run: |
         set -euo pipefail
         # Prefer explicit input, then Action-bundled tools, and only then a
         # workspace-relative path. Never silently uv-sync a PR-controlled tools/.
-        # Special values path|pypi mean: use preinstalled CLI on PATH.
+        # Special values: path = preinstalled CLI; pypi = uv tool install from PyPI
+        # (falls back to bundled tools/ when the package is unavailable).
         chosen="${AUCTELIS_INSTALL_TOOLS_FROM}"
-        if [[ "${chosen}" == "path" || "${chosen}" == "pypi" ]]; then
+        ver="${AUCTELIS_VERSION_INPUT}"
+        if [[ -z "${ver}" && "${AUCTELIS_ACTION_REF}" =~ ^v[0-9] ]]; then
+          ver="${AUCTELIS_ACTION_REF#v}"
+        fi
+        echo "version=${ver}" >> "$GITHUB_OUTPUT"
+        if [[ -f "${AUCTELIS_ACTION_PATH}/tools/pyproject.toml" ]]; then
+          bundled="${AUCTELIS_ACTION_PATH}/tools"
+        elif [[ -f "${AUCTELIS_ACTION_PATH}/../../../tools/pyproject.toml" ]]; then
+          bundled="$(cd "$AUCTELIS_ACTION_PATH/../../.." && pwd)/tools"
+        else
+          bundled=""
+        fi
+        if [[ "${chosen}" == "path" ]]; then
           if ! command -v auctelis >/dev/null 2>&1; then
-            echo "::error::install-tools-from=${chosen} but auctelis is not on PATH. pip/uv install auctelis first."
+            echo "::error::install-tools-from=path but auctelis is not on PATH. pip/uv install auctelis first."
             exit 1
           fi
           echo "mode=path" >> "$GITHUB_OUTPUT"
@@ -144,9 +169,14 @@ runs:
           echo "Using preinstalled auctelis on PATH."
           exit 0
         fi
-        bundled="$(cd "$AUCTELIS_ACTION_PATH/../../.." && pwd)/tools"
+        if [[ "${chosen}" == "pypi" || ( -z "${chosen}" && -n "${ver}" ) ]]; then
+          echo "mode=pypi" >> "$GITHUB_OUTPUT"
+          echo "dir=${bundled}" >> "$GITHUB_OUTPUT"
+          echo "Will try PyPI install auctelis==${ver:-latest} (bundled fallback: ${bundled:-none})."
+          exit 0
+        fi
         if [[ -z "${chosen}" ]]; then
-          if [[ -f "${bundled}/pyproject.toml" ]]; then
+          if [[ -n "${bundled}" && -f "${bundled}/pyproject.toml" ]]; then
             chosen="${bundled}"
             echo "Using Action-bundled auctelis tools: ${chosen}"
           elif command -v auctelis >/dev/null 2>&1; then
@@ -184,9 +214,33 @@ runs:
     - name: Install auctelis tooling
       if: steps.path_filter.outputs.skip != 'true' && steps.tools.outputs.mode != 'path'
       shell: bash
-      working-directory: ${{ steps.tools.outputs.dir }}
+      env:
+        AUCTELIS_INSTALL_MODE: ${{ steps.tools.outputs.mode }}
+        AUCTELIS_TOOLS_DIR: ${{ steps.tools.outputs.dir }}
+        AUCTELIS_VERSION: ${{ steps.tools.outputs.version }}
       run: |
         set -euo pipefail
+        if [[ "${AUCTELIS_INSTALL_MODE}" == "pypi" ]]; then
+          spec="auctelis"
+          if [[ -n "${AUCTELIS_VERSION}" ]]; then
+            spec="auctelis==${AUCTELIS_VERSION}"
+          fi
+          if uv tool install --python 3.12 "${spec}"; then
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            echo "Installed ${spec} from PyPI."
+            exit 0
+          fi
+          echo "::warning::PyPI install of ${spec} failed; falling back to Action-bundled tools/."
+          if [[ -z "${AUCTELIS_TOOLS_DIR}" || ! -f "${AUCTELIS_TOOLS_DIR}/pyproject.toml" ]]; then
+            echo "::error::PyPI install failed and Action-bundled tools/ were not found."
+            exit 1
+          fi
+          cd "${AUCTELIS_TOOLS_DIR}"
+          uv sync --locked --no-dev --no-editable
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+          exit 0
+        fi
+        cd "${AUCTELIS_TOOLS_DIR}"
         uv sync --locked --no-dev --no-editable
         echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 

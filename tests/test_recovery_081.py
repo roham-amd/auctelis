@@ -28,9 +28,10 @@ def test_action_pin_is_release_tag_not_consumer_sha(tmp_path: Path):
         'pip install "git+https://github.com/roham-amd/auctelis.git@v0.0.0#subdirectory=tools"\n'
     )
     pinned = _pin_workflow_to_release(template)
-    assert f"auctelis-gate@{pin}" in pinned
+    assert f"roham-amd/auctelis@{pin}" in pinned
     assert f"auctelis.git@{pin}" in pinned
     assert "auctelis-gate@v0.0.0" not in pinned
+    assert ".github/actions/auctelis-gate@v0.0.0" not in pinned
     # Never rewrite to a 40-char consumer SHA.
     assert "@deadbeef" not in pinned
 
@@ -45,7 +46,7 @@ def test_ci_init_apply_pins_release_and_exits_zero(tmp_path: Path, capsys):
     assert code == 0, out
     workflow = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
     pin = _resolve_action_pin_ref()
-    assert f"auctelis-gate@{pin}" in workflow
+    assert f"roham-amd/auctelis@{pin}" in workflow
     assert "deadbeef" not in workflow
     assert (root / "AUTHORITY.lock").is_file()
     # Comment-only --apply does not nag about rulesets (nothing to enforce yet).

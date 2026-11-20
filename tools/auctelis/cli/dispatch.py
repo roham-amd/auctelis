@@ -485,7 +485,7 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
         workflow_path.write_text(workflow_body, encoding="utf-8", newline="\n")
         print(f"Wrote: {workflow_path}")
     pin = _resolve_action_pin_ref()
-    print(f"Action pin: roham-amd/auctelis/.github/actions/auctelis-gate@{pin}")
+    print(f"Action pin: roham-amd/auctelis@{pin}")
     print("Next: git add .github/workflows/auctelis.yml")
     print(
         'Commit and open the install PR: it gets one PASS "Watching" comment; '
@@ -777,12 +777,14 @@ def _workflow_locked_state(body: str) -> tuple[bool, bool, str]:
     opt-in, and a comment must never be mistaken for the live Action input.
     """
     visible = _visible_workflow_text(body)
-    has_gate = "auctelis-gate" in visible and (
-        "roham-amd/auctelis" in visible or "./.github/actions/auctelis-gate" in visible
+    has_gate = ("roham-amd/auctelis@" in visible and "auctelis" in visible.lower()) or (
+        "auctelis-gate" in visible
+        and ("roham-amd/auctelis" in visible or "./.github/actions/auctelis-gate" in visible)
     )
     locked = bool(re.search(r"locked:\s*[\"']?true[\"']?", visible, flags=re.IGNORECASE))
     pin_m = re.search(
-        r"(?:roham-amd/auctelis/\.github/actions/auctelis-gate@|auctelis-gate@)([^\s#]+)",
+        r"(?:roham-amd/auctelis/\.github/actions/auctelis-gate@|"
+        r"roham-amd/auctelis@|auctelis-gate@)([^\s#]+)",
         visible,
     )
     pin = pin_m.group(1) if pin_m else "(unpinned)"
@@ -803,10 +805,16 @@ def _resolve_action_pin_ref() -> str:
 def _pin_workflow_to_release(workflow_body: str) -> str:
     """Rewrite Action uses: and pip install pin to the installed product version."""
     pin = _resolve_action_pin_ref()
+    # Prefer root Marketplace Action form; still rewrite legacy subpath pins.
     body = re.sub(
-        r"(roham-amd/auctelis/\.github/actions/auctelis-gate@)[^\s#]+",
-        rf"\g<1>{pin}",
+        r"roham-amd/auctelis/\.github/actions/auctelis-gate@[^\s#]+",
+        f"roham-amd/auctelis@{pin}",
         workflow_body,
+    )
+    body = re.sub(
+        r"(roham-amd/auctelis@)[^\s#]+",
+        rf"\g<1>{pin}",
+        body,
     )
     body = re.sub(
         r"(git\+https://github\.com/roham-amd/auctelis\.git@)[^#\s\"]+",
@@ -1013,7 +1021,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         for path in wrote:
             print(f"  {path}")
     pin = _resolve_action_pin_ref()
-    print(f"Action pin: roham-amd/auctelis/.github/actions/auctelis-gate@{pin}")
+    print(f"Action pin: roham-amd/auctelis@{pin}")
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
     print(
         f"CODEOWNERS owner: {owner}. "

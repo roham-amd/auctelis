@@ -480,7 +480,9 @@ def test_check_first_run_is_ranked_reach_report(tmp_path: Path):
     text = render_check(report, cards)
     assert "Reach:" in text
     assert "env: API_TOKEN" in text
-    assert "publisher NOT VERIFIED" in text
+    assert "publisher NOT VERIFIED" not in cards[0]
+    assert "publisher identity and runtime behavior are NOT VERIFIED" in text
+    assert "AUTHORITY.lock match" not in text
 
 
 def test_check_top_zero_hides_cards(tmp_path: Path):

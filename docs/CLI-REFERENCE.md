@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.16.0** · product **0.16.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.17.0** · product **0.17.0** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,7 +22,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N]` | Ranked reach report vs `AUTHORITY.lock` (front door); single-repo `--report` writes HTML+MD+JSON+SBOM; multi-path = fleet report (HTML+MD+JSON) |
+| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -45,6 +45,7 @@ Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 ```bash
 auctelis check [PATH ...] [--lock-file PATH] [--json] [--top N] [--pins]
                [--report DIR] [--baseline PATH] [--max-files N]
+               [--github TARGET ...] [--max-repos N]
 ```
 
 Inventories agent configs in a repository (MCP, skills, instructions, hooks,
@@ -53,11 +54,12 @@ rules, subagents, plugins, CI) and diffs them against the committed
 five cards even when the lock matches (`--top 0` hides cards). `--report` always
 lists every tier-2 record (not just the top cards).
 
-- No lock yet → inventory + `BASELINE_NEEDED` and exit 0; unparsed agent configs
+- No lock yet → inventory + JSON `BASELINE_NEEDED` (terminal: `Mode: lockless`) and exit 0; unparsed agent configs
   override this to `NEEDS_REVIEW` / `GROWTH` and exit 1
 - Lock matches → `LOCKED`, still showing reach counts and top cards
 - Lock drifts → cards with `@ path` + `NEEDS_REVIEW`
 - `--pins` → unpinned/floating MCP launchers with a concrete pin suggestion
+  (names the real package/image from `args` when present)
 - `--report DIR` → single repo: write `reach-report.html` / `.md` / `.json` and
   `authority-sbom.json` (shareable audit artifact)
 - More than one `PATH` (requires `--report DIR`) → one fleet report
@@ -65,6 +67,10 @@ lists every tier-2 record (not just the top cards).
   Fleet writes `reach-report.html` / `.md` / `.json` only (no SBOM).
   `--lock-file`, `--baseline`, and `--pins` apply to single-repo runs only
   (exit 2 if combined with multiple paths)
+- `--github TARGET ...` (requires `--report DIR`) → zero-clone GitHub audit via
+  Trees+Blobs API. `owner/repo` audits one repo; bare `org` lists non-archived
+  repos (capped by `--max-repos`, default 50). Uses `GITHUB_TOKEN` / `GH_TOKEN`
+  (unauthenticated public fallback). Labels reports as `owner/repo`, never temp paths.
 - `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
 - `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
 

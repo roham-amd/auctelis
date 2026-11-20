@@ -34,7 +34,7 @@ def test_auctelis_path_runs_check(tmp_path: Path, capsys):
     # First-run / no lock → exit 0 (BASELINE_NEEDED).
     assert code == 0
     captured = capsys.readouterr().out
-    assert "Verdict: BASELINE_NEEDED · label NONE" in captured
+    assert "Mode: lockless (no AUTHORITY.lock) · label NONE" in captured
     assert "Inventory: 0 records" in captured
 
 
@@ -94,7 +94,7 @@ def test_init_lockless_writes_only_workflow(tmp_path: Path, capsys):
     workflow = root / ".github" / "workflows" / "auctelis.yml"
     assert workflow.is_file()
     body = workflow.read_text(encoding="utf-8")
-    assert f"auctelis-gate@v{product_version()}" in body
+    assert f"roham-amd/auctelis@v{product_version()}" in body
     assert 'locked: "false"' in body
     # Only the workflow is written.
     assert not (root / ".auctelis.yml").exists()

@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.16.0 · **Package:** `auctelis` 0.16.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.17.0 · **Package:** `auctelis` 0.17.0 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
@@ -33,17 +33,17 @@ One question drives the workflow:
 | `.auctelis.yml` | Policy file |
 | `AUTHORITY.lock` | Sealed repo authority |
 | `auctelis-out/` | Default artifact directory |
-| `.github/actions/auctelis-gate` | GitHub Action |
+| Root `action.yml` (`uses: roham-amd/auctelis@vX`) | GitHub Action (Marketplace); legacy `.github/actions/auctelis-gate` kept |
 
 ---
 
 ## Primary commands
 
-Public path: **check → check --report → diff --base → lockless workflow or init --enforce → gate**
+Public path: **check → check --report / --github → init --lockless → gate**
 
 | Command | Job |
 | --- | --- |
-| `auctelis check [PATH ...] [--top N] [--pins] [--report DIR]` | Ranked reach report vs `AUTHORITY.lock` (front door; inventory-only); multiple paths require `--report` and write one ranked fleet report |
+| `auctelis check [PATH ...] [--top N] [--pins] [--report DIR] [--github …]` | Tree-truth reach report (lock optional); `--github` zero-clone org/repo audit; multiple paths require `--report` (fleet) |
 | `auctelis diff --base <ref>` | Local Authority Diff; tree-truth first (`baseline_state=tree`), Action-parity |
 | `auctelis trust <host>` | Trusted destinations for network-only reach (`--list`, `--remove`, `--init`) |
 | `auctelis init --lockless` | One-file comment-only PR Watch; no lock, policy, CODEOWNERS, or `--owner` |

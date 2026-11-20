@@ -64,3 +64,15 @@ def test_delta_cards_overflow_summary_names_hidden_records():
 def test_pin_suggestion_docker_uses_digest():
     suggestion = pin_suggestion({"launcher": "docker", "pin_state": "floating"})
     assert "sha256" in suggestion
+
+
+def test_pin_suggestion_names_concrete_package_from_args():
+    suggestion = pin_suggestion(
+        {
+            "launcher": "npx",
+            "pin_state": "floating",
+            "args": ["-y", "demo-evil-mcp"],
+        }
+    )
+    assert "demo-evil-mcp@<exact-version>" in suggestion
+    assert "<pkg>" not in suggestion

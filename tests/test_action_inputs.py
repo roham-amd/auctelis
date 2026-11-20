@@ -6,9 +6,15 @@ from pathlib import Path
 
 
 def _action_text() -> str:
-    return (
-        Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
-    ).read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+    return (root / "action.yml").read_text(encoding="utf-8")
+
+
+def _subpath_action_text() -> str:
+    root = Path(__file__).resolve().parents[1]
+    return (root / ".github" / "actions" / "auctelis-gate" / "action.yml").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_legacy_baseline_does_not_skip_auth_diff():
@@ -89,5 +95,16 @@ def test_org_reusable_workflow_pins_current_release():
     assert path.is_file()
     text = path.read_text(encoding="utf-8")
     assert "workflow_call" in text
-    assert f"auctelis-gate@v{product_version()}" in text
+    assert f"roham-amd/auctelis@v{product_version()}" in text
     assert "annotate" not in text
+
+
+def test_root_action_has_marketplace_branding_and_version_input():
+    text = _action_text()
+    assert "branding:" in text
+    assert "icon: shield" in text
+    assert "auctelis-version:" in text
+    assert "mode=pypi" in text
+    sub = _subpath_action_text()
+    for key in ("path:", "locked:", "auctelis-version:", "install-tools-from:"):
+        assert key in text and key in sub

@@ -18,8 +18,10 @@ jobs:
       - name: auctelis Authority Diff
         # Tools are bundled in the Action — no pip install required.
         # High-assurance pin (recommended):
+        #   uses: roham-amd/auctelis@<commit-sha>
+        # Legacy subpath still works:
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.16.0
+        uses: roham-amd/auctelis@v0.17.0
         with:
           path: .
           locked: "false"

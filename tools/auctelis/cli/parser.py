@@ -8,14 +8,14 @@ from collections.abc import Sequence
 from pathlib import Path
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "check → diff --base → lockless workflow or init --enforce → gate"
+PUBLIC_PATH = "check → check --report / --github → init --lockless → gate"
 
 _EPILOG = f"""
 first path:   {PUBLIC_PATH}
 local:        status [--check] | why <name> | demo
 maintainer:   auctelis-dev (source checkout; research not in the wheel)
 
-Bare `auctelis` → check (repo authority vs AUTHORITY.lock).
+Bare `auctelis` → check (tree-truth reach; AUTHORITY.lock optional).
 Labels: GROWTH | REDUCTION | NONE.
 Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED | PASS.
 Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init
@@ -105,7 +105,7 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
 
     check = sub.add_parser(
         "check",
-        help="Repo authority vs AUTHORITY.lock (front door; no host scan)",
+        help="Tree-truth reach report (lock optional; --github for zero-clone org audit)",
     )
     check.add_argument(
         "path",
@@ -155,6 +155,22 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         default=None,
         metavar="N",
         help="Inventory walk file cap (default: 50000 or AUCTELIS_MAX_FILES)",
+    )
+    check.add_argument(
+        "--github",
+        nargs="+",
+        metavar="TARGET",
+        help=(
+            "Zero-clone GitHub audit: org name and/or owner/repo slugs "
+            "(requires --report for multi-repo; uses GITHUB_TOKEN/GH_TOKEN)"
+        ),
+    )
+    check.add_argument(
+        "--max-repos",
+        type=int,
+        default=50,
+        metavar="N",
+        help="Cap repositories when --github lists an org (default: 50)",
     )
 
     init_cmd = sub.add_parser(

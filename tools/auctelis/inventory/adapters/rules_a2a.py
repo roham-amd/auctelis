@@ -128,6 +128,14 @@ def _is_claude_command(path: Path) -> bool:
     return False
 
 
+def _under_dir(path: Path, *markers: str) -> bool:
+    """True when ``markers`` appear as consecutive path parts (case-insensitive)."""
+    parts = [p.lower() for p in path.parts]
+    want = [m.lower() for m in markers]
+    n = len(want)
+    return any(parts[i : i + n] == want for i in range(len(parts) - n + 1))
+
+
 def _is_instruction_file(path: Path, root: Path) -> bool:
     name = path.name
     if name in _RULE_FILE_NAMES:
@@ -137,8 +145,21 @@ def _is_instruction_file(path: Path, root: Path) -> bool:
     rel = path.relative_to(root).as_posix().lower()
     if rel in {
         ".github/copilot-instructions.md",
-        ".gemini/GEMINI.md".lower(),
+        ".gemini/gemini.md",
     }:
+        return True
+    # GitHub Copilot custom instructions (watched by Action path_filter).
+    if rel.startswith(".github/instructions/") and path.suffix.lower() in {
+        ".md",
+        ".txt",
+    }:
+        return True
+    # Windsurf / Cline rule directories (2026 layouts).
+    if path.is_file() and (
+        _under_dir(path, ".windsurf", "rules")
+        or _under_dir(path, ".clinerules")
+        or (path.parent.name.lower() == ".clinerules")
+    ):
         return True
     return ".cursor" in path.parts and "rules" in path.parts
 

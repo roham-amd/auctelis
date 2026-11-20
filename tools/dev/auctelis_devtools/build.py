@@ -306,7 +306,9 @@ _INSTALL_DOCS = (
     "docs/PRODUCT.md",
     "docs/ROADMAP.md",
     "docs/SECURITY-RULES.md",
+    "docs/DOCUMENTATION-INDEX.md",
     "docs/pilots/RECRUITMENT.md",
+    "docs/pilots/TRACKER.md",
     "docs/auctelis-consumer-gate.example.yml",
     "tools/README.md",
     "SECURITY.md",
@@ -718,6 +720,72 @@ def check_wheel_omits_research() -> list[str]:
     return [f"ok {wheel.name} omits maintainer/research modules"]
 
 
+def check_action_parity() -> list[str]:
+    """AUCT-021: root Marketplace action.yml stays in sync with the legacy subpath."""
+    root = repo_root()
+    product = (root / "VERSION").read_text(encoding="utf-8").strip()
+    root_action = root / "action.yml"
+    sub_action = root / ".github" / "actions" / "auctelis-gate" / "action.yml"
+    if not root_action.is_file():
+        raise SystemExit("Missing root action.yml (required for GitHub Marketplace)")
+    if not sub_action.is_file():
+        raise SystemExit("Missing .github/actions/auctelis-gate/action.yml")
+    root_text = root_action.read_text(encoding="utf-8")
+    sub_text = sub_action.read_text(encoding="utf-8")
+    if root_text != sub_text:
+        raise SystemExit(
+            "root action.yml and .github/actions/auctelis-gate/action.yml diverge; "
+            "keep them byte-identical (Marketplace + legacy subpath)"
+        )
+    for key in (
+        "\n  path:\n",
+        "\n  mode:\n",
+        "\n  locked:\n",
+        "\n  auctelis-version:\n",
+        "\n  install-tools-from:\n",
+        "\n  comment-on-none:\n",
+    ):
+        if key not in root_text:
+            raise SystemExit(f"root action.yml missing input{key.strip()!r}")
+    if "branding:" not in root_text:
+        raise SystemExit("root action.yml missing Marketplace branding:")
+    if "icon: shield" not in root_text:
+        raise SystemExit("root action.yml branding.icon must be shield")
+    if "mode=pypi" not in root_text:
+        raise SystemExit("root action.yml missing PyPI fast-path install mode")
+    # Path filter must stay aligned with watched_paths.PATH_FILTER_GREP.
+    from auctelis.inventory.watched_paths import PATH_FILTER_GREP
+
+    grep_m = re.search(r"grep -iE '([^']+)'", root_text)
+    if grep_m is None:
+        raise SystemExit("root action.yml path_filter grep -iE regex missing")
+    if grep_m.group(1) != PATH_FILTER_GREP:
+        raise SystemExit(
+            "action.yml path_filter regex != auctelis.inventory.watched_paths.PATH_FILTER_GREP"
+        )
+    pin = f"v{product}"
+    uses_re = re.compile(
+        r"uses:\s*roham-amd/auctelis(?:/\.github/actions/auctelis-gate)?@(v[^\s#]+)"
+    )
+    for rel in (
+        "tools/auctelis/templates/auctelis-diff.yml",
+        "tools/auctelis/templates/auctelis-gate.yml",
+        "docs/auctelis-org-reusable.yml",
+        "docs/auctelis-consumer-gate.example.yml",
+    ):
+        text = (root / rel).read_text(encoding="utf-8")
+        uses_pins = uses_re.findall(text)
+        if not uses_pins:
+            raise SystemExit(f"{rel} missing auctelis Action uses: pin")
+        if pin not in uses_pins:
+            raise SystemExit(f"{rel} Action pin {uses_pins} does not match VERSION {product}")
+    return [
+        "ok root action.yml Marketplace branding + inputs",
+        "ok subpath action.yml input parity",
+        f"ok workflow templates recognize auctelis@{pin}",
+    ]
+
+
 def build_all() -> dict[str, object]:
     sync = sync_schemas()
     packaged = sync_packaged_version_metadata()
@@ -725,6 +793,7 @@ def build_all() -> dict[str, object]:
     check_demo_fixture_parity()
     check_version_metadata()
     check_requires_python()
+    action_parity = check_action_parity()
     dep_pins = check_dependency_pins()
     validate_json_schema_document()
     links = check_internal_markdown_links()
@@ -733,6 +802,7 @@ def build_all() -> dict[str, object]:
         "schemas": sync,
         "packaged_metadata": packaged,
         "dependency_pins": dep_pins,
+        "action_parity": action_parity,
         "markdown_files_link_checked": links,
         "wheel_omits_research": wheel_lean,
         # Monolith generation removed from product build (archive/methodology only).

@@ -30,7 +30,7 @@ per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 | MCP client registration | `mcp_config` | PARTIAL | Configured capability ≠ server behavior |
 | MCP server source | `mcp_server_source` | PARTIAL | Tool authz not verified |
 | A2A | `a2a_agent_card` | PARTIAL | Message trust / delegation manual |
-| Instruction rules | `instruction_rules` | SUPPORTED | Includes `.claude/commands/**/*.md` |
+| Instruction rules | `instruction_rules` | SUPPORTED | Includes `.claude/commands/**/*.md`, `.github/instructions/`, `.windsurf/rules/`, `.clinerules/` |
 | Hooks | `hooks` | PARTIAL | Event + execution context |
 | Plugins | `plugins` | PARTIAL | Declared vs host-enforced scope |
 | Subagents | `subagents` | PARTIAL | Inherited vs escalated authority |
@@ -51,7 +51,7 @@ per-surface maturity specs and [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md).
 | Cursor | Partial profile (inventory of hooks / MCP / skills) |
 | Claude Code | Partial profile (inventory of settings / hooks / skills) |
 | Codex | Partial profile |
-| VS Code / Copilot markers | Partial / manual |
+| VS Code / Copilot markers | Partial (`.vscode/settings.json` mcp.servers + `.github/instructions/`) |
 
 ## Operator rule
 

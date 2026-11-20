@@ -5,10 +5,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from auctelis.inventory.watched_paths import PATH_FILTER_GREP
 from auctelis.security.engine import run_authority_inventory
 
 _ROOT = Path(__file__).resolve().parents[1]
-_ACTION_PATH = _ROOT / ".github" / "actions" / "auctelis-gate" / "action.yml"
+_ACTION_PATH = _ROOT / "action.yml"
+_SUBPATH_ACTION = _ROOT / ".github" / "actions" / "auctelis-gate" / "action.yml"
 
 
 def _load_path_filter_regex(action_text: str) -> re.Pattern[str]:
@@ -58,9 +60,13 @@ def test_path_filter_matches_all_authority_fixture_surfaces():
         ".clinerules",
         "CODEX.md",
         ".github/copilot-instructions.md",
+        ".github/instructions/api.instructions.md",
         ".codex/config.toml",
         ".cursor/mcp.json",
         ".claude/settings.json",
+        ".vscode/settings.json",
+        ".windsurf/rules/sec.md",
+        ".clinerules/project.md",
         "AUTHORITY.lock",
         ".auctelis.yml",
         ".auctelis/trusted-hosts",
@@ -71,6 +77,13 @@ def test_path_filter_matches_all_authority_fixture_surfaces():
     ]
     for rel in synthetic_watched:
         assert pattern.search(rel), f"path_filter missed synthetic watched path: {rel}"
+    # Root Action, legacy subpath Action, and Python PATH_FILTER_GREP stay identical.
+    root_text = _ACTION_PATH.read_text(encoding="utf-8")
+    sub_text = _SUBPATH_ACTION.read_text(encoding="utf-8")
+    assert root_text == sub_text
+    sub_pattern = _load_path_filter_regex(sub_text)
+    assert pattern.pattern == sub_pattern.pattern
+    assert pattern.pattern == PATH_FILTER_GREP
 
     # Unrelated files must bypass uv sync in lockless mode.
     unrelated = [

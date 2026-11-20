@@ -54,13 +54,23 @@ def test_workflow_state_ignores_comment_opt_ins():
     from auctelis.cli.dispatch import _workflow_locked_state
 
     body = (
-        "uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.16.0\n"
+        "uses: roham-amd/auctelis/.github/actions/auctelis-gate@v0.17.0\n"
         'with: { locked: "false" }  # add locked: "true" later\n'
     )
     has_gate, locked, pin = _workflow_locked_state(body)
     assert has_gate is True
     assert locked is False
-    assert pin == "v0.16.0"
+    assert pin == "v0.17.0"
+
+
+def test_workflow_state_recognizes_root_marketplace_action():
+    from auctelis.cli.dispatch import _workflow_locked_state
+
+    body = 'uses: roham-amd/auctelis@v0.17.0\nwith: { locked: "false" }\n'
+    has_gate, locked, pin = _workflow_locked_state(body)
+    assert has_gate is True
+    assert locked is False
+    assert pin == "v0.17.0"
 
 
 def test_status_lockless_missing_workflow_suggests_init_lockless(

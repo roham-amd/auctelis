@@ -178,6 +178,7 @@ _KNOWN_MCP_REL_PATHS = frozenset(
     {
         ".cursor/mcp.json",
         ".vscode/mcp.json",
+        ".vscode/settings.json",  # only emitted when mcp.servers / mcpServers present
         ".gemini/settings.json",
         ".zed/settings.json",
         ".zed/settings.local.json",

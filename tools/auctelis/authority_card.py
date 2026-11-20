@@ -2,7 +2,7 @@
 
 The product sentence is a declared-config diff:
 
-    + mcp "linear" → mcp.linear.app · network · unpinned · publisher NOT VERIFIED
+    + mcp "linear" → mcp.linear.app · network · unpinned · LITERAL_CONFIG
 
 User-facing fields: name, destination (host or launcher), capability set,
 env-key names, reach tier + reason, and evidence strength. Everything else in
@@ -58,7 +58,6 @@ _CAP_LABELS: dict[str, str] = {
 }
 
 _MCP_KINDS = {"mcp"}
-_PUBLISHER = "publisher NOT VERIFIED"
 # Agent-host containers are inventory scaffolding, not sealable authority.
 # Host Settings (permissions, bypass) MUST appear — they are the highest-risk class.
 _NOISE_KINDS = {"agent host"}
@@ -215,7 +214,6 @@ def record_card(
             bits.append(f"env: {', '.join(env_keys)}")
         if tier_bit:
             bits.append(tier_bit)
-        bits.append(_PUBLISHER)
         bits.append(evidence)
         return f'{prefix} {kind} "{name}"{path_bit} · ' + " · ".join(bits)
 
@@ -236,7 +234,7 @@ def record_card(
         bits.append(f"env: {', '.join(env_keys)}")
     if tier_bit:
         bits.append(tier_bit)
-    bits.append(_PUBLISHER)
+    # AUCT-023: publisher caveat lives in the check footer once, not every card.
     bits.append(evidence)
     return f'{prefix} {kind} "{name}"{target} · ' + " · ".join(bits)
 
@@ -432,9 +430,8 @@ def why_record(record: dict[str, Any]) -> list[str]:
     pin = _pin_bit(record)
     if pin:
         lines.append(f"  pin: {pin}")
-    lines.append(f"  {_PUBLISHER}")
     evidence = evidence_label(record)
-    lines.append(f"  evidence: {evidence} (declared config only; not runtime proof)")
+    lines.append(f"  evidence: {evidence} (declared config only; publisher/runtime NOT VERIFIED)")
     return lines
 
 
@@ -548,9 +545,7 @@ def delta_cards(
             ranked.append((0, order, removed_card(record), record))
             order += 1
     for name in changes.get("mcp_tools_added") or []:
-        ranked.append(
-            (15, order, f'+ mcp tool "{name}" · pin added · publisher NOT VERIFIED', None)
-        )
+        ranked.append((15, order, f'+ mcp tool "{name}" · pin added', None))
         order += 1
     for name in changes.get("mcp_tools_removed") or []:
         ranked.append((0, order, f'- mcp tool "{name}" · pin removed', None))
@@ -579,15 +574,43 @@ def _is_unpinned_mcp(record: dict[str, Any]) -> bool:
     return bool(launch) and pin not in {"pinned", "digest"}
 
 
+def _floating_package_token(record: dict[str, Any]) -> str:
+    """Best-effort package/image name from sealed ``args`` (no network)."""
+    raw_args = record.get("args")
+    args = [str(a) for a in raw_args] if isinstance(raw_args, list) else []
+    launch = launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
+    skip = {
+        "-y",
+        "--yes",
+        "--",
+        "run",
+        "exec",
+        "tool",
+        "runp",
+        "install",
+    }
+    for arg in args:
+        if not arg or arg in skip or arg.startswith("-"):
+            continue
+        if launch in {"docker", "podman"} and arg in {"run", "exec"}:
+            continue
+        return arg
+    return ""
+
+
 def pin_suggestion(record: dict[str, Any]) -> str:
-    """Concrete next step for a floating MCP launcher (names only, no network)."""
-    launch = launcher(record).lower()
+    """Concrete next step for a floating MCP launcher (exact token when known)."""
+    launch = launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
+    pkg = _floating_package_token(record)
     if launch in {"npx", "bunx"}:
-        return "pin the package: npx -y <pkg>@<exact-version>"
+        token = pkg or "<pkg>"
+        return f"pin the package: npx -y {token}@<exact-version>"
     if launch in {"uvx", "pipx"}:
-        return "pin the package: <pkg>==<exact-version>"
+        token = pkg or "<pkg>"
+        return f"pin the package: {token}==<exact-version>"
     if launch in {"docker", "podman"}:
-        return "pin the image: <image>@sha256:<digest>"
+        token = pkg or "<image>"
+        return f"pin the image: {token}@sha256:<digest>"
     if launch:
         return f"pin {launch} to an exact version or digest"
     return "prefer a versioned/signed endpoint, then reseal the lock"

@@ -198,7 +198,7 @@ def test_lockless_diff_template_exists():
     )
     text = template.read_text(encoding="utf-8")
     assert 'locked: "false"' in text
-    assert "auctelis-gate@" in text
+    assert "roham-amd/auctelis@" in text
     assert "pull_request" in text
 
 

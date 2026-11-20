@@ -1,7 +1,8 @@
 """Repo-only authority check — the product front door.
 
-``auctelis check`` inventories agent configs in a repository, compares them to
-the committed ``AUTHORITY.lock``, and prints the authority delta. No host home
+``auctelis check`` inventories agent configs in a repository and prints a ranked
+reach report. When ``AUTHORITY.lock`` is present it diffs against that baseline;
+when absent it runs lockless (JSON verdict ``BASELINE_NEEDED``). No host home
 scan, no allow store, no hooks.
 
 Schema: ``authority-diff/1`` (JSON via ``--json``).
@@ -47,6 +48,26 @@ _REACH_KEYS = (
 )
 
 SCHEMA_VERSION = "authority-diff/1"
+
+
+def _attach_launcher_args(records: list[dict[str, Any]], scan: ScanResult | None) -> None:
+    """Copy inventory ``args`` onto sealed records for pin doctor (not persisted)."""
+    if scan is None:
+        return
+    by_key: dict[tuple[str, str], list[Any]] = {}
+    for comp in scan.inventory.get("components") or []:
+        if not isinstance(comp, dict):
+            continue
+        raw_args = comp.get("args")
+        if not isinstance(raw_args, list) or not raw_args:
+            continue
+        path = str(comp.get("repository_path") or "").replace("\\", "/")
+        name = str(comp.get("name") or "")
+        by_key[(path, name)] = list(raw_args)
+    for rec in records:
+        key = (str(rec.get("path") or "").replace("\\", "/"), str(rec.get("name") or ""))
+        if key in by_key:
+            rec["args"] = by_key[key]
 
 
 def _counts(records: list[dict[str, Any]]) -> dict[str, int]:
@@ -132,6 +153,7 @@ def build_check_report(
     scan = run_authority_inventory(repo, limits=scan_limits)
     head = build_authority_lock(repo, scan=scan)
     head_records = list(head.get("records") or [])
+    _attach_launcher_args(head_records, scan)
     sealable = sealable_records(head_records)
     report["reach"] = reach_snapshot(
         head_records,
@@ -320,6 +342,8 @@ def render_check(
     coverage_line = str(report.get("coverage_line") or "")
     gated = int(report.get("gated_findings") or 0)
 
+    lock_present = bool(report.get("lock_present"))
+
     def _coverage_footer() -> list[str]:
         out: list[str] = []
         if coverage_line:
@@ -333,7 +357,13 @@ def render_check(
             )
         elif unparsed:
             out.append(f"NOT PARSED: {unparsed}")
-        out.append(f"{LOCK_NAME} match is declared-config only — not a security clearance.")
+        if lock_present:
+            out.append(f"{LOCK_NAME} match is declared-config only — not a security clearance.")
+        else:
+            out.append(
+                "Passive scan — declared config only; publisher identity and "
+                "runtime behavior are NOT VERIFIED."
+            )
         return out
 
     if report.get("first_run"):
@@ -352,7 +382,11 @@ def render_check(
         if pins_line:
             lines.append(pins_line)
         lines.append("")
-        lines.append(f"Verdict: {verdict} · label {label}")
+        # Keep JSON verdict BASELINE_NEEDED; terminal clarifies lockless mode.
+        if verdict == "BASELINE_NEEDED" and not lock_present:
+            lines.append(f"Mode: lockless (no {LOCK_NAME}) · label {label}")
+        else:
+            lines.append(f"Verdict: {verdict} · label {label}")
         lines.append(
             "Next: auctelis init --lockless  # one-file comment-only PR Watch, or "
             "auctelis check --report out/ for an HTML/MD/JSON Reach Report"

@@ -5,13 +5,21 @@ from __future__ import annotations
 import re
 
 _AGENT_USE_RE = re.compile(
-    r"uses:\s*\S*(?:anthropic|claude|cursoragent|openai|codex|modelcontextprotocol|/agent[-/])",
+    r"uses:\s*\S*(?:"
+    r"anthropic|claude|cursoragent|openai|codex|modelcontextprotocol|/agent[-/]|"
+    r"github/copilot|copilot-coding-agent|google-github-actions/run-gemini-cli|"
+    r"gemini-cli|all-hands-ai/openhands|openhands|"
+    r"paulfchristiano/aider|aider-ai/aider"
+    r")",
     re.IGNORECASE,
 )
 _AGENT_RUN_RE = re.compile(
-    r"(?:\bclaude\b|\bcursor\b|\bcodex\b|"
+    r"(?:\bclaude\b|\bcursor\b|\bcodex\b|\baider\b|\bopenhands\b|"
+    r"\bcopilot\b|\bgemini\b|"
     r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?[^\s|]*agent|"
-    r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?@modelcontextprotocol)",
+    r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?@modelcontextprotocol|"
+    r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?@github/copilot|"
+    r"pipx?\s+run\s+aider|uvx\s+aider)",
     re.IGNORECASE,
 )
 _EMPTY_PERMISSIONS_RE = re.compile(r"permissions:\s*\{\s*\}", re.MULTILINE)

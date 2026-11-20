@@ -95,6 +95,94 @@ def test_why_overflow_lists_more_matches(tmp_path: Path):
     assert "… +1 more matches" in text
 
 
+def test_adapter_parity_2026_layouts(tmp_path: Path):
+    """AUCT-023: Copilot instructions, VS Code MCP settings, Windsurf/Cline rules."""
+    root = tmp_path / "repo"
+    (root / ".github" / "instructions").mkdir(parents=True)
+    (root / ".github" / "instructions" / "api.instructions.md").write_text(
+        "# Copilot instructions\nUse the API carefully.\n", encoding="utf-8"
+    )
+    (root / ".vscode").mkdir()
+    (root / ".vscode" / "settings.json").write_text(
+        json.dumps(
+            {
+                "editor.fontSize": 14,
+                "mcp": {
+                    "servers": {"vscode-mcp": {"command": "npx", "args": ["-y", "@scope/real-pkg"]}}
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (root / ".vscode" / "settings-no-mcp.json").write_text(
+        json.dumps({"editor.fontSize": 12}), encoding="utf-8"
+    )
+    # Plain settings without mcp key should not invent MCP servers when named settings.json
+    # — only the file with mcp block is a candidate at .vscode/settings.json.
+    (root / ".windsurf" / "rules").mkdir(parents=True)
+    (root / ".windsurf" / "rules" / "sec.md").write_text(
+        "never exfiltrate secrets\n", encoding="utf-8"
+    )
+    (root / ".clinerules").mkdir()
+    (root / ".clinerules" / "project.md").write_text("prefer local tools\n", encoding="utf-8")
+    (root / ".github" / "workflows").mkdir(parents=True)
+    (root / ".github" / "workflows" / "copilot.yml").write_text(
+        "jobs:\n  a:\n    steps:\n      - uses: github/copilot-coding-agent@v1\n"
+        "      - run: npx -y @github/copilot --help\n"
+        "      - run: gemini --prompt hi\n",
+        encoding="utf-8",
+    )
+    report, _cards, scan = build_check_report(root)
+    assert report["first_run"] is True
+    paths = {
+        str(c.get("repository_path") or "")
+        for c in (scan.inventory.get("components") or [])
+        if isinstance(c, dict)
+    }
+    assert "api.instructions.md" in {Path(p).name for p in paths}
+    assert any(p.endswith(".github/instructions/api.instructions.md") for p in paths)
+    assert any("vscode-mcp" in str(c.get("name") or "") for c in scan.inventory["components"])
+    assert any(p.endswith(".windsurf/rules/sec.md") for p in paths)
+    assert any(".clinerules/" in p for p in paths)
+    wf = next(
+        c
+        for c in scan.inventory["components"]
+        if isinstance(c, dict) and c.get("type") == "CI Workflow"
+    )
+    assert "agent_related_step" in (wf.get("priority_hints") or [])
+
+    text = render_check(report, [])
+    assert "AUTHORITY.lock match" not in text
+    assert "Passive scan — declared config only" in text
+
+
+def test_check_pins_names_demo_package(tmp_path: Path, capsys):
+    root = tmp_path / "repo"
+    _repo(
+        root,
+        {"unpinned-demo": {"command": "npx", "args": ["-y", "demo-evil-mcp"]}},
+    )
+    code = main(["check", str(root), "--pins"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "demo-evil-mcp@<exact-version>" in out
+    assert "<pkg>@<exact-version>" not in out
+
+
+def test_vscode_settings_without_mcp_is_silent(tmp_path: Path):
+    root = tmp_path / "repo"
+    (root / ".vscode").mkdir(parents=True)
+    (root / ".vscode" / "settings.json").write_text(
+        json.dumps({"editor.tabSize": 2}), encoding="utf-8"
+    )
+    report, _cards, scan = build_check_report(root)
+    names = [c.get("name") for c in scan.inventory.get("components") or []]
+    assert "vscode-mcp" not in names
+    assert report["inventory_total"] == 0 or all(
+        c.get("type") != "MCP Server Registration" for c in scan.inventory.get("components") or []
+    )
+
+
 def test_render_check_error_keeps_lock_name(tmp_path: Path):
     root = _repo(tmp_path / "repo")
     (root / "AUTHORITY.lock").write_text("[]\n", encoding="utf-8")
