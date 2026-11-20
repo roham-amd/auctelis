@@ -198,7 +198,7 @@ jobs:
             || uv run --locked pip-audit -f json -o ../auctelis-out-sbom/sbom.json
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3.10.0
+        uses: sigstore/cosign-installer@v4.1.3
 
       - name: Sign artifacts (keyless)
         working-directory: tools
