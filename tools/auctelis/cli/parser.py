@@ -162,7 +162,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         metavar="TARGET",
         help=(
             "Zero-clone GitHub audit: org name and/or owner/repo slugs "
-            "(requires --report for multi-repo; uses GITHUB_TOKEN/GH_TOKEN)"
+            "(--report required for org/multi-repo; single owner/repo may omit it; "
+            "uses GITHUB_TOKEN/GH_TOKEN or gh auth token)"
         ),
     )
     check.add_argument(

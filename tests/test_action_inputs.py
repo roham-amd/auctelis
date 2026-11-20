@@ -108,3 +108,21 @@ def test_root_action_has_marketplace_branding_and_version_input():
     sub = _subpath_action_text()
     for key in ("path:", "locked:", "auctelis-version:", "install-tools-from:"):
         assert key in text and key in sub
+
+
+def test_auctelis_pypi_default_matches_release_manifest():
+    import json
+    import re
+
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads(
+        (root / "canonical" / "release-manifest.json").read_text(encoding="utf-8")
+    )
+    expected = "true" if manifest.get("pypi_live") else "false"
+    text = _action_text()
+    match = re.search(r'AUCTELIS_PYPI_DEFAULT="(true|false)"', text)
+    assert match is not None
+    assert match.group(1) == expected
+    assert f'AUCTELIS_PYPI_DEFAULT="{expected}"' in _subpath_action_text()
+    # Auto PyPI on tagged refs is gated; explicit install-tools-from: pypi still works.
+    assert 'AUCTELIS_PYPI_DEFAULT}" == "true"' in text

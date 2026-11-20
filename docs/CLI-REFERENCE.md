@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.17.0** · product **0.17.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.17.1** · product **0.17.1** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -67,10 +67,13 @@ lists every tier-2 record (not just the top cards).
   Fleet writes `reach-report.html` / `.md` / `.json` only (no SBOM).
   `--lock-file`, `--baseline`, and `--pins` apply to single-repo runs only
   (exit 2 if combined with multiple paths)
-- `--github TARGET ...` (requires `--report DIR`) → zero-clone GitHub audit via
-  Trees+Blobs API. `owner/repo` audits one repo; bare `org` lists non-archived
-  repos (capped by `--max-repos`, default 50). Uses `GITHUB_TOKEN` / `GH_TOKEN`
-  (unauthenticated public fallback). Labels reports as `owner/repo`, never temp paths.
+- `--github TARGET ...` → zero-clone GitHub audit via Trees+Blobs API.
+  Single `owner/repo` may omit `--report` (stdout check/pins/JSON); bare `org`
+  or multiple targets require `--report DIR`. Lists non-archived repos sorted by
+  most recently pushed (capped by `--max-repos`, default 50). Auth:
+  `GITHUB_TOKEN` / `GH_TOKEN`, else `gh auth token` (unauthenticated public
+  fallback). Fleet HTML/MD show skipped/truncated repos; GitHub-sourced reports
+  include 1-click **Watch PRs** links. Labels reports as `owner/repo`, never temp paths.
 - `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
 - `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
 

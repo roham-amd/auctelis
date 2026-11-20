@@ -7,6 +7,33 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.17.1] — 2026-11-20
+
+### Added
+- **AUCT-024 (PyPI-default gate + root dogfood):** `AUCTELIS_PYPI_DEFAULT` in
+  root/subpath `action.yml` gates automatic PyPI install on tagged refs so
+  `pypi_live=false` runs use bundled `tools/` with zero PyPI-404 warnings;
+  explicit `install-tools-from: pypi` still forces PyPI. Dogfood workflow uses
+  root `uses: ./`. Build parity asserts `AUCTELIS_PYPI_DEFAULT == pypi_live`.
+  Packaged wheel now ships `data/release-manifest.json` for honest `pypi_live()`.
+- **AUCT-025 (reliable `check --github`):** `gh auth token` fallback when env
+  tokens are unset; org/user repo lists use `sort=pushed&direction=desc`;
+  bounded concurrent blob fetches (`max_workers=6`) with rate-limit short-circuit;
+  single `owner/repo` works without `--report`; fleet HTML/MD/JSON render
+  skipped/truncated repos and honesty notes.
+- **AUCT-026 (Audit→Watch funnel):** Reach reports include a release-pinned
+  lockless workflow snippet; GitHub-sourced reports add escaped 1-click
+  **Watch PRs** `/new/` links; `check --pins` / report tables emit pasteable
+  `config_snippet` lines for npx/uvx/docker.
+
+### Changed
+- First-run `check` footer no longer claims bare `auctelis init --lockless` while
+  `pypi_live=false`.
+- Shared `is_owner_repo_slug` for Watch-link validation; clearer rate-limit
+  short-circuit in org audits.
+- Nested `uv lock --check` always uses a repo-local `UV_CACHE_DIR` so concurrent
+  sandbox/CI `uv` processes cannot produce false "lock out of sync" failures.
+
 ## [0.17.0] — 2026-11-20
 
 ### Added

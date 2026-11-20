@@ -144,7 +144,7 @@ def _cmd_check_fleet(args: argparse.Namespace, paths: list[Path]) -> int:
 
 
 def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
-    """Zero-clone GitHub org/repo fleet Reach Audit (AUCT-022)."""
+    """Zero-clone GitHub org/repo fleet Reach Audit (AUCT-022/025)."""
     from auctelis.check import check_exit_code, render_check, render_pin_report
     from auctelis.export.reach_report import (
         render_fleet_summary,
@@ -153,9 +153,12 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
     )
     from auctelis.github_audit import audit_github_repos
 
+    cleaned = [str(t or "").strip().strip("/") for t in targets if str(t or "").strip()]
     report_dir = getattr(args, "report", None)
-    if report_dir is None:
-        print("auctelis check: --github requires --report DIR.")
+    # Single owner/repo may print to stdout; org / multi-repo require --report.
+    needs_report = len(cleaned) != 1 or "/" not in cleaned[0]
+    if report_dir is None and needs_report:
+        print("auctelis check: --github requires --report DIR for org or multi-repo audits.")
         return 2
     if getattr(args, "lock_file", None) is not None:
         print("auctelis check: --lock-file does not apply with --github.")
@@ -174,7 +177,7 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
     as_json = bool(getattr(args, "json", False))
     # audit_github_repos never raises: failures become skipped rows + honesty notes.
     results, honesty = audit_github_repos(
-        targets,
+        cleaned,
         max_repos=max_repos,
         top=top,
         limits=_collector_limits(args),
@@ -184,6 +187,19 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         _note(note, as_json=as_json)
 
     usable = [r for r in results if r.report is not None and not r.skipped]
+    skipped_rows = [
+        {
+            "repository": r.repository,
+            "notes": list(r.notes),
+            "truncated": bool(r.truncated),
+            "skipped": True,
+        }
+        for r in results
+        if r.skipped
+    ]
+    if not usable and not skipped_rows:
+        print("auctelis check: no repositories audited successfully.")
+        return 2
     if not usable:
         print("auctelis check: no repositories audited successfully.")
         return 2
@@ -191,47 +207,54 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
     if len(usable) == 1 and not getattr(args, "pins", False):
         only = usable[0]
         assert only.report is not None
-        write_reach_report_artifacts(
-            report_dir,
-            only.report,
-            only.scan,
-            cards=only.cards,
-        )
+        if report_dir is not None:
+            write_reach_report_artifacts(
+                report_dir,
+                only.report,
+                only.scan,
+                cards=only.cards,
+            )
+            _note(f"Wrote reach report to {report_dir}", as_json=as_json)
         if as_json:
             doc = dict(only.report)
             if honesty:
                 doc["honesty_notes"] = honesty
+            if skipped_rows:
+                doc["skipped"] = skipped_rows
             print_json(doc)
         else:
             print(render_check(only.report, only.cards))
-        _note(f"Wrote reach report to {report_dir}", as_json=as_json)
         return check_exit_code(only.report)
 
     if getattr(args, "pins", False) and len(usable) == 1:
         only = usable[0]
         assert only.report is not None
-        write_reach_report_artifacts(
-            report_dir,
-            only.report,
-            only.scan,
-            cards=only.cards,
-        )
+        if report_dir is not None:
+            write_reach_report_artifacts(
+                report_dir,
+                only.report,
+                only.scan,
+                cards=only.cards,
+            )
+            _note(f"Wrote reach report to {report_dir}", as_json=as_json)
         print(render_pin_report(only.report))
-        _note(f"Wrote reach report to {report_dir}", as_json=as_json)
         return check_exit_code(only.report)
 
     if getattr(args, "pins", False):
         print("auctelis check: --pins applies to single-repo --github owner/repo only.")
         return 2
 
-    entries = [(r.report, r.scan, r.cards) for r in usable if r.report is not None]
-    doc = write_fleet_reach_report_artifacts(report_dir, entries)
-    if honesty:
-        doc["honesty_notes"] = honesty
-        # Persist honesty into the written JSON as well.
-        from auctelis.jsonio import write_json
+    if report_dir is None:
+        print("auctelis check: --github requires --report DIR for org or multi-repo audits.")
+        return 2
 
-        write_json(Path(report_dir).expanduser().resolve() / "reach-report.json", doc)
+    entries = [(r.report, r.scan, r.cards) for r in usable if r.report is not None]
+    doc = write_fleet_reach_report_artifacts(
+        report_dir,
+        entries,
+        skipped=skipped_rows,
+        honesty_notes=honesty,
+    )
     if as_json:
         print_json(doc)
     else:

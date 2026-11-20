@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.17.0** (Marketplace root Action + zero-clone `--github` org audit + 2026 adapter/pin polish) · lock schema 1 · tooling 0.17.0
+**Current:** **0.17.1** (PyPI-default Action gate + reliable `check --github` + Audit→Watch funnel) · lock schema 1 · tooling 0.17.1
 
 ## North star (Gate Zero)
 
@@ -44,6 +44,7 @@ are removed.
 | **0.15.0** | Live install-PR Watching bugfix; pure tree-truth `diff --base`; product wheel diet (`auctelis_devtools`); lockless funnel CTA | **done** |
 | **0.16.0** | One-file `init --lockless`; fleet reach report; honest coverage/pins/terminal rendering; fail-closed truncation + lockless `status`; research/dev modules out of the wheel | **done** |
 | **0.17.0** | Root Marketplace `action.yml` + PyPI/wheel fast path; zero-clone `check --github`; 2026 adapter parity (Copilot/VS Code/Windsurf/Cline) + exact MCP pins + lockless first-run polish | **done** |
+| **0.17.1** | Zero-warning Action while `pypi_live=false`; `gh auth` + concurrent org audit; 1-click Watch links + pin config snippets | **done** |
 | Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate

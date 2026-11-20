@@ -30,6 +30,6 @@ Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 - [ ] Second: lockless workflow (`auctelis init --lockless`) or org reusable caller
 - [ ] Path under 10 minutes: report → paste workflow → Watching comment
 - [ ] Optional later: `init --owner team` / `--enforce`
-- [ ] Pin Action to git tag `v0.17.0` (or commit SHA)
+- [ ] Pin Action to git tag `v0.17.1` (or commit SHA)
 - [ ] Log row in `eval/pilot-metrics.csv` (surface_mix + install_path)
 - [ ] Re-check day 30 and update this tracker

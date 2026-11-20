@@ -369,6 +369,7 @@ def test_run_gate_init_policy_plus_workflow_is_pass_watching(tmp_path: Path):
 
 def test_check_first_run_footer_points_at_report_not_lock_only(tmp_path: Path):
     from auctelis.check import build_check_report, render_check
+    from auctelis.versioning import pypi_live
 
     root = tmp_path / "repo"
     root.mkdir()
@@ -376,7 +377,10 @@ def test_check_first_run_footer_points_at_report_not_lock_only(tmp_path: Path):
     report, cards, _scan = build_check_report(root)
     text = render_check(report, cards)
     assert "check --report" in text
-    assert "auctelis init --lockless" in text
+    if pypi_live():
+        assert "auctelis init --lockless" in text
+    else:
+        assert "docs/INSTALL.md" in text or "init --lockless" in text
     # No dead template path: the CLI writes the workflow itself.
     assert "templates/" not in text
     assert "auctelis-diff.yml" not in text

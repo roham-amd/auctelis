@@ -176,6 +176,9 @@ def _uv_executable() -> str:
 def _run_uv(args: list[str]) -> subprocess.CompletedProcess[str]:
     # Prefer a repo-local temp dir so nested ``uv`` works under sandboxes that
     # deny writes to the system TEMP (Access Denied on ``.tmp*`` / cache locks).
+    # Always override UV_CACHE_DIR — inherited sandbox cache paths can be locked
+    # by a concurrent hung ``uv``/``pip-audit`` and make ``uv lock --check`` fail
+    # with a false "out of sync" error.
     env = os.environ.copy()
     tmp = tools_dir() / ".tmp-uv"
     tmp.mkdir(parents=True, exist_ok=True)
@@ -184,7 +187,7 @@ def _run_uv(args: list[str]) -> subprocess.CompletedProcess[str]:
     env["TMP"] = str(tmp)
     cache = tmp / "cache"
     cache.mkdir(parents=True, exist_ok=True)
-    env.setdefault("UV_CACHE_DIR", str(cache))
+    env["UV_CACHE_DIR"] = str(cache)
     return subprocess.run(
         [_uv_executable(), *args],
         cwd=tools_dir(),

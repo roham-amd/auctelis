@@ -616,6 +616,24 @@ def pin_suggestion(record: dict[str, Any]) -> str:
     return "prefer a versioned/signed endpoint, then reseal the lock"
 
 
+def pin_config_snippet(record: dict[str, Any]) -> str:
+    """Pasteable config replacement line for an unpinned MCP launcher (offline)."""
+    launch = launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
+    pkg = _floating_package_token(record)
+    if launch in {"npx", "bunx"}:
+        token = pkg or "<pkg>"
+        return f'"args": ["-y", "{token}@<exact-version>"]'
+    if launch in {"uvx", "pipx"}:
+        token = pkg or "<pkg>"
+        return f'"args": ["{token}==<exact-version>"]'
+    if launch in {"docker", "podman"}:
+        token = pkg or "<image>"
+        return f'"image": "{token}@sha256:<digest>"'
+    if launch:
+        return f'pin "{launch}" to an exact version or digest'
+    return "prefer a versioned/signed endpoint, then reseal the lock"
+
+
 def pin_report(records: list[dict[str, Any]] | None) -> dict[str, Any]:
     """MCP pin doctor: unpinned/floating servers and a concrete suggestion."""
     mcps = [r for r in (records or []) if kind_label(r.get("kind")) == "mcp"]
@@ -631,6 +649,7 @@ def pin_report(records: list[dict[str, Any]] | None) -> dict[str, Any]:
                 "pin_state": str(record.get("pin_state") or "unknown"),
                 "env_keys": _env_keys(record, limit=8),
                 "suggestion": pin_suggestion(record),
+                "config_snippet": pin_config_snippet(record),
             }
         )
     items.sort(key=lambda item: (item["name"], item["path"]))

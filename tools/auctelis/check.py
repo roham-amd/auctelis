@@ -33,6 +33,7 @@ from auctelis.authority_lock import (
 from auctelis.lock_io import AuthorityLockError, empty_authority_lock, load_authority_lock
 from auctelis.security.engine import ScanResult, run_authority_inventory
 from auctelis.textutil import sanitize_terminal_line, strip_control
+from auctelis.versioning import product_version, pypi_live
 
 _REACH_KEYS = (
     "mcp",
@@ -303,6 +304,21 @@ def _pins_line(report: dict[str, Any]) -> str:
     )
 
 
+def _next_step_line() -> str:
+    """First-run footer: bare ``auctelis`` only when PyPI is live."""
+    if pypi_live():
+        return (
+            "Next: auctelis init --lockless  # one-file comment-only PR Watch, or "
+            "auctelis check --report out/ for an HTML/MD/JSON Reach Report"
+        )
+    ver = product_version()
+    return (
+        f"Next: auctelis check --report out/ for an HTML/MD/JSON Reach Report, or "
+        f'see docs/INSTALL.md for `uvx --from "git+…@v{ver}#subdirectory=tools" '
+        f"auctelis init --lockless`"
+    )
+
+
 def render_pin_report(report: dict[str, Any]) -> str:
     """Detailed MCP pin doctor output for ``check --pins``."""
     pins = report.get("pins") or {}
@@ -316,6 +332,9 @@ def render_pin_report(report: dict[str, Any]) -> str:
         env = f" · env {', '.join(item['env_keys'])}" if item.get("env_keys") else ""
         lines.append(f"  {item['name']}{where} · pin {item['pin_state']}{env}")
         lines.append(f"    → {item['suggestion']}")
+        snippet = str(item.get("config_snippet") or "").strip()
+        if snippet:
+            lines.append(f"    config: {snippet}")
     return "\n".join(sanitize_terminal_line(line) for line in lines)
 
 
@@ -387,10 +406,7 @@ def render_check(
             lines.append(f"Mode: lockless (no {LOCK_NAME}) · label {label}")
         else:
             lines.append(f"Verdict: {verdict} · label {label}")
-        lines.append(
-            "Next: auctelis init --lockless  # one-file comment-only PR Watch, or "
-            "auctelis check --report out/ for an HTML/MD/JSON Reach Report"
-        )
+        lines.append(_next_step_line())
         lines.extend(_coverage_footer())
         return _terminal(lines)
 

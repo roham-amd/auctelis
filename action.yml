@@ -146,6 +146,9 @@ runs:
         # workspace-relative path. Never silently uv-sync a PR-controlled tools/.
         # Special values: path = preinstalled CLI; pypi = uv tool install from PyPI
         # (falls back to bundled tools/ when the package is unavailable).
+        # AUCTELIS_PYPI_DEFAULT must match release-manifest.json pypi_live
+        # (false until PyPI returns HTTP 200 for this version).
+        AUCTELIS_PYPI_DEFAULT="false"
         chosen="${AUCTELIS_INSTALL_TOOLS_FROM}"
         ver="${AUCTELIS_VERSION_INPUT}"
         if [[ -z "${ver}" && "${AUCTELIS_ACTION_REF}" =~ ^v[0-9] ]]; then
@@ -169,7 +172,9 @@ runs:
           echo "Using preinstalled auctelis on PATH."
           exit 0
         fi
-        if [[ "${chosen}" == "pypi" || ( -z "${chosen}" && -n "${ver}" ) ]]; then
+        # Explicit install-tools-from: pypi always tries PyPI. Auto PyPI on tagged
+        # refs only when AUCTELIS_PYPI_DEFAULT=true (pypi_live cutover).
+        if [[ "${chosen}" == "pypi" || ( -z "${chosen}" && -n "${ver}" && "${AUCTELIS_PYPI_DEFAULT}" == "true" ) ]]; then
           echo "mode=pypi" >> "$GITHUB_OUTPUT"
           echo "dir=${bundled}" >> "$GITHUB_OUTPUT"
           echo "Will try PyPI install auctelis==${ver:-latest} (bundled fallback: ${bundled:-none})."

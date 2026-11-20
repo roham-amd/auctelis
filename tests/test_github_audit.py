@@ -95,10 +95,11 @@ def test_resolve_targets_org_pagination_and_max_repos(monkeypatch: pytest.Monkey
             {"Link": ""},
         ),
     }
-    _install_http(monkeypatch, routes)
+    seen = _install_http(monkeypatch, routes)
     slugs = resolve_targets(["acme"], max_repos=2)
     assert slugs == ["acme/one", "acme/three"][:2]
     assert len(slugs) == 2
+    assert any("sort=pushed" in u and "direction=desc" in u for u in seen)
 
 
 def test_resolve_targets_owner_repo_passthrough(monkeypatch: pytest.MonkeyPatch):
@@ -131,11 +132,13 @@ def test_stage_repo_fetches_only_watched_paths(monkeypatch: pytest.MonkeyPatch, 
     }
     seen = _install_http(monkeypatch, routes)
     staging = tmp_path / "stage"
-    root, notes, truncated = stage_repo_watched_files(
+    root, notes, truncated, meta = stage_repo_watched_files(
         "acme/app", staging_dir=staging, max_files=100
     )
     assert root == staging
     assert not truncated
+    assert meta["default_branch"] == "main"
+    assert meta["github_web_base"] == "https://github.com"
     assert (staging / ".cursor" / "mcp.json").is_file()
     assert not (staging / "README.md").exists()
     assert not (staging / "src" / "main.py").exists()
@@ -165,10 +168,11 @@ def test_stage_repo_rejects_traversal_and_reports_truncated(
         },
     }
     _install_http(monkeypatch, routes)
-    root, notes, truncated = stage_repo_watched_files(
+    root, notes, truncated, meta = stage_repo_watched_files(
         "acme/app", staging_dir=tmp_path / "t", max_files=100
     )
     assert truncated is True
+    assert meta["default_branch"] == "main"
     assert any("truncated=true" in n for n in notes)
     assert not (root / "evil").exists()
     assert (root / ".cursorrules").is_file()
@@ -216,9 +220,104 @@ def test_rate_limit_is_fail_honest(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("GITHUB_TOKEN", "tok")
 
     def opener(req: Request, timeout: float = 0):
-        raise HTTPError(req.full_url, 403, "rate", hdrs=None, fp=None)  # type: ignore[arg-type]
+        raise HTTPError(
+            req.full_url,
+            429,
+            "rate",
+            hdrs={"X-RateLimit-Remaining": "0"},
+            fp=None,
+        )  # type: ignore[arg-type]
 
     monkeypatch.setattr("urllib.request.urlopen", opener)
     with pytest.raises(GitHubAuditError) as exc:
         resolve_targets(["acme"], max_repos=5)
-    assert exc.value.status == 403
+    assert exc.value.status == 429
+    assert exc.value.rate_limited is True
+
+
+def test_github_web_base_derives_ghes_and_server_url(monkeypatch: pytest.MonkeyPatch):
+    from auctelis import github_audit
+
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    monkeypatch.setenv("GITHUB_API_URL", "https://git.corp.example/api/v3")
+    assert github_audit._github_web_base() == "https://git.corp.example"
+    monkeypatch.setenv("GITHUB_SERVER_URL", "https://git.corp.example")
+    assert github_audit._github_web_base() == "https://git.corp.example"
+    monkeypatch.delenv("GITHUB_API_URL", raising=False)
+    monkeypatch.delenv("GITHUB_SERVER_URL", raising=False)
+    assert github_audit._github_web_base() == "https://github.com"
+
+
+def test_token_falls_back_to_gh_auth(monkeypatch: pytest.MonkeyPatch):
+    from auctelis import github_audit
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+
+    class _Proc:
+        returncode = 0
+        stdout = "gh-token-value\n"
+        stderr = ""
+
+    def fake_run(*args, **kwargs):
+        assert args[0] == ["gh", "auth", "token"]
+        assert kwargs.get("shell") is False
+        return _Proc()
+
+    monkeypatch.setattr(github_audit.subprocess, "run", fake_run)
+    assert github_audit._token() == "gh-token-value"
+
+
+def test_audit_rate_limit_skips_remaining(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "tok")
+    calls = {"n": 0}
+
+    def opener(req: Request, timeout: float = 0):
+        calls["n"] += 1
+        url = req.full_url
+        if "/repos/acme/one" in url and "/git/" not in url:
+            raise HTTPError(
+                url,
+                429,
+                "rate",
+                hdrs={"X-RateLimit-Remaining": "0"},
+                fp=None,
+            )  # type: ignore[arg-type]
+        raise HTTPError(url, 404, "not found", hdrs=None, fp=None)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("urllib.request.urlopen", opener)
+    results, honesty = audit_github_repos(["acme/one", "acme/two"], max_repos=5)
+    assert len(results) == 2
+    assert all(r.skipped for r in results)
+    assert any("rate limit" in n.lower() for n in honesty)
+    # Second repo must not be fetched after rate-limit abort.
+    assert not any(
+        "acme/two" in (r.notes[0] if r.notes else "") and "404" in (r.notes[0] if r.notes else "")
+        for r in results
+    )
+    assert results[1].notes and "rate limit" in results[1].notes[0].lower()
+
+
+def test_audit_sets_default_branch_and_web_base(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "tok")
+    mcp = json.dumps({"mcpServers": {}})
+    tree = {
+        "truncated": False,
+        "tree": [
+            {"path": ".cursor/mcp.json", "type": "blob", "sha": "sha-mcp", "size": len(mcp)},
+        ],
+    }
+    routes = {
+        "https://api.github.com/repos/acme/app": {"default_branch": "develop"},
+        "https://api.github.com/repos/acme/app/git/trees/develop": tree,
+        "https://api.github.com/repos/acme/app/git/blobs/sha-mcp": {
+            "encoding": "base64",
+            "content": _b64(mcp),
+            "size": len(mcp),
+        },
+    }
+    _install_http(monkeypatch, routes)
+    results, _ = audit_github_repos(["acme/app"], max_repos=5, top=3)
+    assert results[0].report is not None
+    assert results[0].report["default_branch"] == "develop"
+    assert results[0].report["github_web_base"] == "https://github.com"

@@ -19,7 +19,7 @@ jobs:
 
       - name: auctelis Authority Diff
         # Pinned by auctelis to release v0.17.0 (never consumer-repo HEAD)
-        uses: roham-amd/auctelis@v0.17.0
+        uses: roham-amd/auctelis@v0.17.1
         with:
           path: .
           mode: scan

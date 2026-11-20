@@ -712,12 +712,18 @@ def check_wheel_omits_research() -> list[str]:
     hits = [b for b in banned if any(b in n for n in names)]
     if hits:
         raise SystemExit(f"{wheel.name} still contains maintainer/research modules: {hits}")
+    # AUCT-024: pypi_live() reads packaged release-manifest at runtime.
+    if not any(n.endswith("auctelis/data/release-manifest.json") for n in names):
+        raise SystemExit(f"{wheel.name} missing auctelis/data/release-manifest.json")
     if ver not in wheel.name:
         return [
             f"ok {wheel.name} omits maintainer/research modules "
             f"(warning: expected auctelis-{ver}-*.whl)"
         ]
-    return [f"ok {wheel.name} omits maintainer/research modules"]
+    return [
+        f"ok {wheel.name} omits maintainer/research modules",
+        f"ok {wheel.name} ships release-manifest.json",
+    ]
 
 
 def check_action_parity() -> list[str]:
@@ -753,6 +759,18 @@ def check_action_parity() -> list[str]:
         raise SystemExit("root action.yml branding.icon must be shield")
     if "mode=pypi" not in root_text:
         raise SystemExit("root action.yml missing PyPI fast-path install mode")
+    pypi_default = re.search(r'AUCTELIS_PYPI_DEFAULT="(true|false)"', root_text)
+    if pypi_default is None:
+        raise SystemExit(
+            'root action.yml missing AUCTELIS_PYPI_DEFAULT="true|false" '
+            "(must match release-manifest.json pypi_live)"
+        )
+    expected_pypi = "true" if _pypi_live() else "false"
+    if pypi_default.group(1) != expected_pypi:
+        raise SystemExit(
+            f"AUCTELIS_PYPI_DEFAULT={pypi_default.group(1)!r} does not match "
+            f"release-manifest.json pypi_live={expected_pypi}"
+        )
     # Path filter must stay aligned with watched_paths.PATH_FILTER_GREP.
     from auctelis.inventory.watched_paths import PATH_FILTER_GREP
 
@@ -782,6 +800,7 @@ def check_action_parity() -> list[str]:
     return [
         "ok root action.yml Marketplace branding + inputs",
         "ok subpath action.yml input parity",
+        f"ok AUCTELIS_PYPI_DEFAULT={expected_pypi} matches pypi_live",
         f"ok workflow templates recognize auctelis@{pin}",
     ]
 

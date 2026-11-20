@@ -10,11 +10,16 @@ import pytest
 from auctelis.check import build_check_report, render_check
 from auctelis.cli import main
 from auctelis.export.reach_report import (
+    build_fleet_reach_report,
     build_reach_report,
     diff_reach_reports,
     load_reach_baseline,
+    lockless_workflow_yaml,
+    render_fleet_reach_html,
+    render_fleet_reach_md,
     render_reach_html,
     render_reach_md,
+    watch_pr_url,
     write_reach_report_artifacts,
 )
 from auctelis.inventory.coverage import (
@@ -22,6 +27,7 @@ from auctelis.inventory.coverage import (
     family_coverage_line_from_coverage,
     truncation_honesty_notes,
 )
+from auctelis.versioning import product_version
 
 
 def test_truncation_notes_from_synthetic_coverage():
@@ -337,7 +343,7 @@ def test_html_report_parity_pins_and_manual_families():
         assert "Not auto-inspected" in text
         assert "Browser agents" in text
         assert "Runtime behavior" in text
-        assert "init --lockless" in text
+        assert "Lockless PR Watch" in text or "auctelis.yml" in text
     # Suggestion text is present in both; HTML and Markdown escape angle brackets.
     assert "pin the package: npx -y @linear/mcp@&lt;exact-version&gt;" in html
     assert "pin the package: npx -y @linear/mcp@&lt;exact-version&gt;" in md
@@ -387,7 +393,9 @@ def test_fleet_check_ranks_repositories_by_tier2(tmp_path: Path):
         assert "repo_other" in text
         assert "Unpinned MCP launchers" in text
         assert "Not auto-inspected" in text
-        assert "init --lockless" in text
+        assert "Lockless PR Watch" in text or "auctelis.yml" in text
+        # Local-path fleet reports must not invent broken GitHub /new/ links.
+        assert "/new/" not in text
 
 
 def test_fleet_check_requires_report(tmp_path: Path, capsys):
@@ -483,3 +491,136 @@ def test_build_reach_report_md_golden_shape():
     assert "curl-pipe" in md
     assert ".cursor/hooks.json" in md
     assert "DECLARED/CONFIGURED" in md or "declared" in md.lower()
+    assert "Lockless PR Watch" in md
+    assert "/new/" not in md
+
+
+def test_watch_pr_url_for_github_slug():
+    url = watch_pr_url(
+        repository="acme/payments",
+        default_branch="main",
+        github_web_base="https://github.com",
+    )
+    assert url is not None
+    assert url.startswith("https://github.com/acme/payments/new/main?")
+    assert "filename=.github%2Fworkflows%2Fauctelis.yml" in url
+    assert f"roham-amd%2Fauctelis%40v{product_version()}" in url or (
+        f"auctelis%40v{product_version()}" in url
+    )
+    assert "value=" in url
+
+
+def test_watch_pr_url_omitted_for_local_path():
+    assert (
+        watch_pr_url(
+            repository="/tmp/repo",
+            default_branch="main",
+        )
+        is None
+    )
+    assert (
+        watch_pr_url(
+            repository="acme/app",
+            default_branch="../evil",
+        )
+        is None
+    )
+
+
+def test_github_fleet_report_includes_watch_links_and_skipped():
+    pin = f"v{product_version()}"
+    assert pin in lockless_workflow_yaml()
+    entries = [
+        (
+            {
+                "repository": "acme/payments",
+                "default_branch": "main",
+                "github_web_base": "https://github.com",
+                "coverage_line": "",
+                "unparsed": 0,
+                "reach": {
+                    "total": 1,
+                    "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                    "records": [
+                        {
+                            "kind": "mcp",
+                            "name": "evil",
+                            "path": ".cursor/mcp.json",
+                            "tier": 2,
+                            "reason": "new MCP",
+                        }
+                    ],
+                    "top": [],
+                    "top_cards": [],
+                },
+                "pins": {
+                    "total": 1,
+                    "unpinned": 1,
+                    "items": [
+                        {
+                            "name": "evil",
+                            "path": ".cursor/mcp.json",
+                            "suggestion": "pin the package: npx -y demo@<exact-version>",
+                            "config_snippet": '"args": ["-y", "demo@<exact-version>"]',
+                        }
+                    ],
+                },
+                "counts": {},
+                "delta": {},
+                "label": "NONE",
+                "verdict": "BASELINE_NEEDED",
+                "schema_version": "authority-diff/1",
+                "lock_present": False,
+                "first_run": True,
+                "meaningful": False,
+            },
+            None,
+            [],
+        )
+    ]
+    doc = build_fleet_reach_report(
+        entries,
+        skipped=[
+            {
+                "repository": "acme/private",
+                "notes": ["HTTP 403"],
+                "skipped": True,
+                "truncated": False,
+            }
+        ],
+        honesty_notes=["GitHub API rate limit exhausted — remaining repositories skipped."],
+    )
+    html = render_fleet_reach_html(doc)
+    md = render_fleet_reach_md(doc)
+    for text in (html, md):
+        assert "acme/payments/new/main" in text or "acme/payments/new/main?" in text
+        assert ".github/workflows/auctelis.yml" in text or "auctelis.yml" in text
+        assert "Skipped / Incomplete" in text
+        assert "acme/private" in text
+        assert "rate limit" in text.lower()
+        assert "demo@&lt;exact-version&gt;" in text or "demo@<exact-version>" in text
+    assert "<script>" not in html
+    # Hostile slug must not inject into HTML when rendered via watch helpers.
+    hostile = build_reach_report(
+        {
+            "repository": 'acme/pay"><script>alert(1)</script>',
+            "default_branch": "main",
+            "github_web_base": "https://github.com",
+            "coverage_line": "",
+            "unparsed": 0,
+            "reach": {"total": 0, "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 0}},
+            "pins": {},
+            "counts": {},
+            "delta": {},
+            "label": "NONE",
+            "verdict": "BASELINE_NEEDED",
+            "schema_version": "authority-diff/1",
+            "lock_present": False,
+            "first_run": True,
+            "meaningful": False,
+        },
+        None,
+    )
+    hostile_html = render_reach_html(hostile)
+    assert "<script>alert(1)</script>" not in hostile_html
+    assert "/new/" not in hostile_html  # invalid slug → no watch link

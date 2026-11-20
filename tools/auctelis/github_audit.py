@@ -1,4 +1,4 @@
-"""Zero-clone GitHub org/repo Reach Audit via Trees + Blobs API (AUCT-022).
+"""Zero-clone GitHub org/repo Reach Audit via Trees + Blobs API (AUCT-022/025/026).
 
 Uses stdlib ``urllib`` only. Fetches watched agent-config paths into a temp
 directory, runs the normal check inventory, and never clones a git repo.
@@ -10,12 +10,15 @@ import base64
 import contextlib
 import json
 import os
+import re
 import shutil
+import subprocess
 import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -29,14 +32,23 @@ from auctelis.textutil import validated_http_url
 
 _USER_AGENT = "auctelis-github-audit"
 _API_VERSION = "2022-11-28"
+_BLOB_WORKERS = 6
+_OWNER_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 
 class GitHubAuditError(Exception):
     """Honest fail for auth, rate-limit, or unreachable GitHub API."""
 
-    def __init__(self, message: str, *, status: int = 0) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int = 0,
+        rate_limited: bool = False,
+    ) -> None:
         super().__init__(message)
         self.status = status
+        self.rate_limited = rate_limited
 
 
 @dataclass
@@ -56,9 +68,47 @@ def _api_base() -> str:
     return (os.environ.get("GITHUB_API_URL") or "https://api.github.com").rstrip("/")
 
 
+def _github_web_base() -> str:
+    """Public GitHub or GHES web origin for ``/new/`` PR-Watch links."""
+    server = (os.environ.get("GITHUB_SERVER_URL") or "").rstrip("/")
+    if server:
+        return server
+    api = _api_base()
+    if api == "https://api.github.com" or api.endswith("://api.github.com"):
+        return "https://github.com"
+    if api.endswith("/api/v3"):
+        return api[: -len("/api/v3")]
+    if api.endswith("/api"):
+        return api[: -len("/api")]
+    return api
+
+
 def _token() -> str | None:
     tok = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    return tok.strip() if tok and tok.strip() else None
+    if tok and tok.strip():
+        return tok.strip()
+    try:
+        proc = subprocess.run(
+            ["gh", "auth", "token"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+            shell=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode != 0:
+        return None
+    out = (proc.stdout or "").strip()
+    return out or None
+
+
+def _is_rate_limited(status: int, hdrs: dict[str, str]) -> bool:
+    """True when GitHub signals exhaustion (remaining=0 or HTTP 429)."""
+    if str(hdrs.get("x-ratelimit-remaining") or "").strip() == "0":
+        return True
+    return status == 429
 
 
 def _request_json(
@@ -83,15 +133,31 @@ def _request_json(
         with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             body = resp.read()
             hdrs = {k.lower(): v for k, v in resp.headers.items()}
+            if _is_rate_limited(int(resp.status), hdrs):
+                raise GitHubAuditError(
+                    f"GitHub API rate limit exhausted for {url}",
+                    status=int(resp.status),
+                    rate_limited=True,
+                )
             if not body:
                 return None, int(resp.status), hdrs
             return json.loads(body.decode("utf-8")), int(resp.status), hdrs
     except urllib.error.HTTPError as exc:
         hdrs = {k.lower(): v for k, v in (exc.headers.items() if exc.headers else [])}
-        if exc.code in {401, 403, 429}:
-            detail = "rate limit or auth" if exc.code in {403, 429} else "unauthorized"
+        if _is_rate_limited(exc.code, hdrs) or exc.code == 429:
             raise GitHubAuditError(
-                f"GitHub API HTTP {exc.code} ({detail}) for {url}",
+                f"GitHub API HTTP {exc.code} (rate limit) for {url}",
+                status=exc.code,
+                rate_limited=True,
+            ) from exc
+        if exc.code == 401:
+            raise GitHubAuditError(
+                f"GitHub API HTTP {exc.code} (unauthorized) for {url}",
+                status=exc.code,
+            ) from exc
+        if exc.code == 403:
+            raise GitHubAuditError(
+                f"GitHub API HTTP {exc.code} (forbidden) for {url}",
                 status=exc.code,
             ) from exc
         return None, int(exc.code), hdrs
@@ -158,15 +224,21 @@ def resolve_targets(
             if len(slugs) >= max_repos:
                 return slugs[:max_repos]
             continue
-        # Org or user listing — over-fetch so archived repos do not eat the cap.
+        # Org or user listing — most recently pushed first so the cap hits active repos.
         fetch_cap = max(max_repos * 3, max_repos)
-        org_url = f"{base}/orgs/{urllib.parse.quote(target)}/repos?type=all&per_page=100"
+        org_url = (
+            f"{base}/orgs/{urllib.parse.quote(target)}/repos"
+            f"?type=all&per_page=100&sort=pushed&direction=desc"
+        )
         try:
             repos = _paginate(org_url, token=tok, max_items=fetch_cap)
         except GitHubAuditError:
             raise
         if not repos:
-            user_url = f"{base}/users/{urllib.parse.quote(target)}/repos?type=owner&per_page=100"
+            user_url = (
+                f"{base}/users/{urllib.parse.quote(target)}/repos"
+                f"?type=owner&per_page=100&sort=pushed&direction=desc"
+            )
             repos = _paginate(user_url, token=tok, max_items=fetch_cap)
         for item in repos:
             if item.get("archived"):
@@ -233,23 +305,26 @@ def stage_repo_watched_files(
     max_files: int = MAX_WATCHED_FILES_PER_REPO,
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
     staging_dir: Path | None = None,
-) -> tuple[Path, list[str], bool]:
+) -> tuple[Path, list[str], bool, dict[str, str]]:
     """Fetch watched blobs into ``staging_dir`` (or a new temp dir).
 
-    Returns ``(root, notes, truncated)``. Caller owns cleanup when
+    Returns ``(root, notes, truncated, meta)`` where ``meta`` includes
+    ``default_branch`` and ``github_web_base``. Caller owns cleanup when
     ``staging_dir`` was provided; otherwise caller must remove the temp dir.
     """
     tok = token if token is not None else _token()
     base = _api_base()
+    web_base = _github_web_base()
     if "/" not in slug:
         raise GitHubAuditError(f"expected owner/repo, got {slug!r}")
     owner, _, repo = slug.partition("/")
-    meta, status, _ = _request_json(f"{base}/repos/{owner}/{repo}", token=tok)
+    meta_doc, status, _ = _request_json(f"{base}/repos/{owner}/{repo}", token=tok)
     if status == 404:
         raise GitHubAuditError(f"repository not found: {slug}", status=404)
-    if status != 200 or not isinstance(meta, dict):
+    if status != 200 or not isinstance(meta_doc, dict):
         raise GitHubAuditError(f"could not load repository metadata for {slug} (HTTP {status})")
-    branch = str(meta.get("default_branch") or "") or "main"
+    branch = str(meta_doc.get("default_branch") or "") or "main"
+    meta = {"default_branch": branch, "github_web_base": web_base}
     tree_url = (
         f"{base}/repos/{owner}/{repo}/git/trees/{urllib.parse.quote(branch, safe='')}?recursive=1"
     )
@@ -258,7 +333,7 @@ def stage_repo_watched_files(
         # Empty repo or missing default branch.
         root = staging_dir or Path(tempfile.mkdtemp(prefix="auctelis-gh-"))
         root.mkdir(parents=True, exist_ok=True)
-        return root, [f"{slug}: empty or missing default branch tree"], False
+        return root, [f"{slug}: empty or missing default branch tree"], False, meta
     if tstatus != 200 or not isinstance(tree_doc, dict):
         raise GitHubAuditError(f"could not load git tree for {slug}@{branch} (HTTP {tstatus})")
     truncated = bool(tree_doc.get("truncated"))
@@ -290,23 +365,43 @@ def stage_repo_watched_files(
     root = staging_dir or Path(tempfile.mkdtemp(prefix="auctelis-gh-"))
     root.mkdir(parents=True, exist_ok=True)
     fetched = 0
-    for item in watched:
+
+    def _one(item: dict[str, Any]) -> tuple[str, str | None, str | None]:
         sha = item["sha"]
         rel = item["path"]
         if not sha:
-            continue
-        text = _fetch_blob_text(
-            owner=owner, repo=repo, sha=sha, token=tok, max_bytes=max_file_bytes
-        )
+            return rel, None, "missing sha"
+        try:
+            text = _fetch_blob_text(
+                owner=owner, repo=repo, sha=sha, token=tok, max_bytes=max_file_bytes
+            )
+        except GitHubAuditError:
+            raise
         if text is None:
-            notes.append(f"{slug}: failed to fetch blob for {rel}")
-            continue
-        dest = root / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(text, encoding="utf-8", newline="\n")
-        fetched += 1
+            return rel, None, f"failed to fetch blob for {rel}"
+        return rel, text, None
+
+    if watched:
+        with ThreadPoolExecutor(max_workers=_BLOB_WORKERS) as pool:
+            futures = [pool.submit(_one, item) for item in watched]
+            for fut in as_completed(futures):
+                try:
+                    rel, text, err = fut.result()
+                except GitHubAuditError:
+                    for pending in futures:
+                        pending.cancel()
+                    raise
+                if err:
+                    notes.append(f"{slug}: {err}")
+                    continue
+                if text is None:
+                    continue
+                dest = root / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_text(text, encoding="utf-8", newline="\n")
+                fetched += 1
     notes.insert(0, f"{slug}: fetched {fetched} watched file(s)")
-    return root, notes, truncated
+    return root, notes, truncated, meta
 
 
 def audit_github_repos(
@@ -324,7 +419,7 @@ def audit_github_repos(
     honesty: list[str] = []
     if not tok:
         honesty.append(
-            "No GITHUB_TOKEN/GH_TOKEN — using unauthenticated GitHub API "
+            "No GITHUB_TOKEN/GH_TOKEN/gh auth — using unauthenticated GitHub API "
             "(public repos only; rate limits are lower)."
         )
     try:
@@ -340,15 +435,18 @@ def audit_github_repos(
 
     file_cap = max_files if max_files is not None else MAX_WATCHED_FILES_PER_REPO
     results: list[RepoAuditResult] = []
-    for slug in slugs:
+    abort_note = "GitHub API rate limit exhausted — remaining repositories skipped."
+    for index, slug in enumerate(slugs):
         staging: Path | None = None
         try:
-            staging, notes, truncated = stage_repo_watched_files(
+            staging, notes, truncated, meta = stage_repo_watched_files(
                 slug, token=tok, max_files=file_cap
             )
             report, cards, scan = build_check_report(staging, top=top, limits=limits)
             # Never leak the temp path as the repository label.
             report["repository"] = slug
+            report["default_branch"] = meta.get("default_branch") or "main"
+            report["github_web_base"] = meta.get("github_web_base") or _github_web_base()
             if truncated:
                 report.setdefault("honesty_notes", [])
                 if isinstance(report["honesty_notes"], list):
@@ -373,6 +471,17 @@ def audit_github_repos(
                 )
             )
             honesty.append(f"{slug}: skipped — {exc}")
+            if exc.rate_limited:
+                honesty.append(abort_note)
+                for rest in slugs[index + 1 :]:
+                    results.append(
+                        RepoAuditResult(
+                            repository=rest,
+                            skipped=True,
+                            notes=[abort_note],
+                        )
+                    )
+                break
         except OSError as exc:
             results.append(
                 RepoAuditResult(
@@ -386,6 +495,12 @@ def audit_github_repos(
             if staging is not None:
                 _rm_tree(staging)
     return results, honesty
+
+
+def is_owner_repo_slug(value: object) -> bool:
+    """True when ``value`` looks like a safe ``owner/repo`` GitHub slug."""
+    text = str(value or "").strip()
+    return bool(_OWNER_REPO_RE.fullmatch(text))
 
 
 def _rm_tree(path: Path) -> None:

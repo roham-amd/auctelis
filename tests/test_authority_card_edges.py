@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from auctelis.authority_card import delta_cards, launcher, pin_suggestion, record_card
+from auctelis.authority_card import (
+    delta_cards,
+    launcher,
+    pin_config_snippet,
+    pin_suggestion,
+    record_card,
+)
 from auctelis.reach_tiers import TIER_FAIL, record_reach_tier
 
 
@@ -76,3 +82,16 @@ def test_pin_suggestion_names_concrete_package_from_args():
     )
     assert "demo-evil-mcp@<exact-version>" in suggestion
     assert "<pkg>" not in suggestion
+
+
+def test_pin_config_snippet_for_npx_uvx_docker():
+    npx = pin_config_snippet(
+        {"launcher": "npx", "pin_state": "floating", "args": ["-y", "demo-evil-mcp"]}
+    )
+    assert npx == '"args": ["-y", "demo-evil-mcp@<exact-version>"]'
+    uvx = pin_config_snippet({"launcher": "uvx", "pin_state": "floating", "args": ["demo-tool"]})
+    assert uvx == '"args": ["demo-tool==<exact-version>"]'
+    docker = pin_config_snippet(
+        {"launcher": "docker", "pin_state": "floating", "args": ["run", "demo/img"]}
+    )
+    assert docker == '"image": "demo/img@sha256:<digest>"'

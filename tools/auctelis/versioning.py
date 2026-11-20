@@ -10,19 +10,20 @@ import json
 from functools import lru_cache
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as pkg_version
+from pathlib import Path
 
-from auctelis.paths import version_file_path, versions_path
+from auctelis.paths import repo_root, version_file_path, versions_path
 
 # Embedded fallbacks — kept in sync by ``auctelis build`` / release checklist.
-_EMBEDDED_PRODUCT_VERSION = "0.17.0"
+_EMBEDDED_PRODUCT_VERSION = "0.17.1"
 _EMBEDDED_VERSIONS: dict[str, str] = {
-    "auctelis_product": "0.17.0",
+    "auctelis_product": "0.17.1",
     "audit_procedure": "1.0",
     "audit_report_schema": "1.0",
     "ecosystem_graph_schema": "1.0",
-    "test_corpus": "0.17.0",
+    "test_corpus": "0.17.1",
     "rule_quality_pack": "1.2.0",
-    "build_tool": "auctelis-0.17.0",
+    "build_tool": "auctelis-0.17.1",
     "findings_contract": "1.2",
     "baseline_contract": "1.3",
     "rule_pack": "1.6",
@@ -64,3 +65,22 @@ def package_version() -> str:
         from auctelis import __version__
 
         return __version__
+
+
+@lru_cache(maxsize=1)
+def pypi_live() -> bool:
+    """Whether first-run docs may promise bare ``uvx auctelis`` (PyPI published)."""
+    candidates = (
+        repo_root() / "canonical" / "release-manifest.json",
+        Path(__file__).resolve().parent / "data" / "release-manifest.json",
+    )
+    for path in candidates:
+        try:
+            if not path.is_file():
+                continue
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(data, dict):
+            return bool(data.get("pypi_live"))
+    return False

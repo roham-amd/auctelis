@@ -9,11 +9,15 @@ from __future__ import annotations
 
 import html
 import json
+import re
+import urllib.parse
 from collections.abc import Sequence
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
 from auctelis.export.authority_sbom import build_authority_sbom
+from auctelis.github_audit import is_owner_repo_slug
 from auctelis.inventory.coverage import (
     ADAPTER_COVERAGE,
     family_coverage_line_from_coverage,
@@ -35,13 +39,15 @@ _DECLARED_ONLY_DISCLAIMER = (
     "permissions, and does not establish VERIFIED runtime behavior."
 )
 
+_SAFE_BRANCH_RE = re.compile(r"^[A-Za-z0-9._/-]+$")
+
 _NEXT_STEP_MD = (
-    "_Next step: `auctelis init --lockless` to watch future agent-authority "
-    "changes in one quiet PR comment._"
+    "_Next step: paste the lockless workflow below (or click **Watch PRs**) to "
+    "watch future agent-authority changes in one quiet PR comment._"
 )
 _NEXT_STEP_MD_PLURAL = (
-    "_Next step: `auctelis init --lockless` in each repository to watch future "
-    "agent-authority changes in one quiet PR comment._"
+    "_Next step: paste the lockless workflow below (or click **Watch PRs** per "
+    "repo) to watch future agent-authority changes in one quiet PR comment._"
 )
 
 
@@ -86,11 +92,171 @@ def _manual_md_lines(doc: dict[str, Any]) -> list[str]:
     return lines
 
 
+@lru_cache(maxsize=1)
+def lockless_workflow_yaml() -> str:
+    """Release-pinned lockless PR Watch workflow (from packaged template)."""
+    path = Path(__file__).resolve().parents[1] / "templates" / "auctelis-diff.yml"
+    text = path.read_text(encoding="utf-8")
+    pin = f"v{product_version()}"
+    # Keep report snippets aligned with the running product version.
+    return re.sub(
+        r"(uses:\s*roham-amd/auctelis(?:/\.github/actions/auctelis-gate)?@)v[^\s#]+",
+        rf"\g<1>{pin}",
+        text,
+    )
+
+
+def _safe_branch(value: object) -> str | None:
+    text = str(value or "").strip()
+    if not text or not _SAFE_BRANCH_RE.fullmatch(text):
+        return None
+    if ".." in text or text.startswith("/") or text.endswith("/"):
+        return None
+    return text
+
+
+def watch_pr_url(
+    *,
+    repository: object,
+    default_branch: object,
+    github_web_base: object = "https://github.com",
+    workflow: str | None = None,
+) -> str | None:
+    """Build a GitHub ``/new/`` URL that pre-fills lockless ``auctelis.yml``."""
+    slug = str(repository or "").strip()
+    if not is_owner_repo_slug(slug):
+        return None
+    branch = _safe_branch(default_branch)
+    if not branch:
+        return None
+    base = str(github_web_base or "https://github.com").rstrip("/")
+    if not base.startswith("https://") and not base.startswith("http://"):
+        return None
+    body = workflow if workflow is not None else lockless_workflow_yaml()
+    query = urllib.parse.urlencode(
+        {
+            "filename": ".github/workflows/auctelis.yml",
+            "value": body,
+        }
+    )
+    branch_q = urllib.parse.quote(branch, safe="/")
+    return f"{base}/{slug}/new/{branch_q}?{query}"
+
+
+def _workflow_snippet_md() -> list[str]:
+    yaml_text = lockless_workflow_yaml().rstrip()
+    return [
+        "## Lockless PR Watch workflow",
+        "",
+        "Copy into `.github/workflows/auctelis.yml` (or use **Watch PRs** when linked):",
+        "",
+        "```yaml",
+        yaml_text,
+        "```",
+        "",
+    ]
+
+
+def _workflow_snippet_html() -> str:
+    esc = html.escape
+    yaml_text = lockless_workflow_yaml().rstrip()
+    return (
+        "<section><h2>Lockless PR Watch workflow</h2>"
+        "<p>Copy into <code>.github/workflows/auctelis.yml</code> "
+        "(or use <strong>Watch PRs</strong> when linked):</p>"
+        f"<pre><code>{esc(yaml_text)}</code></pre></section>"
+    )
+
+
+def _watch_link_md(doc: dict[str, Any]) -> str:
+    url = watch_pr_url(
+        repository=doc.get("repository"),
+        default_branch=doc.get("default_branch"),
+        github_web_base=doc.get("github_web_base") or "https://github.com",
+    )
+    if not url:
+        return ""
+    slug = str(doc.get("repository") or "")
+    return f"[Watch PRs in {escape_markdown_inline(slug)}]({url})"
+
+
+def _watch_link_html(doc: dict[str, Any]) -> str:
+    esc = html.escape
+    url = watch_pr_url(
+        repository=doc.get("repository"),
+        default_branch=doc.get("default_branch"),
+        github_web_base=doc.get("github_web_base") or "https://github.com",
+    )
+    if not url:
+        return ""
+    slug = esc(str(doc.get("repository") or ""))
+    return f'<p><a href="{esc(url, quote=True)}"><strong>Watch PRs in {slug}</strong></a></p>'
+
+
+def _fleet_honesty_notes(doc: dict[str, Any]) -> list[str]:
+    notes = [str(n) for n in _as_list(doc.get("honesty_notes")) if str(n)]
+    if notes:
+        return notes
+    return [str(n) for n in _as_list(_as_dict(doc.get("honesty")).get("notes")) if str(n)]
+
+
+def _skipped_section_md(
+    skipped: Sequence[Any],
+    honesty_notes: Sequence[str],
+) -> list[str]:
+    rows = [row for row in skipped if isinstance(row, dict)]
+    if not rows and not honesty_notes:
+        return []
+    lines = ["## Skipped / Incomplete repositories", ""]
+    if honesty_notes:
+        for note in honesty_notes:
+            lines.append(f"- {escape_markdown_inline(str(note), max_len=300)}")
+        lines.append("")
+    for row in rows:
+        repo = escape_markdown_inline(str(row.get("repository") or "?"), max_len=120)
+        note_bits = [str(n) for n in _as_list(row.get("notes")) if str(n)]
+        detail = escape_markdown_inline("; ".join(note_bits) or "skipped", max_len=300)
+        flag = "truncated" if row.get("truncated") else "skipped"
+        lines.append(f"- **{repo}** ({flag}) — {detail}")
+    if rows:
+        lines.append("")
+    return lines
+
+
+def _skipped_section_html(
+    skipped: Sequence[Any],
+    honesty_notes: Sequence[str],
+) -> str:
+    rows = [row for row in skipped if isinstance(row, dict)]
+    if not rows and not honesty_notes:
+        return ""
+    esc = html.escape
+    parts = ["<section><h2>Skipped / Incomplete repositories</h2><ul>"]
+    for note in honesty_notes:
+        parts.append(f"<li>{esc(str(note))}</li>")
+    for row in rows:
+        repo = esc(str(row.get("repository") or "?"))
+        note_bits = [str(n) for n in _as_list(row.get("notes")) if str(n)]
+        detail = esc("; ".join(note_bits) or "skipped")
+        flag = "truncated" if row.get("truncated") else "skipped"
+        parts.append(f"<li><strong><code>{repo}</code></strong> ({flag}) — {detail}</li>")
+    parts.append("</ul></section>")
+    return "".join(parts)
+
+
+def _pin_suggestion_cell(item: dict[str, Any]) -> str:
+    snippet = str(item.get("config_snippet") or "").strip()
+    suggestion = str(item.get("suggestion") or item.get("pin_state") or "")
+    if snippet and suggestion:
+        return f"{suggestion} · {snippet}"
+    return snippet or suggestion
+
+
 def _next_step_html(*, plural: bool) -> str:
     where = "each repository" if plural else "this repository"
     return (
-        "<footer><p><strong>Next step:</strong> "
-        f"<code>auctelis init --lockless</code> in {where} to watch future "
+        "<footer><p><strong>Next step:</strong> paste the lockless workflow "
+        f"(or click <strong>Watch PRs</strong>) in {where} to watch future "
         "agent-authority changes in one quiet PR comment.</p></footer>"
     )
 
@@ -144,7 +310,7 @@ def build_reach_report(
         "declared_only": True,
     }
     reach = _as_dict(report.get("reach"))
-    return {
+    doc: dict[str, Any] = {
         "schema": REPORT_SCHEMA,
         "product": "auctelis",
         "product_version": product_version(),
@@ -169,6 +335,11 @@ def build_reach_report(
             "meaningful": report.get("meaningful"),
         },
     }
+    if report.get("default_branch"):
+        doc["default_branch"] = str(report.get("default_branch"))
+    if report.get("github_web_base"):
+        doc["github_web_base"] = str(report.get("github_web_base"))
+    return doc
 
 
 def diff_reach_reports(
@@ -295,9 +466,7 @@ def render_reach_md(
                 continue
             lines.append(
                 f"- {_md_code(item.get('name'))} ({_md_code(item.get('path'))}) — "
-                + escape_markdown_inline(
-                    str(item.get("suggestion") or item.get("pin_state") or ""), max_len=200
-                )
+                + escape_markdown_inline(_pin_suggestion_cell(item), max_len=240)
             )
     if baseline_diff:
         lines.extend(["", "## Baseline diff", ""])
@@ -316,8 +485,11 @@ def render_reach_md(
                     f"  - - {_md_code(item.get('kind'))} {_md_code(item.get('name'))} "
                     f"({_md_code(item.get('path'))})"
                 )
-    lines.extend(["", _NEXT_STEP_MD])
-    lines.append("")
+    lines.extend(["", *_workflow_snippet_md()])
+    watch = _watch_link_md(doc)
+    if watch:
+        lines.extend([watch, ""])
+    lines.extend([_NEXT_STEP_MD, ""])
     return "\n".join(lines)
 
 
@@ -365,7 +537,7 @@ def render_reach_html(
             "<tr>"
             f"<td>{esc(str(item.get('name') or ''))}</td>"
             f"<td><code>{esc(str(item.get('path') or ''))}</code></td>"
-            f"<td>{esc(str(item.get('suggestion') or item.get('pin_state') or ''))}</td>"
+            f"<td><code>{esc(_pin_suggestion_cell(item))}</code></td>"
             "</tr>"
             for item in unpinned_items
         )
@@ -399,6 +571,7 @@ def render_reach_html(
         parts.append("</ul>")
         baseline_section = "<section><h2>Baseline diff</h2>" + "".join(parts) + "</section>"
 
+    watch_html = _watch_link_html(doc)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -412,6 +585,7 @@ h1 {{ font-size: 1.75rem; letter-spacing: -0.02em; }}
 table {{ border-collapse: collapse; width: 100%; }}
 td, th {{ border-bottom: 1px solid #d6d3d1; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }}
 code {{ font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }}
+pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 </style>
 </head>
 <body>
@@ -443,6 +617,8 @@ code {{ font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }}
 </section>
 {pins_section}
 {baseline_section}
+{_workflow_snippet_html()}
+{watch_html}
 {_next_step_html(plural=False)}
 </body>
 </html>
@@ -490,7 +666,12 @@ def load_reach_baseline(path: Path) -> dict[str, Any]:
 # --- Fleet reach report (multi-repo audit sweep) ---------------------------
 
 
-def build_fleet_reach_report(entries: Sequence[FleetEntry]) -> dict[str, Any]:
+def build_fleet_reach_report(
+    entries: Sequence[FleetEntry],
+    *,
+    skipped: Sequence[dict[str, Any]] | None = None,
+    honesty_notes: Sequence[str] | None = None,
+) -> dict[str, Any]:
     """Assemble one ranked fleet document from several single-repo reports.
 
     ``entries`` is ``(check_report, scan, cards)`` per repository, exactly the
@@ -525,7 +706,9 @@ def build_fleet_reach_report(entries: Sequence[FleetEntry]) -> dict[str, Any]:
             str(repo.get("repository") or ""),
         )
     )
-    return {
+    skipped_rows = [row for row in (skipped or []) if isinstance(row, dict)]
+    notes = [str(n) for n in (honesty_notes or []) if str(n)]
+    out: dict[str, Any] = {
         "schema": FLEET_REPORT_SCHEMA,
         "product": "auctelis",
         "product_version": product_version(),
@@ -533,6 +716,7 @@ def build_fleet_reach_report(entries: Sequence[FleetEntry]) -> dict[str, Any]:
             "disclaimer": _DECLARED_ONLY_DISCLAIMER,
             "declared_only": True,
             "manual_review_families": manual,
+            "notes": notes,
         },
         # Fleet-level coverage block so shared renderers can list blind spots.
         "coverage": {"manual_review_families": manual} if manual else {},
@@ -540,6 +724,11 @@ def build_fleet_reach_report(entries: Sequence[FleetEntry]) -> dict[str, Any]:
         "totals": totals,
         "repositories": repositories,
     }
+    if skipped_rows:
+        out["skipped"] = skipped_rows
+    if notes:
+        out["honesty_notes"] = notes
+    return out
 
 
 def _md_code(value: object) -> str:
@@ -598,6 +787,8 @@ def render_fleet_reach_md(doc: dict[str, Any]) -> str:
     """Render the fleet reach report as Markdown (shareable in tickets)."""
     totals = _as_dict(doc.get("totals"))
     repositories = _fleet_repo_table_rows(doc)
+    skipped = [row for row in _as_list(doc.get("skipped")) if isinstance(row, dict)]
+    honesty_notes = _fleet_honesty_notes(doc)
     lines: list[str] = [
         "# Auctelis Fleet Agent Reach Report",
         "",
@@ -615,17 +806,18 @@ def render_fleet_reach_md(doc: dict[str, Any]) -> str:
         "",
         "## Repositories (ranked by tier-2 reach)",
         "",
-        "| Repository | Reach | tier2 | tier1 | tier0 | Unpinned |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| Repository | Reach | tier2 | tier1 | tier0 | Unpinned | Watch |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for repo in repositories:
         reach = _as_dict(repo.get("reach"))
         tiers = _as_dict(reach.get("tier_counts"))
+        watch = _watch_link_md(repo) or "—"
         lines.append(
             f"| {_md_code(repo.get('repository'))} | "
             f"{int(reach.get('total') or 0)} | {int(tiers.get('tier2') or 0)} | "
             f"{int(tiers.get('tier1') or 0)} | {int(tiers.get('tier0') or 0)} | "
-            f"{int(_as_dict(repo.get('pins')).get('unpinned') or 0)} |"
+            f"{int(_as_dict(repo.get('pins')).get('unpinned') or 0)} | {watch} |"
         )
     lines.extend(["", "## Tier-2 reach by repository", ""])
     any_tier2 = False
@@ -633,6 +825,10 @@ def render_fleet_reach_md(doc: dict[str, Any]) -> str:
         tier2 = _tier2_records(repo)
         lines.append(f"### {_md_code(repo.get('repository'))}")
         lines.append("")
+        watch = _watch_link_md(repo)
+        if watch:
+            lines.append(watch)
+            lines.append("")
         if not tier2:
             lines.append("_No tier-2 records._")
         else:
@@ -659,16 +855,16 @@ def render_fleet_reach_md(doc: dict[str, Any]) -> str:
         lines.append(f"### {_md_code(repo.get('repository'))}")
         lines.append("")
         for item in items:
-            suggestion = escape_markdown_inline(
-                str(item.get("suggestion") or item.get("pin_state") or ""), max_len=200
-            )
+            suggestion = escape_markdown_inline(_pin_suggestion_cell(item), max_len=240)
             lines.append(
                 f"- {_md_code(item.get('name'))} ({_md_code(item.get('path'))}) — {suggestion}"
             )
         lines.append("")
     if not any_pins:
         lines.extend(["_No unpinned MCP launchers across these repositories._", ""])
+    lines.extend(_skipped_section_md(skipped, honesty_notes))
     lines.extend(_manual_md_lines(doc))
+    lines.extend(_workflow_snippet_md())
     lines.extend([_NEXT_STEP_MD_PLURAL, ""])
     return "\n".join(lines)
 
@@ -678,6 +874,18 @@ def render_fleet_reach_html(doc: dict[str, Any]) -> str:
     esc = html.escape
     totals = _as_dict(doc.get("totals"))
     repositories = _fleet_repo_table_rows(doc)
+    skipped = [row for row in _as_list(doc.get("skipped")) if isinstance(row, dict)]
+    honesty_notes = _fleet_honesty_notes(doc)
+
+    def _watch_cell(repo: dict[str, Any]) -> str:
+        url = watch_pr_url(
+            repository=repo.get("repository"),
+            default_branch=repo.get("default_branch"),
+            github_web_base=repo.get("github_web_base") or "https://github.com",
+        )
+        if not url:
+            return "—"
+        return f'<a href="{esc(url, quote=True)}">Watch PRs</a>'
 
     summary_rows = (
         "".join(
@@ -688,16 +896,18 @@ def render_fleet_reach_html(doc: dict[str, Any]) -> str:
             f"<td>{int(_as_dict(_as_dict(repo.get('reach')).get('tier_counts')).get('tier1') or 0)}</td>"
             f"<td>{int(_as_dict(_as_dict(repo.get('reach')).get('tier_counts')).get('tier0') or 0)}</td>"
             f"<td>{int(_as_dict(repo.get('pins')).get('unpinned') or 0)}</td>"
+            f"<td>{_watch_cell(repo)}</td>"
             "</tr>"
             for repo in repositories
         )
-        or "<tr><td colspan='6'><em>No repositories.</em></td></tr>"
+        or "<tr><td colspan='7'><em>No repositories.</em></td></tr>"
     )
 
     detail_parts: list[str] = []
     pin_parts: list[str] = []
     for repo in repositories:
         name = esc(str(repo.get("repository") or ""))
+        watch_html = _watch_link_html(repo)
         tier2_rows = (
             "".join(
                 "<tr>"
@@ -710,7 +920,7 @@ def render_fleet_reach_html(doc: dict[str, Any]) -> str:
             or "<tr><td colspan='3'><em>No tier-2 records.</em></td></tr>"
         )
         detail_parts.append(
-            f"<section><h3><code>{name}</code></h3>"
+            f"<section><h3><code>{name}</code></h3>{watch_html}"
             "<table><thead><tr><th>Name</th><th>Path</th><th>Reason</th></tr></thead>"
             f"<tbody>{tier2_rows}</tbody></table></section>"
         )
@@ -720,7 +930,7 @@ def render_fleet_reach_html(doc: dict[str, Any]) -> str:
                 "<tr>"
                 f"<td>{esc(str(item.get('name') or ''))}</td>"
                 f"<td><code>{esc(str(item.get('path') or ''))}</code></td>"
-                f"<td>{esc(str(item.get('suggestion') or item.get('pin_state') or ''))}</td>"
+                f"<td><code>{esc(_pin_suggestion_cell(item))}</code></td>"
                 "</tr>"
                 for item in items
             )
@@ -733,6 +943,7 @@ def render_fleet_reach_html(doc: dict[str, Any]) -> str:
     pins_html = (
         "".join(pin_parts) or "<p><em>No unpinned MCP launchers across these repositories.</em></p>"
     )
+    skipped_html = _skipped_section_html(skipped, honesty_notes)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -748,6 +959,7 @@ h3 {{ margin-top: 1.5rem; }}
 table {{ border-collapse: collapse; width: 100%; margin-bottom: 0.5rem; }}
 td, th {{ border-bottom: 1px solid #d6d3d1; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }}
 code {{ font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }}
+pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 </style>
 </head>
 <body>
@@ -764,7 +976,7 @@ code {{ font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }}
 <section>
 <h2>Repositories (ranked by tier-2 reach)</h2>
 <table>
-<thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th><th>tier0</th><th>Unpinned</th></tr></thead>
+<thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th><th>tier0</th><th>Unpinned</th><th>Watch</th></tr></thead>
 <tbody>{summary_rows}</tbody>
 </table>
 </section>
@@ -776,7 +988,9 @@ code {{ font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }}
 <h2>Unpinned MCP launchers</h2>
 {pins_html}
 </section>
+{skipped_html}
 {_manual_section_html(doc)}
+{_workflow_snippet_html()}
 {_next_step_html(plural=True)}
 </body>
 </html>
@@ -786,11 +1000,18 @@ code {{ font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }}
 def write_fleet_reach_report_artifacts(
     out_dir: Path,
     entries: Sequence[FleetEntry],
+    *,
+    skipped: Sequence[dict[str, Any]] | None = None,
+    honesty_notes: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Write the combined fleet ``reach-report.{html,md,json}`` under ``out_dir``."""
     out_dir = out_dir.expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
-    doc = build_fleet_reach_report(entries)
+    doc = build_fleet_reach_report(
+        entries,
+        skipped=skipped,
+        honesty_notes=honesty_notes,
+    )
     write_json(out_dir / "reach-report.json", doc)
     write_text(out_dir / "reach-report.md", render_fleet_reach_md(doc))
     write_text(out_dir / "reach-report.html", render_fleet_reach_html(doc))
