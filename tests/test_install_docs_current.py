@@ -217,6 +217,37 @@ def test_lockless_template_and_action_shallow_skip():
     assert "--depth=1" in action
 
 
+def test_auct047_org_audit_workflow_template():
+    """AUCT-047: copy-paste org audit Action pins match action.yml; dry-run only."""
+    import re
+
+    root = Path(__file__).resolve().parents[1]
+    product = product_version()
+    workflow_path = root / "docs" / "auctelis-org-audit.yml"
+    text = workflow_path.read_text(encoding="utf-8")
+    assert "workflow_dispatch:" in text
+    assert re.search(r"^\s+org:\s*$", text, re.MULTILINE)
+    assert 'default: "50"' in text or "default: '50'" in text or "default: 50" in text
+    assert "include_forks:" in text
+    assert "org_reusable:" in text
+    assert "$GITHUB_STEP_SUMMARY" in text
+    assert "--apply" not in text
+    assert f"@v{product}" in text
+    assert "check --github" in text
+    assert "auctelis rollout auctelis-org-report/reach-report.json" in text
+    assert "docs/auctelis-org-audit.yml" in build._INSTALL_DOCS
+
+    action = (root / "action.yml").read_text(encoding="utf-8")
+    uv_pin = re.search(r"astral-sh/setup-uv@([0-9a-f]{40})", action)
+    art_pin = re.search(r"actions/upload-artifact@([0-9a-f]{40})", action)
+    assert uv_pin and art_pin
+    assert f"astral-sh/setup-uv@{uv_pin.group(1)}" in text
+    assert f"actions/upload-artifact@{art_pin.group(1)}" in text
+    assert "AUCTELIS_AUDIT_TOKEN" in text
+    assert "permissions:" in text
+    assert "contents: read" in text
+
+
 def test_trust_copy_does_not_lower_new_mcp_authority():
     """AUCT-015: docs match reach_tiers — trust never lowers new MCP/Hook authority."""
     root = Path(__file__).resolve().parents[1]

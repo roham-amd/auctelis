@@ -1,15 +1,15 @@
-# Documentation index (auctelis 0.1.4)
+# Documentation index (auctelis 0.1.5)
 
-Two surfaces — `check` locally (including `--report`), the Action on PRs — and
-**six** public pages. Everything else is maintainer or reference depth; it is
-not part of the first ten minutes.
+Three surfaces — `check` locally (including `--report`), `rollout` Watch PRs,
+and the Action on later PRs — plus **six** public pages. Everything else is
+maintainer or reference depth; it is not part of the first ten minutes.
 
 ## Public surface (6)
 
 | Doc | Purpose |
 | --- | --- |
-| [`../README.md`](../README.md) | Two-surface front door (`check` + Action) |
-| [`INSTALL.md`](INSTALL.md) | Git-tag install (PyPI planned) + `check --report` |
+| [`../README.md`](../README.md) | Three-surface front door (`check` + `rollout` + Action) |
+| [`INSTALL.md`](INSTALL.md) | Git-tag install (PyPI planned) + `check --report` + org audit Action |
 | [`PRODUCT.md`](PRODUCT.md) | Frozen product contract |
 | [`REACH.md`](REACH.md) | Reach definition, tiers, and Shareable Reach Report layout |
 | [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) | Enforce Action + CODEOWNERS |
@@ -31,6 +31,7 @@ not part of the first ten minutes.
 | [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust |
 | [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling |
 | [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI recipe |
+| [`auctelis-org-audit.yml`](auctelis-org-audit.yml) | Zero-install org Reach Audit (`workflow_dispatch`) |
 | [`auctelis-org-reusable.yml`](auctelis-org-reusable.yml) | Org `workflow_call` template |
 | [`pilots/`](pilots/) | Five-pilot tracker (report-first) |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Release notes |

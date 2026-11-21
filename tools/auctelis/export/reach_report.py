@@ -1104,11 +1104,14 @@ def _fleet_github_web_base(doc: dict[str, Any]) -> str:
     return "https://github.com"
 
 
-def _rollout_commands() -> tuple[str, str]:
-    """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044)."""
+def _rollout_commands(*, org_reusable: str | None = None) -> tuple[str, str]:
+    """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044/045)."""
     from auctelis.check import _cli_prefix
 
     dry = f"{_cli_prefix()} rollout reach-report.json"
+    org = str(org_reusable or "").strip().strip("/") or None
+    if org:
+        dry = f"{dry} --org-reusable {org}"
     return dry, f"{dry} --apply"
 
 
@@ -1142,7 +1145,7 @@ def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> 
         github_web_base=_fleet_github_web_base(doc),
         org_reusable=org_reusable,
     )
-    dry, apply_cmd = _rollout_commands()
+    dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
     lines.extend(
         [
             "Open lockless Watch PRs for the top unwatched tier-2 repos:",
@@ -1192,7 +1195,7 @@ def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -
             github_web_base=_fleet_github_web_base(doc),
             org_reusable=org_reusable,
         )
-        dry, apply_cmd = _rollout_commands()
+        dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
         howto = (
             f"{dry}\n"
             f"{apply_cmd}  # create branches and open PRs\n"
@@ -1296,7 +1299,7 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
     if warning:
         lines.extend(["", f"**Warning:** {escape_markdown_inline(warning, max_len=300)}"])
     if _unwatched_tier2_slugs(doc, limit=1):
-        dry, apply_cmd = _rollout_commands()
+        dry, apply_cmd = _rollout_commands(org_reusable=org)
         lines.extend(
             [
                 "",
@@ -1478,7 +1481,7 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
     )
     rollout_html = ""
     if _unwatched_tier2_slugs(doc, limit=1):
-        dry, apply_cmd = _rollout_commands()
+        dry, apply_cmd = _rollout_commands(org_reusable=org)
         rollout_html = (
             "<p>Open Watch PRs: <code>"
             f"{esc(dry)}</code> (dry-run), then <code>{esc(apply_cmd)}</code>.</p>"

@@ -386,14 +386,30 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         type=int,
         default=10,
         metavar="N",
-        help="Cap unwatched tier-2 Watch PRs (default: 10)",
+        help="Cap Watch PRs (default: 10)",
+    )
+    rollout.add_argument(
+        "--repo",
+        action="append",
+        metavar="SLUG",
+        dest="repos",
+        help="Limit to owner/repo (repeatable; case-insensitive)",
+    )
+    rollout.add_argument(
+        "--min-tier",
+        type=int,
+        choices=[1, 2],
+        default=2,
+        metavar="N",
+        help="Minimum reach tier to select (1 or 2; default: 2)",
     )
     rollout.add_argument(
         "--org-reusable",
         metavar="ORG",
         help=(
             "Install the 6-line caller of "
-            "ORG/.github/.github/workflows/auctelis-org-reusable.yml@main"
+            "ORG/.github/.github/workflows/auctelis-org-reusable.yml@main "
+            "(defaults from reach-report.json org_reusable when omitted)"
         ),
     )
     rollout.add_argument(

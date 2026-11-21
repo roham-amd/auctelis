@@ -368,3 +368,173 @@ def test_fleet_summary_leads_with_rollout_command():
         assert text.index("rollout reach-report.json") < text.index("rollout-watch-prs.sh")
     summary = md.split("## Summary", 1)[1].split("##", 1)[0]
     assert "rollout reach-report.json --apply" in summary
+
+
+def test_auct045_render_watch_pr_body_falls_back_when_reach_empty():
+    from auctelis.rollout import _PR_BODY, render_watch_pr_body
+
+    body = render_watch_pr_body(
+        {
+            "repository": "acme/empty",
+            "reach": {"tier_counts": {"tier2": 1}, "records": [], "top": []},
+        }
+    )
+    assert body == _PR_BODY
+
+
+def test_auct045_select_targets_case_insensitive_repo_filter():
+    from auctelis.rollout import select_targets
+
+    doc = _fleet(
+        [
+            _repo(repository="acme/Hot"),
+            _repo(repository="acme/other"),
+        ]
+    )
+    matched = select_targets(doc, max_prs=10, repos=["ACME/hot"])
+    assert [r["repository"] for r in matched] == ["acme/Hot"]
+
+
+def test_auct045_repo_and_min_tier_filters(monkeypatch, capsys, tmp_path: Path):
+    """AUCT-045: --repo selects named slugs; --min-tier 1 includes tier-1-only."""
+    _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(
+        tmp_path,
+        _fleet(
+            [
+                _repo(repository="acme/hot"),
+                _repo(
+                    repository="acme/tier1",
+                    reach={"tier_counts": {"tier2": 0, "tier1": 1, "tier0": 0}},
+                ),
+                _repo(repository="acme/other"),
+            ]
+        ),
+    )
+    assert main(["rollout", str(path), "--repo", "ACME/hot", "--json"]) == 0
+    planned = json.loads(capsys.readouterr().out)["planned"]
+    assert planned == ["acme/hot"]
+
+    assert main(["rollout", str(path), "--min-tier", "1", "--json"]) == 0
+    planned = json.loads(capsys.readouterr().out)["planned"]
+    assert planned == ["acme/hot", "acme/tier1", "acme/other"]
+
+
+def test_auct045_inherits_org_reusable_from_report(monkeypatch, capsys, tmp_path: Path):
+    _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    doc = _fleet([_repo()])
+    doc["org_reusable"] = "acme"
+    path = _write(tmp_path, doc)
+    assert main(["rollout", str(path)]) == 0
+    out = capsys.readouterr().out
+    assert "mode=org-reusable:acme" in out
+
+
+def test_auct045_pr_body_includes_findings_and_pin_fix(monkeypatch, tmp_path: Path):
+    seen: dict[str, str] = {}
+
+    def handler(method, url, data, _calls):
+        path = _path(url)
+        if method == "GET" and path == "/repos/acme/hot":
+            return 200, {"default_branch": "main"}
+        if method == "GET" and path.endswith("/contents/.github/workflows"):
+            return 404, {"message": "Not Found"}
+        if method == "GET" and path.endswith("/pulls"):
+            return 200, []
+        if method == "GET" and path.endswith("/git/ref/heads/main"):
+            return 200, {"object": {"sha": "abc123"}}
+        if method == "GET" and path.endswith("/git/ref/heads/auctelis/watch-prs"):
+            return 404, {"message": "Not Found"}
+        if method == "POST" and path.endswith("/git/refs"):
+            return 201, {}
+        if method == "GET" and path.endswith("/auctelis.yml"):
+            return 404, {"message": "Not Found"}
+        if method == "PUT":
+            return 201, {}
+        if method == "POST" and path.endswith("/pulls"):
+            body = json.loads(data.decode())
+            seen["body"] = body["body"]
+            return 201, {"html_url": "https://github.com/acme/hot/pull/1"}
+        raise AssertionError(f"unexpected {method} {url}")
+
+    _install(monkeypatch, handler)
+    path = _write(
+        tmp_path,
+        _fleet(
+            [
+                _repo(
+                    reach={
+                        "total": 1,
+                        "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                        "records": [
+                            {
+                                "name": "linear",
+                                "path": ".cursor/mcp.json",
+                                "tier": 2,
+                                "reason": "secrets",
+                            }
+                        ],
+                    },
+                    pins={
+                        "total": 1,
+                        "unpinned": 1,
+                        "items": [
+                            {
+                                "name": "linear",
+                                "path": ".cursor/mcp.json",
+                                "config_snippet": ('"args": ["-y", "@linear/mcp@<exact-version>"]'),
+                            }
+                        ],
+                    },
+                )
+            ]
+        ),
+    )
+    assert main(["rollout", str(path), "--apply"]) == 0
+    body = seen["body"]
+    assert "linear" in body
+    assert "**Pin fix:**" in body
+    assert "@linear/mcp@<exact-version>" in body
+    pin = next(line for line in body.splitlines() if "**Pin fix:**" in line)
+    assert "\\[" not in pin
+    assert len(body.splitlines()) <= 15
+
+
+def test_auct045_fleet_summary_includes_org_reusable_cta():
+    doc = build_fleet_reach_report(
+        [
+            (
+                {
+                    "repository": "acme/hot",
+                    "default_branch": "main",
+                    "github_web_base": "https://github.com",
+                    "already_watching": False,
+                    "coverage_line": "",
+                    "unparsed": 0,
+                    "reach": {
+                        "total": 1,
+                        "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                        "records": [],
+                        "top": [],
+                        "top_cards": [],
+                    },
+                    "pins": {"total": 0, "unpinned": 0, "items": []},
+                    "counts": {},
+                    "delta": {},
+                    "label": "NONE",
+                    "verdict": "BASELINE_NEEDED",
+                    "schema_version": "authority-diff/1",
+                    "lock_present": False,
+                    "first_run": True,
+                    "meaningful": False,
+                },
+                None,
+                [],
+            )
+        ]
+    )
+    md = render_fleet_reach_md(doc, org_reusable="acme")
+    html = render_fleet_reach_html(doc, org_reusable="acme")
+    for text in (md, html):
+        assert "--org-reusable acme" in text
+        assert "rollout reach-report.json --org-reusable acme --apply" in text

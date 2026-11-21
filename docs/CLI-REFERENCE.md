@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.4** · product **0.1.4** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.5** · product **0.1.5** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -107,21 +107,25 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta (any repo for fleet);
 ## `auctelis rollout`
 
 ```bash
-auctelis rollout REPORT_JSON [--apply] [--max-prs N] [--org-reusable ORG] [--json]
+auctelis rollout REPORT_JSON [--apply] [--max-prs N] [--repo SLUG] [--min-tier {1,2}]
+                             [--org-reusable ORG] [--json]
 ```
 
 Reads `auctelis.fleet_reach_report.v1` or `auctelis.reach_report.v1` and
-selects unwatched tier-2 `owner/repo` slugs (default cap 10). The default is a
-dry-run: it prints the planned repos and workflow mode and makes no HTTP
-writes. `--apply` uses `GITHUB_TOKEN` / `GH_TOKEN` / `gh auth token` and
-stdlib HTTP (`GITHUB_API_URL` for GHES). It skips a repo that already has
+selects unwatched repos at or above `--min-tier` (default 2; cap 10). The
+default is a dry-run: it prints the planned repos and workflow mode and makes
+no HTTP writes. `--apply` uses `GITHUB_TOKEN` / `GH_TOKEN` / `gh auth token`
+and stdlib HTTP (`GITHUB_API_URL` for GHES). It skips a repo that already has
 `.github/workflows/auctelis*.yml` on the default branch, skips a repo with an
 open pull request from `auctelis/watch-prs` (and prints that URL), creates or
 reuses the branch, sends the existing blob `sha` when updating the workflow
-file, and opens the pull request. HTTP 403 or 422 tells you to run
-`gh auth refresh -s workflow`. `--org-reusable ORG` commits the six-line
-caller instead of the inline lockless workflow. `--json` prints the plan.
-`--apply` is refused when `AUCTELIS_AGENT=1` (exit 2). There is no auto-merge.
+file, and opens an evidence-backed pull request (tier counts, top findings,
+literal `Pin fix` when available). `--repo owner/repo` (repeatable) targets
+specific pilots. HTTP 403 or 422 tells you to run `gh auth refresh -s workflow`.
+`--org-reusable ORG` commits the six-line caller instead of the inline lockless
+workflow; when omitted, `org_reusable` from the Reach Report is used if set.
+`--json` prints the plan. `--apply` is refused when `AUCTELIS_AGENT=1` (exit 2).
+There is no auto-merge.
 
 Exit codes: `0` dry-run, or every target opened or skipped; `1` a target
 failed; `2` bad report, missing token, invalid flag, or agent refusal.

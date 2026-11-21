@@ -80,6 +80,9 @@ def test_demo_command_runs(tmp_path: Path):
     comment = (tmp_path / "out" / "pr-comment.md").read_text(encoding="utf-8")
     assert "Authority Diff" in comment
     assert "GROWTH" in comment or "NEEDS_REVIEW" in comment
+    # AUCT-046: demo attaches inventory args so Pin fix is pasteable.
+    assert "**Pin fix:**" in comment
+    assert "demo-evil-mcp@<exact-version>" in comment
 
 
 def test_addition_class_and_empty_approvals(tmp_path: Path):

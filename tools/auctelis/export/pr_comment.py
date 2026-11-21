@@ -285,9 +285,11 @@ def render_first_run_comment(
         f"{tier2} fail tier · {tier1} comment tier · {tier0} silent",
     ]
     if total == 0:
+        from auctelis.check import _cli_prefix
+
         lines.append(
             "No agent configuration was discovered in this repository — "
-            "run `auctelis check` locally to see what auctelis can see."
+            f"run `{_cli_prefix()} check` locally to see what auctelis can see."
         )
     if watching:
         top = [str(card) for card in (reach.get("top_cards") or []) if str(card).strip()][:3]
@@ -295,11 +297,29 @@ def render_first_run_comment(
             lines.append("**Top reach:**")
             for card in top:
                 lines.append(f"- {escape_markdown(card.lstrip('+-~ '), max_len=180)}")
-        lines.append(
+        # AUCT-046: one Pin fix on clean install Watching when an unpinned MCP
+        # already exists (and the line still fits the ≤12 visible-line budget).
+        raw_pins = report.get("pins")
+        pins_doc: dict[str, Any] = raw_pins if isinstance(raw_pins, dict) else {}
+        pin_items = [item for item in (pins_doc.get("items") or []) if isinstance(item, dict)]
+        pin_line = ""
+        for item in pin_items:
+            span = markdown_code_span(str(item.get("config_snippet") or "").strip())
+            if span is not None:
+                pin_line = f"**Pin fix:** {span}"
+                break
+        next_line = (
             "**Next:** this PR did not change agent authority. The next PR that "
             "adds or changes an MCP server, skill, hook, or permission will show "
             "the Authority Diff."
         )
+        # Marker excluded from the ≤12 visible-line budget.
+        budget = 12 - len(lines)
+        if pin_line and budget >= 2:
+            lines.append(pin_line)
+            lines.append(next_line)
+        else:
+            lines.append(next_line)
     else:
         # Surface non-install growth (e.g. smuggled MCP) so the Action cannot
         # hide it by preferring a Watching-only first-run file.

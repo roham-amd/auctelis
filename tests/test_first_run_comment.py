@@ -209,6 +209,8 @@ def test_first_run_install_plus_mcp_shows_needs_review_and_card():
 
 
 def test_first_run_renderer_names_zero_reach_honestly():
+    from auctelis.check import _cli_prefix
+
     body = render_first_run_comment(
         {
             "verdict": "PASS",
@@ -221,6 +223,40 @@ def test_first_run_renderer_names_zero_reach_honestly():
         }
     )
     assert "No agent configuration was discovered" in body
+    assert f"`{_cli_prefix()} check`" in body
+    assert "`auctelis check`" not in body or _cli_prefix() == "auctelis"
+
+
+def test_auct046_watching_includes_pin_fix_within_budget():
+    snippet = '"args": ["-y", "@linear/mcp@<exact-version>"]'
+    body = render_first_run_comment(
+        {
+            "verdict": "PASS",
+            "label": "NONE",
+            "meaningful_authority_change": False,
+            "lock_tree_drift": False,
+            "unparsed": 0,
+            "reach": {
+                "total": 1,
+                "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                "top_cards": ['mcp "linear" · tier 2'],
+            },
+            "pins": {
+                "total": 1,
+                "unpinned": 1,
+                "items": [
+                    {
+                        "name": "linear",
+                        "path": ".cursor/mcp.json",
+                        "config_snippet": snippet,
+                    }
+                ],
+            },
+        }
+    )
+    assert "**Pin fix:**" in body
+    assert "@linear/mcp@<exact-version>" in body
+    assert len([line for line in body.splitlines() if line]) <= 12
 
 
 def test_action_posts_first_run_only_without_sticky():

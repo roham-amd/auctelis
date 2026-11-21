@@ -310,6 +310,8 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     out.mkdir(parents=True, exist_ok=True)
     print(f"auctelis demo → {target}")
     print("Lock-only walkthrough: empty baseline → demo AUTHORITY.lock growth.")
+    from auctelis.check import attach_launcher_args, attach_launcher_args_to_delta
+
     scan = run_authority_inventory(target)
     empty = {
         "version": 1,
@@ -318,7 +320,9 @@ def _cmd_demo(args: argparse.Namespace) -> int:
         "mcp_tools": {},
     }
     head_lock = build_authority_lock(target, scan=scan)
+    attach_launcher_args(list(head_lock.get("records") or []), scan)
     lock_delta = diff_authority_locks(empty, head_lock)
+    attach_launcher_args_to_delta(lock_delta, list(head_lock.get("records") or []))
     print()
     print("Authority delta (empty → demo):")
     for line in lock_delta.get("lines") or []:
@@ -470,12 +474,18 @@ def _cmd_rollout(args: argparse.Namespace) -> int:
     org = getattr(args, "org_reusable", None)
     raw_max = getattr(args, "max_prs", 10)
     max_prs = 10 if raw_max is None else int(raw_max)
+    raw_repos = getattr(args, "repos", None)
+    repos = [str(r) for r in raw_repos] if isinstance(raw_repos, list) else None
+    raw_tier = getattr(args, "min_tier", 2)
+    min_tier = 2 if raw_tier is None else int(raw_tier)
     return execute_rollout(
         Path(args.report),
         apply=bool(getattr(args, "apply", False)),
         max_prs=max_prs,
         org_reusable=str(org) if org else None,
         as_json=bool(getattr(args, "json", False)),
+        repos=repos,
+        min_tier=min_tier,
     )
 
 

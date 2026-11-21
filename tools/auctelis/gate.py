@@ -22,13 +22,14 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-from auctelis.authority_card import reach_snapshot
+from auctelis.authority_card import pin_report, reach_snapshot
 from auctelis.authority_lock import (
     LOCK_NAME,
     build_authority_lock,
     delta_label,
     diff_authority_locks,
 )
+from auctelis.check import attach_launcher_args, attach_launcher_args_to_delta
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
 from auctelis.reach_tiers import (
     TIER_COMMENT,
@@ -631,6 +632,8 @@ def run_gate(
 
     base_records = list(base.get("records") or [])
     head_records = list(head.get("records") or [])
+    # Ephemeral pin-doctor args (not in AUTHORITY.lock schema / normalize).
+    attach_launcher_args(head_records, scan)
     lock_drift, drift_lines, drift_error = committed_lock_drift(
         root,
         head,
@@ -665,6 +668,7 @@ def run_gate(
         trusted_hosts = set()
         trusted_hosts_ignored = True
     delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
+    attach_launcher_args_to_delta(delta, head_records)
     summary = delta.get("summary") or {}
     meaningful = bool(summary.get("meaningful_authority_change"))
     # Align with check / lock --check: representation / body drift is reviewable.
@@ -903,6 +907,7 @@ def run_gate(
         # Reach snapshot of head authority: lets the Action prove a fresh
         # install is watching something even on a no-change ("quiet") PR.
         "reach": reach_snapshot(head_records, limit=5, trusted_hosts=trusted_hosts),
+        "pins": pin_report(head_records),
     }
     if error:
         report["error"] = error

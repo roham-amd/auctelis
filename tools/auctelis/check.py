@@ -52,7 +52,7 @@ _REACH_KEYS = (
 SCHEMA_VERSION = "authority-diff/1"
 
 
-def _attach_launcher_args(records: list[dict[str, Any]], scan: ScanResult | None) -> None:
+def attach_launcher_args(records: list[dict[str, Any]], scan: ScanResult | None) -> None:
     """Copy inventory ``args`` onto sealed records for pin doctor (not persisted)."""
     if scan is None:
         return
@@ -70,6 +70,43 @@ def _attach_launcher_args(records: list[dict[str, Any]], scan: ScanResult | None
         key = (str(rec.get("path") or "").replace("\\", "/"), str(rec.get("name") or ""))
         if key in by_key:
             rec["args"] = by_key[key]
+
+
+def attach_launcher_args_to_delta(
+    delta: dict[str, Any] | None,
+    records: list[dict[str, Any]],
+) -> None:
+    """Copy ephemeral ``args`` onto delta added/after records for pin doctor.
+
+    ``diff_authority_locks`` normalizes records and drops ``args``; rehydrate
+    from the already-attached head inventory so live PR ``Pin fix`` keeps argv.
+    """
+    by_key: dict[tuple[str, str], list[Any]] = {}
+    for rec in records:
+        raw_args = rec.get("args")
+        if not isinstance(raw_args, list) or not raw_args:
+            continue
+        key = (str(rec.get("path") or "").replace("\\", "/"), str(rec.get("name") or ""))
+        by_key[key] = list(raw_args)
+    if not by_key or not isinstance(delta, dict):
+        return
+    raw_changes = delta.get("changes")
+    changes: dict[str, Any] = raw_changes if isinstance(raw_changes, dict) else {}
+    for rec in changes.get("added") or []:
+        if not isinstance(rec, dict):
+            continue
+        key = (str(rec.get("path") or "").replace("\\", "/"), str(rec.get("name") or ""))
+        if key in by_key:
+            rec["args"] = by_key[key]
+    for item in changes.get("changed") or []:
+        if not isinstance(item, dict):
+            continue
+        after = item.get("after")
+        if not isinstance(after, dict):
+            continue
+        key = (str(after.get("path") or "").replace("\\", "/"), str(after.get("name") or ""))
+        if key in by_key:
+            after["args"] = by_key[key]
 
 
 def _counts(records: list[dict[str, Any]]) -> dict[str, int]:
@@ -173,7 +210,7 @@ def build_check_report(
     scan = run_authority_inventory(repo, limits=scan_limits)
     head = build_authority_lock(repo, scan=scan)
     head_records = list(head.get("records") or [])
-    _attach_launcher_args(head_records, scan)
+    attach_launcher_args(head_records, scan)
     sealable = sealable_records(head_records)
     report["reach"] = reach_snapshot(
         head_records,

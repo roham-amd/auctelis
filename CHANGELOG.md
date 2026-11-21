@@ -7,6 +7,35 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-11-21
+
+### Added
+
+- **AUCT-045:** `auctelis rollout` Watch PRs embed per-repo reach findings and a
+  literal `Pin fix`, support `--repo` / `--min-tier` pilot filters, and inherit
+  `org_reusable` from `reach-report.json`. Fleet Summary CTAs include
+  `--org-reusable` when set.
+- **AUCT-047:** Copy-paste [`docs/auctelis-org-audit.yml`](docs/auctelis-org-audit.yml)
+  runs `check --github` on GitHub Actions (`workflow_dispatch` / optional weekly),
+  posts the Reach Report to Job Summary, dry-runs `rollout`, and uploads
+  `reach-report.{html,md,json}` — zero local `uv`/`git` under `pypi_live=false`.
+
+### Fixed
+
+- **AUCT-046:** Live PR / first-run comments preserve MCP launcher `args` in
+  `Pin fix` snippets (`gate`, `diff --base`, `demo`). Clean install Watching
+  comments surface one `Pin fix` (≤12 lines) and the zero-reach footer uses the
+  git-tag CLI prefix while PyPI is deferred.
+
+### Changed
+
+- Removed unused `select_unwatched_tier2` wrapper and `_attach_launcher_args`
+  alias after the AUCT-045/046 call-site migration.
+
+`pypi_live` stays false. The PyPI name is still unclaimed, so install docs
+keep the git-tag pin. Cutover order remains claim → bump+flip PR → publish →
+live probe → tag.
+
 ## [0.1.4] — 2026-11-21
 
 ### Added

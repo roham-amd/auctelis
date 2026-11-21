@@ -384,6 +384,7 @@ _INSTALL_DOCS = (
     "docs/pilots/RECRUITMENT.md",
     "docs/pilots/TRACKER.md",
     "docs/auctelis-consumer-gate.example.yml",
+    "docs/auctelis-org-audit.yml",
     "tools/README.md",
     "SECURITY.md",
 )

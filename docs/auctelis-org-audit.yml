@@ -1,0 +1,123 @@
+# Zero-laptop-install org Reach Audit (AUCT-047).
+# Copy into your org `.github` repository (or any repo) as:
+#   .github/workflows/auctelis-org-audit.yml
+#
+# Then Actions → auctelis org audit → Run workflow.
+# Job Summary shows the Summary-first Reach Report + a dry-run rollout plan.
+# Download the auctelis-org-report artifact for HTML/MD/JSON.
+#
+# Token: default GITHUB_TOKEN only sees the current repository.
+# For private org repos, add a fine-grained PAT as secret AUCTELIS_AUDIT_TOKEN
+# with Contents: read and Metadata: read on the target org.
+
+name: auctelis org audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      org:
+        description: GitHub org (or user) slug to audit
+        required: true
+        type: string
+      max_repos:
+        description: Cap repositories scanned
+        required: false
+        type: string
+        default: "50"
+      include_forks:
+        description: Include forks
+        required: false
+        type: boolean
+        default: false
+      org_reusable:
+        description: Optional org slug for --org-reusable in report CTAs / dry-run rollout
+        required: false
+        type: string
+        default: ""
+  # Optional weekly scan — uncomment and set the cron:
+  # schedule:
+  #   - cron: "0 14 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.4
+        with:
+          enable-cache: true
+          python-version: "3.12"
+
+      - name: Notice when AUCTELIS_AUDIT_TOKEN is unset
+        shell: bash
+        env:
+          AUCTELIS_AUDIT_TOKEN: ${{ secrets.AUCTELIS_AUDIT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${AUCTELIS_AUDIT_TOKEN:-}" ]]; then
+            echo "::notice::AUCTELIS_AUDIT_TOKEN is unset — falling back to github.token."
+            echo "That token only reads the current repository. For a private org audit,"
+            echo "add a fine-grained PAT (Contents: read, Metadata: read) as AUCTELIS_AUDIT_TOKEN."
+          fi
+
+      - name: Org reach audit
+        id: audit
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.AUCTELIS_AUDIT_TOKEN || github.token }}
+          ORG: ${{ inputs.org }}
+          MAX_REPOS: ${{ inputs.max_repos }}
+          INCLUDE_FORKS: ${{ inputs.include_forks }}
+          ORG_REUSABLE: ${{ inputs.org_reusable }}
+        run: |
+          set -euo pipefail
+          mkdir -p auctelis-org-report
+          EXTRA=()
+          if [[ "${INCLUDE_FORKS}" == "true" ]]; then
+            EXTRA+=(--include-forks)
+          fi
+          if [[ -n "${ORG_REUSABLE}" ]]; then
+            EXTRA+=(--org-reusable "${ORG_REUSABLE}")
+          fi
+          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.5#subdirectory=tools" \
+            auctelis check --github "${ORG}" \
+            --max-repos "${MAX_REPOS}" \
+            --report auctelis-org-report/ \
+            "${EXTRA[@]}"
+
+      - name: Job Summary (Reach Report)
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "# Auctelis org audit"
+            echo ""
+            if [[ -f auctelis-org-report/reach-report.md ]]; then
+              cat auctelis-org-report/reach-report.md
+            else
+              echo "_No reach-report.md produced._"
+            fi
+            echo ""
+            echo "## Rollout plan (dry-run)"
+            echo ""
+            echo '```text'
+            if [[ -f auctelis-org-report/reach-report.json ]]; then
+              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.5#subdirectory=tools" \
+                auctelis rollout auctelis-org-report/reach-report.json || true
+            else
+              echo "No reach-report.json — skipped."
+            fi
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload reach report artifacts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: auctelis-org-report
+          path: auctelis-org-report/
+          if-no-files-found: warn

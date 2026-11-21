@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from auctelis.authority_card import (
     delta_cards,
     launcher,
@@ -9,6 +12,9 @@ from auctelis.authority_card import (
     pin_suggestion,
     record_card,
 )
+from auctelis.export.pr_comment import render_gate_pr_comment
+from auctelis.gate import run_gate
+from auctelis.lock_io import compute_lock_hash, empty_authority_lock
 from auctelis.reach_tiers import TIER_FAIL, record_reach_tier
 
 
@@ -254,3 +260,122 @@ def test_auct043_over_budget_preserved_args_are_omitted_not_truncated():
     assert "**Pin fix:**" not in body
     assert extra not in body
     assert "…" not in body
+
+
+def _empty_base_lock(tmp_path: Path) -> Path:
+    lock = empty_authority_lock()
+    lock["lock_hash"] = compute_lock_hash(lock)
+    path = tmp_path / "empty-base.lock"
+    path.write_text(json.dumps(lock), encoding="utf-8")
+    return path
+
+
+def _mcp(root: Path, servers: dict) -> None:
+    cfg = root / ".cursor"
+    cfg.mkdir(parents=True, exist_ok=True)
+    (cfg / "mcp.json").write_text(
+        json.dumps({"mcpServers": servers}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_auct046_gate_pr_comment_preserves_launcher_args(tmp_path: Path, monkeypatch):
+    """Live run_gate() Pin fix keeps trailing MCP args (no Docker ``...``)."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    _mcp(
+        root,
+        {
+            "scoped": {
+                "command": "npx",
+                "args": ["-y", "@scope/mcp", "/workspace"],
+            },
+            "sqlite": {
+                "command": "docker",
+                "args": ["run", "-i", "--rm", "mcp/sqlite:latest"],
+            },
+        },
+    )
+    out = tmp_path / "out"
+    monkeypatch.setenv("AUCTELIS_OUTPUT_DIR", str(out))
+    report, code = run_gate(
+        root,
+        base_lock=_empty_base_lock(tmp_path),
+        check_ruleset=False,
+        strict_ruleset=False,
+        comment_only=True,
+        trust_head_codeowners=True,
+    )
+    assert code == 0
+    assert report.get("pins", {}).get("unpinned", 0) >= 1
+    body = render_gate_pr_comment(report)
+    assert "**Pin fix:**" in body
+    # First unpinned wins; either server must preserve argv (not package_stem fallback).
+    assert "/workspace" in body or ("-i" in body and "--rm" in body)
+    assert '"args": ["run", "...",' not in body
+
+    from auctelis.cli import main
+
+    base2 = tmp_path / "b2"
+    base2.mkdir()
+    assert (
+        main(
+            [
+                "gate",
+                str(root),
+                "--base-lock",
+                str(_empty_base_lock(base2)),
+                "--skip-ruleset-check",
+                "--comment-only",
+            ]
+        )
+        == 0
+    )
+    comment = (out / "pr-comment.md").read_text(encoding="utf-8")
+    assert "**Pin fix:**" in comment
+    assert "/workspace" in comment or ("-i" in comment and "--rm" in comment)
+
+
+def test_auct046_diff_base_preserves_launcher_args(tmp_path: Path):
+    import subprocess
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "test@example.com"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "test"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    (root / "README.md").write_text("base\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-m", "base"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+    base_ref = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    _mcp(
+        root,
+        {
+            "scoped": {
+                "command": "npx",
+                "args": ["-y", "@scope/mcp", "/workspace"],
+            }
+        },
+    )
+
+    from auctelis.diff_base import run_diff_base
+
+    _text, result, _code = run_diff_base(root, base_ref=base_ref)
+    comment = str(result.get("comment") or "")
+    assert "/workspace" in comment
+    assert "**Pin fix:**" in comment

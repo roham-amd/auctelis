@@ -20,7 +20,7 @@ from auctelis.authority_lock import (
     delta_label,
     diff_authority_locks,
 )
-from auctelis.check import SCHEMA_VERSION
+from auctelis.check import SCHEMA_VERSION, attach_launcher_args, attach_launcher_args_to_delta
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.lock_io import AuthorityLockError, empty_authority_lock, load_authority_lock
 from auctelis.reach_tiers import load_trusted_hosts
@@ -152,7 +152,10 @@ def run_diff_base(
     trusted_hosts = load_trusted_hosts(repo)
     scan = run_authority_inventory(repo)
     head = build_authority_lock(repo, scan=scan)
+    head_records = list(head.get("records") or [])
+    attach_launcher_args(head_records, scan)
     delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
+    attach_launcher_args_to_delta(delta, head_records)
     summary = dict(delta.get("summary") or {})
     label = delta_label(summary)
     coverage = scan.coverage if isinstance(scan.coverage, dict) else {}
@@ -160,7 +163,6 @@ def run_diff_base(
 
     unparsed = unparsed_agent_config_count_from_coverage(coverage)
 
-    head_records = list(head.get("records") or [])
     growth = label == "GROWTH"
     material = bool(summary.get("material_authority_change"))
     if baseline_state == "absent":

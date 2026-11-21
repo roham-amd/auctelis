@@ -1,10 +1,14 @@
-"""Cross-platform lockless Watch PR opener (AUCT-044).
+"""Cross-platform lockless Watch PR opener (AUCT-044 / AUCT-045).
 
 Reads a Reach Report and plans (or opens) one pull request per unwatched
-tier-2 repository. Dry-run is the default and performs no HTTP. ``--apply``
-uses stdlib ``urllib`` only, skips repos that already have an Auctelis
-workflow or an open ``auctelis/watch-prs`` pull request, and resends the
-workflow blob ``sha`` when GitHub requires it.
+repository that meets the tier filter. Dry-run is the default and performs no
+HTTP. ``--apply`` uses stdlib ``urllib`` only, skips repos that already have an
+Auctelis workflow or an open ``auctelis/watch-prs`` pull request, and resends
+the workflow blob ``sha`` when GitHub requires it.
+
+AUCT-045: PR bodies embed per-repo reach evidence + a literal ``Pin fix``;
+``--repo`` / ``--min-tier`` target pilots; ``org_reusable`` defaults from the
+report document when the CLI flag is omitted.
 """
 
 from __future__ import annotations
@@ -26,7 +30,7 @@ from auctelis.export.reach_report import (
     org_reusable_caller_yaml,
 )
 from auctelis.github_audit import _api_base, _token, is_owner_repo_slug
-from auctelis.textutil import validated_http_url
+from auctelis.textutil import escape_markdown_inline, markdown_code_span, validated_http_url
 
 _BRANCH = "auctelis/watch-prs"
 _WORKFLOW_PATH = ".github/workflows/auctelis.yml"
@@ -41,6 +45,8 @@ _PR_BODY = (
 _SCOPE_HINT = "gh auth refresh -s workflow"
 _USER_AGENT = "auctelis-rollout"
 _API_VERSION = "2022-11-28"
+_MAX_BODY_LINES = 15
+_MAX_FINDINGS = 3
 
 
 def execute_rollout(
@@ -50,19 +56,15 @@ def execute_rollout(
     max_prs: int,
     org_reusable: str | None,
     as_json: bool,
+    repos: list[str] | None = None,
+    min_tier: int = 2,
 ) -> int:
     """Plan or open Watch PRs. Exit 0 when every target is opened or skipped."""
     if max_prs < 1:
         _say("auctelis rollout: --max-prs must be at least 1.", as_json=as_json, error=True)
         return 2
-    org = str(org_reusable or "").strip().strip("/") or None
-    if org is not None and not _ORG_RE.fullmatch(org):
-        _say(
-            "auctelis rollout: --org-reusable requires an org slug "
-            "(letters, digits, dot, underscore, hyphen).",
-            as_json=as_json,
-            error=True,
-        )
+    if min_tier not in {1, 2}:
+        _say("auctelis rollout: --min-tier must be 1 or 2.", as_json=as_json, error=True)
         return 2
     try:
         document = json.loads(report_path.read_text(encoding="utf-8"))
@@ -83,12 +85,39 @@ def execute_rollout(
             error=True,
         )
         return 2
-    targets = select_unwatched_tier2(document, max_prs=max_prs)
+
+    # CLI --org-reusable wins; otherwise inherit from the Reach Report.
+    org = str(org_reusable or "").strip().strip("/") or None
+    if org is None:
+        org = str(document.get("org_reusable") or "").strip().strip("/") or None
+
+    if org is not None and not _ORG_RE.fullmatch(org):
+        _say(
+            "auctelis rollout: --org-reusable requires an org slug "
+            "(letters, digits, dot, underscore, hyphen).",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+
+    targets = select_targets(
+        document,
+        max_prs=max_prs,
+        repos=repos,
+        min_tier=min_tier,
+    )
     mode = f"org-reusable:{org}" if org else "lockless"
     workflow = org_reusable_caller_yaml(org) if org else lockless_workflow_yaml()
     if not apply:
-        results = [{"repository": slug, "action": "would_open", "mode": mode} for slug in targets]
-        _emit(results, apply=False, mode=mode, org_reusable=org, as_json=as_json)
+        results = [
+            {
+                "repository": str(repo.get("repository") or ""),
+                "action": "would_open",
+                "mode": mode,
+            }
+            for repo in targets
+        ]
+        _emit(results, apply=False, mode=mode, org_reusable=org, as_json=as_json, min_tier=min_tier)
         return 0
 
     token = _token()
@@ -99,32 +128,140 @@ def execute_rollout(
             error=True,
         )
         return 2
-    results = [_apply_one(slug, token=token, workflow=workflow, mode=mode) for slug in targets]
-    _emit(results, apply=True, mode=mode, org_reusable=org, as_json=as_json)
+    results = [
+        _apply_one(
+            str(repo.get("repository") or ""),
+            token=token,
+            workflow=workflow,
+            mode=mode,
+            body=render_watch_pr_body(repo),
+        )
+        for repo in targets
+    ]
+    _emit(results, apply=True, mode=mode, org_reusable=org, as_json=as_json, min_tier=min_tier)
     if any(row.get("action") == "error" for row in results):
         return 1
     return 0
 
 
-def select_unwatched_tier2(document: dict[str, Any], *, max_prs: int) -> list[str]:
-    """Unwatched tier-2 ``owner/repo`` slugs, capped by ``max_prs``."""
-    slugs: list[str] = []
+def select_targets(
+    document: dict[str, Any],
+    *,
+    max_prs: int,
+    repos: list[str] | None = None,
+    min_tier: int = 2,
+) -> list[dict[str, Any]]:
+    """Unwatched repo documents meeting ``min_tier``, capped by ``max_prs``.
+
+    ``repos`` (when set) is a case-insensitive ``owner/repo`` allow-list.
+    """
+    wanted: set[str] | None = None
+    if repos:
+        wanted = {str(slug).strip().lower() for slug in repos if str(slug).strip()}
+        if not wanted:
+            wanted = None
+    matched: list[dict[str, Any]] = []
     for repo in _repo_documents(document):
         if repo.get("already_watching"):
+            continue
+        slug = str(repo.get("repository") or "").strip()
+        if not is_owner_repo_slug(slug):
+            continue
+        if wanted is not None and slug.lower() not in wanted:
             continue
         reach_raw = repo.get("reach")
         reach = reach_raw if isinstance(reach_raw, dict) else {}
         tiers_raw = reach.get("tier_counts")
         tiers = tiers_raw if isinstance(tiers_raw, dict) else {}
-        if int(tiers.get("tier2") or 0) <= 0:
+        tier2 = int(tiers.get("tier2") or 0)
+        tier1 = int(tiers.get("tier1") or 0)
+        if min_tier >= 2:
+            if tier2 <= 0:
+                continue
+        elif tier2 <= 0 and tier1 <= 0:
             continue
-        slug = str(repo.get("repository") or "").strip()
-        if not is_owner_repo_slug(slug):
-            continue
-        slugs.append(slug)
-        if len(slugs) >= max_prs:
+        matched.append(repo)
+        if len(matched) >= max_prs:
             break
-    return slugs
+    return matched
+
+
+def render_watch_pr_body(repo_doc: dict[str, Any]) -> str:
+    """Compact evidence-backed Watch PR body (≤15 lines), or static fallback."""
+    reach_raw = repo_doc.get("reach")
+    reach = reach_raw if isinstance(reach_raw, dict) else {}
+    ranked = [
+        item for item in (reach.get("records") or reach.get("top") or []) if isinstance(item, dict)
+    ]
+    if not ranked:
+        return _PR_BODY
+
+    tiers_raw = reach.get("tier_counts")
+    tiers = tiers_raw if isinstance(tiers_raw, dict) else {}
+    slug = escape_markdown_inline(str(repo_doc.get("repository") or ""), max_len=120)
+    lines: list[str] = [
+        f"Install Auctelis lockless PR Watch on `{slug}` so future agent-authority "
+        "changes surface in one quiet PR comment. No AUTHORITY.lock required.",
+        "",
+        (
+            f"**Reach:** tier2={int(tiers.get('tier2') or 0)} · "
+            f"tier1={int(tiers.get('tier1') or 0)} · "
+            f"tier0={int(tiers.get('tier0') or 0)}"
+        ),
+        "",
+        "**Top findings:**",
+    ]
+    pins_raw = repo_doc.get("pins")
+    pins_doc = pins_raw if isinstance(pins_raw, dict) else {}
+    pin_items = [item for item in (pins_doc.get("items") or []) if isinstance(item, dict)]
+    pin_line = ""
+    for item in ranked[:_MAX_FINDINGS]:
+        name = escape_markdown_inline(str(item.get("name") or ""), max_len=80)
+        path = escape_markdown_inline(str(item.get("path") or ""), max_len=80)
+        reason = escape_markdown_inline(
+            str(item.get("reason") or item.get("card") or ""), max_len=120
+        )
+        tier = int(item.get("tier") or 0)
+        lines.append(f"- **{name}** (`{path}`) — tier {tier} · {reason}")
+        if not pin_line:
+            pin_line = _pin_fix_line(item, pin_items)
+
+    if pin_line and len(lines) + 3 <= _MAX_BODY_LINES:
+        lines.extend(["", pin_line])
+
+    quiet = (
+        "Quiet Watch: ordinary code/CI PRs stay silent; only agent-authority "
+        "growth gets one sticky comment."
+    )
+    if len(lines) + 2 <= _MAX_BODY_LINES:
+        lines.extend(["", quiet])
+
+    while len(lines) > _MAX_BODY_LINES:
+        # Drop the last finding bullet before the footer.
+        if len(lines) > 6 and lines[5].startswith("- "):
+            lines.pop(5)
+        else:
+            break
+    return "\n".join(lines) + "\n"
+
+
+def _pin_fix_line(item: dict[str, Any], pins: list[dict[str, Any]]) -> str:
+    name = str(item.get("name") or "")
+    path = str(item.get("path") or "")
+    snippet = ""
+    for pin in pins:
+        if str(pin.get("name") or "") != name:
+            continue
+        pin_path = str(pin.get("path") or "")
+        if path and pin_path and pin_path != path:
+            continue
+        snippet = str(pin.get("config_snippet") or "").strip()
+        if snippet:
+            break
+    span = markdown_code_span(snippet) if snippet else None
+    if not span:
+        return ""
+    return f"**Pin fix:** {span}"
 
 
 def _repo_documents(document: dict[str, Any]) -> list[dict[str, Any]]:
@@ -137,7 +274,14 @@ def _repo_documents(document: dict[str, Any]) -> list[dict[str, Any]]:
     return []
 
 
-def _apply_one(slug: str, *, token: str, workflow: str, mode: str) -> dict[str, Any]:
+def _apply_one(
+    slug: str,
+    *,
+    token: str,
+    workflow: str,
+    mode: str,
+    body: str | None = None,
+) -> dict[str, Any]:
     status, repo = _request("GET", _repo_api(slug), token=token)
     if status != 200 or not isinstance(repo, dict):
         return _error(slug, status, "repository lookup", mode)
@@ -213,7 +357,7 @@ def _apply_one(slug: str, *, token: str, workflow: str, mode: str) -> dict[str, 
             "title": _PR_TITLE,
             "head": _BRANCH,
             "base": default_branch,
-            "body": _PR_BODY,
+            "body": body or _PR_BODY,
         },
     )
     if pr_status in {200, 201} and isinstance(pr, dict):
@@ -365,11 +509,13 @@ def _emit(
     mode: str,
     org_reusable: str | None,
     as_json: bool,
+    min_tier: int = 2,
 ) -> None:
     payload = {
         "apply": apply,
         "mode": mode,
         "org_reusable": org_reusable,
+        "min_tier": min_tier,
         "planned": [row["repository"] for row in results],
         "results": results,
     }
@@ -379,7 +525,8 @@ def _emit(
     label = "apply" if apply else "dry-run"
     print(f"auctelis rollout · {label} · {len(results)} repo(s) · mode={mode}")
     if not results:
-        print("No unwatched tier-2 repositories to roll out.")
+        tier_label = "tier-2" if min_tier >= 2 else "tier-1+"
+        print(f"No unwatched {tier_label} repositories to roll out.")
         return
     for row in results:
         repo = row.get("repository")
