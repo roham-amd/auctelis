@@ -169,6 +169,9 @@ def _workflow_snippet_html() -> str:
 
 
 def _watch_link_md(doc: dict[str, Any]) -> str:
+    slug = str(doc.get("repository") or "")
+    if doc.get("already_watching"):
+        return f"**Watching** `{escape_markdown_inline(slug)}`" if slug else "**Watching**"
     url = watch_pr_url(
         repository=doc.get("repository"),
         default_branch=doc.get("default_branch"),
@@ -176,12 +179,15 @@ def _watch_link_md(doc: dict[str, Any]) -> str:
     )
     if not url:
         return ""
-    slug = str(doc.get("repository") or "")
     return f"[Watch PRs in {escape_markdown_inline(slug)}]({url})"
 
 
 def _watch_link_html(doc: dict[str, Any]) -> str:
     esc = html.escape
+    slug = esc(str(doc.get("repository") or ""))
+    if doc.get("already_watching"):
+        label = f"<code>{slug}</code>" if slug else ""
+        return f"<p><strong>Watching</strong> {label}</p>"
     url = watch_pr_url(
         repository=doc.get("repository"),
         default_branch=doc.get("default_branch"),
@@ -189,7 +195,6 @@ def _watch_link_html(doc: dict[str, Any]) -> str:
     )
     if not url:
         return ""
-    slug = esc(str(doc.get("repository") or ""))
     return f'<p><a href="{esc(url, quote=True)}"><strong>Watch PRs in {slug}</strong></a></p>'
 
 
@@ -302,10 +307,20 @@ def build_reach_report(
     coverage_line = str(report.get("coverage_line") or "").strip()
     if not coverage_line:
         coverage_line = family_coverage_line_from_coverage(coverage, unparsed=unparsed)
+    truncation = list(truncation_honesty_notes(coverage))
+    extra_notes = [str(n) for n in _as_list(report.get("honesty_notes")) if str(n).strip()]
+    # GitHub tree truncation / fetch notes land in honesty_notes; surface them
+    # in the same Honesty panel as walk-cap truncation (AUCT-027).
+    seen_trunc = set(truncation)
+    for note in extra_notes:
+        if note not in seen_trunc:
+            truncation.append(note)
+            seen_trunc.add(note)
     honesty = {
         "disclaimer": _DECLARED_ONLY_DISCLAIMER,
         "coverage_line": coverage_line,
-        "truncation": truncation_honesty_notes(coverage),
+        "truncation": truncation,
+        "notes": extra_notes,
         "unparsed": unparsed,
         "declared_only": True,
     }
@@ -339,6 +354,8 @@ def build_reach_report(
         doc["default_branch"] = str(report.get("default_branch"))
     if report.get("github_web_base"):
         doc["github_web_base"] = str(report.get("github_web_base"))
+    if report.get("already_watching") is not None:
+        doc["already_watching"] = bool(report.get("already_watching"))
     return doc
 
 
@@ -878,6 +895,8 @@ def render_fleet_reach_html(doc: dict[str, Any]) -> str:
     honesty_notes = _fleet_honesty_notes(doc)
 
     def _watch_cell(repo: dict[str, Any]) -> str:
+        if repo.get("already_watching"):
+            return "<strong>Watching</strong>"
         url = watch_pr_url(
             repository=repo.get("repository"),
             default_branch=repo.get("default_branch"),

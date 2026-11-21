@@ -624,3 +624,104 @@ def test_github_fleet_report_includes_watch_links_and_skipped():
     hostile_html = render_reach_html(hostile)
     assert "<script>alert(1)</script>" not in hostile_html
     assert "/new/" not in hostile_html  # invalid slug → no watch link
+
+
+def test_honesty_notes_from_github_truncation_appear_in_single_repo_report():
+    """AUCT-027: GitHub tree truncation notes merge into honesty.truncation."""
+    doc = build_reach_report(
+        {
+            "repository": "acme/app",
+            "default_branch": "main",
+            "github_web_base": "https://github.com",
+            "coverage_line": "Coverage: ok",
+            "unparsed": 0,
+            "honesty_notes": [
+                "acme/app: git tree truncated=true — watched-path scan may be incomplete"
+            ],
+            "reach": {"total": 0, "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 0}},
+            "pins": {},
+            "counts": {},
+            "delta": {},
+            "label": "NONE",
+            "verdict": "BASELINE_NEEDED",
+            "schema_version": "authority-diff/1",
+            "lock_present": False,
+            "first_run": True,
+            "meaningful": False,
+        },
+        None,
+    )
+    trunc = doc["honesty"]["truncation"]
+    assert any("truncated=true" in str(n) for n in trunc)
+    md = render_reach_md(doc)
+    html = render_reach_html(doc)
+    assert "truncated=true" in md
+    assert "No walk truncation reported" not in md
+    assert "truncated=true" in html
+
+
+def test_already_watching_suppresses_new_watch_link():
+    """AUCT-027: repos with auctelis workflow show Watching, not /new/."""
+    doc = build_reach_report(
+        {
+            "repository": "acme/watched",
+            "default_branch": "main",
+            "github_web_base": "https://github.com",
+            "already_watching": True,
+            "coverage_line": "",
+            "unparsed": 0,
+            "reach": {"total": 0, "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 0}},
+            "pins": {},
+            "counts": {},
+            "delta": {},
+            "label": "NONE",
+            "verdict": "BASELINE_NEEDED",
+            "schema_version": "authority-diff/1",
+            "lock_present": False,
+            "first_run": True,
+            "meaningful": False,
+        },
+        None,
+    )
+    assert doc["already_watching"] is True
+    md = render_reach_md(doc)
+    html = render_reach_html(doc)
+    assert "Watching" in md
+    assert "/new/" not in md
+    assert "Watching" in html
+    assert "/new/" not in html
+    fleet = build_fleet_reach_report(
+        [
+            (
+                {
+                    "repository": "acme/watched",
+                    "default_branch": "main",
+                    "github_web_base": "https://github.com",
+                    "already_watching": True,
+                    "coverage_line": "",
+                    "unparsed": 0,
+                    "reach": {
+                        "total": 0,
+                        "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 0},
+                    },
+                    "pins": {},
+                    "counts": {},
+                    "delta": {},
+                    "label": "NONE",
+                    "verdict": "BASELINE_NEEDED",
+                    "schema_version": "authority-diff/1",
+                    "lock_present": False,
+                    "first_run": True,
+                    "meaningful": False,
+                },
+                None,
+                [],
+            )
+        ]
+    )
+    fleet_md = render_fleet_reach_md(fleet)
+    fleet_html = render_fleet_reach_html(fleet)
+    assert "Watching" in fleet_md
+    assert "acme/watched/new/" not in fleet_md
+    assert "Watching" in fleet_html
+    assert "acme/watched/new/" not in fleet_html

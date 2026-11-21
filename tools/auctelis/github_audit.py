@@ -34,6 +34,13 @@ _USER_AGENT = "auctelis-github-audit"
 _API_VERSION = "2022-11-28"
 _BLOB_WORKERS = 6
 _OWNER_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+_AUCTELIS_WORKFLOW_RE = re.compile(
+    r"^\.github/workflows/auctelis[^/]*\.ya?ml$",
+    re.IGNORECASE,
+)
+# Set when a successful response reports x-ratelimit-remaining=0 so the *next*
+# request short-circuits without discarding the last good payload.
+_rate_limit_exhausted: bool = False
 
 
 class GitHubAuditError(Exception):
@@ -104,11 +111,30 @@ def _token() -> str | None:
     return out or None
 
 
-def _is_rate_limited(status: int, hdrs: dict[str, str]) -> bool:
-    """True when GitHub signals exhaustion (remaining=0 or HTTP 429)."""
+def _reset_rate_limit_state() -> None:
+    """Clear the exhausted flag (tests / start of a fresh audit)."""
+    global _rate_limit_exhausted
+    _rate_limit_exhausted = False
+
+
+def _mark_rate_exhausted_from_headers(hdrs: dict[str, str]) -> None:
+    """Remember remaining=0 so the next API call fails closed."""
+    global _rate_limit_exhausted
     if str(hdrs.get("x-ratelimit-remaining") or "").strip() == "0":
+        _rate_limit_exhausted = True
+
+
+def _is_rate_limited(status: int, hdrs: dict[str, str]) -> bool:
+    """True for HTTP 429, or non-200 responses with remaining=0.
+
+    HTTP 200 with remaining=0 still returns the payload; exhaustion is recorded
+    for the *next* request via ``_mark_rate_exhausted_from_headers``.
+    """
+    if status == 429:
         return True
-    return status == 429
+    if status == 200:
+        return False
+    return str(hdrs.get("x-ratelimit-remaining") or "").strip() == "0"
 
 
 def _request_json(
@@ -117,6 +143,12 @@ def _request_json(
     token: str | None,
     accept: str = "application/vnd.github+json",
 ) -> tuple[Any | None, int, dict[str, str]]:
+    if _rate_limit_exhausted:
+        raise GitHubAuditError(
+            f"GitHub API rate limit exhausted for {url}",
+            status=0,
+            rate_limited=True,
+        )
     try:
         url = validated_http_url(url, what="GitHub API URL")
     except ValueError as exc:
@@ -133,18 +165,23 @@ def _request_json(
         with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
             body = resp.read()
             hdrs = {k.lower(): v for k, v in resp.headers.items()}
-            if _is_rate_limited(int(resp.status), hdrs):
+            status = int(resp.status)
+            if _is_rate_limited(status, hdrs):
                 raise GitHubAuditError(
                     f"GitHub API rate limit exhausted for {url}",
-                    status=int(resp.status),
+                    status=status,
                     rate_limited=True,
                 )
+            # Keep a valid 200 body even when remaining hit 0; short-circuit next.
+            _mark_rate_exhausted_from_headers(hdrs)
             if not body:
-                return None, int(resp.status), hdrs
-            return json.loads(body.decode("utf-8")), int(resp.status), hdrs
+                return None, status, hdrs
+            return json.loads(body.decode("utf-8")), status, hdrs
     except urllib.error.HTTPError as exc:
         hdrs = {k.lower(): v for k, v in (exc.headers.items() if exc.headers else [])}
-        if _is_rate_limited(exc.code, hdrs) or exc.code == 429:
+        # Covers HTTP 429 and non-200 with x-ratelimit-remaining=0 (incl. 403 abuse).
+        if _is_rate_limited(exc.code, hdrs):
+            _mark_rate_exhausted_from_headers(hdrs)
             raise GitHubAuditError(
                 f"GitHub API HTTP {exc.code} (rate limit) for {url}",
                 status=exc.code,
@@ -205,12 +242,20 @@ def resolve_targets(
     *,
     max_repos: int = 50,
     token: str | None = None,
+    include_forks: bool = False,
 ) -> list[str]:
-    """Expand ``owner/repo`` and bare ``org`` targets into ``owner/repo`` slugs."""
+    """Expand ``owner/repo`` and bare ``org`` targets into ``owner/repo`` slugs.
+
+    Org/user listings skip forks by default (pass ``include_forks=True`` to keep
+    them). Explicit ``owner/repo`` slugs are never filtered.
+    """
+    # Fresh listing must not inherit exhausted state from a prior audit call.
+    _reset_rate_limit_state()
     tok = token if token is not None else _token()
     base = _api_base()
     slugs: list[str] = []
     seen: set[str] = set()
+    # Fetch more pages when skipping forks so --max-repos still fills.
     for raw in targets:
         target = str(raw or "").strip().strip("/")
         if not target:
@@ -242,6 +287,8 @@ def resolve_targets(
             repos = _paginate(user_url, token=tok, max_items=fetch_cap)
         for item in repos:
             if item.get("archived"):
+                continue
+            if not include_forks and item.get("fork"):
                 continue
             full = str(item.get("full_name") or "").strip()
             if not full or full in seen:
@@ -305,12 +352,13 @@ def stage_repo_watched_files(
     max_files: int = MAX_WATCHED_FILES_PER_REPO,
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES,
     staging_dir: Path | None = None,
-) -> tuple[Path, list[str], bool, dict[str, str]]:
+) -> tuple[Path, list[str], bool, dict[str, Any]]:
     """Fetch watched blobs into ``staging_dir`` (or a new temp dir).
 
     Returns ``(root, notes, truncated, meta)`` where ``meta`` includes
-    ``default_branch`` and ``github_web_base``. Caller owns cleanup when
-    ``staging_dir`` was provided; otherwise caller must remove the temp dir.
+    ``default_branch``, ``github_web_base``, and ``already_watching``.
+    Caller owns cleanup when ``staging_dir`` was provided; otherwise caller
+    must remove the temp dir.
     """
     tok = token if token is not None else _token()
     base = _api_base()
@@ -324,7 +372,11 @@ def stage_repo_watched_files(
     if status != 200 or not isinstance(meta_doc, dict):
         raise GitHubAuditError(f"could not load repository metadata for {slug} (HTTP {status})")
     branch = str(meta_doc.get("default_branch") or "") or "main"
-    meta = {"default_branch": branch, "github_web_base": web_base}
+    meta: dict[str, Any] = {
+        "default_branch": branch,
+        "github_web_base": web_base,
+        "already_watching": False,
+    }
     tree_url = (
         f"{base}/repos/{owner}/{repo}/git/trees/{urllib.parse.quote(branch, safe='')}?recursive=1"
     )
@@ -342,13 +394,18 @@ def stage_repo_watched_files(
         notes.append(f"{slug}: git tree truncated=true — watched-path scan may be incomplete")
     entries = tree_doc.get("tree") or []
     watched: list[dict[str, Any]] = []
+    already_watching = False
     for entry in entries:
         if not isinstance(entry, dict):
             continue
         if str(entry.get("type") or "") != "blob":
             continue
         rel = _safe_rel_path(str(entry.get("path") or ""))
-        if not rel or not is_watched_path(rel):
+        if not rel:
+            continue
+        if _AUCTELIS_WORKFLOW_RE.match(rel):
+            already_watching = True
+        if not is_watched_path(rel):
             continue
         size = int(entry.get("size") or 0)
         if size > max_file_bytes:
@@ -362,6 +419,7 @@ def stage_repo_watched_files(
             truncated = True
             break
 
+    meta["already_watching"] = already_watching
     root = staging_dir or Path(tempfile.mkdtemp(prefix="auctelis-gh-"))
     root.mkdir(parents=True, exist_ok=True)
     fetched = 0
@@ -411,10 +469,12 @@ def audit_github_repos(
     max_files: int | None = None,
     top: int = 5,
     limits: object | None = None,
+    include_forks: bool = False,
 ) -> tuple[list[RepoAuditResult], list[str]]:
     """Audit org/repo targets into ``RepoAuditResult`` rows (temp dirs cleaned)."""
     from auctelis.check import build_check_report
 
+    _reset_rate_limit_state()
     tok = _token()
     honesty: list[str] = []
     if not tok:
@@ -423,12 +483,19 @@ def audit_github_repos(
             "(public repos only; rate limits are lower)."
         )
     try:
-        slugs = resolve_targets(targets, max_repos=max_repos, token=tok)
+        slugs = resolve_targets(
+            targets,
+            max_repos=max_repos,
+            token=tok,
+            include_forks=include_forks,
+        )
     except GitHubAuditError as exc:
         honesty.append(str(exc))
         return [], honesty
     if not slugs:
         honesty.append("No repositories resolved from --github targets.")
+        if not include_forks:
+            honesty.append("Forks are skipped by default; pass --include-forks to include them.")
         return [], honesty
     if len(slugs) >= max_repos:
         honesty.append(f"Repository list capped at --max-repos {max_repos}.")
@@ -447,6 +514,7 @@ def audit_github_repos(
             report["repository"] = slug
             report["default_branch"] = meta.get("default_branch") or "main"
             report["github_web_base"] = meta.get("github_web_base") or _github_web_base()
+            report["already_watching"] = bool(meta.get("already_watching"))
             if truncated:
                 report.setdefault("honesty_notes", [])
                 if isinstance(report["honesty_notes"], list):

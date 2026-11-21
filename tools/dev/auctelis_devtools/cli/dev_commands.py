@@ -260,11 +260,18 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
 
 def cmd_build(args: argparse.Namespace) -> int:
-    from auctelis_devtools.build import build_all, sync_schemas
+    from auctelis_devtools.build import (
+        build_all,
+        check_pypi_cutover_readiness,
+        sync_schemas,
+    )
 
     match args.target:
         case "schemas":
             for line in sync_schemas():
+                print(line)
+        case "pypi-check":
+            for line in check_pypi_cutover_readiness():
                 print(line)
         case _:
             print_json(build_all())

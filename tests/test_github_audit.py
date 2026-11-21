@@ -46,6 +46,9 @@ class _FakeResponse:
 
 def _install_http(monkeypatch: pytest.MonkeyPatch, routes: dict[str, Any]) -> list[str]:
     """Map URL → payload or (payload, status, headers). Longest-prefix wins."""
+    from auctelis import github_audit
+
+    github_audit._reset_rate_limit_state()
     seen: list[str] = []
 
     def opener(req: Request, timeout: float = 0):
@@ -321,3 +324,118 @@ def test_audit_sets_default_branch_and_web_base(monkeypatch: pytest.MonkeyPatch)
     assert results[0].report is not None
     assert results[0].report["default_branch"] == "develop"
     assert results[0].report["github_web_base"] == "https://github.com"
+
+
+def test_resolve_targets_skips_forks_by_default(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    page = [
+        {"full_name": "acme/owned", "archived": False, "fork": False},
+        {"full_name": "acme/forked", "archived": False, "fork": True},
+        {"full_name": "acme/other", "archived": False, "fork": False},
+    ]
+    routes = {"https://api.github.com/orgs/acme/repos": (page, 200, {"Link": ""})}
+    _install_http(monkeypatch, routes)
+    assert resolve_targets(["acme"], max_repos=10) == ["acme/owned", "acme/other"]
+    assert resolve_targets(["acme"], max_repos=10, include_forks=True) == [
+        "acme/owned",
+        "acme/forked",
+        "acme/other",
+    ]
+
+
+def test_http_200_remaining_zero_keeps_payload_and_short_circuits_next(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from auctelis import github_audit
+
+    monkeypatch.setenv("GITHUB_TOKEN", "tok")
+    github_audit._reset_rate_limit_state()
+    calls = {"n": 0}
+
+    def opener(req: Request, timeout: float = 0):
+        calls["n"] += 1
+        url = req.full_url
+        if calls["n"] == 1:
+            return _FakeResponse(
+                {"full_name": "acme/one", "default_branch": "main"},
+                status=200,
+                headers={"X-RateLimit-Remaining": "0"},
+            )
+        raise AssertionError(f"unexpected second HTTP call: {url}")
+
+    monkeypatch.setattr("urllib.request.urlopen", opener)
+    data, status, hdrs = github_audit._request_json(
+        "https://api.github.com/repos/acme/one", token="tok"
+    )
+    assert status == 200
+    assert data["full_name"] == "acme/one"
+    assert hdrs.get("x-ratelimit-remaining") == "0"
+    with pytest.raises(GitHubAuditError) as exc:
+        github_audit._request_json("https://api.github.com/repos/acme/two", token="tok")
+    assert exc.value.rate_limited is True
+    assert calls["n"] == 1
+
+
+def test_stage_repo_detects_already_watching(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    monkeypatch.setenv("GITHUB_TOKEN", "tok")
+    mcp = json.dumps({"mcpServers": {}})
+    tree = {
+        "truncated": False,
+        "tree": [
+            {"path": ".cursor/mcp.json", "type": "blob", "sha": "sha-mcp", "size": len(mcp)},
+            {
+                "path": ".github/workflows/auctelis.yml",
+                "type": "blob",
+                "sha": "sha-wf",
+                "size": 20,
+            },
+        ],
+    }
+    routes = {
+        "https://api.github.com/repos/acme/app": {"default_branch": "main"},
+        "https://api.github.com/repos/acme/app/git/trees/main": tree,
+        "https://api.github.com/repos/acme/app/git/blobs/sha-mcp": {
+            "encoding": "base64",
+            "content": _b64(mcp),
+            "size": len(mcp),
+        },
+    }
+    _install_http(monkeypatch, routes)
+    _root, _notes, _trunc, meta = stage_repo_watched_files(
+        "acme/app", staging_dir=tmp_path / "s", max_files=100
+    )
+    assert meta["already_watching"] is True
+
+
+def test_audit_sets_already_watching_on_report(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "tok")
+    from auctelis import github_audit
+
+    github_audit._reset_rate_limit_state()
+    mcp = json.dumps({"mcpServers": {}})
+    tree = {
+        "truncated": False,
+        "tree": [
+            {"path": ".cursor/mcp.json", "type": "blob", "sha": "sha-mcp", "size": len(mcp)},
+            {
+                "path": ".github/workflows/auctelis-gate.yml",
+                "type": "blob",
+                "sha": "sha-wf",
+                "size": 10,
+            },
+        ],
+    }
+    routes = {
+        "https://api.github.com/repos/acme/app": {"default_branch": "main"},
+        "https://api.github.com/repos/acme/app/git/trees/main": tree,
+        "https://api.github.com/repos/acme/app/git/blobs/sha-mcp": {
+            "encoding": "base64",
+            "content": _b64(mcp),
+            "size": len(mcp),
+        },
+    }
+    _install_http(monkeypatch, routes)
+    results, _ = audit_github_repos(["acme/app"], max_repos=5, top=3)
+    assert results[0].report is not None
+    assert results[0].report["already_watching"] is True

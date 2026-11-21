@@ -17,8 +17,8 @@ def add_dev_commands(sub: Any) -> None:
         "target",
         nargs="?",
         default="all",
-        choices=["all", "schemas"],
-        help="Build target (default: all)",
+        choices=["all", "schemas", "pypi-check"],
+        help="Build target (default: all; pypi-check = cutover readiness)",
     )
 
     val = sub.add_parser("validate", help="Validate auctelis JSON artifacts")

@@ -490,6 +490,24 @@ def classify_record_change(
     after: dict[str, Any],
 ) -> ChangeClass:
     """Classify how one matched record changed between locks."""
+    # AUCT-029: pin_state-only tightening (floating/unknown → pinned/digest)
+    # with identical launcher/hosts/env/capabilities is always a reduction.
+    pin_before = before.get("pin_state")
+    pin_after = after.get("pin_state")
+    if pin_before != pin_after:
+        other_auth_changed = any(
+            before.get(field) != after.get(field)
+            for field in _AUTHORITY_FIELDS
+            if field != "pin_state"
+        )
+        if not other_auth_changed:
+            b_rank = _PIN_RANK.get(str(pin_before or "unknown"), 3)
+            a_rank = _PIN_RANK.get(str(pin_after or "unknown"), 3)
+            if a_rank < b_rank:
+                return "reduction"
+            if a_rank > b_rank:
+                return "expansion"
+
     grew = False
     shrank = False
     authority_touched = False

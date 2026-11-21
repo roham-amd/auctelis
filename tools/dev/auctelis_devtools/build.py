@@ -805,6 +805,61 @@ def check_action_parity() -> list[str]:
     ]
 
 
+def check_pypi_cutover_readiness() -> list[str]:
+    """AUCT-028: preflight before flipping ``pypi_live=true``.
+
+    Verifies Trusted Publishing workflow OIDC wiring, wheel packaging
+    exclusions/inclusions, and prints the exact 3-step cutover checklist.
+    Does **not** flip ``pypi_live`` or publish.
+    """
+    root = repo_root()
+    actions: list[str] = []
+
+    publish = root / ".github" / "workflows" / "publish-pypi.yml"
+    if not publish.is_file():
+        raise SystemExit("Missing .github/workflows/publish-pypi.yml")
+    text = publish.read_text(encoding="utf-8")
+    if "id-token: write" not in text:
+        raise SystemExit("publish-pypi.yml missing OIDC id-token: write permission")
+    if "environment: pypi" not in text:
+        raise SystemExit("publish-pypi.yml missing environment: pypi")
+    if "uv publish" not in text:
+        raise SystemExit("publish-pypi.yml missing uv publish step")
+    if "pypi.org/pypi/auctelis" not in text:
+        raise SystemExit("publish-pypi.yml missing PyPI HTTP 200 assert")
+    actions.append("ok publish-pypi.yml OIDC + uv publish + PyPI assert")
+
+    wheel_notes = check_wheel_omits_research()
+    actions.extend(wheel_notes)
+
+    pyproject = (root / "tools" / "pyproject.toml").read_text(encoding="utf-8")
+    if "auctelis.cli:main" not in pyproject:
+        raise SystemExit("tools/pyproject.toml missing auctelis console script entry")
+    actions.append("ok tools/pyproject.toml declares auctelis console script")
+
+    pypi_live = _pypi_live()
+    if pypi_live:
+        actions.append("note: pypi_live is already true — cutover docs must lead with uvx auctelis")
+    else:
+        actions.append("note: pypi_live=false — cutover not flipped yet (expected)")
+
+    checklist = [
+        "",
+        "PyPI cutover checklist (manual; do not automate publish here):",
+        "  1. Claim/configure Trusted Publishing for project `auctelis` on PyPI",
+        "     (owner roham-amd / repo auctelis / workflow publish-pypi.yml / env pypi).",
+        "  2. Dispatch `.github/workflows/publish-pypi.yml` and confirm HTTP 200 at",
+        "     https://pypi.org/pypi/auctelis/json for this VERSION.",
+        "  3. Flip `pypi_live=true` in canonical/release-manifest.json,",
+        '     set AUCTELIS_PYPI_DEFAULT="true" in both action.yml copies, and lead',
+        "     install docs with `uvx auctelis check` (then `auctelis-dev build all`).",
+        "",
+    ]
+    for line in checklist:
+        print(line)
+    return actions
+
+
 def build_all() -> dict[str, object]:
     sync = sync_schemas()
     packaged = sync_packaged_version_metadata()

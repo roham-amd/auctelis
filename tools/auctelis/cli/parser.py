@@ -173,6 +173,11 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         metavar="N",
         help="Cap repositories when --github lists an org (default: 50)",
     )
+    check.add_argument(
+        "--include-forks",
+        action="store_true",
+        help="Include forked repositories when --github lists an org (default: skip forks)",
+    )
 
     init_cmd = sub.add_parser(
         "init",

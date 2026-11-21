@@ -819,3 +819,96 @@ def test_skill_prose_secrets_never_fail_tier_end_to_end(tmp_path: Path):
     assert report["label"] == "GROWTH"
     assert report["max_reach_tier"] == TIER_COMMENT
     assert report["needs_approval"] is False
+
+
+# --- AUCT-029 CI signal precision + pin reduction ---------------------------
+
+
+def test_plain_ci_run_lines_do_not_match_agent_bare_names():
+    from auctelis.inventory.adapters.workflow_signals import (
+        analyze_github_workflow,
+        workflow_text_has_agent_step,
+    )
+
+    plain = """
+name: ci
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pytest -k cursor
+      - run: echo "gemini test"
+"""
+    assert workflow_text_has_agent_step(plain) is False
+    hints = analyze_github_workflow(plain)
+    assert "agent_related_step" not in hints
+
+
+def test_agent_cli_run_lines_still_detect_as_agent_steps():
+    from auctelis.inventory.adapters.workflow_signals import workflow_text_has_agent_step
+
+    assert workflow_text_has_agent_step('run: claude -p "summarize"') is True
+    assert workflow_text_has_agent_step("run: npx -y @github/copilot") is True
+    assert workflow_text_has_agent_step("run: FOO=1 claude -p hi") is True
+    assert workflow_text_has_agent_step("run: make test && claude -p x") is True
+
+
+def test_pin_tightening_only_is_reduction_pass(tmp_path: Path):
+    """AUCT-029: floating → pinned with identical other fields → REDUCTION PASS."""
+    from auctelis.authority_lock import (
+        classify_record_change,
+        delta_label,
+        diff_authority_locks,
+    )
+    from auctelis.reach_tiers import TIER_SILENT, delta_max_reach_tier
+
+    before = {
+        "kind": "MCP Server Registration",
+        "name": "demo",
+        "path": ".cursor/mcp.json",
+        "launcher": "npx",
+        "args_digest": "aaa",
+        "url_host": "",
+        "pin_state": "floating",
+        "capabilities": ["invoke_tools"],
+        "destinations": [],
+        "env_keys": [],
+        "permission_allows": [],
+        "approval_posture": "prompt",
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    after = {**before, "pin_state": "pinned"}
+    assert classify_record_change(before, after) == "reduction"
+
+    base = {
+        "version": 1,
+        "records": [
+            {
+                **before,
+                "id": "cursor/MCP Server Registration/demo",
+                "identity_key": "cursor|mcp server registration|demo",
+                "host": "cursor",
+                "digest": "d1",
+                "fingerprint": "fp1",
+            }
+        ],
+    }
+    head = {
+        "version": 1,
+        "records": [
+            {
+                **after,
+                "id": "cursor/MCP Server Registration/demo",
+                "identity_key": "cursor|mcp server registration|demo",
+                "host": "cursor",
+                "digest": "d1",
+                "fingerprint": "fp1",
+            }
+        ],
+    }
+    delta = diff_authority_locks(base, head)
+    assert delta_label(delta["summary"]) == "REDUCTION"
+    assert delta_max_reach_tier(delta) == TIER_SILENT
+    changed = delta["changes"]["changed"]
+    assert changed and changed[0]["change_class"] == "reduction"

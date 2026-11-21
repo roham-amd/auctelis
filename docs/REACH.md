@@ -59,7 +59,9 @@ says so. `init` adds that CODEOWNERS entry.
 
 Cards show the tier and its reason (`tier 2 (secrets)`), plus secret **names**
 (`env: API_TOKEN`) — never values. `auctelis check --pins` lists unpinned
-npx/uvx/docker MCP launchers with a concrete pin suggestion.
+npx/uvx/docker MCP launchers with a concrete pin suggestion. Tightening an MCP
+`pin_state` alone (`floating`/`unknown` → `pinned`/`digest`) is a **REDUCTION**
+(PASS), and the card still shows `pin: unpinned → pinned`.
 
 ## What reach is not
 

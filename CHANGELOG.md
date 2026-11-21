@@ -7,6 +7,29 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.17.2] — 2026-11-21
+
+### Added
+- **AUCT-027 (Hardened `--github` v2):** org audits skip forks by default
+  (`--include-forks` opt-in); HTTP 200 with `x-ratelimit-remaining=0` keeps the
+  payload and short-circuits the next repo; detects existing
+  `auctelis*.yml` workflows and renders **Watching** instead of a broken
+  `/new/` link; GitHub truncation notes merge into single-repo Honesty panels;
+  1-usable + skipped org audits always write the fleet report.
+- **AUCT-028 (`status --check` parity + PyPI cutover readiness):** recognize
+  dogfood `uses: ./` (when root `action.yml` is auctelis) and
+  `auctelis-org-reusable.yml@<ref>` callers; `auctelis-dev build pypi-check`
+  verifies Trusted Publishing wiring and prints the 3-step cutover checklist.
+- **AUCT-029 (CI signal precision + pin reduction):** bare `cursor`/`gemini`/
+  etc. in `run:` lines only match at command position (not `pytest -k cursor`);
+  pin-only tightening classifies as `REDUCTION` / PASS with
+  `pin: unpinned → pinned` on the card.
+
+### Changed
+- Rate-limit handling in zero-clone audits no longer discards a valid HTTP 200
+  body when the remaining quota hits zero on that response.
+- Maintainer docs list `auctelis-dev build pypi-check` alongside `build all`.
+
 ## [0.17.1] — 2026-11-20
 
 ### Added

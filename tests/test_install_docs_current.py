@@ -151,3 +151,10 @@ def test_product_md_release_line_matches_version():
     product = product_version()
     assert f"**Release:** {product}" in text
     assert f"**Package:** `auctelis` {product}" in text
+
+
+def test_pypi_cutover_readiness_check():
+    """AUCT-028: auctelis-dev build pypi-check preflight succeeds on this repo."""
+    notes = build.check_pypi_cutover_readiness()
+    assert any("publish-pypi.yml" in n for n in notes)
+    assert any("console script" in n for n in notes)

@@ -174,6 +174,7 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
 
     top = int(getattr(args, "top", 5))
     max_repos = int(getattr(args, "max_repos", 50) or 50)
+    include_forks = bool(getattr(args, "include_forks", False))
     as_json = bool(getattr(args, "json", False))
     # audit_github_repos never raises: failures become skipped rows + honesty notes.
     results, honesty = audit_github_repos(
@@ -181,6 +182,7 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         max_repos=max_repos,
         top=top,
         limits=_collector_limits(args),
+        include_forks=include_forks,
     )
 
     for note in honesty:
@@ -204,7 +206,12 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         print("auctelis check: no repositories audited successfully.")
         return 2
 
-    if len(usable) == 1 and not getattr(args, "pins", False):
+    # Org / multi-target / any skipped row → fleet report so skipped_rows and
+    # honesty notes stay visible (AUCT-027). Single owner/repo with no skips
+    # keeps the compact single-repo path.
+    use_fleet = bool(skipped_rows) or needs_report or len(usable) > 1
+
+    if not use_fleet and len(usable) == 1 and not getattr(args, "pins", False):
         only = usable[0]
         assert only.report is not None
         if report_dir is not None:
@@ -226,7 +233,7 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
             print(render_check(only.report, only.cards))
         return check_exit_code(only.report)
 
-    if getattr(args, "pins", False) and len(usable) == 1:
+    if getattr(args, "pins", False) and len(usable) == 1 and not use_fleet:
         only = usable[0]
         assert only.report is not None
         if report_dir is not None:

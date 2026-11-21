@@ -95,3 +95,49 @@ def test_pin_config_snippet_for_npx_uvx_docker():
         {"launcher": "docker", "pin_state": "floating", "args": ["run", "demo/img"]}
     )
     assert docker == '"image": "demo/img@sha256:<digest>"'
+
+
+def test_pin_tightening_card_shows_unpinned_to_pinned():
+    """AUCT-029: reviewers see pin: unpinned → pinned on the reduction card."""
+    delta = {
+        "summary": {
+            "additions": 0,
+            "expansions": 0,
+            "reductions": 1,
+            "replacements": 0,
+            "policy_changed": False,
+            "meaningful_authority_change": True,
+            "max_reach_tier": 0,
+        },
+        "changes": {
+            "added": [],
+            "removed": [],
+            "changed": [
+                {
+                    "change_class": "reduction",
+                    "before": {
+                        "kind": "MCP Server Registration",
+                        "name": "demo",
+                        "path": ".cursor/mcp.json",
+                        "launcher": "npx",
+                        "pin_state": "floating",
+                        "capabilities": ["invoke_tools"],
+                        "evidence_strength": "LITERAL_CONFIG",
+                    },
+                    "after": {
+                        "kind": "MCP Server Registration",
+                        "name": "demo",
+                        "path": ".cursor/mcp.json",
+                        "launcher": "npx",
+                        "pin_state": "pinned",
+                        "capabilities": ["invoke_tools"],
+                        "evidence_strength": "LITERAL_CONFIG",
+                    },
+                }
+            ],
+        },
+    }
+    cards = delta_cards(delta, limit=5)
+    assert cards
+    assert any("pin: unpinned → pinned" in c for c in cards)
+    assert any(c.startswith("~") for c in cards)

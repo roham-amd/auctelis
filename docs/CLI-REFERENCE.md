@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.17.1** · product **0.17.1** · rule pack **1.6** (001–022).
+Package `auctelis` **0.17.2** · product **0.17.2** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,7 +22,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report |
+| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -45,7 +45,7 @@ Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 ```bash
 auctelis check [PATH ...] [--lock-file PATH] [--json] [--top N] [--pins]
                [--report DIR] [--baseline PATH] [--max-files N]
-               [--github TARGET ...] [--max-repos N]
+               [--github TARGET ...] [--max-repos N] [--include-forks]
 ```
 
 Inventories agent configs in a repository (MCP, skills, instructions, hooks,
@@ -69,11 +69,13 @@ lists every tier-2 record (not just the top cards).
   (exit 2 if combined with multiple paths)
 - `--github TARGET ...` → zero-clone GitHub audit via Trees+Blobs API.
   Single `owner/repo` may omit `--report` (stdout check/pins/JSON); bare `org`
-  or multiple targets require `--report DIR`. Lists non-archived repos sorted by
-  most recently pushed (capped by `--max-repos`, default 50). Auth:
-  `GITHUB_TOKEN` / `GH_TOKEN`, else `gh auth token` (unauthenticated public
-  fallback). Fleet HTML/MD show skipped/truncated repos; GitHub-sourced reports
-  include 1-click **Watch PRs** links. Labels reports as `owner/repo`, never temp paths.
+  or multiple targets require `--report DIR`. Lists non-archived, non-fork repos
+  sorted by most recently pushed (capped by `--max-repos`, default 50; pass
+  `--include-forks` to keep forks). Auth: `GITHUB_TOKEN` / `GH_TOKEN`, else
+  `gh auth token` (unauthenticated public fallback). Fleet HTML/MD show
+  skipped/truncated repos; GitHub-sourced reports include 1-click **Watch PRs**
+  links (or **Watching** when `.github/workflows/auctelis*.yml` already exists).
+  Labels reports as `owner/repo`, never temp paths.
 - `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
 - `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
 
@@ -217,15 +219,19 @@ exits `0` (walkthrough, not a gate).
 
 ---
 
-## Maintainer annotation (`auctelis-dev`)
+## Maintainer (`auctelis-dev`)
 
 ```bash
+auctelis-dev build all          # schemas, version parity, action parity, wheel lean
+auctelis-dev build pypi-check   # Trusted Publishing cutover readiness (no publish)
+auctelis-dev build schemas
 auctelis-dev scan [PATH] [-o DIR] [--locked] [--base-lock PATH] [--fail-on never|high|any]
 auctelis-dev annotate [findings.json] --format github|text|pr-comment
 ```
 
-Artifact / SARIF / PR-comment helpers for CI. Not the product front door —
-use `check` / `gate` / `diff --base` for Authority Diff.
+`build` / lint / corpus / deps stay maintainer-only. Annotation helpers are for
+CI — not the product front door. Use `check` / `gate` / `diff --base` for
+Authority Diff.
 
 ---
 

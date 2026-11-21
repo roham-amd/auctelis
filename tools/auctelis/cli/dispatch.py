@@ -557,7 +557,7 @@ def _cmd_status(args: argparse.Namespace) -> int:
     )
     if workflow_file is not None:
         body = workflow_file.read_text(encoding="utf-8")
-        has_gate, locked, pin = _workflow_locked_state(body)
+        has_gate, locked, pin = _workflow_locked_state(body, root=root)
         comment_only = not locked
         visible_body = _visible_workflow_text(body)
         # Prefer the Action input; fall back to CLI flag presence for older workflows.
@@ -570,7 +570,14 @@ def _cmd_status(args: argparse.Namespace) -> int:
             workflow_strict = strict_m.group(1).lower() == "true"
         else:
             workflow_strict = "--no-strict-ruleset" not in visible_body
-        install = "local-action" if local_action.is_file() else "remote-action"
+        if re.search(r"uses:\s*\./(?:\s|$)", visible_body) and _root_action_is_auctelis(root):
+            install = "local-root-action"
+        elif re.search(r"auctelis-org-reusable\.ya?ml@", visible_body, flags=re.IGNORECASE):
+            install = "org-reusable"
+        elif local_action.is_file():
+            install = "local-action"
+        else:
+            install = "remote-action"
         rel = str(workflow_file.relative_to(root)).replace("\\", "/")
         lines.append(
             f"Workflow: {rel} · gate={'yes' if has_gate else 'NO'} · "
@@ -770,11 +777,39 @@ def _visible_workflow_text(body: str) -> str:
     return "\n".join(visible)
 
 
-def _workflow_locked_state(body: str) -> tuple[bool, bool, str]:
+def _root_action_is_auctelis(root: Path) -> bool:
+    """True when ``root/action.yml`` defines the auctelis composite Action.
+
+    Requires the Action ``name:`` line to mention auctelis — a comment or
+    description that merely says "not auctelis" must not arm the gate.
+    """
+    action = root / "action.yml"
+    if not action.is_file():
+        return False
+    try:
+        text = action.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("name:") and "auctelis" in stripped.lower():
+            return True
+    return False
+
+
+def _workflow_locked_state(
+    body: str,
+    *,
+    root: Path | None = None,
+) -> tuple[bool, bool, str]:
     """Return ``(has_gate_action, locked, pin)`` from an existing workflow body.
 
     Comments are stripped first: templates document ``locked: "true"`` as an
     opt-in, and a comment must never be mistaken for the live Action input.
+
+    Recognizes Marketplace / subpath pins, dogfood ``uses: ./`` when
+    ``root/action.yml`` is auctelis, and org-reusable callers of
+    ``auctelis-org-reusable.yml@<ref>``.
     """
     visible = _visible_workflow_text(body)
     has_gate = ("roham-amd/auctelis@" in visible and "auctelis" in visible.lower()) or (
@@ -788,6 +823,28 @@ def _workflow_locked_state(body: str) -> tuple[bool, bool, str]:
         visible,
     )
     pin = pin_m.group(1) if pin_m else "(unpinned)"
+
+    # Org reusable workflow_call callers (docs/auctelis-org-reusable.yml).
+    org_m = re.search(
+        r"uses:\s*\S*auctelis-org-reusable\.ya?ml@([^\s#]+)",
+        visible,
+        flags=re.IGNORECASE,
+    )
+    if org_m:
+        has_gate = True
+        pin = org_m.group(1)
+
+    # Dogfood / local Marketplace packaging: uses: ./ with root action.yml.
+    # Unrelated local composite actions stay unrecognized (gate=NO).
+    if (
+        re.search(r"uses:\s*\./(?:\s|$)", visible)
+        and root is not None
+        and _root_action_is_auctelis(root)
+    ):
+        has_gate = True
+        if pin == "(unpinned)" or not pin_m:
+            pin = "./"
+
     return has_gate, locked, pin
 
 

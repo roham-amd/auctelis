@@ -13,13 +13,27 @@ _AGENT_USE_RE = re.compile(
     r")",
     re.IGNORECASE,
 )
-_AGENT_RUN_RE = re.compile(
-    r"(?:\bclaude\b|\bcursor\b|\bcodex\b|\baider\b|\bopenhands\b|"
-    r"\bcopilot\b|\bgemini\b|"
+
+# Bare product names only match in command-invocation position (AUCT-029):
+# start of the run: value, or after && || ; |, with optional KEY=VAL env prefixes.
+# Never match inside arguments/strings (e.g. pytest -k cursor, echo gemini).
+_AGENT_BARE_NAMES = r"(?:claude|cursor|codex|aider|openhands|copilot|gemini)"
+_ENV_PREFIX = r"(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*"
+_CMD_BOUNDARY = rf"(?:^|&&|\|\||;|\|)\s*{_ENV_PREFIX}"
+_AGENT_BARE_CMD_RE = re.compile(
+    rf"{_CMD_BOUNDARY}{_AGENT_BARE_NAMES}\b",
+    re.IGNORECASE,
+)
+# Package-runner agent CLIs (npx/uvx/pipx) — package path is the signal.
+_AGENT_RUN_TOOL_RE = re.compile(
+    r"(?:"
     r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?[^\s|]*agent|"
     r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?@modelcontextprotocol|"
     r"npx\s+(?:-[^\s]+\s+)*(?:-y\s+)?@github/copilot|"
-    r"pipx?\s+run\s+aider|uvx\s+aider)",
+    r"pipx?\s+run\s+aider|uvx\s+aider|"
+    # Bare name after a package runner still counts as invocation.
+    rf"(?:npx|uvx|pipx)\s+(?:-[^\s]+\s+)*{_ENV_PREFIX}{_AGENT_BARE_NAMES}\b"
+    r")",
     re.IGNORECASE,
 )
 _EMPTY_PERMISSIONS_RE = re.compile(r"permissions:\s*\{\s*\}", re.MULTILINE)
@@ -37,8 +51,8 @@ def workflow_text_has_agent_step(raw: str) -> bool:
                 return True
             continue
         if "run:" in lower:
-            run_part = stripped.split("run:", 1)[-1]
-            if _AGENT_RUN_RE.search(run_part):
+            run_part = stripped.split("run:", 1)[-1].strip()
+            if _AGENT_BARE_CMD_RE.search(run_part) or _AGENT_RUN_TOOL_RE.search(run_part):
                 return True
     return False
 
