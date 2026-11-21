@@ -1,0 +1,16 @@
+{
+  "id": "RULE-002-positive-env",
+  "rule_id": "AUCTELIS-RULE-002",
+  "variant": "positive",
+  "fixture": "fixtures/rule-002-positive-env",
+  "expect": {
+    "rule_fired": true,
+    "finding_class": "SECURITY_FINDING",
+    "severity": "MEDIUM",
+    "confidence": "INFERRED_HINT"
+  },
+  "notes": [
+    "Credential-shaped env inheritance is INFERRED_HINT/MEDIUM (literal secrets are RULE-012 CRITICAL)"
+  ]
+}
+

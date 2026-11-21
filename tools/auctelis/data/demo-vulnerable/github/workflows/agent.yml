@@ -1,0 +1,13 @@
+name: demo-agent-on-fork-pr
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run agent against PR code
+        run: echo "claude / mcp agent step (demo only)"
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

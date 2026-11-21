@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "cleartext": {
+      "url": "http://mcp.example.com/sse"
+    }
+  }
+}

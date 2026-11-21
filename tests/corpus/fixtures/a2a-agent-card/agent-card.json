@@ -1,0 +1,12 @@
+{
+  "name": "corpus-a2a-peer",
+  "description": "Synthetic A2A peer for inventory adapter tests",
+  "url": "https://example.invalid/agents/corpus-a2a-peer",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  }
+}

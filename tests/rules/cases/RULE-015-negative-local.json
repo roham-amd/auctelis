@@ -1,0 +1,9 @@
+{
+  "id": "RULE-015-negative-local",
+  "rule_id": "AUCTELIS-RULE-015",
+  "variant": "negative",
+  "fixture": "fixtures/rule-015-negative-local",
+  "expect": {
+    "rule_fired": false
+  }
+}

@@ -1,0 +1,29 @@
+# Lockless comment-only (default). For enforce: locked=true + strict-ruleset=true
+# or `auctelis init --owner security --enforce`.
+# Prefer an immutable Action commit SHA in high-assurance repos.
+name: auctelis
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  auctelis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: auctelis Authority Diff
+        # Tools are bundled in the Action — no pip install required.
+        # High-assurance pin (recommended):
+        #   uses: roham-amd/auctelis@<commit-sha>
+        # Legacy subpath still works:
+        #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
+        uses: roham-amd/auctelis@v0.1.0
+        with:
+          path: .
+          locked: "false"
+          strict-ruleset: "false"
+          output-dir: auctelis-out

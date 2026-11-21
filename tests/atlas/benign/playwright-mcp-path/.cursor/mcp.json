@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "local-runner": {
+      "command": "node",
+      "args": ["vendor/playwright-mcp/runner.js"]
+    }
+  }
+}

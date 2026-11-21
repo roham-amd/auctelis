@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "float": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"]
+    }
+  }
+}

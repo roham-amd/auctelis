@@ -1,0 +1,39 @@
+{
+  "auctelis_audit_profile": "scan",
+  "product": "auctelis",
+  "product_version": "0.1.0",
+  "package_version": "0.1.0",
+  "purpose": "Authority Diff + deterministic security observations",
+  "deliverable": "PR comment, findings, inventory, SARIF; --full adds graph/report",
+  "rules_applied": [
+    "AUCTELIS-RULE-001",
+    "AUCTELIS-RULE-002",
+    "AUCTELIS-RULE-003",
+    "AUCTELIS-RULE-004",
+    "AUCTELIS-RULE-005",
+    "AUCTELIS-RULE-006",
+    "AUCTELIS-RULE-007",
+    "AUCTELIS-RULE-008",
+    "AUCTELIS-RULE-009",
+    "AUCTELIS-RULE-010",
+    "AUCTELIS-RULE-011",
+    "AUCTELIS-RULE-012",
+    "AUCTELIS-RULE-013",
+    "AUCTELIS-RULE-014",
+    "AUCTELIS-RULE-015",
+    "AUCTELIS-RULE-016",
+    "AUCTELIS-RULE-017",
+    "AUCTELIS-RULE-018",
+    "AUCTELIS-RULE-019",
+    "AUCTELIS-RULE-020",
+    "AUCTELIS-RULE-021",
+    "AUCTELIS-RULE-022"
+  ],
+  "limitations": [
+    "Deterministic rules produce OBSERVED/POTENTIAL findings, not confirmed exploits.",
+    "CAPABILITY observations are not vulnerabilities; SECURITY_FINDING requires exposure conditions and missing controls.",
+    "Passive scans establish DECLARED/CONFIGURED authority only.",
+    "Host EFFECTIVE permissions and VERIFIED runtime behavior remain NOT VERIFIED.",
+    "Incomplete adapter coverage means absence of findings is not evidence of safety."
+  ]
+}

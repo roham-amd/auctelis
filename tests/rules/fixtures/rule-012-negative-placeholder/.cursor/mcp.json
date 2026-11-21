@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ok": {
+      "command": "node",
+      "args": ["server.js"],
+      "env": {
+        "API_KEY": "${API_KEY}"
+      }
+    }
+  }
+}

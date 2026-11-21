@@ -1,0 +1,18 @@
+# Example auctelis policy — copy to the repository root as `.auctelis.yml`.
+# Product default is fail_on: never (lock-only gate). The fail_on / require_review
+# / ignore blocks below apply only to optional auctelis-dev scan research.
+# See docs/POLICY.md.
+
+version: 1
+
+policy:
+  mode: enforce
+  fail_on: never
+  output_dir: auctelis-out
+  # baseline: .auctelis/baseline.json   # maintainer research only
+
+  # Maintainer research (auctelis-dev scan) — not the required Action gate:
+  # require_review:
+  #   - remote_mcp_endpoint
+  # fail_on: high
+  ignore: []

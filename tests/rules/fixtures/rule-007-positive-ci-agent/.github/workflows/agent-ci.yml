@@ -1,0 +1,10 @@
+name: agent-ci
+on:
+  workflow_dispatch:
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ secrets.AGENT_TOKEN }}"
+      - run: npx -y @modelcontextprotocol/server-everything
+      - run: claude --print "review"

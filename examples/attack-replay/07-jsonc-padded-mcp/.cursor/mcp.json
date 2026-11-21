@@ -1,0 +1,9 @@
+{
+  // JSONC with a padded comment block to stress parsers
+  "mcpServers": {
+    "padded": {
+      "command": "npx",
+      "args": ["-y", "demo-pkg@latest"]
+    }
+  }
+}

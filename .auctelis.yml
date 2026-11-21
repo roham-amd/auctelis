@@ -1,0 +1,9 @@
+version: 1
+
+policy:
+  # Lock-only product: mode labels the Action; fail_on is never promoted.
+  # Research findings use auctelis-dev scan — not the required gate.
+  mode: enforce
+  fail_on: never
+  output_dir: auctelis-out
+  ignore: []

@@ -1,0 +1,156 @@
+[project]
+name = "auctelis"
+version = "0.1.0"
+description = "Auctelis — the authority lockfile and one-line diff for AI agent reach"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [
+  { name = "Auctelis contributors", email = "security@users.noreply.github.com" },
+]
+keywords = [
+  "auctelis",
+  "agent-security",
+  "mcp",
+  "skills",
+  "authority-lock",
+  "devsecops",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+  "jsonschema>=4.26.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/roham-amd/auctelis"
+Documentation = "https://github.com/roham-amd/auctelis/blob/main/docs/DOCUMENTATION-INDEX.md"
+Repository = "https://github.com/roham-amd/auctelis"
+Issues = "https://github.com/roham-amd/auctelis/issues"
+Changelog = "https://github.com/roham-amd/auctelis/blob/main/CHANGELOG.md"
+
+[project.scripts]
+auctelis = "auctelis.cli:main"
+
+# Maintainer entry lives in the source-only workspace member tools/dev/
+# (auctelis-devtools → auctelis-dev). Never ship it in the product wheel.
+
+[tool.uv.workspace]
+members = ["dev"]
+
+[dependency-groups]
+dev = [
+  "mypy>=1.18.0",
+  "packaging>=26.3",
+  "pip-audit>=2.9.0",
+  "pytest>=9.2.0",
+  "pytest-cov>=7.0.0",
+  "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["../tests"]
+# ``.`` is tools/ when rootdir is tools; conftest also injects tools/ for research.
+pythonpath = [".", "dev"]
+addopts = [
+  "--cov=auctelis",
+  "--cov-report=term-missing",
+  "--cov-fail-under=0",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["auctelis"]
+
+[tool.coverage.report]
+omit = ["*/__main__.py"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["auctelis"]
+warn_unused_configs = true
+warn_return_any = true
+warn_unreachable = true
+no_implicit_optional = true
+check_untyped_defs = true
+pretty = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+  "jsonschema.*",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["auctelis", "dev/auctelis_devtools", "../tests"]
+extend-exclude = [
+  ".venv",
+  "venv",
+  "__pycache__",
+  ".pytest_cache",
+]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # bugbear
+  "UP",  # pyupgrade
+  "SIM", # simplify
+  "RUF", # ruff-specific
+]
+ignore = [
+  "E501",  # formatter owns wrapping; keep long audit strings readable
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["auctelis", "auctelis_devtools", "auctelis_research"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true
+
+[build-system]
+requires = ["setuptools>=84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+# Ship only the explicit package-data below, not every VCS-tracked file under
+# the package (which otherwise includes dev/release metadata).
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["auctelis*"]
+# Research scanner / corpus / graph stay in the repo for auctelis-dev from
+# source, but must never enter the product wheel.
+exclude = ["auctelis_research*"]
+
+[tool.setuptools.package-data]
+# Explicit runtime payload only. Release metadata and research-only data stay
+# in the source tree for build/dev parity but are not shipped in the wheel.
+auctelis = [
+  "templates/*",
+  "data/VERSION",
+  "data/versions.json",
+  "data/release-manifest.json",
+  "data/authority-lock.schema.json",
+  "data/hosts/*",
+  "data/demo-vulnerable/**/*",
+]

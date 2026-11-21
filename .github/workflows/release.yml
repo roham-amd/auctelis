@@ -1,0 +1,256 @@
+# Build, sign, attach assets to the GitHub Release, and publish to GitHub Packages.
+# Trigger: push a version tag matching v* (e.g. v0.1.0).
+# PyPI remains a separate trusted-publishing workflow (publish-pypi.yml).
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+jobs:
+  # Releases must not ship from a red tree. Mirror auctelis-validate.yml
+  # (including pip-audit + wheel-smoke) before attaching assets.
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Install dependencies
+        run: uv sync --all-packages --locked
+
+      - name: Lint (Ruff)
+        run: uv run --locked auctelis-dev lint --check-format
+
+      - name: Type check (mypy)
+        run: uv run --locked mypy auctelis
+
+      - name: Dependency audit
+        run: uv run --locked pip-audit
+
+      - name: Build and consistency checks
+        working-directory: .
+        run: uv run --directory tools --locked auctelis-dev build all
+
+      - name: Corpus
+        working-directory: .
+        run: uv run --directory tools --locked auctelis-dev corpus run
+
+      - name: Pytest
+        run: uv run --locked pytest -q ../tests
+
+      - name: Dogfood lock freshness
+        working-directory: .
+        run: |
+          # Always target the repository root (GITHUB_WORKSPACE), never tools/.
+          repo="${GITHUB_WORKSPACE:-$PWD}"
+          uv run --directory tools --locked auctelis check "$repo"
+          uv run --directory tools --locked auctelis lock --check "$repo"
+
+  # Mirror validate.yml OS matrix so a red Windows/macOS tree cannot be tagged.
+  pytest-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Pytest (product path)
+        run: >
+          uv run --locked pytest -q
+          ../tests/test_authority_diff_070.py
+          ../tests/test_authority_lock.py
+          ../tests/test_gate.py
+          ../tests/test_cli_authority.py
+          ../tests/test_recovery_081.py
+
+      - name: Pytest (gate zero / product path)
+        run: >
+          uv run --locked pytest -q
+          ../tests/test_gate_zero_30d.py
+          ../tests/test_days_6_30.py
+          ../tests/test_tree_truth_weeks.py
+          ../tests/test_strategic_review_apply.py
+          ../tests/test_trust_reset_30d.py
+          ../tests/test_agent_reach_review.py
+
+  wheel-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Build wheel and smoke-test installed CLI
+        working-directory: tools
+        run: |
+          uv build
+          uv venv /tmp/auctelis-wheel-smoke --python 3.12.16
+          uv pip install --python /tmp/auctelis-wheel-smoke dist/*.whl
+          # Fresh wheel must start without the repo or the dev dependency group.
+          /tmp/auctelis-wheel-smoke/bin/auctelis --version
+          /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis check --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis init --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis status --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis trust --help >/dev/null
+          set +e
+          /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
+          demo_rc=$?
+          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable
+          check_rc=$?
+          set -e
+          test "$demo_rc" -eq 0
+          test "$check_rc" -eq 0
+          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|NEEDS_REVIEW' /tmp/auctelis-wheel-demo/pr-comment.md
+          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable | grep -E 'BASELINE_NEEDED|Inventory'
+          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable --pins | grep -E 'Unpinned MCP servers'
+          # Research / maintainer modules must not ship in the product wheel.
+          # -P: do not prepend the tools/ cwd (source checkout) onto sys.path.
+          /tmp/auctelis-wheel-smoke/bin/python -P -c "import importlib.util,sys; mods=('auctelis_research','auctelis.build','auctelis.cli.dev_commands','auctelis.export.sarif'); sys.exit(0 if all(importlib.util.find_spec(m) is None for m in mods) else 1)"
+
+  release:
+    needs: [validate, pytest-matrix, wheel-smoke]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Install dependencies
+        working-directory: tools
+        # auctelis-dev lives in workspace member tools/dev — need --all-packages.
+        run: uv sync --all-packages --locked
+
+      - name: Verify tag matches VERSION
+        run: |
+          set -euo pipefail
+          expected="v$(tr -d '[:space:]' < VERSION)"
+          actual="${GITHUB_REF_NAME}"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Release tag '$actual' does not match VERSION ('$expected')"
+            exit 1
+          fi
+
+      - name: Verify version metadata
+        run: uv run --directory tools --locked auctelis-dev build all
+
+      - name: Build wheel + sdist
+        working-directory: tools
+        run: |
+          mkdir -p ../auctelis-out-sbom ../signatures
+          uv build
+
+      - name: Generate SBOM
+        working-directory: tools
+        run: |
+          uv run --locked pip-audit -f cyclonedx-json -o ../auctelis-out-sbom/sbom.cdx.json \
+            || uv run --locked pip-audit -f json -o ../auctelis-out-sbom/sbom.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.3
+
+      - name: Sign artifacts (keyless)
+        working-directory: tools
+        run: |
+          set -euo pipefail
+          for f in dist/*; do
+            cosign sign-blob --yes --bundle "../signatures/$(basename "$f").cosign.bundle" "$f"
+          done
+          if [[ -f ../auctelis-out-sbom/sbom.cdx.json ]]; then
+            cosign sign-blob --yes --bundle ../signatures/sbom.cdx.json.cosign.bundle \
+              ../auctelis-out-sbom/sbom.cdx.json
+          fi
+
+      - name: Create / update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          NOTES=$(python - <<'PY'
+          from pathlib import Path
+          import os, re
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          text = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pat = rf"## \[{re.escape(tag)}\][^\n]*\n(.*?)(?=\n## |\Z)"
+          m = re.search(pat, text, re.S)
+          body = m.group(1).strip() if m else f"Release {os.environ['GITHUB_REF_NAME']}"
+          print(body)
+          PY
+          )
+          assets=(tools/dist/* signatures/*)
+          if [[ -f auctelis-out-sbom/sbom.cdx.json ]]; then
+            assets+=(auctelis-out-sbom/sbom.cdx.json)
+          elif [[ -f auctelis-out-sbom/sbom.json ]]; then
+            assets+=(auctelis-out-sbom/sbom.json)
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+            gh release edit "$TAG" --latest
+          else
+            gh release create "$TAG" "${assets[@]}" \
+              --title "Auctelis ${TAG#v}" \
+              --notes "$NOTES" \
+              --latest
+          fi
+
+      # Optional; public distribution is GitHub Release assets + PyPI (publish-pypi.yml).
+      - name: Publish to GitHub Packages
+        continue-on-error: true
+        working-directory: tools
+        env:
+          UV_PUBLISH_URL: https://upload.pypi.pkg.github.com/roham-amd
+          UV_PUBLISH_USERNAME: __token__
+          UV_PUBLISH_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: uv publish --check-url https://pypi.pkg.github.com/roham-amd/auctelis/simple/

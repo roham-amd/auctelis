@@ -1,0 +1,7 @@
+{
+  "case_id": "CORPUS-003-semantic-orphan-evidence",
+  "title": "Semantic validator rejects orphan evidence reference",
+  "label": "adversarial_validation",
+  "negative_report_fixture": "../validation/negative/orphan-evidence.json",
+  "expect_semantic_fail": true
+}

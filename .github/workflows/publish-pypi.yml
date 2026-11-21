@@ -1,0 +1,65 @@
+# Publish auctelis to PyPI via Trusted Publishing (OIDC).
+# Prerequisites on https://pypi.org/manage/project/auctelis/settings/publishing/:
+#   Owner: roham-amd
+#   Repository: auctelis
+#   Workflow: publish-pypi.yml
+#   Environment: pypi
+#
+# Trigger: workflow_dispatch after Trusted Publishing is configured on PyPI.
+# GitHub Release + GitHub Packages publish on tag via release.yml.
+
+name: Publish auctelis to PyPI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.4
+        with:
+          python-version: "3.12.16"
+
+      - name: Install workspace (product + auctelis-dev)
+        working-directory: tools
+        run: uv sync --all-packages --locked
+
+      - name: Verify version metadata
+        run: uv run --directory tools --locked auctelis-dev build all
+
+      - name: Build package
+        working-directory: tools
+        run: uv build
+
+      - name: Publish to PyPI
+        working-directory: tools
+        run: uv publish
+
+      - name: Assert PyPI index serves this version
+        run: |
+          set -euo pipefail
+          ver="$(tr -d '[:space:]' < VERSION)"
+          url="https://pypi.org/pypi/auctelis/${ver}/json"
+          code="$(curl -sS -o /tmp/auctelis-pypi.json -w '%{http_code}' "$url")"
+          if [[ "$code" != "200" ]]; then
+            echo "::error::PyPI returned HTTP $code for $url"
+            exit 1
+          fi
+          got="$(python -c "import json; print(json.load(open('/tmp/auctelis-pypi.json'))['info']['version'])")"
+          if [[ "$got" != "$ver" ]]; then
+            echo "::error::PyPI version '$got' != VERSION '$ver'"
+            exit 1
+          fi
+          echo "PyPI live for auctelis==${ver}"

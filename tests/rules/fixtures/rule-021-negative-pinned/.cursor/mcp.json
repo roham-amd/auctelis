@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "safe": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything@1.2.3"],
+      "env": {
+        "API_KEY": "${API_KEY}"
+      }
+    }
+  }
+}

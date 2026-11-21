@@ -1,0 +1,15 @@
+# Local hooks (kept out of tools/ dependency-groups so Windows hosts
+# are not forced to build PyYAML for pre-commit).
+# Install once:  uvx pre-commit install
+# Run manually:  uvx pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff
+        args: [--fix, --config, tools/pyproject.toml]
+        types_or: [python, pyi]
+      - id: ruff-format
+        args: [--config, tools/pyproject.toml]
+        types_or: [python, pyi]

@@ -1,0 +1,9 @@
+{
+  "case_id": "CORPUS-010-sarif-export",
+  "title": "SARIF export includes findings with file evidence locations",
+  "label": "benign",
+  "report_fixture": "../validation/positive/sample-audit-summary.json",
+  "sarif_export": {
+    "min_results": 1
+  }
+}

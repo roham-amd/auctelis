@@ -1,0 +1,1002 @@
+"""Committed AUTHORITY.lock — record-level authority identity for PR review.
+
+``auctelis lock`` writes a sorted canonical lock. ``lock --check`` / ``scan --locked``
+regenerates and compares. CODEOWNERS on this file is the intended approval path.
+
+Diff semantics (product contract):
+- Match records by ``identity_key`` (host|kind|name), not incidental file path.
+- Classify each delta as addition / expansion / reduction / replacement /
+  representation / mixed.
+- New identities are additions; capability growth on an existing identity is
+  expansion. Path or digest-only churn is representation, not new authority.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+from typing import Any, Literal
+from urllib.parse import urlparse
+
+from auctelis.lock_io import compute_lock_hash, load_authority_lock
+from auctelis.security.authority import (
+    build_authority_snapshot,
+    logical_authority_id,
+)
+from auctelis.security.engine import ScanResult, run_authority_inventory
+from auctelis.textutil import sanitize_terminal_line
+from auctelis.versioning import product_version
+
+# Re-export for callers that historically imported from authority_lock.
+__all__ = [
+    "LOCK_NAME",
+    "LOCK_VERSION",
+    "args_digest",
+    "build_authority_lock",
+    "check_locked",
+    "classify_record_change",
+    "default_lock_path",
+    "delta_label",
+    "diff_authority_locks",
+    "field_level_change_bits",
+    "identity_key",
+    "load_authority_lock",
+    "normalize_lock_for_compare",
+    "package_stem_from_args",
+    "render_lock_diff_lines",
+    "run_lock_command",
+    "url_host",
+    "write_authority_lock",
+]
+
+LOCK_NAME = "AUTHORITY.lock"
+LOCK_VERSION = 1
+
+
+def delta_label(summary: dict[str, Any]) -> str:
+    """Classify a lock delta as GROWTH / REDUCTION / NONE.
+
+    One implementation for the gate, ``check``, and the PR comment. This is a
+    label, not a verdict: ``PASS`` / ``NEEDS_REVIEW`` belong to the gate.
+    """
+    adds = int(summary.get("additions") or 0)
+    expansions = int(summary.get("expansions") or 0)
+    replacements = int(summary.get("replacements") or 0)
+    tools_added = int(summary.get("mcp_tools_added") or 0)
+    tools_changed = int(summary.get("mcp_tools_changed") or 0)
+    policy = bool(summary.get("policy_changed"))
+    reductions = int(summary.get("reductions") or 0) + int(summary.get("removals") or 0)
+    tools_removed = int(summary.get("mcp_tools_removed") or 0)
+    if adds or expansions or replacements or tools_added or tools_changed or policy:
+        return "GROWTH"
+    if reductions or tools_removed:
+        return "REDUCTION"
+    return "NONE"
+
+
+ChangeClass = Literal[
+    "addition",
+    "expansion",
+    "reduction",
+    "replacement",
+    "representation",
+    "mixed",
+]
+
+_PIN_RANK = {
+    "digest": 0,
+    "pinned": 1,
+    "n/a": 2,
+    "unknown": 3,
+    "floating": 4,
+}
+_APPROVAL_RANK = {
+    "prompt": 0,
+    "unknown": 1,
+    "auto": 2,
+    "bypass": 3,
+}
+_AUTHORITY_FIELDS = (
+    "capabilities",
+    "destinations",
+    "env_keys",
+    "permission_allows",
+    "pin_state",
+    "approval_posture",
+    # Pinned facts: same name with different launcher/args/host is a replacement.
+    "launcher",
+    "args_digest",
+    "url_host",
+    # script_digest (instruction/skill body) is representation — visible on cards
+    # as "body changed", not a material reach gate by itself. New hosts pulled
+    # from prose still land in destinations and fail as expansion.
+    # Representation-only fields (path, digest, fingerprint, script_digest,
+    # evidence_strength, capability_origin, …) are intentionally absent here.
+)
+
+
+def args_digest(args: list[Any] | tuple[Any, ...] | None) -> str:
+    """Stable digest of MCP/hook argv (canonical JSON)."""
+    payload = list(args or [])
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
+    return f"sha256:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+
+
+def package_stem_from_args(
+    launcher: str,
+    args: list[Any] | tuple[Any, ...] | None,
+) -> str:
+    """Normalized package/image stem for same-package pin reduction (AUCT-030).
+
+    Strips exact version / digest suffixes so ``@scope/pkg`` and
+    ``@scope/pkg@1.2.3`` share one stem. Empty when no package token is found.
+    """
+    launch = str(launcher or "").strip().lower().removesuffix(".exe").removesuffix(".cmd")
+    skip = {
+        "-y",
+        "--yes",
+        "--",
+        "run",
+        "exec",
+        "tool",
+        "runp",
+        "install",
+    }
+    token = ""
+    for raw in args or []:
+        arg = str(raw)
+        if not arg or arg in skip:
+            continue
+        if arg.startswith("-") and launch not in {"docker", "podman"}:
+            continue
+        if launch in {"docker", "podman"} and arg in {"run", "exec"}:
+            continue
+        token = arg
+        break
+    if not token:
+        return ""
+    return _normalize_package_stem(token)
+
+
+def _normalize_package_stem(token: str) -> str:
+    text = str(token or "").strip()
+    if not text:
+        return ""
+    if "@sha256:" in text:
+        return text.split("@sha256:", 1)[0]
+    if text.startswith("sha256:"):
+        return ""
+    if "==" in text:
+        return text.partition("==")[0]
+    # Do not strip SSH git URLs that merely contain @.
+    if text.startswith("git@") or "git@" in text:
+        return text
+    if text.startswith("@"):
+        # @scope/name or @scope/name@1.2.3
+        if text.count("@") >= 2:
+            return text.rsplit("@", 1)[0]
+        return text
+    if "@" in text:
+        return text.rsplit("@", 1)[0]
+    # docker image:tag (keep registry host:port/name intact when tag has no /)
+    if ":" in text:
+        name, _, tag = text.rpartition(":")
+        if name and tag and "/" not in tag and not tag.startswith("//"):
+            return name
+    return text
+
+
+def url_host(url: str | None) -> str:
+    text = str(url or "").strip()
+    if not text:
+        return ""
+    try:
+        host = urlparse(text).hostname
+    except ValueError:
+        return ""
+    return str(host or "").lower()
+
+
+def default_lock_path(root: Path) -> Path:
+    return root.resolve() / LOCK_NAME
+
+
+def identity_key(record: dict[str, Any]) -> str:
+    """Stable authority identity independent of incidental file location."""
+    explicit = record.get("identity_key")
+    if explicit:
+        return str(explicit)
+    host = str(record.get("host") or "").strip().lower()
+    kind = str(record.get("kind") or "").strip().lower()
+    name = str(record.get("name") or "").strip().lower()
+    if host or kind or name:
+        return f"{host}|{kind}|{name}"
+    return str(record.get("id") or "")
+
+
+def _policy_hash(root: Path) -> str | None:
+    for name in (".auctelis.yml", ".auctelis.yaml"):
+        path = root / name
+        if path.is_file():
+            from auctelis.supply_chain.digest import sha256_file
+
+            return f"sha256:{sha256_file(path, text_newlines=True)}"
+    return None
+
+
+def _record_from_component(
+    comp: dict[str, Any], raw: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    raw = raw or {}
+    host = str(comp.get("host") or "")
+    kind = str(comp.get("kind") or "")
+    name = str(comp.get("name") or "")
+    path = str(comp.get("path") or "").replace("\\", "/")
+    logical = logical_authority_id(
+        {
+            "host": host,
+            "kind": kind,
+            "name": name,
+            "path": path,
+            "id": comp.get("id"),
+        }
+    )
+    key = identity_key({"host": host, "kind": kind, "name": name})
+    launcher = str(raw.get("command") or "").strip()
+    raw_args = raw.get("args")
+    args_list = list(raw_args) if isinstance(raw_args, list) else []
+    digest = str(raw.get("content_digest") or "")
+    kind_l = kind.lower()
+    # Hooks / skills / instructions / slash commands: body digest is the pin.
+    _BODY_KINDS = (
+        "hook",
+        "skill",
+        "rule / instruction",
+        "rule pack",
+        "claude slash command",
+    )
+    script_digest = digest if any(token in kind_l for token in _BODY_KINDS) else ""
+    destinations = list(comp.get("destinations") or [])
+    # Prose-extracted hosts (skills / instructions) land here via adapters.
+    for item in raw.get("destinations") or []:
+        if item and item not in destinations:
+            destinations.append(item)
+    host_from_url = url_host(str(raw.get("url") or ""))
+    if host_from_url and host_from_url not in destinations:
+        destinations = [*destinations, host_from_url]
+    # Normalize destination URLs to hosts for cards / digests.
+    normalized_dest: list[str] = []
+    for item in destinations:
+        host = url_host(str(item)) or str(item).strip().lower()
+        if host and host not in normalized_dest:
+            normalized_dest.append(host)
+    destinations = normalized_dest
+    if host_from_url and host_from_url not in destinations:
+        destinations = [*destinations, host_from_url]
+    permission_allows = [
+        str(a)
+        for a in (
+            raw.get("permission_allows") or (raw.get("settings_detail") or {}).get("allow") or []
+        )
+        if str(a).strip()
+    ]
+    maturity = str(raw.get("adapter_maturity") or comp.get("adapter_maturity") or "PARTIAL").upper()
+    # Evidence strength is about field origin, not adapter maturity: a literal
+    # MCP URL / CI workflow / hook command is LITERAL_CONFIG even when the
+    # adapter is PARTIAL; heuristic source discovery stays INFERRED_HINT.
+    evidence = (
+        str(raw.get("evidence_strength") or comp.get("evidence_strength") or "").strip().upper()
+    )
+    prose_inferred = bool(raw.get("prose_inferred") or comp.get("prose_inferred"))
+    _LITERAL_KINDS = {
+        "mcp server registration",
+        "ci workflow",
+        "hook",
+        "host settings",
+        "plugin",
+        "plugin / connector",
+        "subagent",
+    }
+    # Skills / instruction bodies are declared files, but capability/host
+    # extraction from prose is INFERRED_HINT — never LITERAL_CONFIG confidence.
+    _PROSE_KINDS = {
+        "skill",
+        "rule / instruction file",
+        "rule pack",
+        "claude slash command",
+    }
+    if evidence not in {"LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER", "NOT_ANALYZED"}:
+        if prose_inferred or kind_l in _PROSE_KINDS:
+            evidence = "INFERRED_HINT"
+        elif kind_l in _LITERAL_KINDS and path:
+            evidence = "LITERAL_CONFIG"
+        elif maturity in {"MANUAL_ONLY", "UNSUPPORTED"} or not path:
+            evidence = "NAME_MARKER"
+        else:
+            evidence = "INFERRED_HINT"
+    return {
+        "id": logical,
+        "identity_key": key,
+        "host": host,
+        "kind": kind,
+        "name": name,
+        "path": path,
+        "digest": digest,
+        "fingerprint": str(comp.get("fingerprint") or ""),
+        "pin_state": str(comp.get("pin_state") or "unknown"),
+        "approval_posture": str(comp.get("approval_posture") or "unknown"),
+        "capabilities": list(comp.get("capabilities") or []),
+        "destinations": destinations,
+        "env_keys": list(raw.get("env_keys") or []),
+        "permission_allows": permission_allows,
+        "launcher": launcher,
+        "args_digest": args_digest(args_list) if (launcher or args_list) else "",
+        "package_stem": package_stem_from_args(launcher, args_list)
+        if (launcher or args_list)
+        else "",
+        "url_host": host_from_url or (destinations[0] if destinations else ""),
+        "script_digest": script_digest,
+        "evidence_strength": evidence,
+        # Preserve TYPE_DEFAULT when present — never flatten to DECLARED.
+        "capability_origin": str(
+            raw.get("capability_origin") or comp.get("capability_origin") or ""
+        )
+        or "DECLARED",
+        "parser_version": str(raw.get("parser_version") or comp.get("parser_version") or ""),
+    }
+
+
+def build_authority_lock(root: Path, *, scan: ScanResult | None = None) -> dict[str, Any]:
+    """Return a canonical AUTHORITY.lock document for ``root``.
+
+    Pass an existing ``ScanResult`` (e.g. from ``scan --locked``) to avoid a
+    second full security scan of the same tree.
+    """
+    root = root.resolve()
+    if scan is None:
+        scan = run_authority_inventory(root)
+    snapshot = build_authority_snapshot(scan)
+    by_fp = {
+        str(c.get("fingerprint") or ""): c
+        for c in (scan.inventory.get("components") or [])
+        if isinstance(c, dict)
+    }
+    # Prefer the strongest origin actually present on scan capabilities for
+    # this component — never invent DECLARED when every cap is TYPE_DEFAULT.
+    origin_by_cid: dict[str, set[str]] = {}
+    for cap in scan.capabilities or []:
+        cid = str(getattr(cap, "component_id", "") or "")
+        origin = str(getattr(cap, "origin", "") or "").upper()
+        if cid and origin:
+            origin_by_cid.setdefault(cid, set()).add(origin)
+
+    def _origin_for(comp: dict[str, Any], raw: dict[str, Any]) -> str:
+        explicit = (
+            str(raw.get("capability_origin") or comp.get("capability_origin") or "").strip().upper()
+        )
+        if explicit in {"DECLARED", "POTENTIAL", "TYPE_DEFAULT", "EFFECTIVE", "VERIFIED"}:
+            return explicit
+        cid = str(raw.get("component_id") or comp.get("id") or "")
+        origins = origin_by_cid.get(cid) or set()
+        if not origins:
+            return "DECLARED"
+        if origins <= {"TYPE_DEFAULT"}:
+            return "TYPE_DEFAULT"
+        if "DECLARED" in origins:
+            return "DECLARED"
+        if "POTENTIAL" in origins:
+            return "POTENTIAL"
+        return sorted(origins)[0]
+
+    records: list[dict[str, Any]] = []
+    for comp in snapshot.get("components") or []:
+        if not isinstance(comp, dict):
+            continue
+        raw = by_fp.get(str(comp.get("fingerprint") or ""), {})
+        record = _record_from_component(comp, raw)
+        record["capability_origin"] = _origin_for(comp, raw)
+        records.append(record)
+    records.sort(key=lambda r: (r["kind"], r["path"], r["name"], r["id"]))
+
+    body: dict[str, Any] = {
+        "version": LOCK_VERSION,
+        "product": "auctelis",
+        "product_version": product_version(),
+        "policy_hash": _policy_hash(root),
+        "records": records,
+        # Opt-in tools/list pins (filled by `auctelis-dev snapshot`).
+        "mcp_tools": {},
+    }
+    # Seal authority state only. Absolute `repository` path and `audited_commit`
+    # are volatile across clones / no-op re-locks and must not churn lock_hash
+    # (merge conflicts on hash alone with identical records).
+    # Legacy decorative fields (approvals / approved_findings / mcp_servers) are
+    # no longer emitted — CODEOWNERS / rulesets are the approval system.
+    body["lock_hash"] = compute_lock_hash(body)
+    body["audited_commit"] = scan.commit
+    return body
+
+
+def _gated_lock_blockers(scan: ScanResult) -> list[str]:
+    """HIGH/CRITICAL gate findings that must not be silently blessed into a lock."""
+    from auctelis.security.gating import is_high_gate_finding
+
+    blockers: list[str] = []
+    for finding in scan.findings:
+        if not is_high_gate_finding(finding):
+            continue
+        blockers.append(f"{finding.rule_id} [{finding.severity}] {finding.title}")
+    return blockers
+
+
+def _unparsed_agent_config_count(scan: ScanResult) -> int:
+    from auctelis.inventory.coverage import unparsed_agent_config_count_from_coverage
+
+    return unparsed_agent_config_count_from_coverage(
+        scan.coverage if isinstance(scan.coverage, dict) else {}
+    )
+
+
+def write_authority_lock(
+    root: Path,
+    *,
+    path: Path | None = None,
+    accept_gated: bool = False,
+    scan: ScanResult | None = None,
+) -> tuple[Path, dict[str, Any]]:
+    root = root.resolve()
+    if scan is None:
+        # Product lock is inventory-only — rule findings are auctelis-dev research.
+        scan = run_authority_inventory(root)
+    unparsed = _unparsed_agent_config_count(scan)
+    if unparsed:
+        raise ValueError(
+            f"refusing to seal AUTHORITY.lock: {unparsed} agent config file(s) "
+            "could not be parsed. Fix the configs first — do not baseline over "
+            "unparsed authority."
+        )
+    blockers = _gated_lock_blockers(scan)
+    if blockers and not accept_gated:
+        preview = "; ".join(blockers[:3])
+        more = f" (+{len(blockers) - 3} more)" if len(blockers) > 3 else ""
+        raise ValueError(
+            "refusing to lock a tree with high/critical gated findings without "
+            f"--accept-gated. Seen: {preview}{more}"
+        )
+    lock = build_authority_lock(root, scan=scan)
+    # Lock-only product: approval fields are never written. GitHub CODEOWNERS /
+    # rulesets enforce review; `--accept-gated` remains for findings-bearing
+    # scans passed explicitly (auctelis-dev) and is a no-op on inventory-only.
+    # Do not emit empty approvals / approved_findings (legacy optional on read).
+    lock.pop("approvals", None)
+    lock.pop("approved_findings", None)
+    dest = path or default_lock_path(root)
+    dest.write_text(
+        json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+    )
+    return dest, lock
+
+
+def normalize_lock_for_compare(lock: dict[str, Any]) -> dict[str, Any]:
+    """Strip ephemeral fields so regenerate-vs-disk compares are stable."""
+    records = []
+    for rec in lock.get("records") or []:
+        if not isinstance(rec, dict):
+            continue
+        normalized = {
+            "id": rec.get("id"),
+            "identity_key": identity_key(rec),
+            "host": rec.get("host"),
+            "kind": rec.get("kind"),
+            "name": rec.get("name"),
+            "path": rec.get("path"),
+            "digest": rec.get("digest"),
+            "fingerprint": rec.get("fingerprint"),
+            "pin_state": rec.get("pin_state"),
+            "approval_posture": rec.get("approval_posture"),
+            "capabilities": sorted(str(c) for c in (rec.get("capabilities") or [])),
+            "destinations": sorted(str(d) for d in (rec.get("destinations") or [])),
+            "env_keys": sorted(str(k) for k in (rec.get("env_keys") or [])),
+            "permission_allows": sorted(str(k) for k in (rec.get("permission_allows") or [])),
+            "launcher": str(rec.get("launcher") or ""),
+            "args_digest": str(rec.get("args_digest") or ""),
+            # Optional v1 field — absent on legacy locks (fail-safe: no pin PASS).
+            "package_stem": str(rec.get("package_stem") or ""),
+            "url_host": str(rec.get("url_host") or ""),
+            "script_digest": str(rec.get("script_digest") or ""),
+            # Survive normalize so PR cards keep LITERAL_CONFIG / TYPE_DEFAULT.
+            "evidence_strength": str(rec.get("evidence_strength") or ""),
+            "capability_origin": str(rec.get("capability_origin") or ""),
+        }
+        records.append(normalized)
+    records.sort(
+        key=lambda r: (
+            r.get("identity_key") or "",
+            r.get("kind") or "",
+            r.get("path") or "",
+            r.get("name") or "",
+            r.get("id") or "",
+        )
+    )
+    return {
+        "version": int(lock.get("version") or 1),
+        "policy_hash": lock.get("policy_hash"),
+        "records": records,
+        "mcp_tools": lock.get("mcp_tools") or {},
+    }
+
+
+def _index_by_identity(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Map identity_key → record; fall back to id when keys collide."""
+    out: dict[str, dict[str, Any]] = {}
+    for rec in records:
+        key = identity_key(rec)
+        if not key:
+            key = str(rec.get("id") or "")
+        if key in out:
+            # Collision: keep both addressable via path-qualified id.
+            key = str(rec.get("id") or key)
+        if key:
+            out[key] = rec
+    return out
+
+
+def _set_delta(before: list[str], after: list[str]) -> tuple[bool, bool]:
+    b, a = set(before), set(after)
+    return bool(a - b), bool(b - a)
+
+
+def _same_package_pin_tightening(before: dict[str, Any], after: dict[str, Any]) -> bool:
+    """True when only same-package version/digest pinning was added (AUCT-030).
+
+    Requires identical non-empty ``package_stem`` plus identical launcher and
+    ``url_host``. Legacy locks without ``package_stem`` never qualify (fail
+    closed as NEEDS_REVIEW). Any other authority-field change disqualifies.
+    """
+    stem_b = str(before.get("package_stem") or "")
+    stem_a = str(after.get("package_stem") or "")
+    if not stem_b or not stem_a or stem_b != stem_a:
+        return False
+    if str(before.get("launcher") or "") != str(after.get("launcher") or ""):
+        return False
+    if str(before.get("url_host") or "") != str(after.get("url_host") or ""):
+        return False
+    b_rank = _PIN_RANK.get(str(before.get("pin_state") or "unknown"), 3)
+    a_rank = _PIN_RANK.get(str(after.get("pin_state") or "unknown"), 3)
+    if a_rank >= b_rank:
+        return False
+    for field in _AUTHORITY_FIELDS:
+        if field in {"pin_state", "args_digest"}:
+            continue
+        if before.get(field) != after.get(field):
+            return False
+    return True
+
+
+def classify_record_change(
+    before: dict[str, Any],
+    after: dict[str, Any],
+) -> ChangeClass:
+    """Classify how one matched record changed between locks."""
+    # AUCT-030: same-package pin tightening (args_digest may change for the
+    # version token) is a reduction when package_stem / launcher / host match.
+    if _same_package_pin_tightening(before, after):
+        return "reduction"
+
+    # AUCT-029: pin_state-only tightening (floating/unknown → pinned/digest)
+    # with identical launcher/hosts/env/capabilities is always a reduction.
+    pin_before = before.get("pin_state")
+    pin_after = after.get("pin_state")
+    if pin_before != pin_after:
+        other_auth_changed = any(
+            before.get(field) != after.get(field)
+            for field in _AUTHORITY_FIELDS
+            if field != "pin_state"
+        )
+        if not other_auth_changed:
+            b_rank = _PIN_RANK.get(str(pin_before or "unknown"), 3)
+            a_rank = _PIN_RANK.get(str(pin_after or "unknown"), 3)
+            if a_rank < b_rank:
+                return "reduction"
+            if a_rank > b_rank:
+                return "expansion"
+
+    # AUCT-030: launcher / args / host swaps are never silent REDUCTION, even
+    # when paired with a shrink (e.g. floating→pinned while swapping packages).
+    identity_replaced = any(
+        before.get(field) != after.get(field) for field in ("launcher", "args_digest", "url_host")
+    )
+
+    grew = False
+    shrank = False
+    authority_touched = False
+
+    for field in _AUTHORITY_FIELDS:
+        b_val, a_val = before.get(field), after.get(field)
+        if b_val == a_val:
+            continue
+        authority_touched = True
+        if field in {"capabilities", "destinations", "env_keys", "permission_allows"}:
+            up, down = _set_delta(
+                [str(x) for x in (b_val or [])],
+                [str(x) for x in (a_val or [])],
+            )
+            grew = grew or up
+            shrank = shrank or down
+        elif field == "pin_state":
+            b_rank = _PIN_RANK.get(str(b_val or "unknown"), 3)
+            a_rank = _PIN_RANK.get(str(a_val or "unknown"), 3)
+            grew = grew or a_rank > b_rank
+            shrank = shrank or a_rank < b_rank
+        elif field == "approval_posture":
+            b_rank = _APPROVAL_RANK.get(str(b_val or "unknown"), 1)
+            a_rank = _APPROVAL_RANK.get(str(a_val or "unknown"), 1)
+            grew = grew or a_rank > b_rank
+            shrank = shrank or a_rank < b_rank
+        # Pin identity fields (launcher / args / host) change authority but are
+        # neither set growth nor shrink → replacement below.
+
+    if not authority_touched:
+        # Identity is fixed by the matching key; leftover diffs (path, digest,
+        # fingerprint, id) are packaging and do not add reach.
+        return "representation"
+
+    if identity_replaced:
+        # Never classify a launcher/args/host swap as pure reduction.
+        if grew or shrank:
+            return "mixed"
+        return "replacement"
+
+    if grew and shrank:
+        return "mixed"
+    if grew:
+        return "expansion"
+    if shrank:
+        return "reduction"
+    # Authority field changed without clear grow/shrink (e.g. equal-size set
+    # rewrite or a new launcher at the same name).
+    return "replacement"
+
+
+def diff_authority_locks(
+    base: dict[str, Any],
+    head: dict[str, Any],
+    *,
+    trusted_hosts: set[str] | None = None,
+) -> dict[str, Any]:
+    """Record-level authority diff with expansion/reduction classification."""
+    from auctelis.reach_tiers import TIER_FAIL, delta_max_reach_tier
+
+    base_n = normalize_lock_for_compare(base)
+    head_n = normalize_lock_for_compare(head)
+    base_by = _index_by_identity(base_n["records"])
+    head_by = _index_by_identity(head_n["records"])
+
+    added = [
+        {**head_by[i], "change_class": "addition"} for i in sorted(set(head_by) - set(base_by))
+    ]
+    removed = [
+        {**base_by[i], "change_class": "reduction"} for i in sorted(set(base_by) - set(head_by))
+    ]
+    changed: list[dict[str, Any]] = []
+    for key in sorted(set(base_by) & set(head_by)):
+        before, after = base_by[key], head_by[key]
+        # Compare without ephemeral compare helpers.
+        before_cmp = {k: v for k, v in before.items() if k != "change_class"}
+        after_cmp = {k: v for k, v in after.items() if k != "change_class"}
+        if before_cmp == after_cmp:
+            continue
+        change_class = classify_record_change(before_cmp, after_cmp)
+        changed.append(
+            {
+                "id": after.get("id") or before.get("id") or key,
+                "identity_key": key,
+                "change_class": change_class,
+                "before": before_cmp,
+                "after": after_cmp,
+            }
+        )
+
+    base_tools = dict(base_n.get("mcp_tools") or {})
+    head_tools = dict(head_n.get("mcp_tools") or {})
+    tools_added = sorted(set(head_tools) - set(base_tools))
+    tools_removed = sorted(set(base_tools) - set(head_tools))
+    tools_changed = sorted(
+        name for name in set(base_tools) & set(head_tools) if base_tools[name] != head_tools[name]
+    )
+    base_policy = base_n.get("policy_hash")
+    head_policy = head_n.get("policy_hash")
+    policy_changed = base_policy != head_policy
+    # Distinguishes first `.auctelis.yml` (init install) from edits to an
+    # existing policy — install-PR Watching allows only the former.
+    policy_added = base_policy is None and head_policy is not None
+    policy_removed = base_policy is not None and head_policy is None
+    policy_modified = policy_changed and not policy_added and not policy_removed
+    classes = [str(a.get("change_class")) for a in added]
+    classes.extend(str(r.get("change_class")) for r in removed)
+    classes.extend(str(c.get("change_class")) for c in changed)
+    addition_n = sum(1 for c in classes if c == "addition")
+    expansion_n = sum(1 for c in classes if c == "expansion")
+    reduction_n = sum(1 for c in classes if c == "reduction")
+    representation_n = sum(1 for c in classes if c == "representation")
+    replacement_n = sum(1 for c in classes if c in {"replacement", "mixed"})
+    meaningful = bool(
+        addition_n
+        or expansion_n
+        or reduction_n
+        or replacement_n
+        or tools_added
+        or tools_removed
+        or tools_changed
+        or policy_changed
+        or any(c.get("change_class") == "mixed" for c in changed)
+    )
+    # Representation-only churn still marks lock drift (hash/path) but is labeled.
+    authority_changed = meaningful or bool(changed or added or removed or policy_changed)
+    # Material reach: additions / expansions / replacements / tool pin growth /
+    # policy — not body-digest or path packaging alone. Gate fails on tier≥fail;
+    # representation and tier-1 network stay visible on the PR comment.
+    summary: dict[str, Any] = {
+        "records_added": len(added),
+        "records_removed": len(removed),
+        "records_changed": len(changed),
+        "additions": addition_n,
+        "expansions": expansion_n,
+        "reductions": reduction_n,
+        "replacements": replacement_n,
+        "representations": representation_n,
+        "mcp_tools_added": len(tools_added),
+        "mcp_tools_removed": len(tools_removed),
+        "mcp_tools_changed": len(tools_changed),
+        "policy_changed": policy_changed,
+        "policy_added": policy_added,
+        "policy_removed": policy_removed,
+        "policy_modified": policy_modified,
+        "authority_changed": authority_changed,
+        "meaningful_authority_change": meaningful,
+    }
+    provisional: dict[str, Any] = {
+        "kind": "authority_lock_delta",
+        "summary": summary,
+        "changes": {
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "mcp_tools_added": tools_added,
+            "mcp_tools_removed": tools_removed,
+            "mcp_tools_changed": tools_changed,
+        },
+        "lines": [],
+    }
+    max_tier = delta_max_reach_tier(provisional, trusted_hosts=trusted_hosts)
+    material = max_tier >= TIER_FAIL
+    lines = render_lock_diff_lines(added=added, removed=removed, changed=changed)
+    lines.extend(f"+ mcp tool pin `{name}`" for name in tools_added)
+    lines.extend(f"- mcp tool pin `{name}`" for name in tools_removed)
+    lines.extend(f"~ mcp tool pin `{name}`: digest changed" for name in tools_changed)
+    summary["max_reach_tier"] = max_tier
+    summary["material_authority_change"] = material
+    provisional["lines"] = lines
+    return provisional
+
+
+def _short(value: Any, *, max_len: int = 24) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "∅"
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1] + "…"
+
+
+def _set_field_bits(field: str, before: list[str], after: list[str]) -> list[str]:
+    b, a = set(before), set(after)
+    bits: list[str] = []
+    added = sorted(a - b)
+    removed = sorted(b - a)
+    if added:
+        shown = ", ".join(added[:3])
+        bits.append(f"{field} +[{shown}{'…' if len(added) > 3 else ''}]")
+    if removed:
+        shown = ", ".join(removed[:3])
+        bits.append(f"{field} -[{shown}{'…' if len(removed) > 3 else ''}]")
+    return bits
+
+
+def field_level_change_bits(
+    before: dict[str, Any],
+    after: dict[str, Any],
+    *,
+    limit: int = 5,
+) -> list[str]:
+    """Human-readable old → new fragments for lock PR lines."""
+    bits: list[str] = []
+    for field in ("capabilities", "destinations", "env_keys", "permission_allows"):
+        bits.extend(
+            _set_field_bits(
+                field,
+                [str(x) for x in (before.get(field) or [])],
+                [str(x) for x in (after.get(field) or [])],
+            )
+        )
+    for field in ("pin_state", "approval_posture", "launcher", "args_digest", "url_host"):
+        b_val, a_val = before.get(field), after.get(field)
+        if str(b_val or "") == str(a_val or ""):
+            continue
+        width = 16 if field == "args_digest" else 28
+        bits.append(f"{field}: {_short(b_val, max_len=width)} → {_short(a_val, max_len=width)}")
+    if str(before.get("script_digest") or "") != str(after.get("script_digest") or ""):
+        bits.append("body changed (digest; line diff not analyzed)")
+    # Representation-only: surface path when no authority field bits.
+    if not bits and before.get("path") != after.get("path"):
+        bits.append(
+            f"path: {_short(before.get('path'), max_len=36)} → {_short(after.get('path'), max_len=36)}"
+        )
+    if not bits and before.get("digest") != after.get("digest"):
+        bits.append("body changed, content not analyzed")
+    return bits[:limit]
+
+
+def render_lock_diff_lines(
+    *,
+    added: list[dict[str, Any]],
+    removed: list[dict[str, Any]],
+    changed: list[dict[str, Any]],
+    limit: int = 20,
+) -> list[str]:
+    lines: list[str] = []
+    for rec in added[:limit]:
+        pin = rec.get("pin_state") or "unknown"
+        caps = ", ".join(rec.get("capabilities") or []) or "authority"
+        # Destination hosts (deduped). Skip hosts already visible in the path
+        # so PR comments do not print the same host twice.
+        path = str(rec.get("path") or "")
+        path_l = path.lower()
+        dests: list[str] = []
+        seen_hosts: set[str] = set()
+        for d in rec.get("destinations") or []:
+            raw = str(d).strip()
+            if not raw:
+                continue
+            # Normalize URL → host so http://x/sse and x are not printed twice.
+            host = raw
+            if "://" in raw:
+                parsed = urlparse(raw)
+                host = parsed.hostname or raw
+            key = host.lower()
+            if key in seen_hosts:
+                continue
+            if key in path_l or path_l in key:
+                continue
+            seen_hosts.add(key)
+            dests.append(host)
+            if len(dests) >= 2:
+                break
+        dest_bit = f" reaches {', '.join(dests)};" if dests else ""
+        env_keys = list(dict.fromkeys(str(e) for e in (rec.get("env_keys") or []) if e))[:3]
+        env = ", ".join(env_keys)
+        env_bit = f" passes {env};" if env else ""
+        label = rec.get("name") or rec.get("id")
+        path_bit = f" @ {path}" if path else ""
+        lines.append(
+            f"+ addition {rec.get('kind')} `{label}`{path_bit}:{dest_bit}{env_bit} "
+            f"{caps}; pin={pin}"
+        )
+    for rec in removed[: max(0, limit - len(lines))]:
+        label = rec.get("name") or rec.get("id")
+        rem_path = str(rec.get("path") or "")
+        path_bit = f" @ {rem_path}" if rem_path else ""
+        lines.append(f"- reduction {rec.get('kind')} `{label}`{path_bit}")
+    for item in changed[: max(0, limit - len(lines))]:
+        before = item.get("before") or {}
+        after = item.get("after") or {}
+        label = after.get("name") or before.get("name") or item.get("id")
+        klass = item.get("change_class") or "changed"
+        chg_path = str(after.get("path") or before.get("path") or "")
+        path_bit = f" @ {chg_path}" if chg_path else ""
+        detail_bits = field_level_change_bits(before, after)
+        detail = "; ".join(detail_bits) if detail_bits else "fields changed"
+        lines.append(
+            f"~ {klass} {after.get('kind') or before.get('kind')} `{label}`{path_bit}: {detail}"
+        )
+    return [sanitize_terminal_line(line) for line in lines]
+
+
+def check_locked(
+    root: Path,
+    *,
+    lock_path: Path | None = None,
+    scan: ScanResult | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Regenerate lock and compare to the committed file. Exit 1 on drift."""
+    root = root.resolve()
+    path = lock_path or default_lock_path(root)
+    if not path.is_file():
+        return {
+            "ok": False,
+            "error": f"Missing {path.name}",
+            "hint": "Run `auctelis lock` and commit AUTHORITY.lock.",
+            "lines": [],
+        }, 1
+    if scan is None:
+        scan = run_authority_inventory(root)
+    unparsed = _unparsed_agent_config_count(scan)
+    on_disk = load_authority_lock(path)
+    current = build_authority_lock(root, scan=scan)
+    delta = diff_authority_locks(on_disk, current)
+    ok = not delta["summary"]["authority_changed"] and unparsed == 0
+    report = {
+        "ok": ok,
+        "lock": str(path),
+        "delta": delta,
+        "lines": delta["lines"],
+        "unparsed": unparsed,
+        "verdict": "LOCKED" if ok else "NEEDS_REVIEW",
+    }
+    if unparsed:
+        report["error"] = (
+            f"{unparsed} agent config file(s) could not be parsed — lock match "
+            "is not evidence of no authority."
+        )
+    return report, 0 if ok else 1
+
+
+def merge_mcp_tools_into_lock(
+    lock: dict[str, Any],
+    mcp_tools: dict[str, str],
+) -> dict[str, Any]:
+    """Merge opt-in tools/list pins into the lock and reseal ``lock_hash``."""
+    merged = dict(lock)
+    tools = dict(merged.get("mcp_tools") or {})
+    tools.update({str(k): str(v) for k, v in mcp_tools.items() if k and v})
+    merged["mcp_tools"] = dict(sorted(tools.items()))
+    merged["lock_hash"] = compute_lock_hash(merged)
+    return merged
+
+
+def run_lock_command(
+    root: Path,
+    *,
+    check: bool = False,
+    update: bool = False,
+    lock_path: Path | None = None,
+    accept_gated: bool = False,
+    mcp_tools: dict[str, str] | None = None,
+    scan: ScanResult | None = None,
+) -> tuple[str, int]:
+    root = root.resolve()
+    path = lock_path or default_lock_path(root)
+    if check and not update:
+        report, code = check_locked(root, lock_path=path)
+        if report.get("ok"):
+            return f"AUTHORITY.lock matches observed authority ({path.name}).", 0
+        lines = report.get("lines") or []
+        body = "\n".join(lines) if lines else "(authority changed; re-run `auctelis lock`)"
+        return (
+            f"AUTHORITY.lock out of date — authority changed, needs owner review.\n{body}",
+            code,
+        )
+    try:
+        dest, lock = write_authority_lock(
+            root,
+            path=path,
+            accept_gated=accept_gated,
+            scan=scan,
+        )
+    except ValueError as exc:
+        return str(exc), 1
+    if mcp_tools:
+        lock = merge_mcp_tools_into_lock(lock, mcp_tools)
+        dest.write_text(
+            json.dumps(lock, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+        )
+    n = len(lock.get("records") or [])
+    action = "Updated" if update or path.exists() else "Wrote"
+    gated_bit = (
+        " · sealed with --accept-gated (no approval recorded; CODEOWNERS governs)"
+        if accept_gated
+        else ""
+    )
+    tools_bit = f" · mcp_tools={len(lock.get('mcp_tools') or {})}" if mcp_tools else ""
+    return f"{action} {dest} ({n} authority records){gated_bit}{tools_bit}.", 0

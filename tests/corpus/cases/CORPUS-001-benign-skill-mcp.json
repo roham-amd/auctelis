@@ -1,0 +1,10 @@
+{
+  "case_id": "CORPUS-001-benign-skill-mcp",
+  "title": "Benign skill and MCP registration discovery",
+  "label": "benign",
+  "fixture_path": "fixtures/benign-skill-mcp",
+  "expected_inventory": {
+    "min_components": 2,
+    "component_names_contain": ["benign-readonly-helper", "filesystem-readonly"]
+  }
+}

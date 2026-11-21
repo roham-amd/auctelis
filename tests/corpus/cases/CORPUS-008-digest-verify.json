@@ -1,0 +1,10 @@
+{
+  "case_id": "CORPUS-008-digest-verify",
+  "title": "SHA-256 digest verification matches benign skill fixture",
+  "label": "benign",
+  "fixture_path": "fixtures/benign-skill-mcp",
+  "digest_check": {
+    "path": "skills/benign-readonly-helper/SKILL.md",
+    "expected_sha256": "254415790d6fc0af78c9e4aeff74eff9a7daf426b0c1f65a4cdd563a4281516f"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "a": {
+      "url": "https://a.example/mcp"
+    },
+    "b": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ]
+    },
+    "c": {
+      "command": "node",
+      "args": [
+        "c.js"
+      ]
+    }
+  }
+}

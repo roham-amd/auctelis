@@ -1,0 +1,22 @@
+[project]
+name = "auctelis-devtools"
+version = "0.1.0"
+description = "Maintainer / research CLI for Auctelis (source checkout only)"
+requires-python = ">=3.12"
+dependencies = [
+  "auctelis",
+]
+
+[project.scripts]
+auctelis-dev = "auctelis_devtools.cli:main_dev"
+
+[build-system]
+requires = ["setuptools>=84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["auctelis_devtools*"]
+
+[tool.uv.sources]
+auctelis = { workspace = true }

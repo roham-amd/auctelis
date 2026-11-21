@@ -1,0 +1,1 @@
+"""Passive inventory collection package."""

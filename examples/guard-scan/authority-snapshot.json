@@ -1,0 +1,97 @@
+{
+  "snapshot_version": "1.0",
+  "product": "auctelis",
+  "product_version": "0.1.0",
+  "repository": "C:\\Users\\rohaa\\Projects\\auctelis\\examples\\demo-vulnerable",
+  "audited_commit": "b4b69edfec41b93b1444e1df6ee7fc0e20356958",
+  "collected_at_utc": "2026-11-14T14:24:45Z",
+  "components": [
+    {
+      "id": "C-004",
+      "kind": "CI Workflow",
+      "host": "github_workflows",
+      "path": ".github/workflows/agent.yml",
+      "fingerprint": "42ec874f99cb8ab2",
+      "name": "agent",
+      "capabilities": [
+        "access_secrets",
+        "execute_commands",
+        "invoke_agent_tooling",
+        "unattended_operation"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "unknown",
+      "pin_state": "n/a",
+      "evidence": [
+        ".github/workflows/agent.yml"
+      ]
+    },
+    {
+      "id": "C-003",
+      "kind": "MCP Server Registration",
+      "host": "cursor",
+      "path": ".cursor/mcp.json",
+      "fingerprint": "7492f58b12938821",
+      "name": "cleartext-remote",
+      "capabilities": [
+        "access_network",
+        "access_secrets",
+        "invoke_tools"
+      ],
+      "destinations": [
+        "http://mcp.example.invalid/sse"
+      ],
+      "identity": [],
+      "approval_posture": "prompt",
+      "pin_state": "n/a",
+      "evidence": [
+        ".cursor/mcp.json"
+      ]
+    },
+    {
+      "id": "C-002",
+      "kind": "MCP Server Registration",
+      "host": "cursor",
+      "path": ".cursor/mcp.json",
+      "fingerprint": "62ec644c4e8de82d",
+      "name": "unpinned-demo",
+      "capabilities": [
+        "access_secrets",
+        "execute_commands",
+        "invoke_tools"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "prompt",
+      "pin_state": "floating",
+      "evidence": [
+        ".cursor/mcp.json"
+      ]
+    },
+    {
+      "id": "C-001",
+      "kind": "Skill",
+      "host": "skill_md",
+      "path": "skills/bootstrap/SKILL.md",
+      "fingerprint": "49397cde765a077b",
+      "name": "bootstrap",
+      "capabilities": [
+        "access_network",
+        "execute",
+        "execute_commands",
+        "modify_agent_instructions",
+        "modify_approvals",
+        "unattended_operation"
+      ],
+      "destinations": [],
+      "identity": [],
+      "approval_posture": "bypass",
+      "pin_state": "n/a",
+      "evidence": [
+        "skills/bootstrap/SKILL.md"
+      ]
+    }
+  ],
+  "snapshot_hash": "7b3138ac81d65406324c5ddfb93485bd"
+}

@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/roham-amd/auctelis/schemas/authority-lock.schema.json",
+  "title": "AUTHORITY.lock",
+  "description": "Auctelis authority lockfile v1. Reach = destination hosts ∩ launcher ∩ capabilities ∩ pin. See docs/REACH.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Lock schema major version. Frozen at 1 for the public lockfile standard."
+    },
+    "schema_id": {
+      "type": "string",
+      "const": "authority-lock/1",
+      "description": "Optional explicit schema id for third-party readers"
+    },
+    "product": { "type": "string", "default": "auctelis" },
+    "product_version": { "type": "string" },
+    "repository": { "type": "string" },
+    "audited_commit": { "type": ["string", "null"] },
+    "policy_hash": { "type": ["string", "null"] },
+    "lock_hash": { "type": "string" },
+    "records": {
+      "type": "array",
+      "description": "Sorted authority records. Match by identity_key; id retains path for display.",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "fingerprint"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Display id: host/kind/name@path (may change on file moves)"
+          },
+          "identity_key": {
+            "type": "string",
+            "description": "Stable join key: host|kind|name (path-independent)"
+          },
+          "host": { "type": "string" },
+          "kind": { "type": "string" },
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" },
+          "fingerprint": { "type": "string" },
+          "record_digest": {
+            "type": "string",
+            "description": "Optional stable digest of reach fields (identity + caps + dest + launcher + pin)"
+          },
+          "pin_state": { "type": "string" },
+          "approval_posture": { "type": "string" },
+          "capabilities": { "type": "array", "items": { "type": "string" } },
+          "destinations": { "type": "array", "items": { "type": "string" } },
+          "env_keys": { "type": "array", "items": { "type": "string" } },
+          "permission_allows": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Declared host permission allow list (e.g. Bash(*))"
+          },
+          "launcher": {
+            "type": "string",
+            "description": "Executable / transport launcher (npx, uvx, node, …)"
+          },
+          "args_digest": {
+            "type": "string",
+            "description": "sha256 digest of canonical JSON argv"
+          },
+          "package_stem": {
+            "type": "string",
+            "description": "Optional normalized package/image stem for same-package pin reduction (AUCT-030); absent on legacy locks"
+          },
+          "url_host": {
+            "type": "string",
+            "description": "Hostname for URL-transported MCP servers"
+          },
+          "script_digest": {
+            "type": "string",
+            "description": "Content digest for hook scripts / skill trees"
+          },
+          "evidence_strength": {
+            "type": "string",
+            "enum": ["LITERAL_CONFIG", "INFERRED_HINT", "NAME_MARKER"],
+            "description": "How strongly the record is grounded in declared config"
+          },
+          "capability_origin": {
+            "type": "string",
+            "description": "Capability provenance (DECLARED / POTENTIAL / TYPE_DEFAULT)"
+          },
+          "parser_version": {
+            "type": "string",
+            "description": "Optional adapter/parser version that produced the record"
+          },
+          "source_commit": {
+            "type": "string",
+            "description": "Optional commit when the source file was observed"
+          },
+          "first_seen": {
+            "type": "string",
+            "description": "Optional local ISO-8601 first observation (not a gate input)"
+          },
+          "approved_at": {
+            "type": "string",
+            "description": "Optional local ISO-8601 human seal time (not a gate input)"
+          },
+          "approved_by": {
+            "type": "string",
+            "description": "Optional local human identity for the seal (not a gate input)"
+          }
+        }
+      }
+    },
+    "mcp_tools": {
+      "type": "object",
+      "description": "tool name → description sha256 digest (sha256:…)",
+      "additionalProperties": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+    },
+    "mcp_servers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "command": { "type": "string" },
+          "args_digest": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" },
+          "pin_state": { "type": "string" },
+          "allowed": { "type": "boolean" }
+        }
+      }
+    },
+    "approved_findings": {
+      "type": "array",
+      "description": "LEGACY / decorative. Gate ignores this array. Prefer CODEOWNERS review of lock diffs. Emit empty unless a future gate input is added.",
+      "items": {
+        "type": "object",
+        "required": ["fingerprint", "justification", "owner"],
+        "properties": {
+          "fingerprint": { "type": "string" },
+          "justification": { "type": "string", "minLength": 8 },
+          "owner": { "type": "string", "minLength": 1 },
+          "expires": { "type": ["string", "null"], "description": "YYYY-MM-DD expiry" }
+        }
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "description": "LEGACY / decorative. Always empty on regenerate. Not a gate input — GitHub CODEOWNERS/rulesets enforce review.",
+      "items": {
+        "type": "object",
+        "required": ["owner", "approved_at", "lock_hash", "justification"],
+        "additionalProperties": false,
+        "properties": {
+          "owner": { "type": "string", "minLength": 1 },
+          "approved_at": { "type": "string" },
+          "lock_hash": { "type": "string" },
+          "audited_commit": { "type": ["string", "null"] },
+          "policy_hash": { "type": ["string", "null"] },
+          "justification": { "type": "string", "minLength": 8 },
+          "exceptions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fingerprint": { "type": "string" },
+                "justification": { "type": "string" },
+                "expires": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

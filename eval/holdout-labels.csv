@@ -1,0 +1,26 @@
+config_id,surface,expected_growth,expected_capabilities,label_notes,tp_fp_fn,reviewer
+cfg-001-mcp-remote-unpinned,mcp,yes,"network,secrets",remote HTTP MCP without pin,TP,
+cfg-002-mcp-stdio-node,mcp,yes,execute_commands,local node stdio server,TP,
+cfg-003-skill-prompt-injection,skill,yes,modify_agent_instructions,SKILL.md text heuristic,TP,
+cfg-004-benign-readme-only,none,no,,no agent config - TN,TN,
+cfg-005-hooks-sessionstart,hooks,yes,"execute_commands,network",SessionStart curl env,TP,
+cfg-006-mcp-pinned-benign,mcp,yes,"execute_commands,invoke_tools",pinned npx MCP still growth vs empty,TP,fixture
+cfg-007-mcp-cursor-url,mcp,yes,network,Cursor URL MCP,TP,fixture
+cfg-008-claude-settings-bypass,host,yes,"approvals,unattended",Claude bypass permissions,TP,fixture
+cfg-009-agents-md-instructions,instructions,yes,modify_agent_instructions,AGENTS.md instruction surface,TP,fixture
+cfg-010-claude-md,instructions,yes,modify_agent_instructions,CLAUDE.md,TP,fixture
+cfg-011-cursor-rules,instructions,yes,modify_agent_instructions,cursor rules pack,TP,fixture
+cfg-012-skill-clean,skill,yes,,declared skill still authority growth,TP,fixture
+cfg-013-skill-secrets-hint,skill,yes,secrets,skill mentions secrets,TP,fixture
+cfg-014-plugin-manifest,plugin,yes,,plugin manifest,TP,fixture
+cfg-015-subagent-file,subagent,yes,,subagent definition,TP,fixture
+cfg-016-ci-workflow-mcp,ci,yes,,CI workflow with MCP launcher,TP,fixture
+cfg-017-hooks-json-pretool,hooks,yes,execute_commands,hooks.json PreToolUse,TP,fixture
+cfg-018-vscode-mcp,mcp,yes,"execute_commands,files",vscode mcp.json,TP,fixture
+cfg-019-nested-mcp,mcp,yes,network,nested .mcp.json,TP,fixture
+cfg-020-gemini-md,instructions,yes,modify_agent_instructions,GEMINI.md,TP,fixture
+cfg-021-empty-dir-tn,none,no,,empty tree TN,TN,fixture
+cfg-022-readme-only-tn,none,no,,non-agent docs TN,TN,fixture
+cfg-023-mcp-floating-npx,mcp,yes,execute_commands,unpinned npx package,TP,fixture
+cfg-024-claude-commands,command,yes,modify_agent_instructions,claude slash command (fixture TP),TP,fixture
+cfg-025-multi-mcp-growth,mcp,yes,"network,execute_commands",multi MCP growth,TP,fixture
