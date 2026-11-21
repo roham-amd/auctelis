@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.1.0** (initial release) · lock schema 1 · tooling 0.1.0
+**Current:** **0.1.1** · lock schema 1 · tooling 0.1.1
 
 ## North star (Gate Zero)
 
@@ -23,6 +23,7 @@ are removed.
 | Version | Work | Status |
 | --- | --- | --- |
 | **0.1.0** | Initial release: reach check, lock, gate, Action, Reach Report, `check --github` | **done** |
+| **0.1.1** | Green Release assets + calm lock digests + executable org Watch rollout | **done** |
 | Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
 
 ## 90-day decision gate

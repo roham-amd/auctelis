@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.0** · product **0.1.0** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.1** · product **0.1.1** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,7 +22,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report |
+| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -75,9 +75,12 @@ lists every tier-2 record (not just the top cards).
   `gh auth token` (unauthenticated public fallback). Fleet HTML/MD show
   skipped/truncated repos; GitHub-sourced reports include 1-click **Watch PRs**
   links (or **Watching** when `.github/workflows/auctelis*.yml` already exists).
-  Labels reports as `owner/repo`, never temp paths.
+  Labels reports as `owner/repo`, never temp paths. Fleet reports with unwatched
+  tier-2 repos also write `rollout-watch-prs.sh` (dry-run unless `APPLY=1`).
 - `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
 - `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
+- `--strict-digests` → fail on plain-CI / prose representation digest drift
+  (default: advisory note only; Hook body edits always fail)
 
 `--json` emits `schema_version: authority-diff/1` plus `reach` (tier counts,
 full `records`, and capped `top` / `top_cards`) and `pins`. With multiple paths
@@ -93,7 +96,7 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta (any repo for fleet);
 
 ```bash
 auctelis lock [PATH] [--check] [--update] [--lock-file PATH]
-              [--accept-gated] [--max-files N]
+              [--accept-gated] [--max-files N] [--strict-digests]
 ```
 
 Writes or verifies repo `AUTHORITY.lock`. `--check` is read-only. Writes are
@@ -102,7 +105,8 @@ refused when `AUCTELIS_AGENT=1` (speed bump, not a security control).
 scan carries no HIGH/CRITICAL findings, so it is a no-op (it matters only for a
 findings-bearing `ScanResult` passed by maintainer code). It records no
 approval — CODEOWNERS governs. Empty baseline is normal: first growth is
-CODEOWNERS review, not forever `FAIL_CLOSED`.
+CODEOWNERS review, not forever `FAIL_CLOSED`. With `--check`, plain-CI / prose
+representation digest drift is advisory unless `--strict-digests` (AUCT-034).
 
 ---
 
@@ -137,6 +141,7 @@ setup probes them as a warning (files are still written).
 auctelis gate [PATH] --base-lock PATH [--head-lock PATH]
               [--codeowners PATH] [--strict-ruleset | --no-strict-ruleset]
               [--skip-ruleset-check] [--trust-head-codeowners] [--max-files N]
+              [--strict-digests]
               [--comment-only] [--comment-policy auto|always] [--agent]
 ```
 

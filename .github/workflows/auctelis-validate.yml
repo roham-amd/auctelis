@@ -52,9 +52,10 @@ jobs:
         run: |
           # Always target the repository root (GITHUB_WORKSPACE), never tools/.
           # `check .` under working-directory: tools silently looks for tools/AUTHORITY.lock.
+          # --strict-digests: dogfood must catch plain-CI/prose digest churn (AUCT-033/034).
           repo="${GITHUB_WORKSPACE:-$PWD}"
-          uv run --directory tools --locked auctelis check "$repo"
-          uv run --directory tools --locked auctelis lock --check "$repo"
+          uv run --directory tools --locked auctelis check --strict-digests "$repo"
+          uv run --directory tools --locked auctelis lock --check --strict-digests "$repo"
 
   # Week-2 OS matrix: product CLI smoke on Windows / macOS (full lint stays Ubuntu).
   pytest-matrix:

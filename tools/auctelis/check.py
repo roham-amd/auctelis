@@ -25,6 +25,7 @@ from auctelis.authority_card import (
 )
 from auctelis.authority_lock import (
     LOCK_NAME,
+    STRICT_DIGEST_ADVISORY,
     build_authority_lock,
     default_lock_path,
     delta_label,
@@ -118,8 +119,13 @@ def build_check_report(
     lock_file: Path | None = None,
     top: int = 5,
     limits: object | None = None,
+    strict_digests: bool = False,
 ) -> tuple[dict[str, Any], list[str], ScanResult | None]:
-    """Return ``(report, cards, scan)`` for repo authority vs ``AUTHORITY.lock``."""
+    """Return ``(report, cards, scan)`` for repo authority vs ``AUTHORITY.lock``.
+
+    When ``strict_digests`` is false (default), plain-CI / prose representation
+    digest drift is advisory only (AUCT-034).
+    """
     from auctelis.inventory.limits import CollectorLimits
 
     repo = (root or Path.cwd()).expanduser().resolve()
@@ -224,19 +230,26 @@ def build_check_report(
     delta = diff_authority_locks(base, head, trusted_hosts=trusted_hosts)
     summary = dict(delta.get("summary") or {})
     cards = delta_cards(delta, limit=12, trusted_hosts=trusted_hosts)
-    # Align with lock --check: representation path/digest drift is also review.
-    lock_drift = bool(summary.get("authority_changed"))
+    # Align with lock --check: meaningful / Hook drift fails; plain
+    # representation digest drift is advisory unless --strict-digests (AUCT-034).
+    authority_changed = bool(summary.get("authority_changed"))
+    strict_drift_only = bool(summary.get("strict_drift_only"))
+    lock_drift = authority_changed and (strict_digests or not strict_drift_only)
     meaningful = bool(cards or summary.get("policy_changed") or lock_drift)
     unparsed = int(report["unparsed"] or 0)
     if unparsed:
         meaningful = True
     report["delta"] = delta
+    report["strict_digests"] = bool(strict_digests)
+    report["strict_drift_only"] = strict_drift_only
     report["label"] = delta_label(summary) if meaningful else "NONE"
     report["meaningful"] = meaningful
     if not meaningful:
         # Quiet lock match still shows what the repo can reach — the card is
         # the product, not a one-line "matches".
         cards = list((report.get("reach") or {}).get("top_cards") or [])
+        if authority_changed and strict_drift_only and not strict_digests:
+            report["advisory"] = STRICT_DIGEST_ADVISORY
     if meaningful:
         # One vocabulary: any meaningful lock drift needing human review is
         # NEEDS_REVIEW (GROWTH / REDUCTION / mixed). AUTHORITY_CHANGED is retired.
@@ -425,6 +438,9 @@ def render_check(
 
     if not report.get("meaningful"):
         lines.append(f"auctelis check · {LOCK_NAME} matches · {label}")
+        advisory = report.get("advisory")
+        if advisory:
+            lines.append(f"Note: {advisory}")
         reach_line = _reach_line(report)
         if reach_line:
             lines.append(reach_line)

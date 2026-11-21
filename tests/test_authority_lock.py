@@ -257,6 +257,62 @@ def test_path_move_is_representation_not_add_remove():
     assert delta["changes"]["changed"][0]["change_class"] == "representation"
     assert delta["summary"]["meaningful_authority_change"] is False
     assert delta["summary"]["authority_changed"] is True
+    assert delta["summary"]["strict_drift_only"] is True
+
+
+def test_auct034_strict_drift_only_quiet_for_non_hook(tmp_path: Path):
+    """AUCT-034: non-Hook representation drift is advisory unless strict_digests."""
+    root = tmp_path / "repo"
+    _repo_with_mcp(root, {"a": {"command": "node", "args": ["a.js"]}})
+    write_authority_lock(root, accept_gated=True)
+    (root / ".cursor" / "mcp.json").rename(root / ".cursor" / "mcp_moved.json")
+    report, code = check_locked(root)
+    assert code == 0
+    assert report["ok"] is True
+    assert report.get("strict_drift_only") is True
+    assert "representation digest drift only" in str(report.get("advisory") or "")
+    report_s, code_s = check_locked(root, strict_digests=True)
+    assert code_s == 1
+    assert report_s["ok"] is False
+
+
+def test_auct034_hook_representation_not_quiet():
+    """AUCT-034: Hook body digest edits are never strict_drift_only."""
+    base = {
+        "version": 1,
+        "records": [
+            {
+                "identity_key": "cursor|hook|demo",
+                "host": "cursor",
+                "kind": "Hook",
+                "name": "demo",
+                "path": ".cursor/hooks.json",
+                "digest": "aaa",
+                "script_digest": "aaa",
+                "fingerprint": "fp1",
+                "pin_state": "unknown",
+                "approval_posture": "unknown",
+                "capabilities": [],
+                "destinations": [],
+                "env_keys": [],
+            }
+        ],
+    }
+    head = {
+        "version": 1,
+        "records": [
+            {
+                **base["records"][0],
+                "digest": "bbb",
+                "script_digest": "bbb",
+                "fingerprint": "fp2",
+            }
+        ],
+    }
+    d = diff_authority_locks(base, head)
+    assert d["summary"]["authority_changed"] is True
+    assert d["changes"]["changed"][0]["change_class"] == "representation"
+    assert d["summary"]["strict_drift_only"] is False
 
 
 def test_load_authority_lock_roundtrip(tmp_path: Path):

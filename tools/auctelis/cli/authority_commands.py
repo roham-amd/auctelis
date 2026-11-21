@@ -59,6 +59,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         lock_file=getattr(args, "lock_file", None),
         top=top,
         limits=_collector_limits(args),
+        strict_digests=bool(getattr(args, "strict_digests", False)),
     )
     report_dir = getattr(args, "report", None)
     as_json = bool(getattr(args, "json", False))
@@ -124,7 +125,12 @@ def _cmd_check_fleet(args: argparse.Namespace, paths: list[Path]) -> int:
         if not resolved.is_dir():
             print(f"auctelis check: not a directory: {root}")
             return 2
-        report, cards, scan = build_check_report(resolved, top=top, limits=limits)
+        report, cards, scan = build_check_report(
+            resolved,
+            top=top,
+            limits=limits,
+            strict_digests=bool(getattr(args, "strict_digests", False)),
+        )
         entries.append((report, scan, cards))
         codes.append(check_exit_code(report))
     doc = write_fleet_reach_report_artifacts(report_dir, entries)

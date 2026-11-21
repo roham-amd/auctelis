@@ -14,7 +14,7 @@ from auctelis.inventory.coverage import (
 from auctelis.security.finding_fields import finding_class, finding_severity
 from auctelis.security.gating import HIGH_SEVERITIES, is_gate_finding, is_high_gate_finding
 
-# Legacy alias kept for one release so old fixtures/docs still parse.
+# Compat alias through 0.1.x so old fixtures/docs still parse DECISION: lines.
 Decision = Literal[
     "BLOCK",
     "REVIEW",

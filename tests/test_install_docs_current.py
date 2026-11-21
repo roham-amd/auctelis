@@ -158,3 +158,23 @@ def test_pypi_cutover_readiness_check():
     notes = build.check_pypi_cutover_readiness()
     assert any("publish-pypi.yml" in n for n in notes)
     assert any("console script" in n for n in notes)
+
+
+def test_auct033_dogfood_lock_freshness_fails_on_stale_lock(monkeypatch, tmp_path: Path):
+    """AUCT-033: build all preflight fails when AUTHORITY.lock digests drift."""
+    from auctelis.authority_lock import write_authority_lock
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    cursor = root / ".cursor"
+    cursor.mkdir()
+    (cursor / "mcp.json").write_text(
+        json.dumps({"mcpServers": {"a": {"command": "node", "args": ["a.js"]}}}) + "\n",
+        encoding="utf-8",
+    )
+    write_authority_lock(root, accept_gated=True)
+    # Representation drift: move the config path without resealing.
+    (cursor / "mcp.json").rename(cursor / "mcp_moved.json")
+    monkeypatch.setattr(build, "repo_root", lambda: root)
+    with pytest.raises(SystemExit, match=r"AUTHORITY\.lock is stale|Dogfood"):
+        build.check_dogfood_lock_freshness()

@@ -321,7 +321,12 @@ _PACKAGE_PIN_RE = re.compile(r"auctelis==([0-9][0-9A-Za-z.\-]*)")
 
 
 def _pypi_live() -> bool:
-    """Read ``pypi_live`` from the release manifest (default false until published)."""
+    """Read ``pypi_live`` via build ``repo_root`` (monkeypatch-friendly for tests).
+
+    Product runtime uses ``auctelis.versioning.pypi_live`` (cached, wheel-safe).
+    Build checks must follow ``repo_root()`` so install-doc tests can point at
+    a fake tree without clearing the versioning cache.
+    """
     manifest_path = repo_root() / "canonical" / "release-manifest.json"
     if not manifest_path.is_file():
         return False
@@ -426,7 +431,7 @@ def check_install_doc_versions(product: str) -> None:
 
     cli_ref = repo_root() / "docs" / "CLI-REFERENCE.md"
     cli_text = cli_ref.read_text(encoding="utf-8")
-    # e.g. Package `auctelis` **0.1.0** · product **0.1.0**
+    # e.g. Package `auctelis` **X.Y.Z** · product **X.Y.Z**
     pkg = re.search(r"Package\s+`auctelis`\s+\*\*([^*]+)\*\*", cli_text)
     prod = re.search(r"product\s+\*\*([^*]+)\*\*", cli_text, re.IGNORECASE)
     if not pkg or not prod:
@@ -837,8 +842,7 @@ def check_pypi_cutover_readiness() -> list[str]:
         raise SystemExit("tools/pyproject.toml missing auctelis console script entry")
     actions.append("ok tools/pyproject.toml declares auctelis console script")
 
-    pypi_live = _pypi_live()
-    if pypi_live:
+    if _pypi_live():
         actions.append("note: pypi_live is already true — cutover docs must lead with uvx auctelis")
     else:
         actions.append("note: pypi_live=false — cutover not flipped yet (expected)")
@@ -860,6 +864,35 @@ def check_pypi_cutover_readiness() -> list[str]:
     return actions
 
 
+def check_dogfood_lock_freshness() -> list[str]:
+    """AUCT-033: fail ``build all`` when dogfood AUTHORITY.lock drifts.
+
+    Catches representation / workflow / skill digest churn locally before a
+    release tag is pushed (the failure mode that left ``v0.1.0`` with empty
+    Release assets).
+    """
+    from auctelis.authority_lock import check_locked
+
+    root = repo_root()
+    lock_path = root / "AUTHORITY.lock"
+    if not lock_path.is_file():
+        raise SystemExit(
+            "Missing AUTHORITY.lock at repo root — dogfood lock required for build all"
+        )
+    report, code = check_locked(root, lock_path=lock_path, strict_digests=True)
+    if code != 0 or not report.get("ok"):
+        lines = report.get("lines") or []
+        detail = "\n".join(str(line) for line in lines[:12]) or str(
+            report.get("error") or "authority changed"
+        )
+        raise SystemExit(
+            "Dogfood AUTHORITY.lock is stale vs the tree (strict digests). "
+            "Run `auctelis lock --update` and commit before tagging.\n"
+            f"{detail}"
+        )
+    return ["ok dogfood AUTHORITY.lock matches tree (strict digests)"]
+
+
 def build_all() -> dict[str, object]:
     sync = sync_schemas()
     packaged = sync_packaged_version_metadata()
@@ -872,6 +905,7 @@ def build_all() -> dict[str, object]:
     validate_json_schema_document()
     links = check_internal_markdown_links()
     wheel_lean = check_wheel_omits_research()
+    dogfood_lock = check_dogfood_lock_freshness()
     return {
         "schemas": sync,
         "packaged_metadata": packaged,
@@ -879,6 +913,7 @@ def build_all() -> dict[str, object]:
         "action_parity": action_parity,
         "markdown_files_link_checked": links,
         "wheel_omits_research": wheel_lean,
+        "dogfood_lock_freshness": dogfood_lock,
         # Monolith generation removed from product build (archive/methodology only).
         "status": "ok",
     }

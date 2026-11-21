@@ -138,6 +138,34 @@ def test_body_only_edit_is_visible_not_material_fail(tmp_path: Path):
     assert "body changed" in blob.lower() or "representation" in blob.lower()
 
 
+def test_auct034_unsealed_prose_body_quiet_lock_drift_keeps_comment(tmp_path: Path):
+    """AUCT-034: SKILL.md wording without reseal exits 0; comment still shows body."""
+    root = tmp_path / "repo"
+    root.mkdir()
+    base = _seal(root)
+    skill = root / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: demo\ndescription: d\n---\nBe careful.\n", encoding="utf-8")
+    write_authority_lock(root, path=root / "AUTHORITY.lock", accept_gated=True)
+    base.write_text((root / "AUTHORITY.lock").read_text(encoding="utf-8"), encoding="utf-8")
+
+    skill.write_text(
+        "---\nname: demo\ndescription: d\n---\nBe careful and thorough.\n",
+        encoding="utf-8",
+    )
+    # Do not reseal — exercises lock↔tree freshness path.
+    report, code = run_gate(root, base_lock=base, check_ruleset=False)
+    assert code == 0
+    assert report.get("lock_tree_drift") is False
+    assert report.get("representation_only") is True
+    blob = "\n".join(report.get("lines") or []) + str(report.get("error") or "")
+    assert "body changed" in blob.lower() or "representation" in blob.lower()
+
+    report_s, code_s = run_gate(root, base_lock=base, check_ruleset=False, strict_digests=True)
+    assert code_s == 1
+    assert report_s.get("lock_tree_drift") is True
+
+
 def test_skill_and_slash_curl_hosts(tmp_path: Path):
     root = tmp_path / "repo"
     root.mkdir()

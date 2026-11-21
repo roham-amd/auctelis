@@ -178,6 +178,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Include forked repositories when --github lists an org (default: skip forks)",
     )
+    check.add_argument(
+        "--strict-digests",
+        action="store_true",
+        help=(
+            "Fail on plain-CI / prose representation digest drift "
+            "(default: advisory only; Hook body edits always fail)"
+        ),
+    )
 
     init_cmd = sub.add_parser(
         "init",
@@ -384,6 +392,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help=argparse.SUPPRESS,
     )
+    lock_cmd.add_argument(
+        "--strict-digests",
+        action="store_true",
+        help=(
+            "With --check: fail on plain-CI / prose representation digest drift "
+            "(default: advisory only; Hook body edits always fail)"
+        ),
+    )
 
     gate_cmd = sub.add_parser(
         "gate",
@@ -456,6 +472,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         default=None,
         metavar="N",
         help="Inventory walk file cap (default: 50000 or AUCTELIS_MAX_FILES)",
+    )
+    gate_cmd.add_argument(
+        "--strict-digests",
+        action="store_true",
+        help=(
+            "Fail lock↔tree freshness on plain-CI / prose representation digest drift "
+            "(default: quiet; Hook body edits always fail; PR comment still shows body changed)"
+        ),
     )
 
     if include_dev:

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -12,6 +14,7 @@ from auctelis.cli import main
 from auctelis.export.reach_report import (
     build_fleet_reach_report,
     build_reach_report,
+    build_rollout_watch_prs_script,
     diff_reach_reports,
     load_reach_baseline,
     lockless_workflow_yaml,
@@ -20,6 +23,7 @@ from auctelis.export.reach_report import (
     render_reach_html,
     render_reach_md,
     watch_pr_url,
+    write_fleet_reach_report_artifacts,
     write_reach_report_artifacts,
 )
 from auctelis.inventory.coverage import (
@@ -66,7 +70,7 @@ def test_load_reach_baseline_rejects_non_object(tmp_path: Path):
 
 def test_html_escapes_script_in_record_name():
     doc = {
-        "product_version": "0.1.0",
+        "product_version": product_version(),
         "repository": "/tmp/repo",
         "honesty": {
             "disclaimer": "declared only",
@@ -292,7 +296,7 @@ def test_pins_line_pluralizes_on_total(tmp_path: Path):
 
 def _parity_doc() -> dict:
     return {
-        "product_version": "0.1.0",
+        "product_version": product_version(),
         "repository": "/repo",
         "honesty": {
             "disclaimer": "declared only",
@@ -508,6 +512,11 @@ def test_watch_pr_url_for_github_slug():
         f"auctelis%40v{product_version()}" in url
     )
     assert "value=" in url
+    assert "message=" in url
+    assert (
+        "Add%20auctelis%20lockless%20PR%20Watch%20workflow" in url
+        or "Add+auctelis+lockless+PR+Watch+workflow" in url
+    )
 
 
 def test_watch_pr_url_omitted_for_local_path():
@@ -931,9 +940,66 @@ def test_auct032_fleet_watching_and_org_rollout():
         assert "Org rollout" in text
         assert "auctelis-org-reusable.yml" in text
         assert "acme/hot" in text
+        assert "APPLY=" in text or "APPLY=0" in text or 'APPLY="${APPLY:-0}"' in text
+        assert "fill after reviewing" not in text
     targets_block = md.split("TARGETS=")[-1].split("```")[0]
     assert "acme/hot" in targets_block
     assert "acme/watched" not in targets_block
     # Hostile / invalid slug must not enter the shell TARGETS list.
     assert "rm -rf" not in targets_block
     assert "<details>" in html
+
+
+def test_auct035_rollout_watch_prs_script_artifact(tmp_path: Path):
+    """AUCT-035: fleet reports write executable dry-run rollout-watch-prs.sh."""
+    entries = [
+        (
+            {
+                "repository": "acme/hot",
+                "default_branch": "main",
+                "github_web_base": "https://github.com",
+                "already_watching": False,
+                "coverage_line": "",
+                "unparsed": 0,
+                "reach": {
+                    "total": 1,
+                    "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                    "records": [],
+                    "top": [],
+                    "top_cards": [],
+                },
+                "pins": {"total": 0, "unpinned": 0, "items": []},
+                "counts": {},
+                "delta": {},
+                "label": "NONE",
+                "verdict": "BASELINE_NEEDED",
+                "schema_version": "authority-diff/1",
+                "lock_present": False,
+                "first_run": True,
+                "meaningful": False,
+            },
+            None,
+            [],
+        )
+    ]
+    out = tmp_path / "fleet"
+    write_fleet_reach_report_artifacts(out, entries)
+    script_path = out / "rollout-watch-prs.sh"
+    assert script_path.is_file()
+    text = script_path.read_text(encoding="utf-8")
+    assert 'APPLY="${APPLY:-0}"' in text
+    assert "acme/hot" in text
+    assert "fill after reviewing" not in text
+    assert f"roham-amd/auctelis@v{product_version()}" in lockless_workflow_yaml()
+    # Embedded workflow matches release pin (via base64 payload round-trip).
+    m = re.search(r'WORKFLOW_B64="([A-Za-z0-9+/=]+)"', text)
+    assert m
+    decoded = base64.b64decode(m.group(1)).decode("utf-8")
+    assert decoded == lockless_workflow_yaml()
+    # shlex.quote on slugs
+    script = build_rollout_watch_prs_script(
+        ["acme/hot"],
+        github_web_base="https://ghes.example.com",
+    )
+    assert 'export GH_HOST="ghes.example.com"' in script
+    assert "acme/hot" in script

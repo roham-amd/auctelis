@@ -105,6 +105,7 @@ def _cmd_lock(args: argparse.Namespace) -> int:
         lock_path=lock_path,
         accept_gated=bool(getattr(args, "accept_gated", False)),
         mcp_tools=mcp_tools,
+        strict_digests=bool(getattr(args, "strict_digests", False)),
     )
     print(text)
     if code == 0 and bool(getattr(args, "resolve", False)):
@@ -128,6 +129,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         trust_head_codeowners=bool(getattr(args, "trust_head_codeowners", False)),
         codeowners_from_base=bool(getattr(args, "codeowners", None)),
         comment_only=bool(getattr(args, "comment_only", False)),
+        strict_digests=bool(getattr(args, "strict_digests", False)),
     )
     if getattr(args, "agent", False):
         print_json(report)

@@ -135,10 +135,99 @@ def watch_pr_url(
         {
             "filename": ".github/workflows/auctelis.yml",
             "value": body,
+            "message": "Add auctelis lockless PR Watch workflow",
         }
     )
     branch_q = urllib.parse.quote(branch, safe="/")
     return f"{base}/{slug}/new/{branch_q}?{query}"
+
+
+def _github_api_host(github_web_base: object = "https://github.com") -> str:
+    """Derive ``GH_HOST`` for ``gh`` from a web base (github.com or GHES)."""
+    base = str(github_web_base or "https://github.com").rstrip("/")
+    host = urllib.parse.urlparse(base).hostname or "github.com"
+    return host
+
+
+def build_rollout_watch_prs_script(
+    targets: Sequence[str],
+    *,
+    workflow: str | None = None,
+    github_web_base: object = "https://github.com",
+) -> str:
+    """Generate a dry-run-by-default ``gh`` batch Watch-PR shell script (AUCT-035)."""
+    import base64
+
+    safe_targets = [slug for slug in targets if is_owner_repo_slug(slug)]
+    yaml_text = workflow if workflow is not None else lockless_workflow_yaml()
+    encoded = base64.b64encode(yaml_text.encode("utf-8")).decode("ascii")
+    host = _github_api_host(github_web_base)
+    quoted = " ".join(shlex.quote(slug) for slug in safe_targets)
+    # APPLY=0 prints planned actions; APPLY=1 opens real PRs via Contents/Pulls API.
+    lines = [
+        "#!/usr/bin/env bash",
+        "# auctelis fleet rollout — lockless Watch PRs (AUCT-035)",
+        "# Default: dry-run. Set APPLY=1 to create branches + open PRs.",
+        "set -euo pipefail",
+        'APPLY="${APPLY:-0}"',
+        f'export GH_HOST="{host}"',
+        f"TARGETS=({quoted})",
+        f'WORKFLOW_B64="{encoded}"',
+        'WORKFLOW_PATH=".github/workflows/auctelis.yml"',
+        'BRANCH="auctelis/watch-prs"',
+        'PR_TITLE="Add auctelis lockless PR Watch"',
+        'PR_BODY="Install Auctelis lockless PR Watch so future agent-authority changes surface in one quiet PR comment. No AUTHORITY.lock required."',
+        "",
+        "if ! command -v gh >/dev/null 2>&1; then",
+        '  echo "gh CLI required (https://cli.github.com/)" >&2',
+        "  exit 2",
+        "fi",
+        "if ! command -v base64 >/dev/null 2>&1; then",
+        '  echo "base64 required" >&2',
+        "  exit 2",
+        "fi",
+        "",
+        'if [[ "${#TARGETS[@]}" -eq 0 ]]; then',
+        '  echo "No safe unwatched tier-2 targets."',
+        "  exit 0",
+        "fi",
+        "",
+        'echo "auctelis rollout-watch-prs · APPLY=${APPLY} · ${#TARGETS[@]} repo(s) · GH_HOST=${GH_HOST}"',
+        'for repo in "${TARGETS[@]}"; do',
+        '  echo "--- $repo"',
+        '  if [[ "$APPLY" != "1" ]]; then',
+        '    echo "Would open Watch PR for $repo (set APPLY=1 to create)"',
+        "    continue",
+        "  fi",
+        '  default_branch="$(gh api "repos/$repo" --jq .default_branch)"',
+        '  sha="$(gh api "repos/$repo/git/ref/heads/${default_branch}" --jq .object.sha)"',
+        '  if gh api "repos/$repo/contents/${WORKFLOW_PATH}" --jq .sha >/dev/null 2>&1; then',
+        '    echo "Skip $repo — ${WORKFLOW_PATH} already present"',
+        "    continue",
+        "  fi",
+        '  if ! gh api "repos/$repo/git/ref/heads/${BRANCH}" >/dev/null 2>&1; then',
+        '    gh api -X POST "repos/$repo/git/refs" \\',
+        '      -f ref="refs/heads/${BRANCH}" -f sha="$sha" >/dev/null',
+        "  fi",
+        '  if ! gh api -X PUT "repos/$repo/contents/${WORKFLOW_PATH}" \\',
+        '      -f message="Add auctelis lockless PR Watch workflow" \\',
+        '      -f content="$WORKFLOW_B64" \\',
+        '      -f branch="$BRANCH" >/dev/null; then',
+        '    echo "Failed to write workflow for $repo — if HTTP 403/422, run: gh auth refresh -s workflow" >&2',
+        "    continue",
+        "  fi",
+        '  if ! gh api -X POST "repos/$repo/pulls" \\',
+        '      -f title="$PR_TITLE" \\',
+        '      -f head="$BRANCH" \\',
+        '      -f base="$default_branch" \\',
+        '      -f body="$PR_BODY" --jq .html_url; then',
+        '    echo "Failed to open PR for $repo — if HTTP 403/422, run: gh auth refresh -s workflow" >&2',
+        "    continue",
+        "  fi",
+        "done",
+        "",
+    ]
+    return "\n".join(lines)
 
 
 def _workflow_snippet_md() -> list[str]:
@@ -817,8 +906,16 @@ def _unwatched_tier2_slugs(doc: dict[str, Any], *, limit: int = 10) -> list[str]
     return out
 
 
+def _fleet_github_web_base(doc: dict[str, Any]) -> str:
+    for repo in _fleet_repo_table_rows(doc):
+        base = str(repo.get("github_web_base") or "").strip()
+        if base:
+            return base
+    return "https://github.com"
+
+
 def _org_rollout_md(doc: dict[str, Any]) -> list[str]:
-    """Org-reusable caller + copyable dry-run ``gh`` batch Watch snippet (AUCT-032)."""
+    """Org-reusable caller + dry-run ``rollout-watch-prs.sh`` (AUCT-032/035)."""
     targets = _unwatched_tier2_slugs(doc, limit=10)
     lines = [
         "## Org rollout (5+ repos)",
@@ -841,20 +938,23 @@ def _org_rollout_md(doc: dict[str, Any]) -> list[str]:
             ]
         )
         return lines
-    # Dry-run comment + explicit target list; never auto-executed.
-    escaped = " ".join(shlex.quote(slug) for slug in targets)
+    script = build_rollout_watch_prs_script(
+        targets,
+        github_web_base=_fleet_github_web_base(doc),
+    )
     lines.extend(
         [
             "Or open lockless Watch PRs for the top unwatched tier-2 repos "
-            "(review the list; this is a dry-run snippet — copy only what you intend):",
+            "with the generated `rollout-watch-prs.sh` (defaults to dry-run; "
+            "`APPLY=1` creates branches and opens PRs):",
             "",
             "```bash",
-            "# dry-run: review targets before running; does not open PRs by itself",
-            f"TARGETS=({escaped})",
-            'for repo in "${TARGETS[@]}"; do',
-            '  echo "Would open Watch PR for $repo"',
-            '  # gh api -X POST "repos/$repo/pulls" ...  # fill after reviewing',
-            "done",
+            script.rstrip(),
+            "```",
+            "",
+            "```bash",
+            "bash rollout-watch-prs.sh          # dry-run (APPLY=0)",
+            "APPLY=1 bash rollout-watch-prs.sh  # open Watch PRs",
             "```",
             "",
         ]
@@ -880,20 +980,22 @@ def _org_rollout_html(doc: dict[str, Any]) -> str:
             "nothing to batch-open.</em></p>"
         )
     else:
-        escaped = " ".join(shlex.quote(slug) for slug in targets)
-        gh = (
-            "# dry-run: review targets before running; does not open PRs by itself\n"
-            f"TARGETS=({escaped})\n"
-            'for repo in "${TARGETS[@]}"; do\n'
-            '  echo "Would open Watch PR for $repo"\n'
-            '  # gh api -X POST "repos/$repo/pulls" ...  # fill after reviewing\n'
-            "done"
+        script = build_rollout_watch_prs_script(
+            targets,
+            github_web_base=_fleet_github_web_base(doc),
+        )
+        howto = (
+            "bash rollout-watch-prs.sh          # dry-run (APPLY=0)\n"
+            "APPLY=1 bash rollout-watch-prs.sh  # open Watch PRs"
         )
         body_parts.extend(
             [
                 "<p>Or open lockless Watch PRs for the top unwatched tier-2 repos "
-                "(review the list; this is a dry-run snippet — copy only what you intend):</p>",
-                f"<pre><code>{esc(gh)}</code></pre>",
+                "with the generated <code>rollout-watch-prs.sh</code> "
+                "(defaults to dry-run; <code>APPLY=1</code> creates branches "
+                "and opens PRs):</p>",
+                f"<pre><code>{esc(script)}</code></pre>",
+                f"<pre><code>{esc(howto)}</code></pre>",
             ]
         )
     inner = "".join(body_parts)
@@ -1181,4 +1283,11 @@ def write_fleet_reach_report_artifacts(
     write_json(out_dir / "reach-report.json", doc)
     write_text(out_dir / "reach-report.md", render_fleet_reach_md(doc))
     write_text(out_dir / "reach-report.html", render_fleet_reach_html(doc))
+    targets = _unwatched_tier2_slugs(doc, limit=10)
+    if targets:
+        script = build_rollout_watch_prs_script(
+            targets,
+            github_web_base=_fleet_github_web_base(doc),
+        )
+        write_text(out_dir / "rollout-watch-prs.sh", script)
     return doc

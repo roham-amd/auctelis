@@ -32,6 +32,7 @@ from auctelis.versioning import product_version
 __all__ = [
     "LOCK_NAME",
     "LOCK_VERSION",
+    "STRICT_DIGEST_ADVISORY",
     "args_digest",
     "build_authority_lock",
     "check_locked",
@@ -51,6 +52,9 @@ __all__ = [
 ]
 
 LOCK_NAME = "AUTHORITY.lock"
+
+# AUCT-034 advisory when plain-CI / prose representation digests drift.
+STRICT_DIGEST_ADVISORY = "representation digest drift only; pass --strict-digests to fail"
 LOCK_VERSION = 1
 
 
@@ -734,6 +738,30 @@ def diff_authority_locks(
     )
     # Representation-only churn still marks lock drift (hash/path) but is labeled.
     authority_changed = meaningful or bool(changed or added or removed or policy_changed)
+    # AUCT-034: quiet plain-CI / prose representation digest drift unless
+    # --strict-digests. Executable Hook script body edits stay hard drift.
+    strict_drift_only = False
+    if (
+        authority_changed
+        and not meaningful
+        and not added
+        and not removed
+        and not policy_changed
+        and not tools_added
+        and not tools_removed
+        and not tools_changed
+        and changed
+        and all(str(c.get("change_class")) == "representation" for c in changed)
+    ):
+        kinds: list[str] = []
+        for item in changed:
+            after_raw = item.get("after")
+            before_raw = item.get("before")
+            after = after_raw if isinstance(after_raw, dict) else {}
+            before = before_raw if isinstance(before_raw, dict) else {}
+            kinds.append(str(after.get("kind") or before.get("kind") or ""))
+        if kinds and all(kind != "Hook" for kind in kinds):
+            strict_drift_only = True
     # Material reach: additions / expansions / replacements / tool pin growth /
     # policy — not body-digest or path packaging alone. Gate fails on tier≥fail;
     # representation and tier-1 network stay visible on the PR comment.
@@ -755,6 +783,7 @@ def diff_authority_locks(
         "policy_modified": policy_modified,
         "authority_changed": authority_changed,
         "meaningful_authority_change": meaningful,
+        "strict_drift_only": strict_drift_only,
     }
     provisional: dict[str, Any] = {
         "kind": "authority_lock_delta",
@@ -908,8 +937,14 @@ def check_locked(
     *,
     lock_path: Path | None = None,
     scan: ScanResult | None = None,
+    strict_digests: bool = False,
 ) -> tuple[dict[str, Any], int]:
-    """Regenerate lock and compare to the committed file. Exit 1 on drift."""
+    """Regenerate lock and compare to the committed file. Exit 1 on drift.
+
+    When ``strict_digests`` is false (default), plain-CI / prose
+    ``representation`` digest drift is advisory only (AUCT-034). Hook body
+    edits and any meaningful reach change still fail closed.
+    """
     root = root.resolve()
     path = lock_path or default_lock_path(root)
     if not path.is_file():
@@ -925,7 +960,13 @@ def check_locked(
     on_disk = load_authority_lock(path)
     current = build_authority_lock(root, scan=scan)
     delta = diff_authority_locks(on_disk, current)
-    ok = not delta["summary"]["authority_changed"] and unparsed == 0
+    summary = delta.get("summary") or {}
+    drifted = bool(summary.get("authority_changed"))
+    advisory: str | None = None
+    if drifted and not strict_digests and bool(summary.get("strict_drift_only")):
+        drifted = False
+        advisory = STRICT_DIGEST_ADVISORY
+    ok = not drifted and unparsed == 0
     report = {
         "ok": ok,
         "lock": str(path),
@@ -933,7 +974,11 @@ def check_locked(
         "lines": delta["lines"],
         "unparsed": unparsed,
         "verdict": "LOCKED" if ok else "NEEDS_REVIEW",
+        "strict_digests": bool(strict_digests),
+        "strict_drift_only": bool(summary.get("strict_drift_only")),
     }
+    if advisory:
+        report["advisory"] = advisory
     if unparsed:
         report["error"] = (
             f"{unparsed} agent config file(s) could not be parsed — lock match "
@@ -964,13 +1009,18 @@ def run_lock_command(
     accept_gated: bool = False,
     mcp_tools: dict[str, str] | None = None,
     scan: ScanResult | None = None,
+    strict_digests: bool = False,
 ) -> tuple[str, int]:
     root = root.resolve()
     path = lock_path or default_lock_path(root)
     if check and not update:
-        report, code = check_locked(root, lock_path=path)
+        report, code = check_locked(root, lock_path=path, strict_digests=strict_digests)
         if report.get("ok"):
-            return f"AUTHORITY.lock matches observed authority ({path.name}).", 0
+            msg = f"AUTHORITY.lock matches observed authority ({path.name})."
+            advisory = report.get("advisory")
+            if advisory:
+                msg = f"{msg} ({advisory})"
+            return msg, 0
         lines = report.get("lines") or []
         body = "\n".join(lines) if lines else "(authority changed; re-run `auctelis lock`)"
         return (

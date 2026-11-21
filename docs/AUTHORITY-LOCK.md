@@ -68,11 +68,14 @@ surface `path: old → new`. Prose that adds a destination host is an
 **expansion** at comment tier (`INFERRED_HINT`) unless execute/secrets evidence
 is also present — visible on the PR comment, not a required-check fail alone.
 
-`auctelis lock --check` and local `check` fail when `authority_changed` is
-true so digests stay honest. The required CI gate fails on
-`material_authority_change` / lock↔tree drift / unparsed / CODEOWNERS gaps
-**when `locked=true`**, not on body-only representation or comment-tier
-doc-link growth.
+`auctelis lock --check` and local `check` fail on meaningful reach changes,
+Hook body edits, unparsed configs, and (with `--strict-digests`) plain
+representation digest drift. By default, plain-CI / prose `representation`
+digest drift is advisory only (exit 0 + note) so normal CI/doc wording edits
+do not force a CODEOWNERS-reviewed reseal (AUCT-034). The required CI gate
+fails on `material_authority_change` / hard lock↔tree drift / unparsed /
+CODEOWNERS gaps **when `locked=true`**; body-only representation stays
+visible on the PR comment (`body changed`) without failing the check.
 
 ---
 

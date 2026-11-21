@@ -56,7 +56,8 @@ def test_check_first_run_with_unparsed_config_is_needs_review(tmp_path: Path, ca
     assert "NEEDS_REVIEW" in out
 
 
-def test_check_representation_drift_is_visible_and_exit_1(tmp_path: Path, capsys):
+def test_check_representation_drift_is_advisory_by_default(tmp_path: Path, capsys):
+    """AUCT-034: plain representation digest drift exits 0 unless --strict-digests."""
     root = _repo(tmp_path / "repo", {"a": {"command": "node", "args": ["a.js"]}})
     assert main(["lock", str(root)]) == 0
     capsys.readouterr()
@@ -64,8 +65,12 @@ def test_check_representation_drift_is_visible_and_exit_1(tmp_path: Path, capsys
     (root / ".cursor" / "mcp.json").rename(root / ".cursor" / "mcp_example.json")
     code = main(["check", str(root)])
     out = capsys.readouterr().out
-    assert code == 1
-    assert "representation drift" in out
+    assert code == 0
+    assert "representation digest drift only" in out
+    code_strict = main(["check", str(root), "--strict-digests"])
+    out_strict = capsys.readouterr().out
+    assert code_strict == 1
+    assert "representation drift" in out_strict or "NEEDS_REVIEW" in out_strict
 
 
 def test_check_invalid_baseline_is_usage_error(tmp_path: Path, capsys):

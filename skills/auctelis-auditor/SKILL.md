@@ -21,7 +21,7 @@ Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 
 ```bash
 # Run once (uvx git-tag one-liner; `uvx auctelis check` see docs/INSTALL.md; fallback in docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.0#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.1#subdirectory=tools" auctelis check
 ```
 
 ```bash
@@ -41,7 +41,7 @@ Do **not** run `lock`, `init`, `ci init`, `run`, `snapshot --execute`, or
 ## How to read one line
 
 ```text
-+ mcp "linear" → mcp.linear.app @ .mcp.json · network · tools · unpinned · publisher NOT VERIFIED
++ mcp "linear" → mcp.linear.app @ .mcp.json · network · tools · unpinned · LITERAL_CONFIG
 ```
 
 | Field | Meaning |
@@ -50,7 +50,7 @@ Do **not** run `lock`, `init`, `ci init`, `run`, `snapshot --execute`, or
 | `"linear"` | Name declared in config |
 | `→ host` / `launcher` / `@ path` | Destination or config file |
 | capability bits | network, secrets, execute, tools, … |
-| `publisher NOT VERIFIED` | Identity is not attested |
+| evidence | `LITERAL_CONFIG` / `INFERRED_HINT` (publisher identity stays footer-only) |
 
 ## Verdict vocabulary
 

@@ -23,13 +23,13 @@ retention, and do not replace `_TBD_` with a dogfood repo.
 Metrics CSV: [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv) ·
 Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 
-## Recruitment checklist (0.13 report-first)
+## Recruitment checklist (0.1.1 report-first)
 
 - [ ] Confirm unrelated org/repo (not this product dogfood)
-- [ ] First: `auctelis check --report out/` and forward the HTML/MD
-- [ ] Second: lockless workflow (`auctelis init --lockless`) or org reusable caller
-- [ ] Path under 10 minutes: report → paste workflow → Watching comment
+- [ ] First: `auctelis check --github <org> --report out/` and forward the HTML/MD
+- [ ] Second: lockless workflow (`auctelis init --lockless`) or `rollout-watch-prs.sh`
+- [ ] Path under 10 minutes: org report → dry-run/apply Watch PRs → Watching comment
 - [ ] Optional later: `init --owner team` / `--enforce`
-- [ ] Pin Action to git tag `v0.1.0` (or commit SHA)
+- [ ] Pin Action to git tag `v0.1.1` (or commit SHA)
 - [ ] Log row in `eval/pilot-metrics.csv` (surface_mix + install_path)
 - [ ] Re-check day 30 and update this tracker

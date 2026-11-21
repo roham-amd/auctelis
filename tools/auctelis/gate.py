@@ -440,6 +440,7 @@ def committed_lock_drift(
     head_lock: Path | None = None,
     require_committed: bool = False,
     base_had_records: bool = False,
+    strict_digests: bool = False,
 ) -> tuple[bool, list[str], str | None]:
     """Compare a committed AUTHORITY.lock to tree-derived head authority.
 
@@ -448,6 +449,9 @@ def committed_lock_drift(
 
     When ``require_committed`` is true (enforce) and the base lock sealed
     records, deleting the head lock is drift — not a silent lockless PASS.
+
+    AUCT-034: plain-CI / prose ``representation`` digest drift is ignored
+    unless ``strict_digests`` is true (Hook body edits still fail closed).
     """
     path = head_lock
     if path is None:
@@ -478,6 +482,10 @@ def committed_lock_drift(
     delta = diff_authority_locks(committed, tree_head)
     summary = delta.get("summary") or {}
     if not bool(summary.get("authority_changed")):
+        return False, [], None
+    if not strict_digests and bool(summary.get("strict_drift_only")):
+        # Quiet digest churn for lock↔tree; tree delta still drives
+        # representation_only / PR comment visibility.
         return False, [], None
     lines = [str(line) for line in (delta.get("lines") or [])]
     return True, lines, None
@@ -553,6 +561,7 @@ def run_gate(
     trust_head_codeowners: bool = False,
     codeowners_from_base: bool = False,
     comment_only: bool = False,
+    strict_digests: bool = False,
 ) -> tuple[dict[str, Any], int]:
     """Compare base→head tree authority; fail on growth without CODEOWNERS.
 
@@ -565,6 +574,10 @@ def run_gate(
 
     When CODEOWNERS is loaded from the head tree (not a trusted base-ref copy),
     growth requires ``trust_head_codeowners=True`` — otherwise NEEDS_REVIEW.
+
+    ``strict_digests`` (AUCT-034): when false (default), plain-CI / prose
+    representation digest drift does not fail lock↔tree freshness; PR comments
+    still surface ``body changed``.
 
     ``comment_only`` (lockless / ``locked=false`` Action): still posts the
     Authority Diff, but growth / CODEOWNERS / ruleset gaps do not fail the
@@ -624,6 +637,7 @@ def run_gate(
         head_lock=head_lock,
         require_committed=not comment_only,
         base_had_records=bool(base_records) or bool(base.get("mcp_tools") or {}),
+        strict_digests=strict_digests,
     )
     # Empty (0-record) base locks are a valid seal of a clean tree. First real
     # authority is GROWTH that needs CODEOWNERS — never a permanent FAIL_CLOSED.
@@ -797,9 +811,9 @@ def run_gate(
         _append_review_error(detail)
 
     # Representation / body-only churn is visible on the PR comment but is not
-    # material reach. Local `check` / `lock --check` still refuse an unsealed
-    # body digest; the required CI check fails only on material growth, drift,
-    # unparsed configs, or missing CODEOWNERS/ruleset protection.
+    # material reach. Local `check` / `lock --check` quiet plain-CI / prose
+    # digest drift unless `--strict-digests` (AUCT-034); Hook body edits and
+    # material growth / unparsed / CODEOWNERS gaps still fail closed.
     material = (
         bool(summary.get("material_authority_change")) if isinstance(summary, dict) else meaningful
     )
