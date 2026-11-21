@@ -11,9 +11,11 @@ the lock stays available to tooling but does not become the page.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import urlparse
 
+from auctelis.authority_lock import _normalize_package_stem
 from auctelis.reach_tiers import reach_reason, record_reach_tier
 
 _KIND_LABELS: dict[str, str] = {
@@ -575,11 +577,15 @@ def is_unpinned_mcp(record: dict[str, Any]) -> bool:
     return bool(launch) and pin not in {"pinned", "digest"}
 
 
-def _floating_package_token(record: dict[str, Any]) -> str:
-    """Best-effort package/image name from sealed ``args`` (no network)."""
+def _launcher_key(record: dict[str, Any]) -> str:
+    return launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
+
+
+def _arg_package_token(record: dict[str, Any]) -> str:
+    """Package or image argv element, or empty when ``args`` has none."""
     raw_args = record.get("args")
     args = [str(a) for a in raw_args] if isinstance(raw_args, list) else []
-    launch = launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
+    launch = _launcher_key(record)
     skip = {
         "-y",
         "--yes",
@@ -596,45 +602,89 @@ def _floating_package_token(record: dict[str, Any]) -> str:
         if launch in {"docker", "podman"} and arg in {"run", "exec"}:
             continue
         return arg
+    return ""
+
+
+def _floating_package_token(record: dict[str, Any]) -> str:
+    """Best-effort package/image name from sealed ``args`` (no network)."""
+    found = _arg_package_token(record)
+    if found:
+        return found
     # AUCT-038: lock deltas persist package_stem without args — still pinable.
-    stem = str(record.get("package_stem") or "").strip()
-    return stem
+    return str(record.get("package_stem") or "").strip()
+
+
+def _pin_suffix(launch: str) -> str:
+    if launch in {"npx", "bunx"}:
+        return "@<exact-version>"
+    if launch in {"uvx", "pipx"}:
+        return "==<exact-version>"
+    if launch in {"docker", "podman"}:
+        return "@sha256:<digest>"
+    return ""
+
+
+def _pinned_package_token(record: dict[str, Any], launch: str) -> tuple[str, str]:
+    """Return ``(raw argv token, pin with floating tags stripped)``.
+
+    ``raw`` is empty when the only source is ``package_stem`` (nothing to
+    replace in place). The pin uses ``_normalize_package_stem`` so ``@latest``
+    and ``:latest`` are not glued onto the new suffix.
+    """
+    raw = _arg_package_token(record)
+    source = raw or str(record.get("package_stem") or "").strip()
+    stem = _normalize_package_stem(source) if source else ""
+    placeholder = "<image>" if launch in {"docker", "podman"} else "<pkg>"
+    suffix = _pin_suffix(launch)
+    token = stem or placeholder
+    return raw, f"{token}{suffix}" if suffix else token
 
 
 def pin_suggestion(record: dict[str, Any]) -> str:
     """Concrete next step for a floating MCP launcher (exact token when known)."""
-    launch = launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
-    pkg = _floating_package_token(record)
+    launch = _launcher_key(record)
+    _raw, pinned = _pinned_package_token(record, launch)
     if launch in {"npx", "bunx"}:
-        token = pkg or "<pkg>"
-        return f"pin the package: npx -y {token}@<exact-version>"
+        return f"pin the package: npx -y {pinned}"
     if launch in {"uvx", "pipx"}:
-        token = pkg or "<pkg>"
-        return f"pin the package: {token}==<exact-version>"
+        return f"pin the package: {pinned}"
     if launch in {"docker", "podman"}:
-        token = pkg or "<image>"
-        return f"pin the image: {token}@sha256:<digest>"
+        return f"pin the image: {pinned}"
     if launch:
         return f"pin {launch} to an exact version or digest"
     return "prefer a versioned/signed endpoint, then reseal the lock"
 
 
 def pin_config_snippet(record: dict[str, Any]) -> str:
-    """Pasteable config replacement line for an unpinned MCP launcher (offline)."""
-    launch = launcher(record).lower().removesuffix(".exe").removesuffix(".cmd")
-    pkg = _floating_package_token(record)
-    if launch in {"npx", "bunx"}:
-        token = pkg or "<pkg>"
-        return f'"args": ["-y", "{token}@<exact-version>"]'
-    if launch in {"uvx", "pipx"}:
-        token = pkg or "<pkg>"
-        return f'"args": ["{token}==<exact-version>"]'
+    """Pasteable config replacement line for an unpinned MCP launcher (offline).
+
+    Preserves the rest of ``args`` and replaces only the package or image
+    token. Docker and Podman stay on ``args`` (never an ``image`` key, which
+    is not valid ``.cursor/mcp.json`` / ``.mcp.json``).
+    """
+    launch = _launcher_key(record)
+    if launch not in {"npx", "bunx", "uvx", "pipx", "docker", "podman"}:
+        if launch:
+            return f'pin "{launch}" to an exact version or digest'
+        return "prefer a versioned/signed endpoint, then reseal the lock"
+
+    raw, pinned = _pinned_package_token(record, launch)
+    raw_args = record.get("args")
+    if isinstance(raw_args, list) and raw:
+        pinned_args = [str(arg) for arg in raw_args]
+        if raw in pinned_args:
+            pinned_args[pinned_args.index(raw)] = pinned
+            return '"args": ' + json.dumps(pinned_args)
+
+    # Lock delta with package_stem only — compact fallback, still valid JSON.
     if launch in {"docker", "podman"}:
-        token = pkg or "<image>"
-        return f'"image": "{token}@sha256:<digest>"'
-    if launch:
-        return f'pin "{launch}" to an exact version or digest'
-    return "prefer a versioned/signed endpoint, then reseal the lock"
+        source = raw or str(record.get("package_stem") or "").strip()
+        if not _normalize_package_stem(source):
+            return ""
+        return '"args": ' + json.dumps(["run", "...", pinned])
+    if launch in {"npx", "bunx"}:
+        return '"args": ' + json.dumps(["-y", pinned])
+    return '"args": ' + json.dumps([pinned])
 
 
 def pin_report(records: list[dict[str, Any]] | None) -> dict[str, Any]:

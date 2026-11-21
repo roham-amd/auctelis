@@ -23,6 +23,7 @@ def test_public_front_door_is_check_not_watch():
         "init",
         "status",
         "trust",
+        "rollout",
     } == CORE_PUBLIC_COMMANDS
     assert "check" in PUBLIC_PATH
     assert "watch" not in PUBLIC_PATH

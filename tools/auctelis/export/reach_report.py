@@ -1104,6 +1104,14 @@ def _fleet_github_web_base(doc: dict[str, Any]) -> str:
     return "https://github.com"
 
 
+def _rollout_commands() -> tuple[str, str]:
+    """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044)."""
+    from auctelis.check import _cli_prefix
+
+    dry = f"{_cli_prefix()} rollout reach-report.json"
+    return dry, f"{dry} --apply"
+
+
 def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> list[str]:
     """Org-reusable caller + dry-run ``rollout-watch-prs.sh`` (AUCT-032/035/038)."""
     targets = _unwatched_tier2_slugs(doc, limit=10)
@@ -1134,11 +1142,17 @@ def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> 
         github_web_base=_fleet_github_web_base(doc),
         org_reusable=org_reusable,
     )
+    dry, apply_cmd = _rollout_commands()
     lines.extend(
         [
-            "Or open lockless Watch PRs for the top unwatched tier-2 repos "
-            "with the generated `rollout-watch-prs.sh` (defaults to dry-run; "
-            "`APPLY=1` creates branches and opens PRs):",
+            "Open lockless Watch PRs for the top unwatched tier-2 repos:",
+            "",
+            "```bash",
+            dry,
+            f"{apply_cmd}  # create branches and open PRs",
+            "```",
+            "",
+            "Optional Bash fallback (`rollout-watch-prs.sh`, dry-run unless `APPLY=1`):",
             "",
             "```bash",
             script.rstrip(),
@@ -1178,16 +1192,19 @@ def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -
             github_web_base=_fleet_github_web_base(doc),
             org_reusable=org_reusable,
         )
+        dry, apply_cmd = _rollout_commands()
         howto = (
-            "bash rollout-watch-prs.sh          # dry-run (APPLY=0)\n"
-            "APPLY=1 bash rollout-watch-prs.sh  # open Watch PRs"
+            f"{dry}\n"
+            f"{apply_cmd}  # create branches and open PRs\n"
+            "bash rollout-watch-prs.sh          # optional dry-run (APPLY=0)\n"
+            "APPLY=1 bash rollout-watch-prs.sh  # optional open Watch PRs"
         )
         body_parts.extend(
             [
-                "<p>Or open lockless Watch PRs for the top unwatched tier-2 repos "
-                "with the generated <code>rollout-watch-prs.sh</code> "
-                "(defaults to dry-run; <code>APPLY=1</code> creates branches "
-                "and opens PRs):</p>",
+                "<p>Open lockless Watch PRs for the top unwatched tier-2 repos:</p>",
+                f"<pre><code>{esc(dry)}\n{esc(apply_cmd)}</code></pre>",
+                "<p>Optional Bash fallback (<code>rollout-watch-prs.sh</code>, "
+                "dry-run unless <code>APPLY=1</code>):</p>",
                 f"<pre><code>{esc(script)}</code></pre>",
                 f"<pre><code>{esc(howto)}</code></pre>",
             ]
@@ -1279,10 +1296,12 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
     if warning:
         lines.extend(["", f"**Warning:** {escape_markdown_inline(warning, max_len=300)}"])
     if _unwatched_tier2_slugs(doc, limit=1):
+        dry, apply_cmd = _rollout_commands()
         lines.extend(
             [
                 "",
-                "Open Watch PRs: `bash rollout-watch-prs.sh` (dry-run), "
+                f"Open Watch PRs: `{dry}` (dry-run), then `{apply_cmd}`.",
+                "Optional: `bash rollout-watch-prs.sh` (dry-run), "
                 "then `APPLY=1 bash rollout-watch-prs.sh`.",
             ]
         )
@@ -1459,8 +1478,11 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
     )
     rollout_html = ""
     if _unwatched_tier2_slugs(doc, limit=1):
+        dry, apply_cmd = _rollout_commands()
         rollout_html = (
-            "<p>Open Watch PRs: <code>bash rollout-watch-prs.sh</code> (dry-run), "
+            "<p>Open Watch PRs: <code>"
+            f"{esc(dry)}</code> (dry-run), then <code>{esc(apply_cmd)}</code>.</p>"
+            "<p>Optional: <code>bash rollout-watch-prs.sh</code> (dry-run), "
             "then <code>APPLY=1 bash rollout-watch-prs.sh</code>.</p>"
         )
     summary_html = (

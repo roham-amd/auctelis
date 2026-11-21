@@ -433,7 +433,9 @@ def render_check(
             lines.extend(cards)
             hidden = int(report.get("inventory_total") or 0) - len(cards)
             if hidden > 0:
-                lines.append(f"… +{hidden} more (see `auctelis check --top {hidden + len(cards)}`)")
+                lines.append(
+                    f"… +{hidden} more (see `{_cli_prefix()} check --top {hidden + len(cards)}`)"
+                )
         pins_line = _pins_line(report)
         if pins_line:
             lines.append(pins_line)
@@ -479,7 +481,9 @@ def render_check(
     if pins_line:
         lines.append(pins_line)
     lines.append("")
-    lines.append(f"Next: review the delta, then `auctelis lock --update` and commit {LOCK_NAME}")
+    lines.append(
+        f"Next: review the delta, then `{_cli_prefix()} lock --update` and commit {LOCK_NAME}"
+    )
     lines.extend(_coverage_footer())
     return _terminal(lines)
 

@@ -94,7 +94,8 @@ def test_pin_config_snippet_for_npx_uvx_docker():
     docker = pin_config_snippet(
         {"launcher": "docker", "pin_state": "floating", "args": ["run", "demo/img"]}
     )
-    assert docker == '"image": "demo/img@sha256:<digest>"'
+    assert docker == '"args": ["run", "demo/img@sha256:<digest>"]'
+    assert '"image"' not in docker
 
 
 def test_auct038_package_stem_fallback_without_args():
@@ -154,3 +155,102 @@ def test_pin_tightening_card_shows_unpinned_to_pinned():
     assert cards
     assert any("pin: unpinned → pinned" in c for c in cards)
     assert any(c.startswith("~") for c in cards)
+
+
+def test_auct043_pin_snippet_preserves_args_and_strips_floating_tags():
+    """AUCT-043: pasteable pins keep argv, drop @latest/:latest, and stay valid JSON."""
+    import json
+
+    preserved = pin_config_snippet(
+        {
+            "launcher": "npx",
+            "pin_state": "floating",
+            "args": ["-y", "@scope/mcp", "/workspace"],
+        }
+    )
+    assert preserved == '"args": ["-y", "@scope/mcp@<exact-version>", "/workspace"]'
+    assert json.loads("{" + preserved + "}")["args"] == [
+        "-y",
+        "@scope/mcp@<exact-version>",
+        "/workspace",
+    ]
+
+    floating = pin_config_snippet(
+        {"launcher": "npx", "pin_state": "floating", "args": ["-y", "foo@latest"]}
+    )
+    assert floating == '"args": ["-y", "foo@<exact-version>"]'
+    assert "foo@latest@" not in floating
+    suggestion = pin_suggestion(
+        {"launcher": "npx", "pin_state": "floating", "args": ["-y", "foo@latest"]}
+    )
+    assert "foo@latest@" not in suggestion
+    assert "foo@<exact-version>" in suggestion
+
+    docker = pin_config_snippet(
+        {
+            "launcher": "docker",
+            "pin_state": "floating",
+            "args": ["run", "-i", "--rm", "mcp/sqlite:latest"],
+        }
+    )
+    assert '"image"' not in docker
+    assert json.loads("{" + docker + "}")["args"] == [
+        "run",
+        "-i",
+        "--rm",
+        "mcp/sqlite@sha256:<digest>",
+    ]
+    stem_only = pin_config_snippet(
+        {"launcher": "podman", "pin_state": "floating", "package_stem": "mcp/sqlite"}
+    )
+    assert '"image"' not in stem_only
+    assert json.loads("{" + stem_only + "}")["args"] == [
+        "run",
+        "...",
+        "mcp/sqlite@sha256:<digest>",
+    ]
+    assert pin_config_snippet({"launcher": "docker", "pin_state": "floating"}) == ""
+
+
+def test_auct043_over_budget_preserved_args_are_omitted_not_truncated():
+    from auctelis.export.pr_comment import render_gate_pr_comment
+    from auctelis.textutil import PASTEABLE_SNIPPET_MAX, markdown_code_span
+
+    extra = "w" * 90
+    record = {
+        "kind": "MCP Server Registration",
+        "name": "srv",
+        "path": ".cursor/mcp.json",
+        "launcher": "npx",
+        "pin_state": "floating",
+        "args": ["-y", "@scope/mcp", "/" + extra],
+        "capabilities": ["invoke_tools"],
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    snippet = pin_config_snippet(record)
+    assert extra in snippet
+    assert len(snippet) > PASTEABLE_SNIPPET_MAX
+    assert "…" not in snippet
+    assert markdown_code_span(snippet) is None
+    report = {
+        "verdict": "NEEDS_REVIEW",
+        "mode": "comment-only",
+        "required_owners": ["@security"],
+        "unparsed": 0,
+        "coverage": {},
+        "delta": {
+            "summary": {
+                "additions": 1,
+                "expansions": 0,
+                "reductions": 0,
+                "meaningful_authority_change": True,
+                "max_reach_tier": 2,
+            },
+            "changes": {"added": [record], "changed": [], "removed": []},
+            "lines": ['+ mcp "srv"'],
+        },
+    }
+    body = render_gate_pr_comment(report)
+    assert "**Pin fix:**" not in body
+    assert extra not in body
+    assert "…" not in body

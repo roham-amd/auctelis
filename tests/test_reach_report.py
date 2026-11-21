@@ -1091,3 +1091,44 @@ def test_auct041_headline_before_honesty():
     summary_html, _, _rest_html = html.partition("<h2>Coverage and limits</h2>")
     assert "truncated=true" in summary_html
     assert "not a certificate" in html[: html.index("<h2>Summary</h2>")]
+
+
+def test_auct043_reach_report_keeps_short_args_and_omits_long_ones():
+    """Preserved MCP args render when they fit; over-budget snippets are dropped whole."""
+    from auctelis.authority_card import pin_config_snippet
+    from auctelis.textutil import PASTEABLE_SNIPPET_MAX
+
+    short = pin_config_snippet(
+        {
+            "launcher": "npx",
+            "pin_state": "floating",
+            "args": ["-y", "@scope/mcp", "/workspace"],
+        }
+    )
+    doc = _parity_doc()
+    doc["pins"]["items"][0]["config_snippet"] = short
+    md = render_reach_md(doc)
+    html = render_reach_html(doc)
+    assert "/workspace" in md
+    assert "/workspace" in html
+    assert "**Pin fix:**" in md
+    assert "Pin fix" in html
+
+    extra = "w" * 90
+    long = pin_config_snippet(
+        {
+            "launcher": "npx",
+            "pin_state": "floating",
+            "args": ["-y", "@scope/mcp", "/" + extra],
+        }
+    )
+    assert len(long) > PASTEABLE_SNIPPET_MAX
+    assert "…" not in long
+    doc["pins"]["items"][0]["config_snippet"] = long
+    md_long = render_reach_md(doc)
+    html_long = render_reach_html(doc)
+    assert "**Pin fix:**" not in md_long
+    assert "Pin fix" not in html_long
+    assert extra not in md_long
+    assert extra not in html_long
+    assert long not in md_long

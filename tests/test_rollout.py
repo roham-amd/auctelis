@@ -1,0 +1,370 @@
+"""AUCT-044 — cross-platform idempotent ``auctelis rollout``."""
+
+from __future__ import annotations
+
+import base64
+import io
+import json
+import urllib.error
+import urllib.parse
+from pathlib import Path
+
+from auctelis.cli import main
+from auctelis.export.reach_report import (
+    build_fleet_reach_report,
+    org_reusable_caller_yaml,
+    render_fleet_reach_html,
+    render_fleet_reach_md,
+)
+
+
+class _Resp:
+    def __init__(self, status: int, body: bytes) -> None:
+        self.status = status
+        self._body = body
+
+    def read(self) -> bytes:
+        return self._body
+
+    def __enter__(self) -> _Resp:
+        return self
+
+    def __exit__(self, *_args: object) -> bool:
+        return False
+
+
+def _repo(**overrides: object) -> dict:
+    doc = {
+        "repository": "acme/hot",
+        "already_watching": False,
+        "default_branch": "main",
+        "reach": {"total": 1, "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1}},
+    }
+    doc.update(overrides)
+    return doc
+
+
+def _fleet(repos: list[dict]) -> dict:
+    return {
+        "schema": "auctelis.fleet_reach_report.v1",
+        "repositories": repos,
+    }
+
+
+def _write(tmp_path: Path, document: dict) -> Path:
+    path = tmp_path / "reach-report.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    return path
+
+
+def _install(monkeypatch, handler):
+    calls: list[tuple[str, str, bytes | None]] = []
+
+    def urlopen(req, timeout=30):
+        method = req.get_method()
+        url = req.full_url
+        data = req.data
+        calls.append((method, url, data))
+        status, payload = handler(method, url, data, calls)
+        raw = b"" if payload is None else json.dumps(payload).encode()
+        if status >= 400:
+            raise urllib.error.HTTPError(url, status, "err", None, io.BytesIO(raw))
+        return _Resp(status, raw)
+
+    monkeypatch.setattr("auctelis.rollout.urllib.request.urlopen", urlopen)
+    monkeypatch.setattr("auctelis.rollout._token", lambda: "test-token")
+    return calls
+
+
+def _path(url: str) -> str:
+    return urllib.parse.urlparse(url).path
+
+
+def _writes(calls: list[tuple[str, str, bytes | None]]) -> list[tuple[str, str]]:
+    return [(method, url) for method, url, _data in calls if method not in {"GET", "HEAD"}]
+
+
+def test_dry_run_makes_no_requests(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(
+        tmp_path,
+        _fleet(
+            [
+                _repo(),
+                _repo(repository="acme/other", reach={"tier_counts": {"tier2": 0, "tier1": 1}}),
+                _repo(repository="not a slug"),
+                _repo(repository="acme/watched", already_watching=True),
+            ]
+        ),
+    )
+    code = main(["rollout", str(path), "--json"])
+    assert code == 0
+    assert calls == []
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["apply"] is False
+    assert payload["mode"] == "lockless"
+    assert payload["planned"] == ["acme/hot"]
+
+
+def test_dry_run_caps_unwatched_tier2_and_prints_mode(monkeypatch, capsys, tmp_path: Path):
+    _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    repos = [_repo(repository=f"acme/r{i}") for i in range(12)]
+    path = _write(tmp_path, _fleet(repos))
+    assert main(["rollout", str(path), "--max-prs", "10"]) == 0
+    out = capsys.readouterr().out
+    assert "dry-run" in out
+    assert "mode=lockless" in out
+    assert out.count("would open Watch PR") == 10
+    assert "acme/r10" not in out
+    assert main(["rollout", str(path), "--max-prs", "0"]) == 2
+
+
+def test_single_repo_report_and_org_reusable_dry_run(monkeypatch, capsys, tmp_path: Path):
+    _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(
+        tmp_path,
+        {
+            "schema": "auctelis.reach_report.v1",
+            "repository": "acme/one",
+            "already_watching": False,
+            "reach": {"tier_counts": {"tier2": 1}},
+        },
+    )
+    assert main(["rollout", str(path), "--org-reusable", "acme"]) == 0
+    out = capsys.readouterr().out
+    assert "acme/one" in out
+    assert "mode=org-reusable:acme" in out
+    caller = org_reusable_caller_yaml("acme")
+    assert len(caller.splitlines()) == 6
+    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in caller
+
+
+def test_apply_opens_pr_on_clean_repo(monkeypatch, capsys, tmp_path: Path):
+    def handler(method, url, data, _calls):
+        path = _path(url)
+        if method == "GET" and path == "/repos/acme/hot":
+            return 200, {"default_branch": "main"}
+        if method == "GET" and path.endswith("/contents/.github/workflows"):
+            return 404, {"message": "Not Found"}
+        if method == "GET" and path.endswith("/pulls"):
+            return 200, []
+        if method == "GET" and path.endswith("/git/ref/heads/main"):
+            return 200, {"object": {"sha": "abc123"}}
+        if method == "GET" and path.endswith("/git/ref/heads/auctelis/watch-prs"):
+            return 404, {"message": "Not Found"}
+        if method == "POST" and path.endswith("/git/refs"):
+            return 201, {"ref": "refs/heads/auctelis/watch-prs"}
+        if method == "GET" and path.endswith("/auctelis.yml"):
+            return 404, {"message": "Not Found"}
+        if method == "PUT" and path.endswith("/auctelis.yml"):
+            body = json.loads(data.decode())
+            assert "sha" not in body
+            decoded = base64.b64decode(body["content"]).decode()
+            assert "roham-amd/auctelis@" in decoded
+            return 201, {"content": {"sha": "new"}}
+        if method == "POST" and path.endswith("/pulls"):
+            return 201, {"html_url": "https://github.com/acme/hot/pull/9"}
+        raise AssertionError(f"unexpected {method} {url}")
+
+    calls = _install(monkeypatch, handler)
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--apply"]) == 0
+    out = capsys.readouterr().out
+    assert "https://github.com/acme/hot/pull/9" in out
+    assert any(method == "POST" and url.endswith("/pulls") for method, url, _data in calls)
+    assert any(method == "PUT" for method, _url, _data in calls)
+
+
+def test_apply_skips_existing_workflow_and_open_pr(monkeypatch, capsys, tmp_path: Path):
+    def handler(method, url, _data, _calls):
+        path = _path(url)
+        repo = "gate" if "/acme/gate/" in path or path.endswith("/acme/gate") else "open"
+        if method == "GET" and path in {"/repos/acme/gate", "/repos/acme/open"}:
+            return 200, {"default_branch": "main"}
+        if method == "GET" and path.endswith("/contents/.github/workflows"):
+            name = "auctelis-gate.yml" if repo == "gate" else "ci.yml"
+            if repo == "gate":
+                return 200, [{"name": name, "type": "file"}]
+            return 404, {"message": "Not Found"}
+        if method == "GET" and path.endswith("/pulls"):
+            return 200, [{"html_url": "https://github.com/acme/open/pull/4"}]
+        raise AssertionError(f"unexpected {method} {url}")
+
+    calls = _install(monkeypatch, handler)
+    path = _write(
+        tmp_path,
+        _fleet([_repo(repository="acme/gate"), _repo(repository="acme/open")]),
+    )
+    assert main(["rollout", str(path), "--apply"]) == 0
+    out = capsys.readouterr().out
+    assert "acme/gate" in out
+    assert "already on the default branch" in out
+    assert "https://github.com/acme/open/pull/4" in out
+    assert _writes(calls) == []
+
+
+def test_apply_retries_put_with_blob_sha(monkeypatch, capsys, tmp_path: Path):
+    file_gets = {"n": 0}
+
+    def handler(method, url, data, _calls):
+        path = _path(url)
+        if method == "GET" and path == "/repos/acme/hot":
+            return 200, {"default_branch": "main"}
+        if method == "GET" and path.endswith("/contents/.github/workflows"):
+            return 404, {"message": "Not Found"}
+        if method == "GET" and path.endswith("/pulls"):
+            return 200, []
+        if method == "GET" and path.endswith("/git/ref/heads/main"):
+            return 200, {"object": {"sha": "abc123"}}
+        if method == "GET" and path.endswith("/git/ref/heads/auctelis/watch-prs"):
+            return 200, {"object": {"sha": "abc123"}}
+        if method == "GET" and path.endswith("/auctelis.yml"):
+            file_gets["n"] += 1
+            if file_gets["n"] == 1:
+                return 404, {"message": "Not Found"}
+            return 200, {"sha": "blobsha"}
+        if method == "PUT" and path.endswith("/auctelis.yml"):
+            body = json.loads(data.decode())
+            if file_gets["n"] == 1:
+                assert "sha" not in body
+                return 422, {"message": "sha wasn't supplied"}
+            assert body["sha"] == "blobsha"
+            return 201, {"content": {"sha": "blobsha"}}
+        if method == "POST" and path.endswith("/pulls"):
+            return 201, {"html_url": "https://github.com/acme/hot/pull/3"}
+        raise AssertionError(f"unexpected {method} {url}")
+
+    _install(monkeypatch, handler)
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--apply"]) == 0
+    assert "https://github.com/acme/hot/pull/3" in capsys.readouterr().out
+    assert file_gets["n"] == 2
+
+
+def test_apply_surfaces_workflow_scope_hint(monkeypatch, capsys, tmp_path: Path):
+    def handler(method, url, _data, _calls):
+        path = _path(url)
+        if method == "GET" and path.rstrip("/").endswith("/repos/acme/hot"):
+            return 200, {"default_branch": "main"}
+        if method == "GET" and path.endswith("/contents/.github/workflows"):
+            return 404, {"message": "Not Found"}
+        if method == "GET" and path.endswith("/pulls"):
+            return 200, []
+        if method == "GET" and path.endswith("/git/ref/heads/main"):
+            return 200, {"object": {"sha": "abc123"}}
+        if method == "GET" and path.endswith("/git/ref/heads/auctelis/watch-prs"):
+            return 404, {"message": "Not Found"}
+        if method == "POST" and path.endswith("/git/refs"):
+            return 201, {}
+        if method == "GET" and path.endswith("/auctelis.yml"):
+            return 404, {"message": "Not Found"}
+        if method == "PUT":
+            return 403, {"message": "Resource not accessible by integration"}
+        raise AssertionError(f"unexpected {method} {url}")
+
+    calls = _install(monkeypatch, handler)
+    monkeypatch.setenv("GITHUB_API_URL", "https://ghes.example/api/v3")
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--apply"]) == 1
+    out = capsys.readouterr().out
+    assert "gh auth refresh -s workflow" in out
+    assert "HTTP 403" in out
+    assert calls[0][1].startswith("https://ghes.example/api/v3/")
+
+
+def test_apply_org_reusable_encodes_six_line_caller(monkeypatch, tmp_path: Path):
+    seen: dict[str, str] = {}
+
+    def handler(method, url, data, _calls):
+        path = _path(url)
+        if method == "GET" and path == "/repos/acme/hot":
+            return 200, {"default_branch": "main"}
+        if method == "GET" and path.endswith("/contents/.github/workflows"):
+            return 404, {"message": "Not Found"}
+        if method == "GET" and path.endswith("/pulls"):
+            return 200, []
+        if method == "GET" and path.endswith("/git/ref/heads/main"):
+            return 200, {"object": {"sha": "abc123"}}
+        if method == "GET" and path.endswith("/git/ref/heads/auctelis/watch-prs"):
+            return 404, {"message": "Not Found"}
+        if method == "POST" and path.endswith("/git/refs"):
+            return 201, {}
+        if method == "GET" and path.endswith("/auctelis.yml"):
+            return 404, {"message": "Not Found"}
+        if method == "PUT":
+            body = json.loads(data.decode())
+            seen["yaml"] = base64.b64decode(body["content"]).decode()
+            return 201, {}
+        if method == "POST" and path.endswith("/pulls"):
+            return 201, {"html_url": "https://github.com/acme/hot/pull/1"}
+        raise AssertionError(f"unexpected {method} {url}")
+
+    calls = _install(monkeypatch, handler)
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--apply", "--org-reusable", "acme"]) == 0
+    assert seen["yaml"] == org_reusable_caller_yaml("acme")
+    assert len(seen["yaml"].splitlines()) == 6
+    assert calls[0][1].startswith("https://api.github.com/")
+
+
+def test_agent_refuses_apply(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    monkeypatch.setenv("AUCTELIS_AGENT", "1")
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--apply"]) == 2
+    assert "refused" in capsys.readouterr().out
+    assert calls == []
+    monkeypatch.delenv("AUCTELIS_AGENT")
+    assert main(["rollout", str(path)]) == 0
+
+
+def test_apply_without_token_exits_2(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    monkeypatch.setattr("auctelis.rollout._token", lambda: None)
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--apply"]) == 2
+    assert calls == []
+    err = capsys.readouterr().err
+    assert "GITHUB_TOKEN" in err
+
+
+def test_fleet_summary_leads_with_rollout_command():
+    doc = build_fleet_reach_report(
+        [
+            (
+                {
+                    "repository": "acme/hot",
+                    "default_branch": "main",
+                    "github_web_base": "https://github.com",
+                    "already_watching": False,
+                    "coverage_line": "",
+                    "unparsed": 0,
+                    "reach": {
+                        "total": 1,
+                        "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                        "records": [],
+                        "top": [],
+                        "top_cards": [],
+                    },
+                    "pins": {"total": 0, "unpinned": 0, "items": []},
+                    "counts": {},
+                    "delta": {},
+                    "label": "NONE",
+                    "verdict": "BASELINE_NEEDED",
+                    "schema_version": "authority-diff/1",
+                    "lock_present": False,
+                    "first_run": True,
+                    "meaningful": False,
+                },
+                None,
+                [],
+            )
+        ]
+    )
+    md = render_fleet_reach_md(doc)
+    html = render_fleet_reach_html(doc)
+    for text in (md, html):
+        assert "rollout reach-report.json" in text
+        assert text.index("rollout reach-report.json") < text.index("rollout-watch-prs.sh")
+    summary = md.split("## Summary", 1)[1].split("##", 1)[0]
+    assert "rollout reach-report.json --apply" in summary

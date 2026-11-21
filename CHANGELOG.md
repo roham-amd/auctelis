@@ -7,6 +7,34 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-11-21
+
+### Added
+
+- **AUCT-044:** `auctelis rollout REPORT_JSON` opens lockless Watch PRs from a
+  Reach Report on Windows, macOS, and Linux. Dry-run is the default; `--apply`
+  skips repos that already have an Auctelis workflow or an open
+  `auctelis/watch-prs` pull request, and retries the workflow write with the
+  existing blob `sha`. `--org-reusable ORG` installs the six-line caller.
+  Fleet summaries lead with this command. `rollout-watch-prs.sh` stays as an
+  optional Bash fallback. `AUCTELIS_AGENT=1` refuses `--apply`.
+
+### Fixed
+
+- **AUCT-042:** Pilot recruitment now follows claim → bump+flip PR → publish →
+  live probe → tag, and the truncated `git+…` install lines are full commands.
+  `check` overflow / drift footers and `init --lockless` use the git-tag CLI
+  prefix while `pypi_live=false`. The demo agent workflow invokes `claude` in
+  command position so `examples/demo-vulnerable` stays tier 2.
+- **AUCT-043:** `Pin fix` snippets keep the rest of an MCP `args` list, strip
+  floating `@latest` / `:latest` tags before appending a pin, and emit a valid
+  `"args"` array for Docker and Podman. Snippets longer than 100 characters
+  are still omitted rather than truncated.
+
+`pypi_live` stays false. The PyPI name is still unclaimed, so install docs
+keep the git-tag pin. Cutover order remains claim → bump+flip PR → publish →
+live probe → tag.
+
 ## [0.1.3] — 2026-11-21
 
 ### Added

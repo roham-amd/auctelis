@@ -479,8 +479,12 @@ def test_auct040_hostile_pin_stays_inside_the_code_span():
 def test_auct040_newline_or_long_pin_is_omitted():
     """Over-budget and multiline snippets are dropped, not truncated."""
     newline = render_gate_pr_comment(_pin_growth_report("demo\nevil", name="server"))
-    assert "**Pin fix:**" not in newline
-    assert "demo" not in newline.split("**Pin fix:**", 1)[-1]
+    # json.dumps keeps the snippet on one line (escaped newline). A raw line
+    # break must not appear inside the pin, and the long-name case below is
+    # still omitted rather than truncated.
+    pin = _pin_line(newline)
+    assert "\\n" in pin
+    assert "demo\nevil" not in pin
 
     long_name = "p" * 120
     body = render_gate_pr_comment(_pin_growth_report(long_name, name="server"))

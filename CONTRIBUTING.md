@@ -31,8 +31,9 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
 - Product CLI name is **`auctelis`** (sole console script in the wheel). Maintainer
   commands live on **`auctelis-dev`** via the source-only workspace member
   `tools/dev/` (`auctelis-devtools`).
-- Keep the product path lean: `check` → `check --report` → `diff --base` →
-  lockless workflow or `init --owner --enforce` → `gate`. Host tripwires and
+- Keep the product path lean: `check` → `check --report` / `--github` →
+  `rollout` (dry-run, then `--apply`) or `init --lockless` → `diff --base` →
+  `gate`. Host tripwires and
   public `scan` / `vet` / `explain` CLIs are removed; annotation helpers live on
   `auctelis-dev`. The `docs/pilots/` tracker is intentional for the five-slot
   kill criterion (report-first).

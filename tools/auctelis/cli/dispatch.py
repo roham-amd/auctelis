@@ -62,6 +62,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_gate(args)
         case "diff":
             return _cmd_diff(args)
+        case "rollout":
+            return _cmd_rollout(args)
         case _:
             return 2
 
@@ -457,6 +459,26 @@ def _cmd_trust(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_rollout(args: argparse.Namespace) -> int:
+    """Open lockless Watch PRs from a Reach Report. Dry-run unless ``--apply``."""
+    if bool(getattr(args, "apply", False)):
+        refused = refuse_agent_mutation("rollout")
+        if refused is not None:
+            return refused
+    from auctelis.rollout import execute_rollout
+
+    org = getattr(args, "org_reusable", None)
+    raw_max = getattr(args, "max_prs", 10)
+    max_prs = 10 if raw_max is None else int(raw_max)
+    return execute_rollout(
+        Path(args.report),
+        apply=bool(getattr(args, "apply", False)),
+        max_prs=max_prs,
+        org_reusable=str(org) if org else None,
+        as_json=bool(getattr(args, "json", False)),
+    )
+
+
 def _cmd_init(args: argparse.Namespace) -> int:
     """One-command setup: policy + workflow + CODEOWNERS + lock; exit 0 after writes."""
     refused = refuse_agent_mutation("init")
@@ -480,10 +502,13 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
     no ``.auctelis.yml``, no CODEOWNERS, no ``AUTHORITY.lock``. The Action's
     tree-truth diff works from the PR base ref alone and stays quiet on NONE.
     """
+    from auctelis.check import _cli_prefix
+
+    prefix = _cli_prefix()
     if bool(getattr(args, "enforce", False)):
         print(
             "--lockless writes a comment-only workflow and cannot be combined with "
-            "--enforce.\nFor enforce, run `auctelis init --owner @team --enforce`."
+            f"--enforce.\nFor enforce, run `{prefix} init --owner @team --enforce`."
         )
         return 2
     root = args.path.resolve()
@@ -505,7 +530,7 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
         "after that, only PRs that change agent authority get the diff."
     )
     print("Lockless: no AUTHORITY.lock, .auctelis.yml, or CODEOWNERS written.")
-    print("Optional enforce later: auctelis init --owner @team --enforce")
+    print(f"Optional enforce later: {prefix} init --owner @team --enforce")
     return 0
 
 

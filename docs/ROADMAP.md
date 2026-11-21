@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.1.3** · lock schema 1 · tooling 0.1.3
+**Current:** **0.1.4** · lock schema 1 · tooling 0.1.4
 
 ## North star (Gate Zero)
 
@@ -26,6 +26,7 @@ are removed.
 | **0.1.1** | Green Release assets + calm lock digests + executable org Watch rollout | **done** |
 | **0.1.2** | PyPI-ready CTAs, agent-only CI precision, inline Pin fix + org-reusable rollout | **done** |
 | **0.1.3** | Pasteable Pin fix, headline-first Reach Report, PyPI cutover guards (still `pypi_live=false`) | **done** |
+| **0.1.4** | Arg-preserving Pin fix, tier-2 demo agent CI, cross-platform `auctelis rollout` (still `pypi_live=false`) | **done** |
 | Next | Five outside pilots (report-first); claim PyPI, then flip `pypi_live` (cutover order is claim → bump+flip PR → publish → live probe → tag; the flag stays false until the name is claimed); research repo split if unused | open |
 
 ## 90-day decision gate
@@ -52,7 +53,7 @@ broker before five outside repos retain the gate.
 - Legacy Action inputs that neutralized the gate
 - `auctelis-dev` in the product wheel (lives in `tools/dev` workspace member)
 
-Keep: `diff --base`, lockless workflow, `init`, `status`, `check` (+ `--report`), `lock`, `ci`, `gate`, `why`, `demo`.
+Keep: `diff --base`, lockless workflow, `rollout`, `init`, `status`, `check` (+ `--report` / `--github`), `lock`, `ci`, `gate`, `why`, `demo`. The Bash `rollout-watch-prs.sh` helper stays as an optional fallback.
 
 ## Success metrics
 

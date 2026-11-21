@@ -131,3 +131,30 @@ def test_release_and_publish_workflows_encode_the_guards():
     assert "pypi.org/pypi/auctelis" in publish
     assert "SECONDS + 600" in publish
     assert "pypi-check --live" in publish
+
+
+def test_auct042_recruitment_cutover_order_matches_auct039():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "docs" / "pilots" / "RECRUITMENT.md").read_text(encoding="utf-8")
+    assert "git+…" not in text
+    assert "git+..." not in text
+    assert text.index("1. Claim") < text.index("2. Bump+flip")
+    assert text.index("2. Bump+flip") < text.index("3. Publish")
+    assert text.index("3. Publish") < text.index("4. Live probe")
+    assert text.index("4. Live probe") < text.index("5. Tag")
+    note = build._check_recruitment_cutover_order()
+    assert "claim → bump+flip → publish → live probe → tag" in note
+
+
+def test_auct042_recruitment_reversed_publish_then_flip_fails(monkeypatch, tmp_path: Path):
+    root = tmp_path / "repo"
+    pilots = root / "docs" / "pilots"
+    pilots.mkdir(parents=True)
+    (pilots / "RECRUITMENT.md").write_text(
+        "Claim the project, trigger workflow_dispatch, then flip pypi_live.\n"
+        "1. Claim\n2. Bump+flip\n3. Publish\n4. Live probe\n5. Tag\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(build, "repo_root", lambda: root)
+    with pytest.raises(SystemExit, match=r"then flip"):
+        build.check_pypi_cutover_readiness()

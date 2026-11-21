@@ -76,7 +76,7 @@ Markdown are for forwarding:
 
 1. One-line passive-scan disclaimer
 2. **Summary** — tier counts, top tier-2 findings, Pin fix when present
-   (fleet also ranks repos and may include `rollout-watch-prs.sh`)
+   (fleet also ranks repos and leads with `auctelis rollout`; `rollout-watch-prs.sh` is optional)
 3. Tier-2 detail, Cards, Unpinned MCP launchers
 4. **Coverage and limits** — full honesty text and Not-auto-inspected families
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -241,3 +242,70 @@ def test_auct036_demo_cta_respects_pypi_offline(monkeypatch, capsys, tmp_path: P
     assert f"git+https://github.com/roham-amd/auctelis.git@v{ver}#subdirectory=tools" in out
     assert "auctelis init --owner security" in out
     assert "…" not in out
+
+
+def test_auct042_demo_vulnerable_agent_ci_is_tier2():
+    """AUCT-042: command-position claude on pull_request_target is tier 2."""
+    from auctelis.check import build_check_report, render_check
+
+    root = Path(__file__).resolve().parents[1] / "examples" / "demo-vulnerable"
+    report, cards, _scan = build_check_report(root)
+    text = render_check(report, cards)
+    assert "tier 2 fail 3" in text
+    records = report["reach"]["records"]
+    tier2 = [rec for rec in records if rec["tier"] == 2]
+    assert len(tier2) == 3
+    assert sum(1 for rec in tier2 if rec["kind"] == "mcp") == 2
+    ci = [rec for rec in tier2 if rec["kind"] == "ci"]
+    assert len(ci) == 1
+    assert ci[0]["path"].endswith(".github/workflows/agent.yml")
+
+
+def test_auct042_overflow_drift_and_init_use_cli_prefix(monkeypatch, capsys, tmp_path: Path):
+    """AUCT-042: remaining CTAs follow _cli_prefix() for both PyPI states."""
+    from auctelis.check import _cli_prefix, render_check
+    from auctelis.cli.dispatch import _cmd_init_lockless
+
+    overflow = {
+        "first_run": True,
+        "repository": "demo",
+        "verdict": "BASELINE_NEEDED",
+        "label": "NONE",
+        "inventory_total": 3,
+        "lock_present": False,
+    }
+    drift = {
+        "first_run": False,
+        "meaningful": True,
+        "verdict": "NEEDS_REVIEW",
+        "label": "GROWTH",
+        "lock_present": True,
+        "repository": "demo",
+    }
+
+    monkeypatch.setattr("auctelis.check.pypi_live", lambda: False)
+    prefix = _cli_prefix()
+    assert prefix.startswith("uvx --from")
+    offline_overflow = render_check(overflow, ["card"])
+    offline_drift = render_check(drift, [])
+    assert f"`{prefix} check --top 3`" in offline_overflow
+    assert f"`{prefix} lock --update`" in offline_drift
+    code = _cmd_init_lockless(argparse.Namespace(path=tmp_path / "off", enforce=False, force=False))
+    assert code == 0
+    offline_init = capsys.readouterr().out
+    assert f"{prefix} init --owner @team --enforce" in offline_init
+
+    monkeypatch.setattr("auctelis.check.pypi_live", lambda: True)
+    assert _cli_prefix() == "auctelis"
+    live_overflow = render_check(overflow, ["card"])
+    live_drift = render_check(drift, [])
+    assert "`auctelis check --top 3`" in live_overflow
+    assert "`auctelis lock --update`" in live_drift
+    assert "uvx --from" not in live_overflow
+    assert "git+" not in live_drift
+    code = _cmd_init_lockless(argparse.Namespace(path=tmp_path / "on", enforce=False, force=False))
+    assert code == 0
+    live_init = capsys.readouterr().out
+    assert "auctelis init --owner @team --enforce" in live_init
+    assert "uvx --from" not in live_init
+    assert "git+" not in live_init

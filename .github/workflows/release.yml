@@ -99,6 +99,7 @@ jobs:
           ../tests/test_gate.py
           ../tests/test_cli_authority.py
           ../tests/test_recovery_081.py
+          ../tests/test_rollout.py
 
       - name: Pytest (gate zero / product path)
         run: >
@@ -138,6 +139,7 @@ jobs:
           /tmp/auctelis-wheel-smoke/bin/auctelis init --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis status --help >/dev/null
           /tmp/auctelis-wheel-smoke/bin/auctelis trust --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis rollout --help >/dev/null
           set +e
           /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
           demo_rc=$?

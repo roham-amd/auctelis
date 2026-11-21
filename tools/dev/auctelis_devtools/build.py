@@ -180,6 +180,80 @@ def check_demo_fixture_parity() -> None:
             raise SystemExit(
                 f"Demo fixture drift: {dest} does not match {src}. Run: auctelis-dev build all"
             )
+    _assert_demo_tier2_ci(src_root)
+
+
+def _assert_demo_tier2_ci(src_root: Path) -> None:
+    """AUCT-042: the public demo must still showcase a tier-2 agent CI step."""
+    from auctelis.check import build_check_report
+
+    report, _cards, _scan = build_check_report(src_root)
+    reach = report.get("reach") if isinstance(report, dict) else None
+    records = (reach or {}).get("records") if isinstance(reach, dict) else None
+    tier2_ci = [
+        rec
+        for rec in (records or [])
+        if isinstance(rec, dict)
+        and str(rec.get("kind") or "") == "ci"
+        and int(rec.get("tier") or 0) >= 2
+    ]
+    if tier2_ci:
+        return
+    counts = (reach or {}).get("tier_counts") if isinstance(reach, dict) else {}
+    raise SystemExit(
+        "examples/demo-vulnerable must yield at least one tier-2 CI record "
+        f"(tier_counts={counts}). agent.yml needs a command-position agent step."
+    )
+
+
+_REVERSED_CUTOVER_RE = re.compile(
+    r"(?i)(?:\bpublish\b|\bworkflow_dispatch\b)[\s\S]{0,180}?\bthen\s+flip\b"
+)
+_CUTOVER_STEPS = (
+    re.compile(r"(?m)^1\.\s+Claim\b"),
+    re.compile(r"(?m)^2\.\s+Bump\+flip\b"),
+    re.compile(r"(?m)^3\.\s+Publish\b"),
+    re.compile(r"(?m)^4\.\s+Live probe\b"),
+    re.compile(r"(?m)^5\.\s+Tag\b"),
+)
+
+
+def _check_recruitment_cutover_order() -> str:
+    """Reject publish-before-flip instructions in the pilot recruitment doc."""
+    path = repo_root() / "docs" / "pilots" / "RECRUITMENT.md"
+    if not path.is_file():
+        return "note: RECRUITMENT.md absent — cutover-order text not checked"
+    text = path.read_text(encoding="utf-8")
+    discusses_cutover = any(
+        token in text for token in ("pypi_live", "PyPI readiness", "workflow_dispatch", "Bump+flip")
+    )
+    if not discusses_cutover:
+        return "note: RECRUITMENT.md has no PyPI cutover section — order not checked"
+    if _REVERSED_CUTOVER_RE.search(text):
+        raise SystemExit(
+            "RECRUITMENT.md reverses PyPI cutover order (publish … then flip). "
+            "Required: claim → bump+flip PR → publish → live probe → tag."
+        )
+    positions: list[int] = []
+    for step in _CUTOVER_STEPS:
+        match = step.search(text)
+        if match is None:
+            raise SystemExit(
+                "RECRUITMENT.md is missing a numbered PyPI cutover step "
+                "(1. Claim, 2. Bump+flip, 3. Publish, 4. Live probe, 5. Tag)."
+            )
+        positions.append(match.start())
+    if positions != sorted(positions):
+        raise SystemExit(
+            "RECRUITMENT.md PyPI cutover steps are out of order "
+            "(required: claim → bump+flip → publish → live probe → tag)."
+        )
+    if "git+…" in text or "git+..." in text:
+        raise SystemExit(
+            "RECRUITMENT.md still has a truncated git+ install command; "
+            "paste the full uvx --from URL."
+        )
+    return "ok RECRUITMENT.md cutover order is claim → bump+flip → publish → live probe → tag"
 
 
 def _check_embedded_version_fallbacks(product: str, versions: dict[str, str]) -> None:
@@ -881,7 +955,7 @@ def check_pypi_cutover_readiness(*, live: bool = False) -> list[str]:
     from auctelis.versioning import product_version
 
     root = repo_root()
-    actions: list[str] = []
+    actions: list[str] = [_check_recruitment_cutover_order()]
 
     publish = root / ".github" / "workflows" / "publish-pypi.yml"
     if not publish.is_file():

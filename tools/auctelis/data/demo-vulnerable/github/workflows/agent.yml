@@ -8,6 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run agent against PR code
-        run: echo "claude / mcp agent step (demo only)"
+        run: claude -p "review PR"
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

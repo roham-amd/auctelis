@@ -11,19 +11,19 @@ PyPI `auctelis` is not live yet (`pypi_live=false`). Use the release tag
 (release assets are cosign-signed; the git tag itself is not):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check                     # aha: ranked reach cards (no lock needed)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check                     # aha: ranked reach cards (no lock needed)
 ```
 
 Shareable audit artifact (step 2 of the first ten minutes):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check --report out/
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check --report out/
 ```
 
 For a persistent CLI:
 
 ```bash
-uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools"
+uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools"
 auctelis --version
 ```
 
@@ -36,15 +36,17 @@ tagged Action runs use bundled `tools/` and do not warn on PyPI 404.
 
 ```bash
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check                          # tree-truth reach (lock optional)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check --report out/             # HTML+MD+JSON+SBOM
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check repo-a repo-b --report out/  # one ranked fleet report across repos
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check --github your-org --report out/  # zero-clone org audit (GITHUB_TOKEN / GH_TOKEN / gh auth)
-# Org-reusable fleet rollout script (with --report):
-#   … auctelis check --github your-org --report out/ --org-reusable your-org
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis init --lockless                 # one file: comment-only PR Watch (no owner/lock)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis init --owner security          # full comment-only setup; @ optional; PowerShell-safe
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis init --owner security --enforce  # optional locked + strict ruleset
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check                          # tree-truth reach (lock optional)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check --report out/             # HTML+MD+JSON+SBOM
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check repo-a repo-b --report out/  # one ranked fleet report across repos
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check --github your-org --report out/  # zero-clone org audit (GITHUB_TOKEN / GH_TOKEN / gh auth)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis rollout out/reach-report.json            # dry-run Watch PRs for unwatched tier-2 repos
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis rollout out/reach-report.json --apply  # open those PRs (needs workflow scope)
+# Org-reusable caller instead of the inline workflow:
+#   uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis rollout out/reach-report.json --org-reusable your-org
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis init --lockless                 # one file: comment-only PR Watch (no owner/lock)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis init --owner security          # full comment-only setup; @ optional; PowerShell-safe
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis init --owner security --enforce  # optional locked + strict ruleset
 # commit → open install PR → first-run "Watching …" comment → later PRs get the diff
 ```
 
@@ -67,7 +69,7 @@ the index is temporarily unreachable.
 
 ```bash
 # Downloaded wheel (signed release assets are on the GitHub Release):
-uv tool install --python 3.12 ./auctelis-0.1.3-py3-none-any.whl
+uv tool install --python 3.12 ./auctelis-0.1.4-py3-none-any.whl
 ```
 
 ### Signed wheel (release assets)
@@ -76,8 +78,8 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.1.3-py3-none-any.whl.cosign.bundle \
-  auctelis-0.1.3-py3-none-any.whl
+  --bundle auctelis-0.1.4-py3-none-any.whl.cosign.bundle \
+  auctelis-0.1.4-py3-none-any.whl
 ```
 
 Trusted Publishing workflow:
@@ -106,9 +108,9 @@ repo calls it with two lines (see that file).
 ## Verify
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis --version
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis check --help
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.3#subdirectory=tools" auctelis demo -o /tmp/auctelis-demo
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis --version
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis check --help
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.4#subdirectory=tools" auctelis demo -o /tmp/auctelis-demo
 ```
 
 See [`PRODUCT.md`](PRODUCT.md) for the command contract and
@@ -118,5 +120,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.1.3 |
-| Package `auctelis` | 0.1.3 |
+| Product (`VERSION`) | 0.1.4 |
+| Package `auctelis` | 0.1.4 |

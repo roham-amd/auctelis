@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 # Single canonical public path — keep README / PRODUCT / INSTALL / ROADMAP in sync.
-PUBLIC_PATH = "check → check --report / --github → init --lockless → gate"
+PUBLIC_PATH = "check → check --report / --github → rollout → init --lockless → gate"
 
 _EPILOG = f"""
 first path:   {PUBLIC_PATH}
@@ -18,13 +18,25 @@ maintainer:   auctelis-dev (source checkout; research not in the wheel)
 Bare `auctelis` → check (tree-truth reach; AUTHORITY.lock optional).
 Labels: GROWTH | REDUCTION | NONE.
 Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED | PASS.
-Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init
+Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init / rollout --apply
 (AUCTELIS_AGENT is a speed bump, not a security control).
 """
 
 # Enforceable public mental model — GitHub-native Authority Diff front door.
 CORE_PUBLIC_COMMANDS = frozenset(
-    {"check", "lock", "ci", "gate", "diff", "why", "demo", "init", "status", "trust"}
+    {
+        "check",
+        "lock",
+        "ci",
+        "gate",
+        "diff",
+        "why",
+        "demo",
+        "init",
+        "status",
+        "trust",
+        "rollout",
+    }
 )
 
 _PRODUCT_COMMANDS = frozenset(CORE_PUBLIC_COMMANDS)
@@ -353,6 +365,41 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         choices=["never", "high", "any"],
         default="never",
         help="Ignored for exit code (demo always exits 0); kept for compatibility",
+    )
+
+    rollout = sub.add_parser(
+        "rollout",
+        help="Open lockless Watch PRs from a Reach Report (dry-run unless --apply)",
+    )
+    rollout.add_argument(
+        "report",
+        type=Path,
+        help="reach-report.json from check --report (single repo or fleet)",
+    )
+    rollout.add_argument(
+        "--apply",
+        action="store_true",
+        help="Create branches and open PRs (default is a dry-run with no writes)",
+    )
+    rollout.add_argument(
+        "--max-prs",
+        type=int,
+        default=10,
+        metavar="N",
+        help="Cap unwatched tier-2 Watch PRs (default: 10)",
+    )
+    rollout.add_argument(
+        "--org-reusable",
+        metavar="ORG",
+        help=(
+            "Install the 6-line caller of "
+            "ORG/.github/.github/workflows/auctelis-org-reusable.yml@main"
+        ),
+    )
+    rollout.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit rollout JSON",
     )
 
     lock_cmd = sub.add_parser(

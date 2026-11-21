@@ -21,7 +21,7 @@ jobs:
         #   uses: roham-amd/auctelis@<commit-sha>
         # Legacy subpath still works:
         #   uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
-        uses: roham-amd/auctelis@v0.1.3
+        uses: roham-amd/auctelis@v0.1.4
         with:
           path: .
           locked: "false"
