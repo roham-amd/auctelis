@@ -1,9 +1,9 @@
-# Documentation index (auctelis 0.1.6)
+# Documentation index (auctelis 0.1.7)
 
 Three surfaces — `check` locally (including `--report` / `--github`), `rollout`
-(Watch PRs + `--status` funnel ledger), and the Action on later PRs — plus
-**six** public pages. Everything else is maintainer or reference depth; it is
-not part of the first ten minutes.
+(Watch PRs + `--status` funnel ledger + `--show-body` / `--pin-sha`), and the
+Action on later PRs — plus **six** public pages. Everything else is maintainer
+or reference depth; it is not part of the first ten minutes.
 
 ## Public surface (6)
 
@@ -32,7 +32,7 @@ not part of the first ten minutes.
 | [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust |
 | [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling |
 | [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI recipe |
-| [`auctelis-org-audit.yml`](auctelis-org-audit.yml) | Zero-install org Reach Audit (`workflow_dispatch`; weekly drift via prior artifact) |
+| [`auctelis-org-audit.yml`](auctelis-org-audit.yml) | Zero-install org Reach Audit (`workflow_dispatch` / optional cron fallback; `--status` + opt-in `resolve_pins`) |
 | [`auctelis-org-reusable.yml`](auctelis-org-reusable.yml) | Org `workflow_call` template |
 | [`pilots/`](pilots/) | Five-pilot tracker (report-first) |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Release notes |

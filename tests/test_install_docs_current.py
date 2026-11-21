@@ -249,6 +249,11 @@ def test_auct047_org_audit_workflow_template():
     assert "actions: read" in text
     assert "--baseline" in text
     assert "no baseline" in text
+    assert "inputs.org || github.repository_owner" in text
+    assert "inputs.max_repos || '50'" in text
+    assert "resolve_pins:" in text
+    assert "--resolve-pins" in text
+    assert "rollout auctelis-org-report/reach-report.json --status" in text
 
 
 def test_trust_copy_does_not_lower_new_mcp_authority():

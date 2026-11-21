@@ -964,14 +964,18 @@ def test_auct032_fleet_watching_and_org_rollout():
         assert "Org rollout" in text
         assert "auctelis-org-reusable.yml" in text
         assert "acme/hot" in text
-        assert "APPLY=" in text or "APPLY=0" in text or 'APPLY="${APPLY:-0}"' in text
+        assert "auctelis rollout" in text
+        assert "rollout-watch-prs.sh" in text
+        assert "bash rollout-watch-prs.sh" in text
+        # AUCT-052: keep the filename and one-line fallback; do not dump the script.
+        assert "#!/usr/bin/env bash" not in text
+        assert "TARGETS=" not in text
+        assert "WORKFLOW_B64" not in text
         assert "fill after reviewing" not in text
-    targets_block = md.split("TARGETS=")[-1].split("```")[0]
-    assert "acme/hot" in targets_block
-    assert "acme/watched" not in targets_block
-    # Hostile / invalid slug must not enter the shell TARGETS list.
-    assert "rm -rf" not in targets_block
     assert "<details>" in html
+    script = build_rollout_watch_prs_script(["acme/hot", 'acme/evil`"; rm -rf /'])
+    assert "acme/hot" in script
+    assert "rm -rf" not in script
 
 
 def test_auct035_rollout_watch_prs_script_artifact(tmp_path: Path):
@@ -1156,3 +1160,90 @@ def test_auct043_reach_report_keeps_short_args_and_omits_long_ones():
     assert extra not in md_long
     assert extra not in html_long
     assert long not in md_long
+
+
+def _resolved_pin_item(*, resolved: bool) -> dict:
+    item = {
+        "name": "demo",
+        "path": ".cursor/mcp.json",
+        "pin_state": "floating",
+        "suggestion": "pin the package: npx -y @demo/mcp@<exact-version>",
+        "config_snippet": '"args": ["-y", "@demo/mcp@<exact-version>"]',
+    }
+    if resolved:
+        item["resolved_pin"] = "@demo/mcp@3.2.1"
+        item["resolved_at"] = "2026-11-22"
+        item["resolved_suggestion"] = "pin the package: npx -y @demo/mcp@3.2.1"
+        item["resolved_config_snippet"] = '"args": ["-y", "@demo/mcp@3.2.1"]'
+    return item
+
+
+def _resolved_single(item: dict) -> dict:
+    record = {
+        "kind": "MCP Server Registration",
+        "name": "demo",
+        "path": ".cursor/mcp.json",
+        "tier": 2,
+        "reason": "secrets",
+    }
+    return {
+        "schema": "auctelis.reach_report.v1",
+        "repository": "acme/one",
+        "honesty": {"disclaimer": "declared only", "coverage_line": "", "truncation": []},
+        "coverage": {"manual_review_families": []},
+        "reach": {
+            "total": 1,
+            "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+            "records": [record],
+            "top": [record],
+            "top_cards": [],
+        },
+        "cards": [],
+        "pins": {"total": 1, "unpinned": 1, "items": [item]},
+    }
+
+
+def _resolved_fleet(item: dict) -> dict:
+    single = _resolved_single(item)
+    return {
+        "schema": "auctelis.fleet_reach_report.v1",
+        "repository_count": 1,
+        "totals": {
+            "reach_total": 1,
+            "tier2": 1,
+            "tier1": 0,
+            "tier0": 0,
+            "unpinned": 1,
+            "watching": 0,
+            "unwatched_tier2": 1,
+        },
+        "repositories": [
+            {
+                "repository": "acme/one",
+                "already_watching": False,
+                "default_branch": "main",
+                "github_web_base": "https://github.com",
+                "reach": single["reach"],
+                "pins": single["pins"],
+            }
+        ],
+    }
+
+
+def test_auct051_resolved_pins_in_single_and_fleet_reports():
+    """AUCT-051: HTML/MD show resolved pins + TOFU date; default stays placeholder."""
+    resolved_item = _resolved_pin_item(resolved=True)
+    plain_item = _resolved_pin_item(resolved=False)
+    pairs = (
+        (render_reach_md, render_reach_html, _resolved_single),
+        (render_fleet_reach_md, render_fleet_reach_html, _resolved_fleet),
+    )
+    for render_md, render_html, build in pairs:
+        for text in (render_md(build(resolved_item)), render_html(build(resolved_item))):
+            assert "@demo/mcp@3.2.1" in text
+            assert "trust-on-first-use: latest on 2026-11-22" in text
+            assert "exact-version" not in text
+        for text in (render_md(build(plain_item)), render_html(build(plain_item))):
+            assert "trust-on-first-use" not in text
+            assert "3.2.1" not in text
+            assert "exact-version" in text

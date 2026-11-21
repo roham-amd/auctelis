@@ -7,7 +7,7 @@ Rules live in `tools/auctelis_research/rules.py` and are applied only by
 `auctelis-dev scan` / `annotate` (maintainer annotation). They are **not** an
 input to the product PR Authority Diff, which diffs `AUTHORITY.lock` authority.
 
-**Version:** rule pack **1.6** (tooling **0.1.6** / product **0.1.6**). Twenty-two rules (001-022), annotations behind `auctelis-dev scan` / the PR Authority Diff. See [`INSTALL.md`](INSTALL.md) for install commands.
+**Version:** rule pack **1.6** (tooling **0.1.7** / product **0.1.7**). Twenty-two rules (001-022), annotations behind `auctelis-dev scan` / the PR Authority Diff. See [`INSTALL.md`](INSTALL.md) for install commands.
 
 **Discipline:** rules emit findings with confidence `OBSERVED` or `POTENTIAL`. They never claim confirmed runtime exploitation. Every finding references evidence and lists missing controls. Each finding also carries `evidence_strength` (`LITERAL_CONFIG` / `INFERRED_HINT` / `NAME_MARKER`). Severity and confidence stay separate. `NAME_MARKER` must not alone create a critical CI gate. See [`EVIDENCE-MODEL.md`](EVIDENCE-MODEL.md).
 

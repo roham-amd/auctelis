@@ -538,3 +538,136 @@ def test_auct045_fleet_summary_includes_org_reusable_cta():
     for text in (md, html):
         assert "--org-reusable acme" in text
         assert "rollout reach-report.json --org-reusable acme --apply" in text
+        assert "#!/usr/bin/env bash" not in text
+        assert "rollout-watch-prs.sh" in text
+
+
+def _open_watch_pr(method: str, url: str, data: bytes | None, check_workflow) -> tuple[int, object]:
+    path = _path(url)
+    if method == "GET" and path == "/repos/acme/hot":
+        return 200, {"default_branch": "main"}
+    if method == "GET" and path.endswith("/contents/.github/workflows"):
+        return 404, {"message": "Not Found"}
+    if method == "GET" and path.endswith("/pulls"):
+        return 200, []
+    if method == "GET" and path.endswith("/git/ref/heads/main"):
+        return 200, {"object": {"sha": "abc123"}}
+    if method == "GET" and path.endswith("/git/ref/heads/auctelis/watch-prs"):
+        return 404, {"message": "Not Found"}
+    if method == "POST" and path.endswith("/git/refs"):
+        return 201, {"ref": "refs/heads/auctelis/watch-prs"}
+    if method == "GET" and path.endswith("/auctelis.yml"):
+        return 404, {"message": "Not Found"}
+    if method == "PUT" and path.endswith("/auctelis.yml"):
+        body = json.loads((data or b"{}").decode())
+        decoded = base64.b64decode(body["content"]).decode()
+        check_workflow(decoded)
+        return 201, {"content": {"sha": "new"}}
+    if method == "POST" and path.endswith("/pulls"):
+        return 201, {"html_url": "https://github.com/acme/hot/pull/9"}
+    raise AssertionError(f"unexpected {method} {url}")
+
+
+def test_auct052_show_body_text_and_json(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--show-body"]) == 0
+    out = capsys.readouterr().out
+    assert "would open Watch PR" in out
+    assert "No AUTHORITY.lock required." in out
+    assert calls == []
+
+    assert main(["rollout", str(path), "--show-body", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["results"][0]["body"].startswith("Install Auctelis")
+    assert "No AUTHORITY.lock required." in payload["results"][0]["body"]
+
+    assert main(["rollout", str(path), "--json"]) == 0
+    plain = json.loads(capsys.readouterr().out)
+    assert "body" not in plain["results"][0]
+
+
+def test_auct052_pin_sha_lightweight_and_annotated(monkeypatch, capsys, tmp_path: Path):
+    from auctelis.versioning import product_version
+
+    version = product_version()
+    commit = "a" * 40
+    annotated = "b" * 40
+    path = _write(tmp_path, _fleet([_repo()]))
+
+    def handler_for(kind: str):
+        def handler(method, url, data, _calls):
+            api = _path(url)
+            if "/roham-amd/auctelis/git/" in api:
+                if api.endswith(f"/git/ref/tags/v{version}"):
+                    if kind == "lightweight":
+                        return 200, {"object": {"type": "commit", "sha": commit}}
+                    return 200, {"object": {"type": "tag", "sha": annotated}}
+                if api.endswith(f"/git/tags/{annotated}"):
+                    assert kind == "annotated"
+                    return 200, {"object": {"type": "commit", "sha": commit}}
+                raise AssertionError(api)
+
+            def check(decoded: str) -> None:
+                assert f"uses: roham-amd/auctelis@{commit} # v{version}" in decoded
+                assert f"uses: roham-amd/auctelis@v{version}" not in decoded
+
+            return _open_watch_pr(method, url, data, check)
+
+        return handler
+
+    for kind in ("lightweight", "annotated"):
+        calls = _install(monkeypatch, handler_for(kind))
+        assert main(["rollout", str(path), "--apply", "--pin-sha"]) == 0
+        assert any("/git/ref/tags/" in url for _method, url, _data in calls)
+        if kind == "lightweight":
+            assert not any("/git/tags/" in url for _method, url, _data in calls)
+        else:
+            assert any(f"/git/tags/{annotated}" in url for _method, url, _data in calls)
+        capsys.readouterr()
+
+
+def test_auct052_pin_sha_api_failure_exits_2(monkeypatch, capsys, tmp_path: Path):
+    def handler(method, url, _data, _calls):
+        if method == "GET" and "/git/ref/tags/" in _path(url):
+            return 404, {"message": "Not Found"}
+        raise AssertionError(f"unexpected {method} {url}")
+
+    _install(monkeypatch, handler)
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--pin-sha"]) == 2
+    err = capsys.readouterr().err
+    assert "--pin-sha" in err
+    assert "org-reusable" in err
+
+
+def test_auct052_pin_sha_org_reusable_is_noop(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--pin-sha", "--org-reusable", "acme"]) == 0
+    assert calls == []
+    capsys.readouterr()
+
+    def handler(method, url, data, _calls):
+        assert "/roham-amd/auctelis/" not in _path(url)
+
+        def check(decoded: str) -> None:
+            assert "auctelis-org-reusable.yml@main" in decoded
+            assert "roham-amd/auctelis@" not in decoded
+
+        return _open_watch_pr(method, url, data, check)
+
+    calls = _install(monkeypatch, handler)
+    assert main(["rollout", str(path), "--apply", "--pin-sha", "--org-reusable", "acme"]) == 0
+    assert calls
+    assert not any("/git/ref/tags/" in url for _method, url, _data in calls)
+
+
+def test_auct052_pin_sha_with_status_exits_2(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--pin-sha", "--status"]) == 2
+    err = capsys.readouterr().err
+    assert "--pin-sha" in err
+    assert "--status" in err
+    assert calls == []

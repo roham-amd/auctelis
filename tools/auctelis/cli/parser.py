@@ -432,6 +432,20 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         ),
     )
     rollout.add_argument(
+        "--show-body",
+        action="store_true",
+        help="Dry-run: print each Watch PR body (--json includes a body field)",
+    )
+    rollout.add_argument(
+        "--pin-sha",
+        action="store_true",
+        help=(
+            "Pin lockless uses: roham-amd/auctelis@<commit-sha> # vX "
+            "(resolves the release tag; no-op with --org-reusable; "
+            "not valid with --status)"
+        ),
+    )
+    rollout.add_argument(
         "--json",
         action="store_true",
         help="Emit rollout JSON",

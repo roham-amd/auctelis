@@ -102,6 +102,7 @@ jobs:
           ../tests/test_rollout.py
           ../tests/test_rollout_status.py
           ../tests/test_pin_resolve.py
+          ../tests/test_resolve_pins_cli.py
           ../tests/test_fleet_baseline.py
 
       - name: Pytest (gate zero / product path)

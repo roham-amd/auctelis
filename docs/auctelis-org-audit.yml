@@ -35,7 +35,14 @@ on:
         required: false
         type: string
         default: ""
-  # Optional weekly scan — uncomment and set the cron:
+      resolve_pins:
+        description: Look up exact npm/PyPI versions (trust-on-first-use; default off)
+        required: false
+        type: boolean
+        default: false
+  # Optional weekly scan — uncomment and set the cron.
+  # schedule: leaves workflow_dispatch inputs empty; ORG falls back to
+  # github.repository_owner and MAX_REPOS falls back to 50. resolve_pins stays off.
   # schedule:
   #   - cron: "0 14 * * 1"
 
@@ -106,10 +113,11 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.AUCTELIS_AUDIT_TOKEN || github.token }}
-          ORG: ${{ inputs.org }}
-          MAX_REPOS: ${{ inputs.max_repos }}
+          ORG: ${{ inputs.org || github.repository_owner }}
+          MAX_REPOS: ${{ inputs.max_repos || '50' }}
           INCLUDE_FORKS: ${{ inputs.include_forks }}
           ORG_REUSABLE: ${{ inputs.org_reusable }}
+          RESOLVE_PINS: ${{ inputs.resolve_pins }}
           HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
         run: |
           set -euo pipefail
@@ -121,10 +129,13 @@ jobs:
           if [[ -n "${ORG_REUSABLE}" ]]; then
             EXTRA+=(--org-reusable "${ORG_REUSABLE}")
           fi
+          if [[ "${RESOLVE_PINS}" == "true" ]]; then
+            EXTRA+=(--resolve-pins)
+          fi
           if [[ "${HAS_BASELINE}" == "true" ]]; then
             EXTRA+=(--baseline auctelis-org-baseline/reach-report.json)
           fi
-          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.6#subdirectory=tools" \
+          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" \
             auctelis check --github "${ORG}" \
             --max-repos "${MAX_REPOS}" \
             --report auctelis-org-report/ \
@@ -133,6 +144,8 @@ jobs:
       - name: Job Summary (Reach Report)
         if: always()
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.AUCTELIS_AUDIT_TOKEN || github.token }}
         run: |
           set -euo pipefail
           {
@@ -153,8 +166,19 @@ jobs:
             echo ""
             echo '```text'
             if [[ -f auctelis-org-report/reach-report.json ]]; then
-              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.6#subdirectory=tools" \
+              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" \
                 auctelis rollout auctelis-org-report/reach-report.json || true
+            else
+              echo "No reach-report.json — skipped."
+            fi
+            echo '```'
+            echo ""
+            echo "## Rollout status"
+            echo ""
+            echo '```text'
+            if [[ -f auctelis-org-report/reach-report.json ]]; then
+              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" \
+                auctelis rollout auctelis-org-report/reach-report.json --status || true
             else
               echo "No reach-report.json — skipped."
             fi

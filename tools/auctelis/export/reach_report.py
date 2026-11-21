@@ -438,6 +438,39 @@ def _tier2_from_reach(reach: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in ranked if isinstance(item, dict) and int(item.get("tier") or 0) >= 2]
 
 
+_TOFU_NOTE_RE = re.compile(r" \(trust-on-first-use: latest on [^)]+\)$")
+_BARE_TOFU_RE = re.compile(r"^\(trust-on-first-use: latest on [^)]+\)$")
+
+
+def _tofu_note(resolved_at: object) -> str:
+    stamp = str(resolved_at or "").strip()
+    if not stamp:
+        return ""
+    return f"(trust-on-first-use: latest on {stamp})"
+
+
+def _append_tofu(text: str, resolved_at: object) -> str:
+    """Prefer a resolved snippet and append the trust-on-first-use date."""
+    body = text.strip()
+    note = _tofu_note(resolved_at)
+    if not note:
+        return body
+    if not body:
+        return note
+    return f"{body} {note}"
+
+
+def _split_tofu(text: str) -> tuple[str, str]:
+    """Split a pasteable snippet from a trailing trust-on-first-use note."""
+    stripped = text.strip()
+    if _BARE_TOFU_RE.fullmatch(stripped):
+        return "", stripped
+    match = _TOFU_NOTE_RE.search(stripped)
+    if match is None:
+        return stripped, ""
+    return stripped[: match.start()], stripped[match.start() + 1 :]
+
+
 def _config_snippet_for(item: dict[str, Any], pins: Sequence[dict[str, Any]]) -> str:
     name = str(item.get("name") or "")
     path = str(item.get("path") or "")
@@ -447,22 +480,30 @@ def _config_snippet_for(item: dict[str, Any], pins: Sequence[dict[str, Any]]) ->
         pin_path = str(pin.get("path") or "")
         if path and pin_path and pin_path != path:
             continue
-        return str(pin.get("config_snippet") or "").strip()
+        snippet = str(pin.get("resolved_config_snippet") or pin.get("config_snippet") or "").strip()
+        return _append_tofu(snippet, pin.get("resolved_at"))
     return ""
 
 
 def _pin_fix_md(snippet: str) -> str:
-    span = markdown_code_span(snippet) if snippet else None
-    if not span:
-        return ""
-    return f"**Pin fix:** {span}"
+    body, note = _split_tofu(snippet)
+    span = markdown_code_span(body) if body else None
+    if span and note:
+        return f"**Pin fix** {note}: {span}"
+    if span:
+        return f"**Pin fix:** {span}"
+    return note
 
 
 def _pin_fix_html(snippet: str) -> str:
-    text = pasteable_code_text(snippet) if snippet else None
-    if not text:
-        return ""
-    return f"<strong>Pin fix:</strong> <code>{html.escape(text)}</code>"
+    body, note = _split_tofu(snippet)
+    text = pasteable_code_text(body) if body else None
+    note_html = html.escape(note) if note else ""
+    if text and note_html:
+        return f"<strong>Pin fix</strong> {note_html}: <code>{html.escape(text)}</code>"
+    if text:
+        return f"<strong>Pin fix:</strong> <code>{html.escape(text)}</code>"
+    return note_html
 
 
 def _summary_warning_text(notes: Sequence[Any]) -> str:
@@ -514,29 +555,42 @@ def _top_findings_html(
     return "".join(parts)
 
 
+def _unpinned_line_parts(item: dict[str, Any]) -> tuple[str, str, str]:
+    """Suggestion prose source, pin-fix input, and a trust-on-first-use note."""
+    suggestion = str(
+        item.get("resolved_suggestion") or item.get("suggestion") or item.get("pin_state") or ""
+    )
+    snippet = str(item.get("resolved_config_snippet") or item.get("config_snippet") or "").strip()
+    noted = _append_tofu(snippet, item.get("resolved_at"))
+    return suggestion, noted, _tofu_note(item.get("resolved_at"))
+
+
 def _unpinned_md_line(item: dict[str, Any]) -> str:
-    suggestion = str(item.get("suggestion") or item.get("pin_state") or "")
-    snippet = str(item.get("config_snippet") or "").strip()
+    suggestion, snippet, note = _unpinned_line_parts(item)
     prose = escape_markdown_inline(suggestion, max_len=160) if suggestion else ""
     fix = _pin_fix_md(snippet)
     head = f"- {_md_code(item.get('name'))} ({_md_code(item.get('path'))})"
     if prose and fix:
-        return f"{head} — {prose} {fix}"
-    if fix:
-        return f"{head} — {fix}"
-    if prose:
-        return f"{head} — {prose}"
-    return head
+        line = f"{head} — {prose} {fix}"
+    elif fix:
+        line = f"{head} — {fix}"
+    elif prose:
+        line = f"{head} — {prose}"
+    else:
+        line = head
+    if note and note not in line:
+        return f"{line} {note}"
+    return line
 
 
 def _unpinned_html_cell(item: dict[str, Any]) -> str:
-    suggestion = str(item.get("suggestion") or item.get("pin_state") or "")
-    snippet = str(item.get("config_snippet") or "").strip()
+    suggestion, snippet, note = _unpinned_line_parts(item)
     prose = html.escape(suggestion) if suggestion else ""
     fix = _pin_fix_html(snippet)
-    if prose and fix:
-        return f"{prose} {fix}"
-    return fix or prose
+    line = f"{prose} {fix}" if prose and fix else fix or prose
+    if note and note not in line:
+        return f"{line} {html.escape(note)}".strip()
+    return line
 
 
 def _coverage_limits_md(doc: dict[str, Any]) -> list[str]:
@@ -1330,7 +1384,7 @@ def _rollout_commands(*, org_reusable: str | None = None) -> tuple[str, str]:
 
 
 def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> list[str]:
-    """Org-reusable caller + dry-run ``rollout-watch-prs.sh`` (AUCT-032/035/038)."""
+    """Org-reusable caller + rollout CTAs. The Bash script stays a file (AUCT-052)."""
     targets = _unwatched_tier2_slugs(doc, limit=10)
     org_label = str(org_reusable or "YOUR_ORG").strip() or "YOUR_ORG"
     lines = [
@@ -1354,11 +1408,6 @@ def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> 
             ]
         )
         return lines
-    script = build_rollout_watch_prs_script(
-        targets,
-        github_web_base=_fleet_github_web_base(doc),
-        org_reusable=org_reusable,
-    )
     dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
     lines.extend(
         [
@@ -1370,10 +1419,6 @@ def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> 
             "```",
             "",
             "Optional Bash fallback (`rollout-watch-prs.sh`, dry-run unless `APPLY=1`):",
-            "",
-            "```bash",
-            script.rstrip(),
-            "```",
             "",
             "```bash",
             "bash rollout-watch-prs.sh          # dry-run (APPLY=0)",
@@ -1404,17 +1449,10 @@ def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -
             "nothing to batch-open.</em></p>"
         )
     else:
-        script = build_rollout_watch_prs_script(
-            targets,
-            github_web_base=_fleet_github_web_base(doc),
-            org_reusable=org_reusable,
-        )
         dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
-        howto = (
-            f"{dry}\n"
-            f"{apply_cmd}  # create branches and open PRs\n"
-            "bash rollout-watch-prs.sh          # optional dry-run (APPLY=0)\n"
-            "APPLY=1 bash rollout-watch-prs.sh  # optional open Watch PRs"
+        fallback = (
+            "bash rollout-watch-prs.sh          # dry-run (APPLY=0)\n"
+            "APPLY=1 bash rollout-watch-prs.sh  # open Watch PRs"
         )
         body_parts.extend(
             [
@@ -1422,8 +1460,7 @@ def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -
                 f"<pre><code>{esc(dry)}\n{esc(apply_cmd)}</code></pre>",
                 "<p>Optional Bash fallback (<code>rollout-watch-prs.sh</code>, "
                 "dry-run unless <code>APPLY=1</code>):</p>",
-                f"<pre><code>{esc(script)}</code></pre>",
-                f"<pre><code>{esc(howto)}</code></pre>",
+                f"<pre><code>{esc(fallback)}</code></pre>",
             ]
         )
     inner = "".join(body_parts)

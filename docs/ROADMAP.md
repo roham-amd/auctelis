@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.1.6** · lock schema 1 · tooling 0.1.6
+**Current:** **0.1.7** · lock schema 1 · tooling 0.1.7
 
 ## North star (Gate Zero)
 
@@ -29,7 +29,8 @@ are removed.
 | **0.1.4** | Arg-preserving Pin fix, tier-2 demo agent CI, cross-platform `auctelis rollout` (still `pypi_live=false`) | **done** |
 | **0.1.5** | Evidence-backed `rollout`, live PR `Pin fix` parity, zero-install org audit Action (still `pypi_live=false`) | **done** |
 | **0.1.6** | Funnel ledger (`rollout --status`), fleet audit memory (`--baseline`), opt-in resolved pins (still `pypi_live=false`) | **done** |
-| Next | Five outside pilots (report-first); measure conversion with `--status`. PyPI cutover only if ≥3 pilots ask (claim → bump+flip PR → publish → live probe → tag; `pypi_live` stays false until then). Research repo split if unused | open |
+| **0.1.7** | Zero-laptop org-audit cron/status/resolved-pin parity + SHA-pinned Watch rollout (still `pypi_live=false`) | **done** |
+| Next | Five outside pilots (report-first); measure conversion with `--status` / `--show-body` / `--pin-sha`. PyPI cutover only if ≥3 pilots ask (claim → bump+flip PR → publish → live probe → tag; `pypi_live` stays false until then). Research repo split if unused | open |
 
 ## 90-day decision gate
 

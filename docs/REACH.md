@@ -62,8 +62,11 @@ Cards show the tier and its reason (`tier 2 (secrets)`), plus secret **names**
 (`env: API_TOKEN`) — never values. `auctelis check --pins` lists unpinned
 npx/uvx/docker MCP launchers with a concrete pin suggestion. Opt-in
 `--resolve-pins` looks up exact npm/PyPI latest versions (trust-on-first-use;
-Docker digests stay placeholders) and adds `resolved_pin` / `resolved_at` to
-the pins JSON. Tightening an MCP `pin_state` alone (`floating`/`unknown` →
+Docker digests stay placeholders) and adds `resolved_pin` / `resolved_at` /
+`resolved_config_snippet` to the pins JSON. HTML and Markdown prefer those
+resolved snippets and append `(trust-on-first-use: latest on YYYY-MM-DD)`.
+Without the flag, reports stay on the `@<exact-version>` placeholder.
+Tightening an MCP `pin_state` alone (`floating`/`unknown` →
 `pinned`/`digest`) is a **REDUCTION** (PASS), and the card still shows
 `pin: unpinned → pinned`. Same-package argv pinning (identical `package_stem` /
 launcher / host, e.g. `@linear/mcp` → `@linear/mcp@1.2.3`) is also

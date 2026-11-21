@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+## [0.1.7] — 2026-11-22
+
+### Added
+
+- **AUCT-051:** [`docs/auctelis-org-audit.yml`](docs/auctelis-org-audit.yml)
+  falls back to `github.repository_owner` and 50 repos when a scheduled run
+  leaves `workflow_dispatch` inputs empty, accepts opt-in `resolve_pins`, and
+  appends a read-only `rollout --status` block to the Job Summary. HTML and
+  Markdown prefer `resolved_config_snippet` / `resolved_suggestion` and label
+  them trust-on-first-use with the resolve date. Reports without
+  `--resolve-pins` stay on the `@<exact-version>` placeholder.
+- **AUCT-052:** `rollout --show-body` prints each Watch PR body on a dry-run
+  (`--json` adds a `body` field). `rollout --pin-sha` rewrites lockless
+  `uses: roham-amd/auctelis@<sha> # vX` after resolving the release tag
+  (annotated tags are dereferenced; lookup failure exits 2; no-op with
+  `--org-reusable`; mutually exclusive with `--status`). Fleet HTML/Markdown
+  keep the `rollout-watch-prs.sh` filename and one-line fallback without
+  inlining the Bash script.
+
+### Changed
+
+- `docs/AUCTELIS-GATE.md` names the root `uses: roham-amd/auctelis@vX` form
+  instead of a Marketplace form.
+- Validate / Release OS matrices include `test_resolve_pins_cli`.
+
 ## [0.1.6] — 2026-11-22
 
 ### Added

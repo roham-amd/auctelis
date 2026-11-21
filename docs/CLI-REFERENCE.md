@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.6** · product **0.1.6** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.7** · product **0.1.7** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -23,7 +23,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
 | Core | `check [PATH ...] [--top N] [--pins] [--resolve-pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests] [--org-reusable ORG]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report; `--baseline` diffs prior report (fleet/`--github` too); `--resolve-pins` opt-in npm/PyPI lookup; `--org-reusable` with `--report` emits an org-reusable rollout script |
-| Core | `rollout REPORT_JSON [--apply \| --status] [--max-prs N] [--org-reusable ORG] [--json] [--csv]` | Open lockless Watch PRs for unwatched tier-2 repos (dry-run unless `--apply`); `--status` read-only funnel ledger |
+| Core | `rollout REPORT_JSON [--apply \| --status] [--max-prs N] [--org-reusable ORG] [--show-body] [--pin-sha] [--json] [--csv]` | Open lockless Watch PRs for unwatched tier-2 repos (dry-run unless `--apply`); `--status` read-only funnel ledger; `--show-body` previews the PR; `--pin-sha` pins the Action to a commit SHA |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -117,7 +117,7 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta (any repo for fleet);
 ```bash
 auctelis rollout REPORT_JSON [--apply | --status] [--max-prs N] [--repo SLUG]
                              [--min-tier {1,2}] [--org-reusable ORG]
-                             [--json] [--csv]
+                             [--show-body] [--pin-sha] [--json] [--csv]
 ```
 
 Reads `auctelis.fleet_reach_report.v1` or `auctelis.reach_report.v1` and
@@ -133,7 +133,14 @@ literal `Pin fix` when available). `--repo owner/repo` (repeatable) targets
 specific pilots. HTTP 403 or 422 tells you to run `gh auth refresh -s workflow`.
 `--org-reusable ORG` commits the six-line caller instead of the inline lockless
 workflow; when omitted, `org_reusable` from the Reach Report is used if set.
-`--json` prints the plan. `--apply` is refused when `AUCTELIS_AGENT=1` (exit 2).
+`--json` prints the plan. `--show-body` prints each dry-run Watch PR body
+(the evidence-backed markdown); with `--json`, each result includes a `body`
+field. `--pin-sha` looks up `roham-amd/auctelis` tag `v<this release>`
+(`GET /git/ref/tags/vX`, then `GET /git/tags/<sha>` when the object is an
+annotated tag) and writes `uses: roham-amd/auctelis@<40-hex> # vX` on lockless
+Watch PRs. Lookup failure exits 2 — omit `--pin-sha` or use `--org-reusable`.
+`--pin-sha` is a no-op with `--org-reusable` and is mutually exclusive with
+`--status` (exit 2). `--apply` is refused when `AUCTELIS_AGENT=1` (exit 2).
 There is no auto-merge.
 
 `--status` is a read-only funnel ledger (GET only; allowed under
@@ -304,7 +311,7 @@ Authority Diff.
 | `lock --check` | matches | drift | — |
 | `gate` | PASS (comment-only: also NEEDS_REVIEW) | NEEDS_REVIEW (enforce) | FAIL_CLOSED / usage |
 | `diff --base` | PASS (or BASELINE_NEEDED only if tree extract failed) | NEEDS_REVIEW | FAIL_CLOSED / invalid ref |
-| `rollout` | dry-run / status, or every target opened or skipped | a target failed | bad report / missing token / agent refusal / `--status --apply` |
+| `rollout` | dry-run / status, or every target opened or skipped | a target failed | bad report / missing token / agent refusal / `--status --apply` / `--pin-sha --status` / `--pin-sha` lookup failure |
 
 `BASELINE_ADOPTED` is emitted by the Action wrapper when a head lock arrives with
 no trusted base lock; the `gate` CLI itself returns `PASS` / `NEEDS_REVIEW` /

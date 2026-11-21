@@ -488,6 +488,8 @@ def _cmd_rollout(args: argparse.Namespace) -> int:
         min_tier=min_tier,
         status=bool(getattr(args, "status", False)),
         as_csv=bool(getattr(args, "csv", False)),
+        show_body=bool(getattr(args, "show_body", False)),
+        pin_sha=bool(getattr(args, "pin_sha", False)),
     )
 
 

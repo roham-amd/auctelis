@@ -1,4 +1,4 @@
-"""Cross-platform lockless Watch PR opener (AUCT-044 / AUCT-045 / AUCT-048).
+"""Cross-platform lockless Watch PR opener (AUCT-044 / AUCT-045 / AUCT-048 / AUCT-052).
 
 Reads a Reach Report and plans (or opens) one pull request per unwatched
 repository that meets the tier filter. Dry-run is the default and performs no
@@ -13,6 +13,9 @@ report document when the CLI flag is omitted.
 AUCT-048: ``--status`` is a read-only funnel ledger (GET only) that classifies
 Watch PR / workflow state so report → merge → still-enabled conversion is
 measurable without telemetry.
+
+AUCT-052: ``--show-body`` previews the Watch PR markdown on a dry-run.
+``--pin-sha`` rewrites the lockless Action pin to an immutable commit SHA.
 """
 
 from __future__ import annotations
@@ -37,6 +40,7 @@ from auctelis.export.reach_report import (
 )
 from auctelis.github_audit import _api_base, _token, is_owner_repo_slug
 from auctelis.textutil import escape_markdown_inline, markdown_code_span, validated_http_url
+from auctelis.versioning import product_version
 
 _BRANCH = "auctelis/watch-prs"
 _WORKFLOW_PATH = ".github/workflows/auctelis.yml"
@@ -53,6 +57,9 @@ _USER_AGENT = "auctelis-rollout"
 _API_VERSION = "2022-11-28"
 _MAX_BODY_LINES = 15
 _MAX_FINDINGS = 3
+_ACTION_SLUG = "roham-amd/auctelis"
+_SHA40 = re.compile(r"^[0-9a-f]{40}$")
+_LOCKLESS_TAG_RE = re.compile(r"(uses:\s*roham-amd/auctelis@)v[^\s#]+")
 
 # Columns ⊂ eval/pilot-metrics.csv header (AUCT-048).
 _STATUS_CSV_FIELDS = (
@@ -62,6 +69,66 @@ _STATUS_CSV_FIELDS = (
     "action_still_enabled_day30",
     "notes",
 )
+
+
+def resolve_release_commit_sha(version: str) -> tuple[str | None, str]:
+    """Resolve ``roham-amd/auctelis`` tag ``v<version>`` to a commit SHA.
+
+    Lightweight tags return the commit directly. Annotated tags
+    (``object.type == "tag"``) are dereferenced with ``GET /git/tags/<sha>``.
+    """
+    token = _token()
+    ref = f"v{version}"
+    status, body = _request(
+        "GET",
+        _repo_api(_ACTION_SLUG, f"/git/ref/tags/{urllib.parse.quote(ref, safe='')}"),
+        token=token,
+    )
+    if status != 200 or not isinstance(body, dict):
+        return None, f"HTTP {status} on tags/{ref}"
+    obj = body.get("object")
+    if not isinstance(obj, dict):
+        return None, f"tags/{ref} response missing object"
+    sha = str(obj.get("sha") or "").lower()
+    kind = str(obj.get("type") or "")
+    if kind == "tag":
+        status, tag_body = _request(
+            "GET",
+            _repo_api(_ACTION_SLUG, f"/git/tags/{urllib.parse.quote(sha, safe='')}"),
+            token=token,
+        )
+        if status != 200 or not isinstance(tag_body, dict):
+            return None, f"HTTP {status} on git/tags/{sha}"
+        inner = tag_body.get("object")
+        if not isinstance(inner, dict):
+            return None, "annotated tag missing object"
+        if str(inner.get("type") or "") != "commit":
+            return None, f"annotated tag object type {inner.get('type')!r} is not commit"
+        sha = str(inner.get("sha") or "").lower()
+    elif kind != "commit":
+        return None, f"tag object type {kind!r} is not commit or tag"
+    if _SHA40.fullmatch(sha) is None:
+        return None, "resolved object is not a 40-character commit SHA"
+    return sha, ""
+
+
+def _dry_run_row(repo: dict[str, Any], *, mode: str, show_body: bool) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "repository": str(repo.get("repository") or ""),
+        "action": "would_open",
+        "mode": mode,
+    }
+    if show_body:
+        row["body"] = render_watch_pr_body(repo)
+    return row
+
+
+def rewrite_lockless_action_pin(workflow: str, *, sha: str, version: str) -> str:
+    """Replace the mutable ``@vX`` Action pin with ``@<sha> # vX``."""
+    updated, count = _LOCKLESS_TAG_RE.subn(rf"\g<1>{sha} # v{version}", workflow, count=1)
+    if count != 1:
+        raise ValueError("lockless workflow has no roham-amd/auctelis@v pin")
+    return updated
 
 
 def execute_rollout(
@@ -75,11 +142,20 @@ def execute_rollout(
     min_tier: int = 2,
     status: bool = False,
     as_csv: bool = False,
+    show_body: bool = False,
+    pin_sha: bool = False,
 ) -> int:
     """Plan or open Watch PRs. Exit 0 when every target is opened or skipped."""
     if status and apply:
         _say(
             "auctelis rollout: --status and --apply are mutually exclusive.",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+    if pin_sha and status:
+        _say(
+            "auctelis rollout: --pin-sha and --status are mutually exclusive.",
             as_json=as_json,
             error=True,
         )
@@ -140,15 +216,32 @@ def execute_rollout(
     )
     mode = f"org-reusable:{org}" if org else "lockless"
     workflow = org_reusable_caller_yaml(org) if org else lockless_workflow_yaml()
+    # --pin-sha rewrites the lockless Action pin. Org-reusable callers have no
+    # roham-amd/auctelis ref, so the flag is a no-op in that mode.
+    if pin_sha and org is None:
+        version = product_version()
+        sha, detail = resolve_release_commit_sha(version)
+        if sha is None:
+            _say(
+                "auctelis rollout: --pin-sha could not resolve "
+                f"roham-amd/auctelis@v{version} to a commit SHA ({detail}). "
+                "Omit --pin-sha or use --org-reusable.",
+                as_json=as_json,
+                error=True,
+            )
+            return 2
+        try:
+            workflow = rewrite_lockless_action_pin(workflow, sha=sha, version=version)
+        except ValueError as exc:
+            _say(
+                "auctelis rollout: --pin-sha could not rewrite the lockless workflow "
+                f"({exc}). Omit --pin-sha or use --org-reusable.",
+                as_json=as_json,
+                error=True,
+            )
+            return 2
     if not apply:
-        results = [
-            {
-                "repository": str(repo.get("repository") or ""),
-                "action": "would_open",
-                "mode": mode,
-            }
-            for repo in targets
-        ]
+        results = [_dry_run_row(repo, mode=mode, show_body=show_body) for repo in targets]
         _emit(results, apply=False, mode=mode, org_reusable=org, as_json=as_json, min_tier=min_tier)
         return 0
 
@@ -160,16 +253,19 @@ def execute_rollout(
             error=True,
         )
         return 2
-    results = [
-        _apply_one(
+    results = []
+    for repo in targets:
+        body = render_watch_pr_body(repo)
+        row = _apply_one(
             str(repo.get("repository") or ""),
             token=token,
             workflow=workflow,
             mode=mode,
-            body=render_watch_pr_body(repo),
+            body=body,
         )
-        for repo in targets
-    ]
+        if show_body:
+            row["body"] = body
+        results.append(row)
     _emit(results, apply=True, mode=mode, org_reusable=org, as_json=as_json, min_tier=min_tier)
     if any(row.get("action") == "error" for row in results):
         return 1
@@ -809,6 +905,9 @@ def _emit(
         action = row.get("action")
         if action == "would_open":
             print(f"  {repo} · would open Watch PR on {_BRANCH}")
+            preview = str(row.get("body") or "").rstrip()
+            if preview:
+                print(preview)
         elif action == "opened":
             print(f"  {repo} · opened {row.get('url') or _BRANCH}")
         elif action == "skip_workflow":

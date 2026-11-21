@@ -55,3 +55,15 @@ def test_resolve_pins_on_report_is_additive(tmp_path: Path, monkeypatch):
     assert items[0].get("resolved_pin") == "@demo/mcp@3.2.1"
     assert items[0].get("resolved_at") == "2026-11-22"
     assert "<exact-version>" in (items[0].get("config_snippet") or "")
+    for name in ("reach-report.md", "reach-report.html"):
+        rendered = (out / name).read_text(encoding="utf-8")
+        assert "@demo/mcp@3.2.1" in rendered
+        assert "trust-on-first-use: latest on 2026-11-22" in rendered
+
+    plain = tmp_path / "plain"
+    assert main(["check", str(root), "--report", str(plain)]) in {0, 1}
+    for name in ("reach-report.md", "reach-report.html"):
+        rendered = (plain / name).read_text(encoding="utf-8")
+        assert "trust-on-first-use" not in rendered
+        assert "3.2.1" not in rendered
+        assert "exact-version" in rendered
