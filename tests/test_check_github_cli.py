@@ -160,6 +160,93 @@ def test_github_one_usable_plus_skipped_writes_fleet(tmp_path: Path, capsys):
     assert "acme/gone" in md
 
 
+def test_auct038_org_reusable_requires_report(capsys):
+    code = main(["check", "--github", "acme", "--org-reusable", "acme"])
+    out = capsys.readouterr().out
+    assert code == 2
+    assert "--org-reusable requires --report" in out or "--report" in out
+
+
+def test_auct038_org_reusable_rejects_bad_slug(tmp_path: Path, capsys):
+    code = main(
+        [
+            "check",
+            "--github",
+            "acme",
+            "--report",
+            str(tmp_path / "out"),
+            "--org-reusable",
+            "bad/org",
+        ]
+    )
+    assert code == 2
+    assert "[A-Za-z0-9_.-]+" in capsys.readouterr().out
+
+
+def test_auct038_github_org_reusable_writes_rollout(tmp_path: Path, capsys):
+    report = {
+        "schema_version": "authority-diff/1",
+        "repository": "acme/hot",
+        "default_branch": "main",
+        "github_web_base": "https://github.com",
+        "already_watching": False,
+        "lock_present": False,
+        "first_run": True,
+        "verdict": "BASELINE_NEEDED",
+        "label": "NONE",
+        "meaningful": False,
+        "unparsed": 0,
+        "gated_findings": 0,
+        "counts": {},
+        "reach": {
+            "total": 1,
+            "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+            "records": [
+                {
+                    "kind": "mcp",
+                    "name": "evil",
+                    "path": ".cursor/mcp.json",
+                    "tier": 2,
+                    "reason": "new MCP",
+                }
+            ],
+            "top": [],
+            "top_cards": [],
+        },
+        "pins": {"total": 0, "unpinned": 0, "items": []},
+        "inventory_total": 1,
+        "coverage_line": "",
+        "error": None,
+    }
+    fake = [RepoAuditResult(repository="acme/hot", report=report, scan=None, cards=[])]
+    out = tmp_path / "out"
+    with patch(
+        "auctelis.github_audit.audit_github_repos",
+        return_value=(fake, []),
+    ):
+        code = main(
+            [
+                "check",
+                "--github",
+                "acme",
+                "--report",
+                str(out),
+                "--org-reusable",
+                "acme",
+            ]
+        )
+    assert code == 0
+    script = (out / "rollout-watch-prs.sh").read_text(encoding="utf-8")
+    assert "auctelis-gate.yml" in script
+    import base64
+    import re
+
+    m = re.search(r'WORKFLOW_B64="([A-Za-z0-9+/=]+)"', script)
+    assert m
+    decoded = base64.b64decode(m.group(1)).decode("utf-8")
+    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in decoded
+
+
 def test_github_include_forks_flag_forwarded(tmp_path: Path):
     report = {
         "schema_version": "authority-diff/1",

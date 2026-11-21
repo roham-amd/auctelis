@@ -175,13 +175,10 @@ def _capabilities(
         # Do not treat every workflow as secret reach. Escalate only on evidence.
         if "secret_reference" in hints:
             caps.add("access_secrets")
-        if (
-            "agent_related_step" in hints
-            or "pull_request_target_with_agent" in hints
-            or "pull_request_target" in hints
-        ):
-            caps.add("unattended_operation")
+        # AUCT-037: bare pull_request_target without an agent step is ordinary
+        # CI — do not escalate to unattended_operation / invoke_tools.
         if "agent_related_step" in hints or "pull_request_target_with_agent" in hints:
+            caps.add("unattended_operation")
             caps.add("invoke_tools")
     if ctype == "Hook":
         caps.add("unattended_operation")

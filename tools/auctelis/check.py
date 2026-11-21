@@ -317,6 +317,17 @@ def _reach_line(report: dict[str, Any]) -> str:
     return f"Reach: {total} {noun} · tier 2 fail {t2} · tier 1 comment {t1} · tier 0 silent {t0}"
 
 
+def _cli_prefix() -> str:
+    """Copy-pasteable CLI invocation (bare name when PyPI is live, else uvx git)."""
+    if pypi_live():
+        return "auctelis"
+    ver = product_version()
+    return (
+        f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{ver}'
+        f'#subdirectory=tools" auctelis'
+    )
+
+
 def _pins_line(report: dict[str, Any]) -> str:
     pins = report.get("pins") or {}
     unpinned = int(pins.get("unpinned") or 0)
@@ -325,23 +336,23 @@ def _pins_line(report: dict[str, Any]) -> str:
         return ""
     # "1 of 2 MCP servers": the noun agrees with the total, not the subset.
     noun = "server" if total == 1 else "servers"
+    prefix = _cli_prefix()
     return (
-        f"Pins: {unpinned} of {total} MCP {noun} unpinned (run `auctelis check --pins` for fixes)"
+        f"Pins: {unpinned} of {total} MCP {noun} unpinned (run `{prefix} check --pins` for fixes)"
     )
 
 
 def _next_step_line() -> str:
     """First-run footer: bare ``auctelis`` only when PyPI is live."""
+    prefix = _cli_prefix()
     if pypi_live():
         return (
-            "Next: auctelis init --lockless  # one-file comment-only PR Watch, or "
-            "auctelis check --report out/ for an HTML/MD/JSON Reach Report"
+            f"Next: {prefix} init --lockless  # one-file comment-only PR Watch, or "
+            f"{prefix} check --report out/ for an HTML/MD/JSON Reach Report"
         )
-    ver = product_version()
     return (
-        f"Next: auctelis check --report out/ for an HTML/MD/JSON Reach Report, or "
-        f'see docs/INSTALL.md for `uvx --from "git+…@v{ver}#subdirectory=tools" '
-        f"auctelis init --lockless`"
+        f"Next: {prefix} check --report out/ for an HTML/MD/JSON Reach Report, or "
+        f"{prefix} init --lockless"
     )
 
 

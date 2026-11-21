@@ -196,3 +196,48 @@ def test_render_check_error_keeps_lock_name(tmp_path: Path):
     text = render_check(report, [])
     assert "Fail-closed" in text
     assert "AUTHORITY.lock" in text
+
+
+def test_auct036_next_step_line_is_copy_pasteable_when_pypi_offline(monkeypatch):
+    """AUCT-036: no ellipsis; full git+ URL when pypi_live=false."""
+    from auctelis.check import _cli_prefix, _next_step_line
+    from auctelis.versioning import product_version
+
+    monkeypatch.setattr("auctelis.check.pypi_live", lambda: False)
+    line = _next_step_line()
+    ver = product_version()
+    assert "…" not in line
+    assert "..." not in line
+    full = (
+        f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{ver}'
+        f'#subdirectory=tools" auctelis'
+    )
+    assert full in line
+    assert full == _cli_prefix()
+    assert f"{full} check --report out/" in line
+
+
+def test_auct036_next_step_line_bare_when_pypi_live(monkeypatch):
+    monkeypatch.setattr("auctelis.check.pypi_live", lambda: True)
+    from auctelis.check import _cli_prefix, _next_step_line
+
+    assert _cli_prefix() == "auctelis"
+    line = _next_step_line()
+    assert "git+" not in line
+    assert "auctelis init --lockless" in line
+    assert "auctelis check --report out/" in line
+
+
+def test_auct036_demo_cta_respects_pypi_offline(monkeypatch, capsys, tmp_path: Path):
+    monkeypatch.setattr("auctelis.check.pypi_live", lambda: False)
+    monkeypatch.chdir(tmp_path)
+    # Prefer packaged demo; fall back to examples path if present.
+    code = main(["demo", "-o", str(tmp_path / "demo-out")])
+    out = capsys.readouterr().out
+    if code == 2 and "demo fixture not found" in out:
+        return
+    assert code == 0
+    ver = __import__("auctelis.versioning", fromlist=["product_version"]).product_version()
+    assert f"git+https://github.com/roham-amd/auctelis.git@v{ver}#subdirectory=tools" in out
+    assert "auctelis init --owner security" in out
+    assert "…" not in out

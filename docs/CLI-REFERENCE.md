@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.1** · product **0.1.1** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.2** · product **0.1.2** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,7 +22,7 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report |
+| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests] [--org-reusable ORG]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report; `--org-reusable` with `--report` emits org-reusable rollout |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -46,6 +46,7 @@ Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 auctelis check [PATH ...] [--lock-file PATH] [--json] [--top N] [--pins]
                [--report DIR] [--baseline PATH] [--max-files N]
                [--github TARGET ...] [--max-repos N] [--include-forks]
+               [--strict-digests] [--org-reusable ORG]
 ```
 
 Inventories agent configs in a repository (MCP, skills, instructions, hooks,
@@ -77,6 +78,11 @@ lists every tier-2 record (not just the top cards).
   links (or **Watching** when `.github/workflows/auctelis*.yml` already exists).
   Labels reports as `owner/repo`, never temp paths. Fleet reports with unwatched
   tier-2 repos also write `rollout-watch-prs.sh` (dry-run unless `APPLY=1`).
+- `--org-reusable ORG` → with `--report`, emit org-reusable `rollout-watch-prs.sh`
+  that installs the 6-line caller of
+  `ORG/.github/.github/workflows/auctelis-org-reusable.yml@main` (skips repos
+  that already have `auctelis.yml` or `auctelis-gate.yml`). Exit 2 without
+  `--report` or on an invalid org slug.
 - `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
 - `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
 - `--strict-digests` → fail on plain-CI / prose representation digest drift

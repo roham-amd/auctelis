@@ -810,13 +810,16 @@ def check_action_parity() -> list[str]:
     ]
 
 
-def check_pypi_cutover_readiness() -> list[str]:
-    """AUCT-028: preflight before flipping ``pypi_live=true``.
+def check_pypi_cutover_readiness(*, live: bool = False) -> list[str]:
+    """AUCT-028/036: preflight before flipping ``pypi_live=true``.
 
     Verifies Trusted Publishing workflow OIDC wiring, wheel packaging
     exclusions/inclusions, and prints the exact 3-step cutover checklist.
-    Does **not** flip ``pypi_live`` or publish.
+    Does **not** flip ``pypi_live`` or publish. Optional ``live=True`` queries
+    the public PyPI JSON API (stdlib urllib only).
     """
+    from auctelis.versioning import product_version
+
     root = repo_root()
     actions: list[str] = []
 
@@ -846,6 +849,25 @@ def check_pypi_cutover_readiness() -> list[str]:
         actions.append("note: pypi_live is already true — cutover docs must lead with uvx auctelis")
     else:
         actions.append("note: pypi_live=false — cutover not flipped yet (expected)")
+
+    if live:
+        import urllib.error
+        import urllib.request
+
+        ver = product_version()
+        url = f"https://pypi.org/pypi/auctelis/{ver}/json"
+        status: int
+        try:
+            with urllib.request.urlopen(url, timeout=15) as resp:
+                status = int(getattr(resp, "status", 200) or 200)
+        except urllib.error.HTTPError as exc:
+            status = int(exc.code)
+        except urllib.error.URLError as exc:
+            raise SystemExit(f"PyPI live check failed for {url}: {exc}") from exc
+        print(f"PyPI HTTP {status} for auctelis/{ver} ({url})")
+        actions.append(f"ok live PyPI probe HTTP {status} for auctelis/{ver}")
+        if _pypi_live() and status != 200:
+            raise SystemExit(f"pypi_live=true but PyPI returned HTTP {status} for auctelis/{ver}")
 
     checklist = [
         "",

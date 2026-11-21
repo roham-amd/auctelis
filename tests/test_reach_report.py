@@ -1003,3 +1003,49 @@ def test_auct035_rollout_watch_prs_script_artifact(tmp_path: Path):
     )
     assert 'export GH_HOST="ghes.example.com"' in script
     assert "acme/hot" in script
+
+
+def test_auct038_org_reusable_rollout_script(tmp_path: Path):
+    """AUCT-038: --org-reusable encodes caller workflow + dual workflow guard."""
+    entries = [
+        (
+            {
+                "repository": "acme/hot",
+                "default_branch": "main",
+                "github_web_base": "https://github.com",
+                "already_watching": False,
+                "coverage_line": "",
+                "unparsed": 0,
+                "reach": {
+                    "total": 1,
+                    "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                    "records": [],
+                    "top": [],
+                    "top_cards": [],
+                },
+                "pins": {"total": 0, "unpinned": 0, "items": []},
+                "counts": {},
+                "delta": {},
+                "label": "NONE",
+                "verdict": "BASELINE_NEEDED",
+                "schema_version": "authority-diff/1",
+                "lock_present": False,
+                "first_run": True,
+                "meaningful": False,
+            },
+            None,
+            [],
+        )
+    ]
+    out = tmp_path / "fleet"
+    write_fleet_reach_report_artifacts(out, entries, org_reusable="acme")
+    text = (out / "rollout-watch-prs.sh").read_text(encoding="utf-8")
+    assert "auctelis-gate.yml" in text
+    assert "auctelis.yml" in text
+    m = re.search(r'WORKFLOW_B64="([A-Za-z0-9+/=]+)"', text)
+    assert m
+    decoded = base64.b64decode(m.group(1)).decode("utf-8")
+    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in decoded
+    assert "roham-amd/auctelis@" not in decoded
+    md = (out / "reach-report.md").read_text(encoding="utf-8")
+    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in md

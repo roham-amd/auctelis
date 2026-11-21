@@ -97,6 +97,79 @@ def test_pypi_live_requires_bare_uvx(monkeypatch, tmp_path: Path):
     check_public_install_versions(product_version())
 
 
+def test_auct036_pypi_check_live_http_200(monkeypatch, tmp_path: Path):
+    """AUCT-036: --live probes PyPI; HTTP 200 is fine while pypi_live=false."""
+    root = _fake_repo(tmp_path, pypi_live=False)
+    monkeypatch.setattr(build, "repo_root", lambda: root)
+    monkeypatch.setattr(build, "_pypi_live", lambda: False)
+    monkeypatch.setattr(build, "check_wheel_omits_research", lambda: ["ok wheel"])
+    publish = root / ".github" / "workflows" / "publish-pypi.yml"
+    publish.parent.mkdir(parents=True, exist_ok=True)
+    publish.write_text(
+        "permissions:\n  id-token: write\nenvironment: pypi\n"
+        "steps:\n  - run: uv publish\n  - run: curl -fsS https://pypi.org/pypi/auctelis/json\n",
+        encoding="utf-8",
+    )
+    (root / "tools").mkdir(exist_ok=True)
+    (root / "tools" / "pyproject.toml").write_text(
+        '[project.scripts]\nauctelis = "auctelis.cli:main"\n',
+        encoding="utf-8",
+    )
+
+    class _Resp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda *a, **k: _Resp(),
+    )
+    notes = build.check_pypi_cutover_readiness(live=True)
+    assert any("HTTP 200" in n for n in notes)
+
+
+def test_auct036_pypi_check_live_fails_when_live_flag_and_pypi_true_404(
+    monkeypatch, tmp_path: Path
+):
+    import urllib.error
+
+    root = _fake_repo(tmp_path, pypi_live=True)
+    monkeypatch.setattr(build, "repo_root", lambda: root)
+    monkeypatch.setattr(build, "_pypi_live", lambda: True)
+    monkeypatch.setattr(build, "check_wheel_omits_research", lambda: ["ok wheel"])
+    publish = root / ".github" / "workflows" / "publish-pypi.yml"
+    publish.parent.mkdir(parents=True, exist_ok=True)
+    publish.write_text(
+        "permissions:\n  id-token: write\nenvironment: pypi\n"
+        "steps:\n  - run: uv publish\n  - run: curl -fsS https://pypi.org/pypi/auctelis/json\n",
+        encoding="utf-8",
+    )
+    (root / "tools").mkdir(exist_ok=True)
+    (root / "tools" / "pyproject.toml").write_text(
+        '[project.scripts]\nauctelis = "auctelis.cli:main"\n',
+        encoding="utf-8",
+    )
+
+    def _raise(*a, **k):
+        ver = product_version()
+        raise urllib.error.HTTPError(
+            url=f"https://pypi.org/pypi/auctelis/{ver}/json",
+            code=404,
+            msg="Not Found",
+            hdrs=None,
+            fp=None,
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", _raise)
+    with pytest.raises(SystemExit, match=r"pypi_live=true.*HTTP 404"):
+        build.check_pypi_cutover_readiness(live=True)
+
+
 def test_pypi_live_requires_bare_check_before_git_fallback(monkeypatch, tmp_path: Path):
     """AUCT-011: pypi_live=true docs must lead with uvx auctelis check."""
     root = _fake_repo(tmp_path, pypi_live=True)

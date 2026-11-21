@@ -97,6 +97,19 @@ def test_pin_config_snippet_for_npx_uvx_docker():
     assert docker == '"image": "demo/img@sha256:<digest>"'
 
 
+def test_auct038_package_stem_fallback_without_args():
+    """AUCT-038: lock-only records with package_stem still produce pin snippets."""
+    snippet = pin_config_snippet(
+        {
+            "kind": "MCP Server Registration",
+            "launcher": "npx",
+            "pin_state": "floating",
+            "package_stem": "@linear/mcp",
+        }
+    )
+    assert snippet == '"args": ["-y", "@linear/mcp@<exact-version>"]'
+
+
 def test_pin_tightening_card_shows_unpinned_to_pinned():
     """AUCT-029: reviewers see pin: unpinned → pinned on the reduction card."""
     delta = {

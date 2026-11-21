@@ -7,6 +7,22 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-11-21
+
+### Added
+
+- **AUCT-036:** Copy-pasteable first-run CLI CTAs when `pypi_live=false` (full
+  `uvx --from "git+…#subdirectory=tools"` prefix in `check` / `demo`); Action
+  version example matches release; `auctelis-dev build pypi-check --live`
+  probes PyPI HTTP status without flipping cutover.
+- **AUCT-037:** Agent-only CI precision — plain non-agent workflows (including
+  `secrets.*` and bare `pull_request_target`) score tier 0 and stay quiet under
+  lockless PR Watch; agent-step CI remains tier 2.
+- **AUCT-038:** PR comments include one escaped `Pin fix:` snippet for unpinned
+  MCP growth (`package_stem` fallback); `check --report --org-reusable ORG`
+  emits org-reusable `rollout-watch-prs.sh` (checks `auctelis.yml` and
+  `auctelis-gate.yml`).
+
 ## [0.1.1] — 2026-11-21
 
 ### Added

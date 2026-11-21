@@ -6,7 +6,7 @@
 | --- | --- |
 | 0.1.x | Yes |
 
-Tooling package version (`auctelis`, currently **0.1.1**) is tracked in
+Tooling package version (`auctelis`, currently **0.1.2**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 

@@ -186,6 +186,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
             "(default: advisory only; Hook body edits always fail)"
         ),
     )
+    check.add_argument(
+        "--org-reusable",
+        metavar="ORG",
+        help=(
+            "With --report, emit org-reusable rollout-watch-prs.sh for ORG "
+            "(caller uses ORG/.github/.../auctelis-org-reusable.yml@main)"
+        ),
+    )
 
     init_cmd = sub.add_parser(
         "init",

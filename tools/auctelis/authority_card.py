@@ -564,7 +564,8 @@ def delta_cards(
     return cards
 
 
-def _is_unpinned_mcp(record: dict[str, Any]) -> bool:
+def is_unpinned_mcp(record: dict[str, Any]) -> bool:
+    """True when an MCP record is floating/unknown and needs a pin fix."""
     if kind_label(record.get("kind")) != "mcp":
         return False
     pin = str(record.get("pin_state") or "").strip().lower()
@@ -572,6 +573,10 @@ def _is_unpinned_mcp(record: dict[str, Any]) -> bool:
         return True
     launch = launcher(record)
     return bool(launch) and pin not in {"pinned", "digest"}
+
+
+# Back-compat alias for internal callers / tests.
+_is_unpinned_mcp = is_unpinned_mcp
 
 
 def _floating_package_token(record: dict[str, Any]) -> str:
@@ -595,7 +600,9 @@ def _floating_package_token(record: dict[str, Any]) -> str:
         if launch in {"docker", "podman"} and arg in {"run", "exec"}:
             continue
         return arg
-    return ""
+    # AUCT-038: lock deltas persist package_stem without args — still pinable.
+    stem = str(record.get("package_stem") or "").strip()
+    return stem
 
 
 def pin_suggestion(record: dict[str, Any]) -> str:

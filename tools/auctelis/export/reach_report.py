@@ -149,24 +149,49 @@ def _github_api_host(github_web_base: object = "https://github.com") -> str:
     return host
 
 
+def org_reusable_caller_yaml(org: str) -> str:
+    """Six-line caller workflow for an org-reusable Watch install (AUCT-038)."""
+    slug = str(org or "").strip().strip("/")
+    return (
+        "name: auctelis\n"
+        "on: [pull_request]\n"
+        "permissions: { contents: read, pull-requests: write }\n"
+        "jobs:\n"
+        "  auctelis:\n"
+        f"    uses: {slug}/.github/.github/workflows/auctelis-org-reusable.yml@main\n"
+    )
+
+
 def build_rollout_watch_prs_script(
     targets: Sequence[str],
     *,
     workflow: str | None = None,
     github_web_base: object = "https://github.com",
+    org_reusable: str | None = None,
 ) -> str:
-    """Generate a dry-run-by-default ``gh`` batch Watch-PR shell script (AUCT-035)."""
+    """Generate a dry-run-by-default ``gh`` batch Watch-PR shell script (AUCT-035/038)."""
     import base64
 
     safe_targets = [slug for slug in targets if is_owner_repo_slug(slug)]
-    yaml_text = workflow if workflow is not None else lockless_workflow_yaml()
+    if workflow is not None:
+        yaml_text = workflow
+    elif org_reusable:
+        yaml_text = org_reusable_caller_yaml(org_reusable)
+    else:
+        yaml_text = lockless_workflow_yaml()
     encoded = base64.b64encode(yaml_text.encode("utf-8")).decode("ascii")
     host = _github_api_host(github_web_base)
     quoted = " ".join(shlex.quote(slug) for slug in safe_targets)
+    mode_note = (
+        f"# Org-reusable caller → {org_reusable}/.github/.../auctelis-org-reusable.yml@main"
+        if org_reusable
+        else "# Inline roham-amd/auctelis@vX lockless workflow"
+    )
     # APPLY=0 prints planned actions; APPLY=1 opens real PRs via Contents/Pulls API.
     lines = [
         "#!/usr/bin/env bash",
-        "# auctelis fleet rollout — lockless Watch PRs (AUCT-035)",
+        "# auctelis fleet rollout — lockless Watch PRs (AUCT-035/038)",
+        mode_note,
         "# Default: dry-run. Set APPLY=1 to create branches + open PRs.",
         "set -euo pipefail",
         'APPLY="${APPLY:-0}"',
@@ -174,6 +199,7 @@ def build_rollout_watch_prs_script(
         f"TARGETS=({quoted})",
         f'WORKFLOW_B64="{encoded}"',
         'WORKFLOW_PATH=".github/workflows/auctelis.yml"',
+        'ALT_WORKFLOW_PATH=".github/workflows/auctelis-gate.yml"',
         'BRANCH="auctelis/watch-prs"',
         'PR_TITLE="Add auctelis lockless PR Watch"',
         'PR_BODY="Install Auctelis lockless PR Watch so future agent-authority changes surface in one quiet PR comment. No AUTHORITY.lock required."',
@@ -201,8 +227,9 @@ def build_rollout_watch_prs_script(
         "  fi",
         '  default_branch="$(gh api "repos/$repo" --jq .default_branch)"',
         '  sha="$(gh api "repos/$repo/git/ref/heads/${default_branch}" --jq .object.sha)"',
-        '  if gh api "repos/$repo/contents/${WORKFLOW_PATH}" --jq .sha >/dev/null 2>&1; then',
-        '    echo "Skip $repo — ${WORKFLOW_PATH} already present"',
+        '  if gh api "repos/$repo/contents/${WORKFLOW_PATH}" --jq .sha >/dev/null 2>&1 \\',
+        '    || gh api "repos/$repo/contents/${ALT_WORKFLOW_PATH}" --jq .sha >/dev/null 2>&1; then',
+        '    echo "Skip $repo — auctelis.yml or auctelis-gate.yml already present"',
         "    continue",
         "  fi",
         '  if ! gh api "repos/$repo/git/ref/heads/${BRANCH}" >/dev/null 2>&1; then',
@@ -914,9 +941,10 @@ def _fleet_github_web_base(doc: dict[str, Any]) -> str:
     return "https://github.com"
 
 
-def _org_rollout_md(doc: dict[str, Any]) -> list[str]:
-    """Org-reusable caller + dry-run ``rollout-watch-prs.sh`` (AUCT-032/035)."""
+def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> list[str]:
+    """Org-reusable caller + dry-run ``rollout-watch-prs.sh`` (AUCT-032/035/038)."""
     targets = _unwatched_tier2_slugs(doc, limit=10)
+    org_label = str(org_reusable or "YOUR_ORG").strip() or "YOUR_ORG"
     lines = [
         "## Org rollout (5+ repos)",
         "",
@@ -926,7 +954,7 @@ def _org_rollout_md(doc: dict[str, Any]) -> list[str]:
         "```yaml",
         "jobs:",
         "  auctelis:",
-        "    uses: YOUR_ORG/.github/.github/workflows/auctelis-org-reusable.yml@main",
+        f"    uses: {org_label}/.github/.github/workflows/auctelis-org-reusable.yml@main",
         "```",
         "",
     ]
@@ -941,6 +969,7 @@ def _org_rollout_md(doc: dict[str, Any]) -> list[str]:
     script = build_rollout_watch_prs_script(
         targets,
         github_web_base=_fleet_github_web_base(doc),
+        org_reusable=org_reusable,
     )
     lines.extend(
         [
@@ -962,12 +991,13 @@ def _org_rollout_md(doc: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _org_rollout_html(doc: dict[str, Any]) -> str:
+def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -> str:
     esc = html.escape
     targets = _unwatched_tier2_slugs(doc, limit=10)
+    org_label = str(org_reusable or "YOUR_ORG").strip() or "YOUR_ORG"
     snippet = (
         "jobs:\n  auctelis:\n"
-        "    uses: YOUR_ORG/.github/.github/workflows/auctelis-org-reusable.yml@main"
+        f"    uses: {org_label}/.github/.github/workflows/auctelis-org-reusable.yml@main"
     )
     body_parts = [
         "<p>Place <code>docs/auctelis-org-reusable.yml</code> in your org "
@@ -983,6 +1013,7 @@ def _org_rollout_html(doc: dict[str, Any]) -> str:
         script = build_rollout_watch_prs_script(
             targets,
             github_web_base=_fleet_github_web_base(doc),
+            org_reusable=org_reusable,
         )
         howto = (
             "bash rollout-watch-prs.sh          # dry-run (APPLY=0)\n"
@@ -1036,12 +1067,14 @@ def render_fleet_summary(doc: dict[str, Any]) -> str:
     return "\n".join(sanitize_terminal_line(line) for line in lines)
 
 
-def render_fleet_reach_md(doc: dict[str, Any]) -> str:
+def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> str:
     """Render the fleet reach report as Markdown (shareable in tickets)."""
     totals = _as_dict(doc.get("totals"))
     repositories = _fleet_repo_table_rows(doc)
     skipped = [row for row in _as_list(doc.get("skipped")) if isinstance(row, dict)]
     honesty_notes = _fleet_honesty_notes(doc)
+    org = org_reusable if org_reusable is not None else doc.get("org_reusable")
+    org = str(org).strip() if org else None
     lines: list[str] = [
         "# Auctelis Fleet Agent Reach Report",
         "",
@@ -1077,7 +1110,7 @@ def render_fleet_reach_md(doc: dict[str, Any]) -> str:
             f"{int(tiers.get('tier1') or 0)} | {int(tiers.get('tier0') or 0)} | "
             f"{int(_as_dict(repo.get('pins')).get('unpinned') or 0)} | {watch} |"
         )
-    lines.extend(["", *_org_rollout_md(doc)])
+    lines.extend(["", *_org_rollout_md(doc, org_reusable=org)])
     lines.extend(["## Tier-2 reach by repository", ""])
     any_tier2 = False
     for repo in repositories:
@@ -1131,13 +1164,15 @@ def render_fleet_reach_md(doc: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def render_fleet_reach_html(doc: dict[str, Any]) -> str:
+def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = None) -> str:
     """Render the fleet reach report as one self-contained HTML file."""
     esc = html.escape
     totals = _as_dict(doc.get("totals"))
     repositories = _fleet_repo_table_rows(doc)
     skipped = [row for row in _as_list(doc.get("skipped")) if isinstance(row, dict)]
     honesty_notes = _fleet_honesty_notes(doc)
+    org = org_reusable if org_reusable is not None else doc.get("org_reusable")
+    org = str(org).strip() if org else None
 
     def _watch_cell(repo: dict[str, Any]) -> str:
         if repo.get("already_watching"):
@@ -1247,7 +1282,7 @@ pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 <tbody>{summary_rows}</tbody>
 </table>
 </section>
-{_org_rollout_html(doc)}
+{_org_rollout_html(doc, org_reusable=org)}
 <section>
 <h2>Tier-2 reach by repository</h2>
 {detail_html}
@@ -1271,6 +1306,7 @@ def write_fleet_reach_report_artifacts(
     *,
     skipped: Sequence[dict[str, Any]] | None = None,
     honesty_notes: Sequence[str] | None = None,
+    org_reusable: str | None = None,
 ) -> dict[str, Any]:
     """Write the combined fleet ``reach-report.{html,md,json}`` under ``out_dir``."""
     out_dir = out_dir.expanduser().resolve()
@@ -1280,14 +1316,18 @@ def write_fleet_reach_report_artifacts(
         skipped=skipped,
         honesty_notes=honesty_notes,
     )
+    org = str(org_reusable or "").strip() or None
+    if org:
+        doc["org_reusable"] = org
     write_json(out_dir / "reach-report.json", doc)
-    write_text(out_dir / "reach-report.md", render_fleet_reach_md(doc))
-    write_text(out_dir / "reach-report.html", render_fleet_reach_html(doc))
+    write_text(out_dir / "reach-report.md", render_fleet_reach_md(doc, org_reusable=org))
+    write_text(out_dir / "reach-report.html", render_fleet_reach_html(doc, org_reusable=org))
     targets = _unwatched_tier2_slugs(doc, limit=10)
     if targets:
         script = build_rollout_watch_prs_script(
             targets,
             github_web_base=_fleet_github_web_base(doc),
+            org_reusable=org,
         )
         write_text(out_dir / "rollout-watch-prs.sh", script)
     return doc

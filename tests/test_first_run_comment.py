@@ -10,6 +10,7 @@ from auctelis.cli import main
 from auctelis.export.pr_comment import (
     AUCTELIS_COMMENT_MARKER,
     render_first_run_comment,
+    render_gate_pr_comment,
 )
 from auctelis.gate import run_gate
 
@@ -369,7 +370,7 @@ def test_run_gate_init_policy_plus_workflow_is_pass_watching(tmp_path: Path):
 
 def test_check_first_run_footer_points_at_report_not_lock_only(tmp_path: Path):
     from auctelis.check import build_check_report, render_check
-    from auctelis.versioning import pypi_live
+    from auctelis.versioning import product_version, pypi_live
 
     root = tmp_path / "repo"
     root.mkdir()
@@ -377,12 +378,58 @@ def test_check_first_run_footer_points_at_report_not_lock_only(tmp_path: Path):
     report, cards, _scan = build_check_report(root)
     text = render_check(report, cards)
     assert "check --report" in text
+    assert "…" not in text
     if pypi_live():
         assert "auctelis init --lockless" in text
     else:
-        assert "docs/INSTALL.md" in text or "init --lockless" in text
+        ver = product_version()
+        assert f"git+https://github.com/roham-amd/auctelis.git@v{ver}#subdirectory=tools" in text
+        assert "init --lockless" in text
     # No dead template path: the CLI writes the workflow itself.
     assert "templates/" not in text
     assert "auctelis-diff.yml" not in text
     # Optional enforce still mentioned, but not as the sole next step.
     assert "Next: auctelis lock --update" not in text
+
+
+def test_auct038_gate_pr_comment_includes_pin_fix():
+    """AUCT-038: unpinned MCP growth emits one Pin fix line within budget."""
+    report = {
+        "verdict": "NEEDS_REVIEW",
+        "mode": "comment-only",
+        "required_owners": ["@security"],
+        "unparsed": 0,
+        "coverage": {},
+        "delta": {
+            "summary": {
+                "additions": 1,
+                "expansions": 0,
+                "reductions": 0,
+                "meaningful_authority_change": True,
+                "max_reach_tier": 2,
+            },
+            "changes": {
+                "added": [
+                    {
+                        "kind": "MCP Server Registration",
+                        "name": "linear",
+                        "path": ".cursor/mcp.json",
+                        "launcher": "npx",
+                        "pin_state": "floating",
+                        "package_stem": "@linear/mcp",
+                        "capabilities": ["invoke_tools"],
+                        "env_keys": [],
+                        "evidence_strength": "LITERAL_CONFIG",
+                    }
+                ],
+                "changed": [],
+                "removed": [],
+            },
+            "lines": ['+ mcp "linear"'],
+        },
+    }
+    body = render_gate_pr_comment(report)
+    assert "**Pin fix:**" in body
+    assert "@linear/mcp@" in body
+    assert "exact-version" in body
+    assert body.count("\n") <= 22

@@ -155,15 +155,24 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         coverage_raw = report.get("coverage")
         coverage = coverage_raw if isinstance(coverage_raw, dict) else {}
         truncated = bool(coverage.get("truncated"))
+        from auctelis.reach_tiers import TIER_COMMENT
+
+        label = str(report.get("label") or "NONE")
+        max_tier = int(report.get("max_reach_tier") or 0)
+        # AUCT-037: tier-0-only plain-CI GROWTH stays quiet (no NEEDS_REVIEW spam).
+        quiet_none = (
+            label == "NONE"
+            and not bool(report.get("meaningful_authority_change"))
+            and not bool(report.get("representation_only"))
+        )
+        quiet_tier0_growth = label == "GROWTH" and max_tier < TIER_COMMENT
         quiet = (
             str(getattr(args, "comment_policy", "auto") or "auto") == "auto"
             and str(report.get("verdict") or "") == "PASS"
-            and str(report.get("label") or "NONE") == "NONE"
             and not int(report.get("unparsed") or 0)
             and not bool(report.get("lock_tree_drift"))
-            and not bool(report.get("meaningful_authority_change"))
-            and not bool(report.get("representation_only"))
             and not truncated
+            and (quiet_none or quiet_tier0_growth)
         )
         # Always write the first-run proof payload. Install-shaped PRs often
         # produce GROWTH (new workflow CI record) and would otherwise only write
@@ -332,10 +341,12 @@ def _cmd_demo(args: argparse.Namespace) -> int:
     print()
     print(f"Artifacts: {out}")
     print(f"Records sealed in demo lock: {len(head_lock.get('records') or [])}")
+    from auctelis.check import _cli_prefix
     from auctelis.cli.parser import PUBLIC_PATH
 
-    print("Next: auctelis init --owner security  # then open a PR")
-    print(f"Then: auctelis {PUBLIC_PATH}")
+    prefix = _cli_prefix()
+    print(f"Next: {prefix} init --owner security  # then open a PR")
+    print(f"Then: {prefix} {PUBLIC_PATH}")
     return 0
 
 

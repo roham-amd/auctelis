@@ -271,7 +271,7 @@ def cmd_build(args: argparse.Namespace) -> int:
             for line in sync_schemas():
                 print(line)
         case "pypi-check":
-            for line in check_pypi_cutover_readiness():
+            for line in check_pypi_cutover_readiness(live=bool(getattr(args, "live", False))):
                 print(line)
         case _:
             print_json(build_all())

@@ -76,6 +76,21 @@ def _literal_signal(record: dict[str, Any]) -> bool:
     return bool(record.get("env_keys")) or bool(record.get("launcher"))
 
 
+def _plain_non_agent_ci(record: dict[str, Any]) -> bool:
+    """True for ordinary CI workflows with no agent-step or literal launcher reach.
+
+    AUCT-037: these stay at tier 0 so ``secrets.*`` / bare ``pull_request_target``
+    edits never trigger ``NEEDS_REVIEW`` or inflate agent reach.
+    """
+    kind = str(record.get("kind") or "")
+    if kind not in {"CI Workflow", "Workflow"}:
+        return False
+    caps = {str(c) for c in (record.get("capabilities") or [])}
+    if caps & {"invoke_tools", "unattended_operation"}:
+        return False
+    return not _literal_signal(record)
+
+
 def record_reach_tier(
     record: dict[str, Any],
     *,
@@ -120,14 +135,10 @@ def record_reach_tier(
     if evidence == "INFERRED_HINT" and not _literal_signal(record):
         tier = min(tier, TIER_COMMENT)
 
-    # Plain CI workflows without agent steps or unattended triggers stay below
-    # fail tier so normal repo CI (even referencing GITHUB_TOKEN) never pages.
-    if (
-        kind in {"CI Workflow", "Workflow"}
-        and not (set(caps) & {"invoke_tools", "unattended_operation"})
-        and not _literal_signal(record)
-    ):
-        tier = min(tier, TIER_COMMENT)
+    # Plain CI workflows without agent steps stay silent (tier 0) so ordinary
+    # secrets.* / non-agent pull_request_target CI never pages or comments.
+    if _plain_non_agent_ci(record):
+        tier = min(tier, TIER_SILENT)
 
     # Trusted destinations: a benign addition/expansion that only reaches
     # allowlisted hosts stays visible on the comment but never pages CODEOWNERS
@@ -245,6 +256,9 @@ def expansion_reach_tier(
             tier = TIER_SILENT
         else:
             tier = min(tier, TIER_COMMENT)
+    # AUCT-037: adding secrets.* to a non-agent workflow stays silent.
+    if _plain_non_agent_ci(after):
+        tier = min(tier, TIER_SILENT)
     return tier
 
 

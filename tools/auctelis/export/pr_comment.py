@@ -11,11 +11,19 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from auctelis.authority_card import delta_cards
+from auctelis.authority_card import (
+    delta_cards,
+    is_unpinned_mcp,
+    pin_config_snippet,
+)
 from auctelis.authority_lock import delta_label
 from auctelis.security.authority import render_component_delta_lines
 from auctelis.security.gating import is_gate_finding
-from auctelis.textutil import escape_markdown, sanitize_terminal_text
+from auctelis.textutil import (
+    escape_markdown,
+    escape_markdown_inline,
+    sanitize_terminal_text,
+)
 
 __all__ = [
     "AUCTELIS_COMMENT_MARKER",
@@ -149,6 +157,31 @@ def _is_auctelis_workflow_path(path: str) -> bool:
         return False
     name = norm.rsplit("/", 1)[-1]
     return name.startswith("auctelis") and name.endswith((".yml", ".yaml"))
+
+
+def _first_unpinned_pin_snippet(lock_delta: dict[str, Any] | None) -> str:
+    """Pasteable pin snippet for the first unpinned MCP in a lock delta."""
+    if not isinstance(lock_delta, dict):
+        return ""
+    raw_changes = lock_delta.get("changes")
+    changes: dict[str, Any] = raw_changes if isinstance(raw_changes, dict) else {}
+    candidates: list[dict[str, Any]] = []
+    for rec in changes.get("added") or []:
+        if isinstance(rec, dict):
+            candidates.append(rec)
+    for item in changes.get("changed") or []:
+        if not isinstance(item, dict):
+            continue
+        after = item.get("after")
+        if isinstance(after, dict):
+            candidates.append(after)
+    for record in candidates:
+        if not is_unpinned_mcp(record):
+            continue
+        snippet = str(pin_config_snippet(record) or "").strip()
+        if snippet:
+            return snippet
+    return ""
 
 
 def _delta_record_paths(
@@ -443,6 +476,20 @@ def render_authority_diff_comment(
         cards = ["- NOT PARSED (coverage gap)" if unparsed else "- (no authority change)"]
     for card in cards:
         visible.append(f"- {_esc(card.lstrip('+-~ '), max_len=180)}")
+
+    # AUCT-038: one pasteable pin fix when growth includes an unpinned MCP.
+    # Escape only the untrusted snippet (keep @scope/pkg readable); markdown
+    # chrome stays outside escape_markdown so ** / ` survive.
+    pin_snippet = _first_unpinned_pin_snippet(lock_delta)
+    if pin_snippet and len(visible) < max_lines:
+        if plain_text:
+            safe = sanitize_terminal_text(pin_snippet, max_len=100)
+        else:
+            safe = escape_markdown_inline(pin_snippet, max_len=100)
+        pin_line = f"**Pin fix:** `{safe}` (pinning turns this into PASS / REDUCTION)"
+        if len(pin_line) > 160:
+            pin_line = pin_line[:159] + "…"
+        visible.append(pin_line)
 
     visible.append(_esc(_unknowns_line(coverage), max_len=200))
 

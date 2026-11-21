@@ -20,6 +20,11 @@ def add_dev_commands(sub: Any) -> None:
         choices=["all", "schemas", "pypi-check"],
         help="Build target (default: all; pypi-check = cutover readiness)",
     )
+    build.add_argument(
+        "--live",
+        action="store_true",
+        help="With pypi-check: query PyPI JSON for this VERSION (HTTP status)",
+    )
 
     val = sub.add_parser("validate", help="Validate auctelis JSON artifacts")
     val_sub = val.add_subparsers(dest="validate_cmd", required=True)

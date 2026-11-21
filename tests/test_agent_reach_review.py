@@ -821,6 +821,108 @@ def test_skill_prose_secrets_never_fail_tier_end_to_end(tmp_path: Path):
     assert report["needs_approval"] is False
 
 
+# --- AUCT-037 agent-only CI precision ---------------------------------------
+
+
+def test_auct037_plain_secrets_ci_is_tier0_and_quiet_comment_only(tmp_path: Path, monkeypatch):
+    """Plain secrets.* CI scores tier 0 → PASS + comment-skip in comment-only."""
+    from auctelis.reach_tiers import TIER_SILENT, record_reach_tier
+    from auctelis.security.authority import _capabilities
+
+    caps = _capabilities(
+        {"type": "CI Workflow", "priority_hints": ["secret_reference"]},
+        [],
+        declared=[],
+    )
+    assert "access_secrets" in caps
+    assert "unattended_operation" not in caps
+    rec = {
+        "kind": "CI Workflow",
+        "capabilities": caps,
+        "env_keys": [],
+        "launcher": "",
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert record_reach_tier(rec) == TIER_SILENT
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    wf = root / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "deploy.yml").write_text(
+        "name: deploy\non: [push]\njobs:\n  d:\n    runs-on: ubuntu-latest\n"
+        "    steps:\n      - run: echo ${{ secrets.DEPLOY_TOKEN }}\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    assert _gate(tmp_path, monkeypatch, out, root) == 0
+    report = json.loads((out / "gate-report.json").read_text(encoding="utf-8"))
+    assert report["verdict"] == "PASS"
+    assert report["max_reach_tier"] == TIER_SILENT
+    assert (out / "comment-skip.txt").is_file()
+    assert not (out / "pr-comment.md").exists()
+
+
+def test_auct037_bare_pull_request_target_is_tier0():
+    from auctelis.reach_tiers import TIER_SILENT, record_reach_tier
+    from auctelis.security.authority import _capabilities
+
+    caps = _capabilities(
+        {"type": "CI Workflow", "priority_hints": ["pull_request_target"]},
+        [],
+        declared=[],
+    )
+    assert "unattended_operation" not in caps
+    assert "invoke_tools" not in caps
+    rec = {
+        "kind": "CI Workflow",
+        "capabilities": caps,
+        "env_keys": [],
+        "launcher": "",
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert record_reach_tier(rec) == TIER_SILENT
+
+
+def test_auct037_agent_ci_still_tier2_needs_review(tmp_path: Path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    wf = root / ".github" / "workflows"
+    wf.mkdir(parents=True)
+    (wf / "agent.yml").write_text(
+        "name: Agent\non: [pull_request]\njobs:\n  ai:\n    runs-on: ubuntu-latest\n"
+        "    env:\n      API_KEY: ${{ secrets.API_KEY }}\n"
+        "    steps:\n      - uses: anthropics/claude-code-action@v1\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "out"
+    assert _gate(tmp_path, monkeypatch, out, root) == 0
+    report = json.loads((out / "gate-report.json").read_text(encoding="utf-8"))
+    assert report["verdict"] == "NEEDS_REVIEW"
+    assert report["max_reach_tier"] >= TIER_FAIL
+    assert (out / "pr-comment.md").is_file()
+
+
+def test_auct037_secrets_expansion_on_plain_ci_stays_silent():
+    from auctelis.reach_tiers import TIER_SILENT, expansion_reach_tier
+
+    before = {
+        "kind": "CI Workflow",
+        "capabilities": [],
+        "env_keys": [],
+        "launcher": "",
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    after = {
+        "kind": "CI Workflow",
+        "capabilities": ["access_secrets"],
+        "env_keys": [],
+        "launcher": "",
+        "evidence_strength": "LITERAL_CONFIG",
+    }
+    assert expansion_reach_tier(before, after) == TIER_SILENT
+
+
 # --- AUCT-029 CI signal precision + pin reduction ---------------------------
 
 
