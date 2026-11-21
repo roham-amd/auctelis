@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.5** · product **0.1.5** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.6** · product **0.1.6** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,8 +22,8 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [PATH ...] [--top N] [--pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests] [--org-reusable ORG]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report; `--org-reusable` with `--report` emits an org-reusable rollout script |
-| Core | `rollout REPORT_JSON [--apply] [--max-prs N] [--org-reusable ORG] [--json]` | Open lockless Watch PRs for unwatched tier-2 repos in a Reach Report (dry-run unless `--apply`) |
+| Core | `check [PATH ...] [--top N] [--pins] [--resolve-pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests] [--org-reusable ORG]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report; `--baseline` diffs prior report (fleet/`--github` too); `--resolve-pins` opt-in npm/PyPI lookup; `--org-reusable` with `--report` emits an org-reusable rollout script |
+| Core | `rollout REPORT_JSON [--apply \| --status] [--max-prs N] [--org-reusable ORG] [--json] [--csv]` | Open lockless Watch PRs for unwatched tier-2 repos (dry-run unless `--apply`); `--status` read-only funnel ledger |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -45,7 +45,7 @@ Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 
 ```bash
 auctelis check [PATH ...] [--lock-file PATH] [--json] [--top N] [--pins]
-               [--report DIR] [--baseline PATH] [--max-files N]
+               [--resolve-pins] [--report DIR] [--baseline PATH] [--max-files N]
                [--github TARGET ...] [--max-repos N] [--include-forks]
                [--strict-digests] [--org-reusable ORG]
 ```
@@ -62,6 +62,10 @@ lists every tier-2 record (not just the top cards).
 - Lock drifts → cards with `@ path` + `NEEDS_REVIEW`
 - `--pins` → unpinned/floating MCP launchers with a concrete pin suggestion
   (names the real package/image from `args` when present)
+- `--resolve-pins` → with `--pins` or `--report`, look up exact npm/PyPI latest
+  versions (5s timeout; Docker/Podman stay placeholders). Adds `resolved_pin` /
+  `resolved_at` / `resolved_config_snippet` (trust-on-first-use). Default output
+  without the flag is unchanged. Exit 2 without `--pins` or `--report`.
 - `--report DIR` → single repo: write `reach-report.html` / `.md` / `.json` and
   `authority-sbom.json` (shareable audit artifact). HTML/MD open with a Summary
   (tier counts + top tier-2 findings + Pin fix when present); Honesty and
@@ -70,8 +74,8 @@ lists every tier-2 record (not just the top cards).
   (`auctelis.fleet_reach_report.v1`) with every repo ranked by tier-2 reach.
   Fleet writes `reach-report.html` / `.md` / `.json` only (no SBOM) and uses
   the same Summary-first layout, plus the ranked repo table.
-  `--lock-file`, `--baseline`, and `--pins` apply to single-repo runs only
-  (exit 2 if combined with multiple paths)
+  `--lock-file` and `--pins` apply to single-repo runs only
+  (exit 2 if combined with multiple paths). `--baseline` is allowed on fleet.
 - `--github TARGET ...` → zero-clone GitHub audit via Trees+Blobs API.
   Single `owner/repo` may omit `--report` (stdout check/pins/JSON); bare `org`
   or multiple targets require `--report DIR`. Lists non-archived, non-fork repos
@@ -89,7 +93,11 @@ lists every tier-2 record (not just the top cards).
   `ORG/.github/.github/workflows/auctelis-org-reusable.yml@main`. Prefer
   `auctelis rollout REPORT_JSON --org-reusable ORG`. Exit 2 without `--report`
   or on an invalid org slug.
-- `--baseline PATH` → prior `reach-report.json` (or `check --json`) to diff when using `--report`
+- `--baseline PATH` → prior `reach-report.json` (or `check --json` / fleet report)
+  to diff when using `--report`. Single-repo and fleet / `--github` fleet runs
+  are supported; schema mismatch exits 2. Fleet MD/HTML/summary gain
+  **Changed since last audit** after Summary; JSON adds `baseline_diff` only
+  when a baseline is given.
 - `--max-files N` → inventory walk cap (default 50000; also `AUCTELIS_MAX_FILES`)
 - `--strict-digests` → fail on plain-CI / prose representation digest drift
   (default: advisory note only; Hook body edits always fail)
@@ -107,8 +115,9 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta (any repo for fleet);
 ## `auctelis rollout`
 
 ```bash
-auctelis rollout REPORT_JSON [--apply] [--max-prs N] [--repo SLUG] [--min-tier {1,2}]
-                             [--org-reusable ORG] [--json]
+auctelis rollout REPORT_JSON [--apply | --status] [--max-prs N] [--repo SLUG]
+                             [--min-tier {1,2}] [--org-reusable ORG]
+                             [--json] [--csv]
 ```
 
 Reads `auctelis.fleet_reach_report.v1` or `auctelis.reach_report.v1` and
@@ -127,8 +136,15 @@ workflow; when omitted, `org_reusable` from the Reach Report is used if set.
 `--json` prints the plan. `--apply` is refused when `AUCTELIS_AGENT=1` (exit 2).
 There is no auto-merge.
 
-Exit codes: `0` dry-run, or every target opened or skipped; `1` a target
-failed; `2` bad report, missing token, invalid flag, or agent refusal.
+`--status` is a read-only funnel ledger (GET only; allowed under
+`AUCTELIS_AGENT=1`). It reuses the same filters but **includes** already-watching
+repos, then classifies each as `open` / `merged` / `closed_unmerged` /
+`never_opened` / `watching_on_default` / `unknown`. Private-repo 404 →
+`unknown`. Mutually exclusive with `--apply` (exit 2). `--csv` (requires
+`--status`) emits a subset of `eval/pilot-metrics.csv` columns.
+
+Exit codes: `0` dry-run / status, or every target opened or skipped; `1` a
+target failed; `2` bad report, missing token, invalid flag, or agent refusal.
 
 ---
 
@@ -288,7 +304,7 @@ Authority Diff.
 | `lock --check` | matches | drift | — |
 | `gate` | PASS (comment-only: also NEEDS_REVIEW) | NEEDS_REVIEW (enforce) | FAIL_CLOSED / usage |
 | `diff --base` | PASS (or BASELINE_NEEDED only if tree extract failed) | NEEDS_REVIEW | FAIL_CLOSED / invalid ref |
-| `rollout` | dry-run, or every target opened or skipped | a target failed | bad report / missing token / agent refusal |
+| `rollout` | dry-run / status, or every target opened or skipped | a target failed | bad report / missing token / agent refusal / `--status --apply` |
 
 `BASELINE_ADOPTED` is emitted by the Action wrapper when a head lock arrives with
 no trusted base lock; the `gate` CLI itself returns `PASS` / `NEEDS_REVIEW` /

@@ -100,6 +100,9 @@ jobs:
           ../tests/test_cli_authority.py
           ../tests/test_recovery_081.py
           ../tests/test_rollout.py
+          ../tests/test_rollout_status.py
+          ../tests/test_pin_resolve.py
+          ../tests/test_fleet_baseline.py
 
       - name: Pytest (gate zero / product path)
         run: >

@@ -57,6 +57,35 @@ def _collector_limits(args: argparse.Namespace) -> object | None:
     return resolve_collector_limits(max_files=max_files)
 
 
+def _load_baseline_arg(
+    args: argparse.Namespace, *, expect_fleet: bool
+) -> tuple[dict | None, int | None]:
+    """Load and schema-check ``--baseline``. Returns ``(doc, error_exit)``."""
+    baseline_path = getattr(args, "baseline", None)
+    if baseline_path is None:
+        return None, None
+    from auctelis.export.reach_report import baseline_schema_mismatch, load_reach_baseline
+
+    try:
+        baseline = load_reach_baseline(baseline_path)
+    except ValueError as exc:
+        print(f"auctelis check: {exc}")
+        return None, 2
+    mismatch = baseline_schema_mismatch(baseline, expect_fleet=expect_fleet)
+    if mismatch:
+        print(f"auctelis check: {mismatch}")
+        return None, 2
+    return baseline, None
+
+
+def _maybe_resolve_pins(args: argparse.Namespace, report: dict) -> None:
+    if not getattr(args, "resolve_pins", False):
+        return
+    from auctelis.pin_resolve import resolve_pins_in_report
+
+    resolve_pins_in_report(report)
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     """Repo-only authority vs AUTHORITY.lock (product front door)."""
     from auctelis.check import (
@@ -70,6 +99,12 @@ def cmd_check(args: argparse.Namespace) -> int:
     _, org_err = _org_reusable_arg(args)
     if org_err is not None:
         return org_err
+
+    if getattr(args, "resolve_pins", False) and not (
+        getattr(args, "pins", False) or getattr(args, "report", None) is not None
+    ):
+        print("auctelis check: --resolve-pins requires --pins or --report.")
+        return 2
 
     github_targets = getattr(args, "github", None)
     if github_targets:
@@ -90,22 +125,15 @@ def cmd_check(args: argparse.Namespace) -> int:
         limits=_collector_limits(args),
         strict_digests=bool(getattr(args, "strict_digests", False)),
     )
+    _maybe_resolve_pins(args, report)
     report_dir = getattr(args, "report", None)
     as_json = bool(getattr(args, "json", False))
     if report_dir is not None:
-        from auctelis.export.reach_report import (
-            load_reach_baseline,
-            write_reach_report_artifacts,
-        )
+        from auctelis.export.reach_report import write_reach_report_artifacts
 
-        baseline_path = getattr(args, "baseline", None)
-        baseline = None
-        if baseline_path is not None:
-            try:
-                baseline = load_reach_baseline(baseline_path)
-            except ValueError as exc:
-                print(f"auctelis check: {exc}")
-                return 2
+        baseline, baseline_err = _load_baseline_arg(args, expect_fleet=False)
+        if baseline_err is not None:
+            return baseline_err
         write_reach_report_artifacts(
             report_dir,
             report,
@@ -139,12 +167,12 @@ def _cmd_check_fleet(args: argparse.Namespace, paths: list[Path]) -> int:
     if getattr(args, "lock_file", None) is not None:
         print("auctelis check: --lock-file applies to single-repo runs only.")
         return 2
-    if getattr(args, "baseline", None) is not None:
-        print("auctelis check: --baseline applies to single-repo runs only.")
-        return 2
     if getattr(args, "pins", False):
         print("auctelis check: --pins applies to single-repo runs only.")
         return 2
+    baseline, baseline_err = _load_baseline_arg(args, expect_fleet=True)
+    if baseline_err is not None:
+        return baseline_err
     top = int(getattr(args, "top", 5))
     limits = _collector_limits(args)
     entries: list[tuple[dict, ScanResult | None, list[str] | None]] = []
@@ -160,6 +188,7 @@ def _cmd_check_fleet(args: argparse.Namespace, paths: list[Path]) -> int:
             limits=limits,
             strict_digests=bool(getattr(args, "strict_digests", False)),
         )
+        _maybe_resolve_pins(args, report)
         entries.append((report, scan, cards))
         codes.append(check_exit_code(report))
     org, _ = _org_reusable_arg(args)
@@ -167,6 +196,7 @@ def _cmd_check_fleet(args: argparse.Namespace, paths: list[Path]) -> int:
         report_dir,
         entries,
         org_reusable=org,
+        baseline=baseline,
     )
     as_json = bool(getattr(args, "json", False))
     if as_json:
@@ -202,9 +232,6 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         return 2
     if getattr(args, "lock_file", None) is not None:
         print("auctelis check: --lock-file does not apply with --github.")
-        return 2
-    if getattr(args, "baseline", None) is not None:
-        print("auctelis check: --baseline does not apply with --github.")
         return 2
     if getattr(args, "path", None):
         paths = _paths(args)
@@ -243,6 +270,10 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         print("auctelis check: no repositories audited successfully.")
         return 2
 
+    for row in usable:
+        if row.report is not None:
+            _maybe_resolve_pins(args, row.report)
+
     # Org / multi-target / any skipped row → fleet report so skipped_rows and
     # honesty notes stay visible (AUCT-027). Single owner/repo with no skips
     # keeps the compact single-repo path.
@@ -251,12 +282,16 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
     if not use_fleet and len(usable) == 1 and not getattr(args, "pins", False):
         only = usable[0]
         assert only.report is not None
+        baseline, baseline_err = _load_baseline_arg(args, expect_fleet=False)
+        if baseline_err is not None:
+            return baseline_err
         if report_dir is not None:
             write_reach_report_artifacts(
                 report_dir,
                 only.report,
                 only.scan,
                 cards=only.cards,
+                baseline=baseline,
             )
             _note(f"Wrote reach report to {report_dir}", as_json=as_json)
         if as_json:
@@ -274,11 +309,15 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         only = usable[0]
         assert only.report is not None
         if report_dir is not None:
+            baseline, baseline_err = _load_baseline_arg(args, expect_fleet=False)
+            if baseline_err is not None:
+                return baseline_err
             write_reach_report_artifacts(
                 report_dir,
                 only.report,
                 only.scan,
                 cards=only.cards,
+                baseline=baseline,
             )
             _note(f"Wrote reach report to {report_dir}", as_json=as_json)
         print(render_pin_report(only.report))
@@ -292,6 +331,10 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         print("auctelis check: --github requires --report DIR for org or multi-repo audits.")
         return 2
 
+    baseline, baseline_err = _load_baseline_arg(args, expect_fleet=True)
+    if baseline_err is not None:
+        return baseline_err
+
     entries = [(r.report, r.scan, r.cards) for r in usable if r.report is not None]
     org, _ = _org_reusable_arg(args)
     doc = write_fleet_reach_report_artifacts(
@@ -300,6 +343,7 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         skipped=skipped_rows,
         honesty_notes=honesty,
         org_reusable=org,
+        baseline=baseline,
     )
     if as_json:
         print_json(doc)

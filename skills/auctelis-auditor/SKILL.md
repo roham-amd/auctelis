@@ -21,7 +21,7 @@ Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 
 ```bash
 # Run once (uvx git-tag one-liner; `uvx auctelis check` see docs/INSTALL.md; fallback in docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.5#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.6#subdirectory=tools" auctelis check
 ```
 
 ```bash

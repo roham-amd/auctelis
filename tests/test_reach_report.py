@@ -420,17 +420,41 @@ def test_fleet_check_rejects_single_repo_flags(tmp_path: Path, capsys):
         path.mkdir()
         (path / "README.md").write_text("x\n", encoding="utf-8")
     out = tmp_path / "fleet"
-    for flag, value in (
-        ("--lock-file", tmp_path / "AUTHORITY.lock"),
-        ("--baseline", tmp_path / "baseline.json"),
-    ):
-        code = main(["check", str(first), str(second), "--report", str(out), flag, str(value)])
-        assert code == 2
-        assert "single-repo" in capsys.readouterr().out
+    code = main(
+        [
+            "check",
+            str(first),
+            str(second),
+            "--report",
+            str(out),
+            "--lock-file",
+            str(tmp_path / "AUTHORITY.lock"),
+        ]
+    )
+    assert code == 2
+    assert "single-repo" in capsys.readouterr().out
     code = main(["check", str(first), str(second), "--report", str(out), "--pins"])
     assert code == 2
     assert "--pins" in capsys.readouterr().out
     assert not out.exists()
+    # AUCT-049: --baseline is allowed on fleet when the prior doc is a fleet report.
+    prior = tmp_path / "prior"
+    assert main(["check", str(first), str(second), "--report", str(prior)]) in {0, 1}
+    out2 = tmp_path / "fleet2"
+    code = main(
+        [
+            "check",
+            str(first),
+            str(second),
+            "--report",
+            str(out2),
+            "--baseline",
+            str(prior / "reach-report.json"),
+        ]
+    )
+    assert code in {0, 1}
+    doc = json.loads((out2 / "reach-report.json").read_text(encoding="utf-8"))
+    assert "baseline_diff" in doc
 
 
 def test_fleet_check_rejects_missing_directory(tmp_path: Path, capsys):

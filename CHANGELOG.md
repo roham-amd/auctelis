@@ -1,11 +1,33 @@
-# Changelog
-
-All notable changes to **Auctelis** are documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project uses semantic versioning.
-
 ## [Unreleased]
+
+## [0.1.6] — 2026-11-22
+
+### Added
+
+- **AUCT-048:** `auctelis rollout REPORT --status` is a read-only funnel ledger
+  (GET only). Classifies each target as `open` / `merged` / `closed_unmerged` /
+  `never_opened` / `watching_on_default` / `unknown`, including already-watching
+  repos. Emits a table, `--json`, or `--csv` (columns ⊂ `eval/pilot-metrics.csv`).
+  Mutually exclusive with `--apply`; allowed under `AUCTELIS_AGENT=1`.
+- **AUCT-049:** Fleet / `--github` audits accept `--baseline` and print
+  **Changed since last audit** (MD/HTML/summary) after Summary. JSON gains
+  `baseline_diff` only when a baseline is given. Schema mismatches exit 2.
+  [`docs/auctelis-org-audit.yml`](docs/auctelis-org-audit.yml) fetches the prior
+  run's `auctelis-org-report` artifact (`actions: read`) and passes `--baseline`
+  when present; first runs say `no baseline`. Cron stays opt-in.
+- **AUCT-050:** `check --pins --resolve-pins` / `check --report --resolve-pins`
+  looks up exact npm/PyPI latest versions (5s timeout; Docker stays a
+  placeholder). Additive `resolved_pin` / `resolved_at` /
+  `resolved_config_snippet` fields; labeled trust-on-first-use. `rollout` prefers
+  a resolved snippet when present and adds no network of its own. Live PR gate
+  stays offline.
+
+### Changed
+
+- Roadmap Next row no longer implies PyPI claim is the immediate next step;
+  PRODUCT.md drops Marketplace pitch wording for the root Action.
+- Validate / Release OS matrices now cover `test_rollout_status`,
+  `test_pin_resolve`, and `test_fleet_baseline`.
 
 ## [0.1.5] — 2026-11-21
 

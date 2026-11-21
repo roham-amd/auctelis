@@ -150,6 +150,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Show unpinned/floating MCP servers with concrete pin fixes",
     )
     check.add_argument(
+        "--resolve-pins",
+        action="store_true",
+        help=(
+            "With --pins or --report: look up exact npm/PyPI latest versions "
+            "(opt-in; trust-on-first-use; Docker digests stay placeholders)"
+        ),
+    )
+    check.add_argument(
         "--report",
         type=Path,
         metavar="DIR",
@@ -159,7 +167,10 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--baseline",
         type=Path,
         metavar="PATH",
-        help="Prior reach-report.json (or check --json) to diff against when using --report",
+        help=(
+            "Prior reach-report.json (or check --json / fleet report) to diff "
+            "against when using --report (single-repo, fleet, or --github)"
+        ),
     )
     check.add_argument(
         "--max-files",
@@ -382,6 +393,14 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help="Create branches and open PRs (default is a dry-run with no writes)",
     )
     rollout.add_argument(
+        "--status",
+        action="store_true",
+        help=(
+            "Read-only funnel ledger: classify Watch PR / workflow state per "
+            "target (GET only; mutually exclusive with --apply)"
+        ),
+    )
+    rollout.add_argument(
         "--max-prs",
         type=int,
         default=10,
@@ -416,6 +435,11 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Emit rollout JSON",
+    )
+    rollout.add_argument(
+        "--csv",
+        action="store_true",
+        help="With --status: emit CSV (columns ⊂ eval/pilot-metrics.csv)",
     )
 
     lock_cmd = sub.add_parser(

@@ -1,10 +1,11 @@
-# Zero-laptop-install org Reach Audit (AUCT-047).
+# Zero-laptop-install org Reach Audit (AUCT-047 / AUCT-049).
 # Copy into your org `.github` repository (or any repo) as:
 #   .github/workflows/auctelis-org-audit.yml
 #
 # Then Actions → auctelis org audit → Run workflow.
 # Job Summary shows the Summary-first Reach Report + a dry-run rollout plan.
 # Download the auctelis-org-report artifact for HTML/MD/JSON.
+# A second run diffs against the previous successful run's artifact when present.
 #
 # Token: default GITHUB_TOKEN only sees the current repository.
 # For private org repos, add a fine-grained PAT as secret AUCTELIS_AUDIT_TOKEN
@@ -40,6 +41,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   audit:
@@ -63,6 +65,42 @@ jobs:
             echo "add a fine-grained PAT (Contents: read, Metadata: read) as AUCTELIS_AUDIT_TOKEN."
           fi
 
+      - name: Fetch prior audit baseline (optional)
+        id: baseline
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p auctelis-org-baseline
+          echo "has_baseline=false" >> "$GITHUB_OUTPUT"
+          RUN_ID="$(gh run list \
+            --workflow "${{ github.workflow }}" \
+            --branch "${{ github.ref_name }}" \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId // empty' || true)"
+          if [[ -z "${RUN_ID}" ]]; then
+            echo "no baseline — first successful run has nothing to diff"
+            echo "no baseline" > auctelis-org-baseline/NOTE.txt
+            exit 0
+          fi
+          if gh run download "${RUN_ID}" \
+            --name auctelis-org-report \
+            --dir auctelis-org-baseline; then
+            if [[ -f auctelis-org-baseline/reach-report.json ]]; then
+              echo "has_baseline=true" >> "$GITHUB_OUTPUT"
+              echo "Loaded baseline from run ${RUN_ID}"
+            else
+              echo "no baseline — prior artifact lacked reach-report.json"
+              echo "no baseline" > auctelis-org-baseline/NOTE.txt
+            fi
+          else
+            echo "no baseline — could not download prior auctelis-org-report artifact"
+            echo "no baseline" > auctelis-org-baseline/NOTE.txt
+          fi
+
       - name: Org reach audit
         id: audit
         shell: bash
@@ -72,6 +110,7 @@ jobs:
           MAX_REPOS: ${{ inputs.max_repos }}
           INCLUDE_FORKS: ${{ inputs.include_forks }}
           ORG_REUSABLE: ${{ inputs.org_reusable }}
+          HAS_BASELINE: ${{ steps.baseline.outputs.has_baseline }}
         run: |
           set -euo pipefail
           mkdir -p auctelis-org-report
@@ -82,7 +121,10 @@ jobs:
           if [[ -n "${ORG_REUSABLE}" ]]; then
             EXTRA+=(--org-reusable "${ORG_REUSABLE}")
           fi
-          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.5#subdirectory=tools" \
+          if [[ "${HAS_BASELINE}" == "true" ]]; then
+            EXTRA+=(--baseline auctelis-org-baseline/reach-report.json)
+          fi
+          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.6#subdirectory=tools" \
             auctelis check --github "${ORG}" \
             --max-repos "${MAX_REPOS}" \
             --report auctelis-org-report/ \
@@ -96,6 +138,11 @@ jobs:
           {
             echo "# Auctelis org audit"
             echo ""
+            if [[ -f auctelis-org-baseline/NOTE.txt ]] && \
+               [[ ! -f auctelis-org-baseline/reach-report.json ]]; then
+              echo "_no baseline_"
+              echo ""
+            fi
             if [[ -f auctelis-org-report/reach-report.md ]]; then
               cat auctelis-org-report/reach-report.md
             else
@@ -106,7 +153,7 @@ jobs:
             echo ""
             echo '```text'
             if [[ -f auctelis-org-report/reach-report.json ]]; then
-              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.5#subdirectory=tools" \
+              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.6#subdirectory=tools" \
                 auctelis rollout auctelis-org-report/reach-report.json || true
             else
               echo "No reach-report.json — skipped."

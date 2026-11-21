@@ -655,9 +655,16 @@ def diff_reach_reports(
     before: dict[str, Any],
     after: dict[str, Any],
 ) -> dict[str, Any]:
-    """Compare two reach-report documents (or check JSON with a ``reach`` block)."""
+    """Compare two reach-report documents (or check JSON with a ``reach`` block).
+
+    Records match on ``identity_key`` when present (AUCT-034 calm — never
+    digest), else ``kind|name|path``.
+    """
 
     def _identity(item: dict[str, Any]) -> str:
+        explicit = str(item.get("identity_key") or "").strip()
+        if explicit:
+            return explicit
         kind = str(item.get("kind") or "")
         name = str(item.get("name") or "")
         path = str(item.get("path") or "")
@@ -977,6 +984,213 @@ def load_reach_baseline(path: Path) -> dict[str, Any]:
     return data
 
 
+def baseline_schema_mismatch(
+    baseline: dict[str, Any],
+    *,
+    expect_fleet: bool,
+) -> str | None:
+    """Return an error message when ``--baseline`` shape does not match the run."""
+    schema = str(baseline.get("schema") or "")
+    has_repos = isinstance(baseline.get("repositories"), list)
+    is_fleet = schema == FLEET_REPORT_SCHEMA or (not schema and has_repos)
+    is_single = schema == REPORT_SCHEMA or (
+        not schema and not has_repos and ("reach" in baseline or "repository" in baseline)
+    )
+    if expect_fleet:
+        if is_fleet:
+            return None
+        if schema and schema != FLEET_REPORT_SCHEMA:
+            return f"--baseline schema {schema!r} is not a fleet report ({FLEET_REPORT_SCHEMA})"
+        return f"--baseline must be a fleet reach report ({FLEET_REPORT_SCHEMA})"
+    if is_fleet:
+        return (
+            f"--baseline is a fleet report ({FLEET_REPORT_SCHEMA}); "
+            "use a single-repo reach-report.json for this run"
+        )
+    if schema and schema not in {REPORT_SCHEMA, ""} and not is_single:
+        return f"--baseline schema {schema!r} is not a single-repo reach report"
+    return None
+
+
+def diff_fleet_reports(
+    before: dict[str, Any],
+    after: dict[str, Any],
+) -> dict[str, Any]:
+    """Compare two fleet reach reports keyed by repository + record identity."""
+
+    def _repo_map(doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        out: dict[str, dict[str, Any]] = {}
+        for repo in _as_list(doc.get("repositories")):
+            if not isinstance(repo, dict):
+                continue
+            slug = str(repo.get("repository") or "").strip()
+            if not slug:
+                continue
+            out[slug.lower()] = repo
+        return out
+
+    before_map = _repo_map(before)
+    after_map = _repo_map(after)
+    before_keys = set(before_map)
+    after_keys = set(after_map)
+    added_repos = sorted(after_keys - before_keys)
+    removed_repos = sorted(before_keys - after_keys)
+    per_repo: list[dict[str, Any]] = []
+    changed_count = 0
+    for key in sorted(before_keys & after_keys):
+        diff = diff_reach_reports(before_map[key], after_map[key])
+        local = int(diff.get("changed_count") or 0)
+        if local <= 0:
+            continue
+        changed_count += local
+        per_repo.append(
+            {
+                "repository": str(after_map[key].get("repository") or key),
+                "added": diff.get("added") or [],
+                "removed": diff.get("removed") or [],
+                "changed": diff.get("changed") or [],
+                "tier_counts_before": diff.get("tier_counts_before"),
+                "tier_counts_after": diff.get("tier_counts_after"),
+                "changed_count": local,
+            }
+        )
+    changed_count += len(added_repos) + len(removed_repos)
+    return {
+        "added_repositories": [
+            {"repository": str(after_map[k].get("repository") or k)} for k in added_repos
+        ],
+        "removed_repositories": [
+            {"repository": str(before_map[k].get("repository") or k)} for k in removed_repos
+        ],
+        "repositories": per_repo,
+        "changed_count": changed_count,
+    }
+
+
+def _coerce_baseline_diff(
+    doc: dict[str, Any],
+    baseline_diff: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Prefer an explicit diff; else use ``doc['baseline_diff']`` when present."""
+    if baseline_diff is not None:
+        return baseline_diff
+    if "baseline_diff" not in doc:
+        return None
+    raw = doc.get("baseline_diff")
+    return raw if isinstance(raw, dict) else None
+
+
+def _fleet_baseline_counts(repo: dict[str, Any]) -> str:
+    return (
+        f"+{len(_as_list(repo.get('added')))} "
+        f"-{len(_as_list(repo.get('removed')))} "
+        f"~{len(_as_list(repo.get('changed')))}"
+    )
+
+
+def _fleet_baseline_section_md(baseline_diff: dict[str, Any] | None) -> list[str]:
+    if baseline_diff is None:
+        return []
+    lines = [
+        "## Changed since last audit",
+        "",
+    ]
+    added_repos = [
+        r for r in _as_list(baseline_diff.get("added_repositories")) if isinstance(r, dict)
+    ]
+    removed_repos = [
+        r for r in _as_list(baseline_diff.get("removed_repositories")) if isinstance(r, dict)
+    ]
+    per_repo = [r for r in _as_list(baseline_diff.get("repositories")) if isinstance(r, dict)]
+    if not added_repos and not removed_repos and not per_repo:
+        lines.extend(["_No changes since the prior audit._", ""])
+        return lines
+    if added_repos:
+        lines.append(
+            "- **Added repositories:** "
+            + ", ".join(_md_code(r.get("repository")) for r in added_repos)
+        )
+    if removed_repos:
+        lines.append(
+            "- **Removed repositories:** "
+            + ", ".join(_md_code(r.get("repository")) for r in removed_repos)
+        )
+    for repo in per_repo:
+        slug = _md_code(repo.get("repository"))
+        lines.append(f"- **{slug}:** {_fleet_baseline_counts(repo)}")
+        for item in _as_list(repo.get("added")):
+            if isinstance(item, dict):
+                lines.append(f"  - + {_md_code(item.get('name'))} ({_md_code(item.get('path'))})")
+        for item in _as_list(repo.get("removed")):
+            if isinstance(item, dict):
+                lines.append(f"  - - {_md_code(item.get('name'))} ({_md_code(item.get('path'))})")
+        for item in _as_list(repo.get("changed")):
+            if not isinstance(item, dict):
+                continue
+            after_raw = item.get("after")
+            after: dict[str, Any] = after_raw if isinstance(after_raw, dict) else {}
+            lines.append(f"  - ~ {_md_code(after.get('name'))} ({_md_code(after.get('path'))})")
+    lines.append("")
+    return lines
+
+
+def _fleet_baseline_section_html(baseline_diff: dict[str, Any] | None) -> str:
+    if baseline_diff is None:
+        return ""
+    esc = html.escape
+    parts: list[str] = ["<h2>Changed since last audit</h2>"]
+    added_repos = [
+        r for r in _as_list(baseline_diff.get("added_repositories")) if isinstance(r, dict)
+    ]
+    removed_repos = [
+        r for r in _as_list(baseline_diff.get("removed_repositories")) if isinstance(r, dict)
+    ]
+    per_repo = [r for r in _as_list(baseline_diff.get("repositories")) if isinstance(r, dict)]
+    if not added_repos and not removed_repos and not per_repo:
+        parts.append("<p><em>No changes since the prior audit.</em></p>")
+        return "".join(parts)
+    parts.append("<ul>")
+    if added_repos:
+        names = ", ".join(
+            f"<code>{esc(str(r.get('repository') or ''))}</code>" for r in added_repos
+        )
+        parts.append(f"<li><strong>Added repositories:</strong> {names}</li>")
+    if removed_repos:
+        names = ", ".join(
+            f"<code>{esc(str(r.get('repository') or ''))}</code>" for r in removed_repos
+        )
+        parts.append(f"<li><strong>Removed repositories:</strong> {names}</li>")
+    for repo in per_repo:
+        slug = esc(str(repo.get("repository") or ""))
+        parts.append(
+            f"<li><strong><code>{slug}</code>:</strong> {_fleet_baseline_counts(repo)}<ul>"
+        )
+        for item in _as_list(repo.get("added")):
+            if isinstance(item, dict):
+                parts.append(
+                    f"<li>+ <code>{esc(str(item.get('name') or ''))}</code> "
+                    f"(<code>{esc(str(item.get('path') or ''))}</code>)</li>"
+                )
+        for item in _as_list(repo.get("removed")):
+            if isinstance(item, dict):
+                parts.append(
+                    f"<li>- <code>{esc(str(item.get('name') or ''))}</code> "
+                    f"(<code>{esc(str(item.get('path') or ''))}</code>)</li>"
+                )
+        for item in _as_list(repo.get("changed")):
+            if not isinstance(item, dict):
+                continue
+            after_raw = item.get("after")
+            after: dict[str, Any] = after_raw if isinstance(after_raw, dict) else {}
+            parts.append(
+                f"<li>~ <code>{esc(str(after.get('name') or ''))}</code> "
+                f"(<code>{esc(str(after.get('path') or ''))}</code>)</li>"
+            )
+        parts.append("</ul></li>")
+    parts.append("</ul>")
+    return "".join(parts)
+
+
 # --- Fleet reach report (multi-repo audit sweep) ---------------------------
 
 
@@ -1219,10 +1433,15 @@ def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -
     )
 
 
-def render_fleet_summary(doc: dict[str, Any]) -> str:
+def render_fleet_summary(
+    doc: dict[str, Any],
+    *,
+    baseline_diff: dict[str, Any] | None = None,
+) -> str:
     """Compact terminal summary for a multi-repo ``check --report`` run."""
     totals = _as_dict(doc.get("totals"))
     repo_n = int(doc.get("repository_count") or 0)
+    diff = _coerce_baseline_diff(doc, baseline_diff)
     lines = [
         (f"auctelis check · fleet reach report · {repo_n} repositories"),
         (
@@ -1238,6 +1457,14 @@ def render_fleet_summary(doc: dict[str, Any]) -> str:
         f"Watching: {int(totals.get('watching') or 0)} of {repo_n} repos",
         "",
     ]
+    if diff is not None:
+        lines.append(
+            "Changed since last audit: "
+            f"+{len(_as_list(diff.get('added_repositories')))} repos · "
+            f"-{len(_as_list(diff.get('removed_repositories')))} repos · "
+            f"{int(diff.get('changed_count') or 0)} change(s)"
+        )
+        lines.append("")
     for repo in _fleet_repo_table_rows(doc):
         reach = _as_dict(repo.get("reach"))
         tiers = _as_dict(reach.get("tier_counts"))
@@ -1250,7 +1477,12 @@ def render_fleet_summary(doc: dict[str, Any]) -> str:
     return "\n".join(sanitize_terminal_line(line) for line in lines)
 
 
-def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> str:
+def render_fleet_reach_md(
+    doc: dict[str, Any],
+    *,
+    org_reusable: str | None = None,
+    baseline_diff: dict[str, Any] | None = None,
+) -> str:
     """Render the fleet reach report as Markdown (shareable in tickets)."""
     totals = _as_dict(doc.get("totals"))
     repositories = _fleet_repo_table_rows(doc)
@@ -1261,6 +1493,7 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
     repo_n = int(doc.get("repository_count") or 0)
     tier2_n = int(totals.get("tier2") or 0)
     repo_word = "repository" if repo_n == 1 else "repositories"
+    diff = _coerce_baseline_diff(doc, baseline_diff)
     finding_rows: list[tuple[dict[str, Any], list[dict[str, Any]], str]] = []
     for repo in repositories:
         pins = _fleet_pin_items(repo)
@@ -1308,9 +1541,10 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
                 "then `APPLY=1 bash rollout-watch-prs.sh`.",
             ]
         )
+    # After Summary, before Coverage / repo table details (AUCT-049).
+    lines.extend(["", *_fleet_baseline_section_md(diff)])
     lines.extend(
         [
-            "",
             f"- **Product:** auctelis {doc.get('product_version') or product_version()}",
             f"- **Unpinned MCP launchers:** {int(totals.get('unpinned') or 0)}",
             "",
@@ -1381,7 +1615,12 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
     return "\n".join(lines)
 
 
-def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = None) -> str:
+def render_fleet_reach_html(
+    doc: dict[str, Any],
+    *,
+    org_reusable: str | None = None,
+    baseline_diff: dict[str, Any] | None = None,
+) -> str:
     """Render the fleet reach report as one self-contained HTML file."""
     esc = html.escape
     totals = _as_dict(doc.get("totals"))
@@ -1390,6 +1629,7 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
     honesty_notes = _fleet_honesty_notes(doc)
     org = org_reusable if org_reusable is not None else doc.get("org_reusable")
     org = str(org).strip() if org else None
+    diff = _coerce_baseline_diff(doc, baseline_diff)
 
     def _watch_cell(repo: dict[str, Any]) -> str:
         if repo.get("already_watching"):
@@ -1488,6 +1728,7 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
             "<p>Optional: <code>bash rollout-watch-prs.sh</code> (dry-run), "
             "then <code>APPLY=1 bash rollout-watch-prs.sh</code>.</p>"
         )
+    baseline_html = _fleet_baseline_section_html(diff)
     summary_html = (
         "<section><h2>Summary</h2>"
         f"<p><strong>{repo_n} {repo_word}, {tier2_n} at tier 2.</strong> "
@@ -1499,6 +1740,7 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
         f"<li><strong>Unpinned MCP launchers:</strong> {int(totals.get('unpinned') or 0)}</li>"
         "</ul>"
         f"{_top_findings_html(finding_rows)}{warning_html}{rollout_html}"
+        f"{baseline_html}"
         "<h3>Repositories (ranked by tier-2 reach)</h3>"
         "<table><thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th>"
         f"<th>tier0</th><th>Unpinned</th><th>Watch</th></tr></thead><tbody>{summary_rows}</tbody></table>"
@@ -1552,6 +1794,7 @@ def write_fleet_reach_report_artifacts(
     skipped: Sequence[dict[str, Any]] | None = None,
     honesty_notes: Sequence[str] | None = None,
     org_reusable: str | None = None,
+    baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Write the combined fleet ``reach-report.{html,md,json}`` under ``out_dir``."""
     out_dir = out_dir.expanduser().resolve()
@@ -1564,9 +1807,18 @@ def write_fleet_reach_report_artifacts(
     org = str(org_reusable or "").strip() or None
     if org:
         doc["org_reusable"] = org
+    baseline_diff = diff_fleet_reports(baseline, doc) if baseline else None
+    if baseline_diff is not None:
+        doc["baseline_diff"] = baseline_diff
     write_json(out_dir / "reach-report.json", doc)
-    write_text(out_dir / "reach-report.md", render_fleet_reach_md(doc, org_reusable=org))
-    write_text(out_dir / "reach-report.html", render_fleet_reach_html(doc, org_reusable=org))
+    write_text(
+        out_dir / "reach-report.md",
+        render_fleet_reach_md(doc, org_reusable=org, baseline_diff=baseline_diff),
+    )
+    write_text(
+        out_dir / "reach-report.html",
+        render_fleet_reach_html(doc, org_reusable=org, baseline_diff=baseline_diff),
+    )
     targets = _unwatched_tier2_slugs(doc, limit=10)
     if targets:
         script = build_rollout_watch_prs_script(

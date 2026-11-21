@@ -246,6 +246,9 @@ def test_auct047_org_audit_workflow_template():
     assert "AUCTELIS_AUDIT_TOKEN" in text
     assert "permissions:" in text
     assert "contents: read" in text
+    assert "actions: read" in text
+    assert "--baseline" in text
+    assert "no baseline" in text
 
 
 def test_trust_copy_does_not_lower_new_mcp_authority():

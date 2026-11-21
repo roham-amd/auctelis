@@ -486,6 +486,8 @@ def _cmd_rollout(args: argparse.Namespace) -> int:
         as_json=bool(getattr(args, "json", False)),
         repos=repos,
         min_tier=min_tier,
+        status=bool(getattr(args, "status", False)),
+        as_csv=bool(getattr(args, "csv", False)),
     )
 
 

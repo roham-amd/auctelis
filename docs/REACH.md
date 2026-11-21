@@ -60,13 +60,15 @@ says so. `init` adds that CODEOWNERS entry.
 
 Cards show the tier and its reason (`tier 2 (secrets)`), plus secret **names**
 (`env: API_TOKEN`) — never values. `auctelis check --pins` lists unpinned
-npx/uvx/docker MCP launchers with a concrete pin suggestion. Tightening an MCP
-`pin_state` alone (`floating`/`unknown` → `pinned`/`digest`) is a **REDUCTION**
-(PASS), and the card still shows `pin: unpinned → pinned`. Same-package argv
-pinning (identical `package_stem` / launcher / host, e.g.
-`@linear/mcp` → `@linear/mcp@1.2.3`) is also **REDUCTION**. Swapping the
-package, launcher, or host — even when paired with a pin — is never
-`REDUCTION` (AUCT-030).
+npx/uvx/docker MCP launchers with a concrete pin suggestion. Opt-in
+`--resolve-pins` looks up exact npm/PyPI latest versions (trust-on-first-use;
+Docker digests stay placeholders) and adds `resolved_pin` / `resolved_at` to
+the pins JSON. Tightening an MCP `pin_state` alone (`floating`/`unknown` →
+`pinned`/`digest`) is a **REDUCTION** (PASS), and the card still shows
+`pin: unpinned → pinned`. Same-package argv pinning (identical `package_stem` /
+launcher / host, e.g. `@linear/mcp` → `@linear/mcp@1.2.3`) is also
+**REDUCTION**. Swapping the package, launcher, or host — even when paired with
+a pin — is never `REDUCTION` (AUCT-030).
 
 ## Shareable Reach Report layout
 
@@ -77,11 +79,14 @@ Markdown are for forwarding:
 1. One-line passive-scan disclaimer
 2. **Summary** — tier counts, top tier-2 findings, Pin fix when present
    (fleet also ranks repos and leads with `auctelis rollout`; `rollout-watch-prs.sh` is optional)
-3. Tier-2 detail, Cards, Unpinned MCP launchers
-4. **Coverage and limits** — full honesty text and Not-auto-inspected families
+3. **Changed since last audit** (fleet / `--github` with `--baseline` only)
+4. Tier-2 detail, Cards, Unpinned MCP launchers
+5. **Coverage and limits** — full honesty text and Not-auto-inspected families
 
 Pin fix snippets are literal CommonMark code spans (paste into `.cursor/mcp.json`).
 Over-budget or multiline snippets are omitted rather than truncated.
+`--baseline` on fleet/`--github` diffs the prior report by repository + record
+identity (not digest).
 
 ## What reach is not
 

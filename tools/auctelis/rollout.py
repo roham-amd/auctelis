@@ -1,4 +1,4 @@
-"""Cross-platform lockless Watch PR opener (AUCT-044 / AUCT-045).
+"""Cross-platform lockless Watch PR opener (AUCT-044 / AUCT-045 / AUCT-048).
 
 Reads a Reach Report and plans (or opens) one pull request per unwatched
 repository that meets the tier filter. Dry-run is the default and performs no
@@ -9,11 +9,17 @@ the workflow blob ``sha`` when GitHub requires it.
 AUCT-045: PR bodies embed per-repo reach evidence + a literal ``Pin fix``;
 ``--repo`` / ``--min-tier`` target pilots; ``org_reusable`` defaults from the
 report document when the CLI flag is omitted.
+
+AUCT-048: ``--status`` is a read-only funnel ledger (GET only) that classifies
+Watch PR / workflow state so report → merge → still-enabled conversion is
+measurable without telemetry.
 """
 
 from __future__ import annotations
 
 import base64
+import csv
+import io
 import json
 import re
 import sys
@@ -48,6 +54,15 @@ _API_VERSION = "2022-11-28"
 _MAX_BODY_LINES = 15
 _MAX_FINDINGS = 3
 
+# Columns ⊂ eval/pilot-metrics.csv header (AUCT-048).
+_STATUS_CSV_FIELDS = (
+    "repo",
+    "org",
+    "status",
+    "action_still_enabled_day30",
+    "notes",
+)
+
 
 def execute_rollout(
     report_path: Path,
@@ -58,33 +73,50 @@ def execute_rollout(
     as_json: bool,
     repos: list[str] | None = None,
     min_tier: int = 2,
+    status: bool = False,
+    as_csv: bool = False,
 ) -> int:
     """Plan or open Watch PRs. Exit 0 when every target is opened or skipped."""
+    if status and apply:
+        _say(
+            "auctelis rollout: --status and --apply are mutually exclusive.",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+    if as_csv and not status:
+        _say(
+            "auctelis rollout: --csv requires --status.",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+    if as_json and as_csv:
+        _say(
+            "auctelis rollout: --json and --csv are mutually exclusive.",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+    if status:
+        return execute_status(
+            report_path,
+            max_prs=max_prs,
+            repos=repos,
+            min_tier=min_tier,
+            as_json=as_json,
+            as_csv=as_csv,
+        )
     if max_prs < 1:
         _say("auctelis rollout: --max-prs must be at least 1.", as_json=as_json, error=True)
         return 2
     if min_tier not in {1, 2}:
         _say("auctelis rollout: --min-tier must be 1 or 2.", as_json=as_json, error=True)
         return 2
-    try:
-        document = json.loads(report_path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        _say(f"auctelis rollout: cannot read {report_path}: {exc}", as_json=as_json, error=True)
-        return 2
-    except json.JSONDecodeError as exc:
-        _say(f"auctelis rollout: {report_path} is not JSON: {exc}", as_json=as_json, error=True)
-        return 2
-    if not isinstance(document, dict):
-        _say("auctelis rollout: report JSON must be an object.", as_json=as_json, error=True)
-        return 2
-    schema = str(document.get("schema") or "")
-    if schema and schema not in {REPORT_SCHEMA, FLEET_REPORT_SCHEMA}:
-        _say(
-            f"auctelis rollout: unsupported report schema {schema!r}.",
-            as_json=as_json,
-            error=True,
-        )
-        return 2
+    document, err = _load_report(report_path, as_json=as_json)
+    if err is not None:
+        return err
+    assert document is not None
 
     # CLI --org-reusable wins; otherwise inherit from the Reach Report.
     org = str(org_reusable or "").strip().strip("/") or None
@@ -144,15 +176,85 @@ def execute_rollout(
     return 0
 
 
+def execute_status(
+    report_path: Path,
+    *,
+    max_prs: int,
+    repos: list[str] | None = None,
+    min_tier: int = 2,
+    as_json: bool = False,
+    as_csv: bool = False,
+) -> int:
+    """Classify Watch PR / workflow state per target (GET only; AUCT-048)."""
+    if max_prs < 1:
+        _say("auctelis rollout: --max-prs must be at least 1.", as_json=as_json, error=True)
+        return 2
+    if min_tier not in {1, 2}:
+        _say("auctelis rollout: --min-tier must be 1 or 2.", as_json=as_json, error=True)
+        return 2
+    document, err = _load_report(report_path, as_json=as_json)
+    if err is not None:
+        return err
+    assert document is not None
+
+    targets, skipped = select_status_targets(
+        document,
+        max_prs=max_prs,
+        repos=repos,
+        min_tier=min_tier,
+    )
+    for warning in skipped:
+        print(f"auctelis rollout: {warning}", file=sys.stderr)
+
+    token = _token()
+    if not token:
+        _say(
+            "auctelis rollout: set GITHUB_TOKEN or GH_TOKEN, or run `gh auth login`.",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+
+    results = [_status_one(str(repo.get("repository") or ""), token=token) for repo in targets]
+    _emit_status(results, as_json=as_json, as_csv=as_csv)
+    return 0
+
+
+def _load_report(report_path: Path, *, as_json: bool) -> tuple[dict[str, Any] | None, int | None]:
+    try:
+        document = json.loads(report_path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        _say(f"auctelis rollout: cannot read {report_path}: {exc}", as_json=as_json, error=True)
+        return None, 2
+    except json.JSONDecodeError as exc:
+        _say(f"auctelis rollout: {report_path} is not JSON: {exc}", as_json=as_json, error=True)
+        return None, 2
+    if not isinstance(document, dict):
+        _say("auctelis rollout: report JSON must be an object.", as_json=as_json, error=True)
+        return None, 2
+    schema = str(document.get("schema") or "")
+    if schema and schema not in {REPORT_SCHEMA, FLEET_REPORT_SCHEMA}:
+        _say(
+            f"auctelis rollout: unsupported report schema {schema!r}.",
+            as_json=as_json,
+            error=True,
+        )
+        return None, 2
+    return document, None
+
+
 def select_targets(
     document: dict[str, Any],
     *,
     max_prs: int,
     repos: list[str] | None = None,
     min_tier: int = 2,
+    include_watching: bool = False,
 ) -> list[dict[str, Any]]:
-    """Unwatched repo documents meeting ``min_tier``, capped by ``max_prs``.
+    """Repo documents meeting ``min_tier``, capped by ``max_prs``.
 
+    By default skips ``already_watching``. ``include_watching`` is for
+    ``--status`` (funnel ledger) so retained installs stay visible.
     ``repos`` (when set) is a case-insensitive ``owner/repo`` allow-list.
     """
     wanted: set[str] | None = None
@@ -162,7 +264,7 @@ def select_targets(
             wanted = None
     matched: list[dict[str, Any]] = []
     for repo in _repo_documents(document):
-        if repo.get("already_watching"):
+        if not include_watching and repo.get("already_watching"):
             continue
         slug = str(repo.get("repository") or "").strip()
         if not is_owner_repo_slug(slug):
@@ -184,6 +286,31 @@ def select_targets(
         if len(matched) >= max_prs:
             break
     return matched
+
+
+def select_status_targets(
+    document: dict[str, Any],
+    *,
+    max_prs: int,
+    repos: list[str] | None = None,
+    min_tier: int = 2,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Like ``select_targets`` but includes watching; warns on missing slugs."""
+    warnings: list[str] = []
+    for repo in _repo_documents(document):
+        slug = str(repo.get("repository") or "").strip()
+        if not slug:
+            warnings.append("skipping repository entry with no slug")
+        elif not is_owner_repo_slug(slug):
+            warnings.append(f"skipping non owner/repo slug {slug!r}")
+    targets = select_targets(
+        document,
+        max_prs=max_prs,
+        repos=repos,
+        min_tier=min_tier,
+        include_watching=True,
+    )
+    return targets, warnings
 
 
 def render_watch_pr_body(repo_doc: dict[str, Any]) -> str:
@@ -249,19 +376,168 @@ def _pin_fix_line(item: dict[str, Any], pins: list[dict[str, Any]]) -> str:
     name = str(item.get("name") or "")
     path = str(item.get("path") or "")
     snippet = ""
+    resolved_at = ""
     for pin in pins:
         if str(pin.get("name") or "") != name:
             continue
         pin_path = str(pin.get("path") or "")
         if path and pin_path and pin_path != path:
             continue
-        snippet = str(pin.get("config_snippet") or "").strip()
+        # Prefer opt-in resolved snippet (AUCT-050); never network from rollout.
+        snippet = str(pin.get("resolved_config_snippet") or pin.get("config_snippet") or "").strip()
+        resolved_at = str(pin.get("resolved_at") or "").strip()
         if snippet:
             break
     span = markdown_code_span(snippet) if snippet else None
     if not span:
         return ""
+    if resolved_at:
+        return f"**Pin fix** (trust-on-first-use: latest on {resolved_at}): {span}"
     return f"**Pin fix:** {span}"
+
+
+def _status_one(slug: str, *, token: str) -> dict[str, Any]:
+    """Classify one repo's Watch funnel state using GET requests only."""
+    row: dict[str, Any] = {
+        "repository": slug,
+        "state": "unknown",
+        "watching": False,
+        "pr_url": "",
+        "pr_number": None,
+        "detail": "",
+    }
+    status, repo = _request("GET", _repo_api(slug), token=token)
+    if status == 404 or status != 200 or not isinstance(repo, dict):
+        row["state"] = "unknown"
+        row["detail"] = f"repository lookup failed (HTTP {status})"
+        return row
+    default_branch = str(repo.get("default_branch") or "main")
+
+    present, watch_status = _watch_workflow_on_branch(slug, default_branch, token=token)
+    if watch_status in {401, 403}:
+        row["state"] = "unknown"
+        row["detail"] = f"workflow lookup failed (HTTP {watch_status})"
+        return row
+    if present:
+        row["watching"] = True
+        row["state"] = "watching_on_default"
+        row["detail"] = "auctelis workflow on default branch"
+
+    owner = slug.split("/", 1)[0]
+    pulls_path = (
+        _repo_api(slug, "/pulls")
+        + "?"
+        + urllib.parse.urlencode({"state": "all", "head": f"{owner}:{_BRANCH}", "per_page": "30"})
+    )
+    pr_status, pulls = _request("GET", pulls_path, token=token)
+    if pr_status in {401, 403}:
+        if row["state"] == "unknown":
+            row["detail"] = f"pull request lookup failed (HTTP {pr_status})"
+        return row
+    if pr_status == 404:
+        row["state"] = "unknown"
+        row["detail"] = "pull request lookup failed (HTTP 404)"
+        return row
+    if pr_status != 200 or not isinstance(pulls, list):
+        if not present:
+            row["state"] = "unknown"
+            row["detail"] = f"pull request lookup failed (HTTP {pr_status})"
+        return row
+
+    open_pr: dict[str, Any] | None = None
+    merged_pr: dict[str, Any] | None = None
+    closed_pr: dict[str, Any] | None = None
+    for entry in pulls:
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("state") == "open":
+            open_pr = entry
+            break
+        if entry.get("merged_at"):
+            merged_pr = merged_pr or entry
+        elif entry.get("state") == "closed":
+            closed_pr = closed_pr or entry
+
+    chosen = open_pr or merged_pr or closed_pr
+    if chosen is not None:
+        row["pr_url"] = str(chosen.get("html_url") or "")
+        num = chosen.get("number")
+        row["pr_number"] = int(num) if isinstance(num, int) else None
+
+    # Watching wins (retained install). Merged-without-workflow is churn (still
+    # classified as merged so day-30 "still enabled" stays false).
+    if present:
+        return row
+    if open_pr is not None:
+        row["state"] = "open"
+        row["detail"] = f"open Watch PR {row['pr_url']}".strip()
+        return row
+    if merged_pr is not None:
+        row["state"] = "merged"
+        row["detail"] = f"merged Watch PR {row['pr_url']}".strip()
+        return row
+    if closed_pr is not None:
+        row["state"] = "closed_unmerged"
+        row["detail"] = f"closed Watch PR {row['pr_url']}".strip()
+        return row
+    row["state"] = "never_opened"
+    row["detail"] = "no Watch PR found"
+    return row
+
+
+def _emit_status(
+    results: list[dict[str, Any]],
+    *,
+    as_json: bool,
+    as_csv: bool,
+) -> None:
+    payload = {
+        "status": True,
+        "results": [
+            {
+                "repository": row.get("repository"),
+                "state": row.get("state"),
+                "watching": bool(row.get("watching")),
+                "pr_url": row.get("pr_url") or "",
+                "pr_number": row.get("pr_number"),
+                "detail": row.get("detail") or "",
+            }
+            for row in results
+        ],
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        return
+    if as_csv:
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=list(_STATUS_CSV_FIELDS), lineterminator="\n")
+        writer.writeheader()
+        for row in results:
+            slug = str(row.get("repository") or "")
+            org = slug.split("/", 1)[0] if "/" in slug else ""
+            state = str(row.get("state") or "")
+            enabled = "yes" if row.get("watching") else ""
+            writer.writerow(
+                {
+                    "repo": slug,
+                    "org": org,
+                    "status": state,
+                    "action_still_enabled_day30": enabled,
+                    "notes": str(row.get("detail") or row.get("pr_url") or ""),
+                }
+            )
+        print(buf.getvalue(), end="")
+        return
+    print(f"auctelis rollout · status · {len(results)} repo(s)")
+    if not results:
+        print("No matching repositories to report.")
+        return
+    for row in results:
+        repo = str(row.get("repository") or "")
+        state = str(row.get("state") or "")
+        detail = str(row.get("detail") or "")
+        suffix = f" · {detail}" if detail else ""
+        print(f"  {repo} · {state}{suffix}")
 
 
 def _repo_documents(document: dict[str, Any]) -> list[dict[str, Any]]:

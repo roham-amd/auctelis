@@ -405,8 +405,18 @@ def render_pin_report(report: dict[str, Any]) -> str:
         where = f" @ {item['path']}" if item.get("path") else ""
         env = f" · env {', '.join(item['env_keys'])}" if item.get("env_keys") else ""
         lines.append(f"  {item['name']}{where} · pin {item['pin_state']}{env}")
-        lines.append(f"    → {item['suggestion']}")
-        snippet = str(item.get("config_snippet") or "").strip()
+        suggestion = str(item.get("resolved_suggestion") or item.get("suggestion") or "").strip()
+        if suggestion:
+            lines.append(f"    → {suggestion}")
+        resolved_at = str(item.get("resolved_at") or "").strip()
+        resolved_pin = str(item.get("resolved_pin") or "").strip()
+        if resolved_pin and resolved_at:
+            lines.append(
+                f"    resolved: {resolved_pin} (trust-on-first-use: latest on {resolved_at})"
+            )
+        snippet = str(
+            item.get("resolved_config_snippet") or item.get("config_snippet") or ""
+        ).strip()
         if snippet:
             lines.append(f"    config: {snippet}")
     return "\n".join(sanitize_terminal_line(line) for line in lines)
