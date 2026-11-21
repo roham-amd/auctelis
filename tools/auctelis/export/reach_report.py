@@ -26,7 +26,13 @@ from auctelis.inventory.coverage import (
 )
 from auctelis.jsonio import write_json, write_text
 from auctelis.security.engine import ScanResult
-from auctelis.textutil import escape_markdown_inline, sanitize_terminal_line, strip_control
+from auctelis.textutil import (
+    escape_markdown_inline,
+    markdown_code_span,
+    pasteable_code_text,
+    sanitize_terminal_line,
+    strip_control,
+)
 from auctelis.versioning import product_version
 
 REPORT_SCHEMA = "auctelis.reach_report.v1"
@@ -39,6 +45,8 @@ _DECLARED_ONLY_DISCLAIMER = (
     "passive scan. It is not a safety certificate, does not prove EFFECTIVE "
     "permissions, and does not establish VERIFIED runtime behavior."
 )
+# First screen only. The full disclaimer stays under Coverage and limits.
+_FIRST_SCREEN_LINE = "Passive scan of declared agent config, not a certificate."
 
 _NEXT_STEP_MD = (
     "_Next step: paste the lockless workflow below (or click **Watch PRs**) to "
@@ -363,14 +371,6 @@ def _skipped_section_html(
     return "".join(parts)
 
 
-def _pin_suggestion_cell(item: dict[str, Any]) -> str:
-    snippet = str(item.get("config_snippet") or "").strip()
-    suggestion = str(item.get("suggestion") or item.get("pin_state") or "")
-    if snippet and suggestion:
-        return f"{suggestion} · {snippet}"
-    return snippet or suggestion
-
-
 def _next_step_html(*, plural: bool, has_watch: bool = True) -> str:
     where = "each repository" if plural else "this repository"
     click = " (or click <strong>Watch PRs</strong>)" if has_watch else ""
@@ -399,13 +399,14 @@ def _doc_has_watch_cta(doc: dict[str, Any]) -> bool:
     )
 
 
-def _manual_section_html(doc: dict[str, Any]) -> str:
+def _manual_section_html(doc: dict[str, Any], *, heading: str = "h3") -> str:
     esc = html.escape
+    tag = "h2" if heading == "h2" else "h3"
     rows = _manual_family_rows(doc)
     if not _as_dict(doc.get("coverage")):
         return (
-            "<section><h2>Not auto-inspected</h2>"
-            "<p><em>Coverage metadata unavailable for this report.</em></p></section>"
+            f"<{tag}>Not auto-inspected</{tag}>"
+            "<p><em>Coverage metadata unavailable for this report.</em></p>"
         )
     if rows:
         items = "".join(
@@ -419,10 +420,168 @@ def _manual_section_html(doc: dict[str, Any]) -> str:
     else:
         items = "<li><em>No manual-review families reported.</em></li>"
     return (
-        "<section><h2>Not auto-inspected</h2><ul>"
+        f"<{tag}>Not auto-inspected</{tag}><ul>"
         + items
         + "</ul><p>These families have no passive discovery adapter; "
-        "they require manual review.</p></section>"
+        "they require manual review.</p>"
+    )
+
+
+def _pin_item_rows(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        item for item in _as_list(_as_dict(doc.get("pins")).get("items")) if isinstance(item, dict)
+    ]
+
+
+def _tier2_from_reach(reach: dict[str, Any]) -> list[dict[str, Any]]:
+    ranked = _as_list(reach.get("records")) or _as_list(reach.get("top"))
+    return [item for item in ranked if isinstance(item, dict) and int(item.get("tier") or 0) >= 2]
+
+
+def _config_snippet_for(item: dict[str, Any], pins: Sequence[dict[str, Any]]) -> str:
+    name = str(item.get("name") or "")
+    path = str(item.get("path") or "")
+    for pin in pins:
+        if str(pin.get("name") or "") != name:
+            continue
+        pin_path = str(pin.get("path") or "")
+        if path and pin_path and pin_path != path:
+            continue
+        return str(pin.get("config_snippet") or "").strip()
+    return ""
+
+
+def _pin_fix_md(snippet: str) -> str:
+    span = markdown_code_span(snippet) if snippet else None
+    if not span:
+        return ""
+    return f"**Pin fix:** {span}"
+
+
+def _pin_fix_html(snippet: str) -> str:
+    text = pasteable_code_text(snippet) if snippet else None
+    if not text:
+        return ""
+    return f"<strong>Pin fix:</strong> <code>{html.escape(text)}</code>"
+
+
+def _summary_warning_text(notes: Sequence[Any]) -> str:
+    for note in notes:
+        text = str(note).strip()
+        if text:
+            return text
+    return ""
+
+
+def _top_findings_md(
+    rows: Sequence[tuple[dict[str, Any], Sequence[dict[str, Any]], str]],
+) -> list[str]:
+    """``(record, pin items, repo label)`` — label is empty for a single repo."""
+    if not rows:
+        return ["_No tier-2 records in this inventory._"]
+    lines: list[str] = []
+    for item, pins, repo_label in list(rows)[:3]:
+        name = escape_markdown_inline(str(item.get("name") or ""), max_len=160)
+        path = _md_code(item.get("path"))
+        reason = escape_markdown_inline(
+            str(item.get("reason") or item.get("card") or ""), max_len=200
+        )
+        where = f"in {repo_label} " if repo_label else ""
+        lines.append(f"- **{name}** {where}({path}) — {reason}")
+        fix = _pin_fix_md(_config_snippet_for(item, list(pins)))
+        if fix:
+            lines.append(f"  {fix}")
+    return lines
+
+
+def _top_findings_html(
+    rows: Sequence[tuple[dict[str, Any], Sequence[dict[str, Any]], str]],
+) -> str:
+    if not rows:
+        return "<p><em>No tier-2 records in this inventory.</em></p>"
+    parts: list[str] = ["<ol>"]
+    for item, pins, repo_label in list(rows)[:3]:
+        name = html.escape(str(item.get("name") or ""))
+        path = html.escape(str(item.get("path") or ""))
+        reason = html.escape(str(item.get("reason") or item.get("card") or ""))
+        where = f" in <code>{html.escape(repo_label)}</code>" if repo_label else ""
+        fix = _pin_fix_html(_config_snippet_for(item, list(pins)))
+        fix_html = f" {fix}" if fix else ""
+        parts.append(
+            f"<li><strong>{name}</strong>{where} (<code>{path}</code>) — {reason}{fix_html}</li>"
+        )
+    parts.append("</ol>")
+    return "".join(parts)
+
+
+def _unpinned_md_line(item: dict[str, Any]) -> str:
+    suggestion = str(item.get("suggestion") or item.get("pin_state") or "")
+    snippet = str(item.get("config_snippet") or "").strip()
+    prose = escape_markdown_inline(suggestion, max_len=160) if suggestion else ""
+    fix = _pin_fix_md(snippet)
+    head = f"- {_md_code(item.get('name'))} ({_md_code(item.get('path'))})"
+    if prose and fix:
+        return f"{head} — {prose} {fix}"
+    if fix:
+        return f"{head} — {fix}"
+    if prose:
+        return f"{head} — {prose}"
+    return head
+
+
+def _unpinned_html_cell(item: dict[str, Any]) -> str:
+    suggestion = str(item.get("suggestion") or item.get("pin_state") or "")
+    snippet = str(item.get("config_snippet") or "").strip()
+    prose = html.escape(suggestion) if suggestion else ""
+    fix = _pin_fix_html(snippet)
+    if prose and fix:
+        return f"{prose} {fix}"
+    return fix or prose
+
+
+def _coverage_limits_md(doc: dict[str, Any]) -> list[str]:
+    honesty = _as_dict(doc.get("honesty"))
+    lines = ["## Coverage and limits", "", "### Honesty", ""]
+    lines.append(str(honesty.get("disclaimer") or _DECLARED_ONLY_DISCLAIMER))
+    lines.append("")
+    coverage_line = str(honesty.get("coverage_line") or "").strip()
+    if coverage_line:
+        lines.append(f"- **Coverage:** {coverage_line}")
+    trunc = _as_list(honesty.get("truncation")) or _as_list(honesty.get("notes"))
+    if trunc:
+        for note in trunc:
+            lines.append(f"- {note}")
+    else:
+        lines.append("- No walk truncation reported for this scan.")
+    lines.append("- Inventory is DECLARED/CONFIGURED only.")
+    lines.append("")
+    manual = _manual_md_lines(doc)
+    if manual and manual[0].startswith("## "):
+        manual = ["### " + manual[0][3:], *manual[1:]]
+    lines.extend(manual)
+    return lines
+
+
+def _coverage_limits_html(doc: dict[str, Any]) -> str:
+    esc = html.escape
+    honesty = _as_dict(doc.get("honesty"))
+    disclaimer = str(honesty.get("disclaimer") or _DECLARED_ONLY_DISCLAIMER)
+    coverage_line = str(honesty.get("coverage_line") or "").strip()
+    coverage_html = (
+        f"<li><strong>Coverage:</strong> {esc(coverage_line)}</li>" if coverage_line else ""
+    )
+    trunc = _as_list(honesty.get("truncation")) or _as_list(honesty.get("notes"))
+    if trunc:
+        items = "".join(f"<li>{esc(str(note))}</li>" for note in trunc)
+    else:
+        items = "<li>No walk truncation reported for this scan.</li>"
+    return (
+        "<section><h2>Coverage and limits</h2>"
+        "<h3>Honesty</h3>"
+        f"<p>{esc(disclaimer)}</p>"
+        f"<ul>{coverage_html}{items}<li>Inventory is DECLARED/CONFIGURED only.</li></ul>"
+        + _manual_section_html(doc)
+        + "</section>"
     )
 
 
@@ -555,39 +714,46 @@ def render_reach_md(
     *,
     baseline_diff: dict[str, Any] | None = None,
 ) -> str:
-    """Render a Markdown reach report suitable for tickets / PRs."""
+    """Render a Markdown reach report suitable for tickets / PRs.
+
+    The first screen is the finding: tier counts and the top tier-2 records.
+    Honesty and blind spots stay, under Coverage and limits, after the cards.
+    """
     honesty = _as_dict(doc.get("honesty"))
     reach = _as_dict(doc.get("reach"))
     tiers = _as_dict(reach.get("tier_counts"))
+    tier2 = _tier2_from_reach(reach)
+    pins = _pin_item_rows(doc)
+    total = int(reach.get("total") or 0)
+    tier2_n = int(tiers.get("tier2") or 0)
     lines: list[str] = [
         "# Auctelis Agent Reach Report",
         "",
-        f"> {honesty.get('disclaimer') or 'Declared/configured authority only — not a certificate.'}",
+        f"> {_FIRST_SCREEN_LINE}",
         "",
-        f"- **Product:** auctelis {doc.get('product_version') or product_version()}",
-        f"- **Repository:** `{doc.get('repository') or ''}`",
-        f"- **Reach total:** {reach.get('total', 0)}",
+        "## Summary",
+        "",
         (
-            f"- **Tiers:** tier0={tiers.get('tier0', 0)} · "
-            f"tier1={tiers.get('tier1', 0)} · tier2={tiers.get('tier2', 0)}"
+            f"**{total} records, {tier2_n} at tier 2.** "
+            f"tier0={int(tiers.get('tier0') or 0)} · "
+            f"tier1={int(tiers.get('tier1') or 0)} · tier2={tier2_n}"
         ),
-        f"- **Coverage:** {honesty.get('coverage_line') or '(unavailable)'}",
-        "",
-        "## Honesty",
         "",
     ]
-    trunc = _as_list(honesty.get("truncation"))
-    if trunc:
-        for note in trunc:
-            lines.append(f"- {note}")
-    else:
-        lines.append("- No walk truncation reported for this scan.")
-    lines.append("- Inventory is DECLARED/CONFIGURED only.")
-    lines.append("")
-    lines.extend(_manual_md_lines(doc))
-    lines.extend(["## Tier-2 reach", ""])
-    ranked = _as_list(reach.get("records")) or _as_list(reach.get("top"))
-    tier2 = [item for item in ranked if isinstance(item, dict) and int(item.get("tier") or 0) >= 2]
+    lines.extend(_top_findings_md([(item, pins, "") for item in tier2]))
+    warning = _summary_warning_text(_as_list(honesty.get("truncation")))
+    if warning:
+        lines.extend(["", f"**Warning:** {escape_markdown_inline(warning, max_len=300)}"])
+    lines.extend(
+        [
+            "",
+            f"- **Product:** auctelis {doc.get('product_version') or product_version()}",
+            f"- **Repository:** `{doc.get('repository') or ''}`",
+            "",
+            "## Tier-2 reach",
+            "",
+        ]
+    )
     if not tier2:
         lines.append("_No tier-2 records in this inventory._")
     else:
@@ -607,17 +773,10 @@ def render_reach_md(
         shown = len(cards)
         if total > shown:
             lines.append(f"- _+{total - shown} more (see Tier-2 / full JSON)._")
-    pins = _as_dict(doc.get("pins"))
-    unpinned = _as_list(pins.get("items"))
-    if unpinned:
+    if pins:
         lines.extend(["", "## Unpinned MCP launchers", ""])
-        for item in unpinned:
-            if not isinstance(item, dict):
-                continue
-            lines.append(
-                f"- {_md_code(item.get('name'))} ({_md_code(item.get('path'))}) — "
-                + escape_markdown_inline(_pin_suggestion_cell(item), max_len=240)
-            )
+        for item in pins:
+            lines.append(_unpinned_md_line(item))
     if baseline_diff:
         lines.extend(["", "## Baseline diff", ""])
         lines.append(f"- Added: {len(_as_list(baseline_diff.get('added')))}")
@@ -635,7 +794,8 @@ def render_reach_md(
                     f"  - - {_md_code(item.get('kind'))} {_md_code(item.get('name'))} "
                     f"({_md_code(item.get('path'))})"
                 )
-    lines.extend(["", *_workflow_snippet_md()])
+    lines.extend(["", *_coverage_limits_md(doc)])
+    lines.extend(_workflow_snippet_md())
     watch = _watch_link_md(doc)
     if watch:
         lines.extend([watch, ""])
@@ -657,10 +817,6 @@ def render_reach_html(
     def _li(text: str) -> str:
         return f"<li>{esc(text)}</li>"
 
-    trunc_html = "".join(_li(str(n)) for n in _as_list(honesty.get("truncation")))
-    if not trunc_html:
-        trunc_html = "<li>No walk truncation reported for this scan.</li>"
-
     ranked = _as_list(reach.get("records")) or _as_list(reach.get("top"))
     tier2_rows: list[str] = []
     for item in ranked:
@@ -678,8 +834,6 @@ def render_reach_html(
     else:
         tier2_body = "".join(tier2_rows)
 
-    manual_section = _manual_section_html(doc)
-
     pins_doc = _as_dict(doc.get("pins"))
     unpinned_items = [item for item in _as_list(pins_doc.get("items")) if isinstance(item, dict)]
     if unpinned_items:
@@ -687,7 +841,7 @@ def render_reach_html(
             "<tr>"
             f"<td>{esc(str(item.get('name') or ''))}</td>"
             f"<td><code>{esc(str(item.get('path') or ''))}</code></td>"
-            f"<td><code>{esc(_pin_suggestion_cell(item))}</code></td>"
+            f"<td>{_unpinned_html_cell(item)}</td>"
             "</tr>"
             for item in unpinned_items
         )
@@ -723,6 +877,22 @@ def render_reach_html(
 
     watch_html = _watch_link_html(doc)
     has_watch = _doc_has_watch_cta(doc)
+    tier2_n = int(tiers.get("tier2") or 0)
+    total_n = int(reach.get("total") or 0)
+    summary_findings = _top_findings_html(
+        [(item, unpinned_items, "") for item in _tier2_from_reach(reach)]
+    )
+    warning = _summary_warning_text(_as_list(honesty.get("truncation")))
+    warning_html = (
+        f'<p class="warning"><strong>Warning:</strong> {esc(warning)}</p>' if warning else ""
+    )
+    summary_html = (
+        "<section><h2>Summary</h2>"
+        f"<p><strong>{total_n} records, {tier2_n} at tier 2.</strong> "
+        f"tier0={int(tiers.get('tier0') or 0)} · "
+        f"tier1={int(tiers.get('tier1') or 0)} · tier2={tier2_n}</p>"
+        f"{summary_findings}{warning_html}</section>"
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -741,19 +911,12 @@ pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 </head>
 <body>
 <h1>Auctelis Agent Reach Report</h1>
-<p class="banner">{esc(str(honesty.get("disclaimer") or ""))}</p>
+<p class="banner">{esc(_FIRST_SCREEN_LINE)}</p>
+{summary_html}
 <ul>
 <li><strong>Product:</strong> auctelis {esc(str(doc.get("product_version") or product_version()))}</li>
 <li><strong>Repository:</strong> <code>{esc(str(doc.get("repository") or ""))}</code></li>
-<li><strong>Reach total:</strong> {esc(str(reach.get("total", 0)))}</li>
-<li><strong>Tiers:</strong> tier0={esc(str(tiers.get("tier0", 0)))} ·
- tier1={esc(str(tiers.get("tier1", 0)))} · tier2={esc(str(tiers.get("tier2", 0)))}</li>
-<li><strong>Coverage:</strong> {esc(str(honesty.get("coverage_line") or "(unavailable)"))}</li>
 </ul>
-<section>
-<h2>Honesty</h2>
-<ul>{trunc_html}<li>Inventory is DECLARED/CONFIGURED only.</li></ul>
-</section>
 <section>
 <h2>Tier-2 reach</h2>
 <table>
@@ -761,13 +924,13 @@ pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 <tbody>{tier2_body}</tbody>
 </table>
 </section>
-{manual_section}
 <section>
 <h2>Cards</h2>
 <ul>{cards_html or "<li><em>None</em></li>"}</ul>
 </section>
 {pins_section}
 {baseline_section}
+{_coverage_limits_html(doc)}
 {_workflow_snippet_html()}
 {watch_html}
 {_next_step_html(plural=False, has_watch=has_watch)}
@@ -1075,31 +1238,66 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
     honesty_notes = _fleet_honesty_notes(doc)
     org = org_reusable if org_reusable is not None else doc.get("org_reusable")
     org = str(org).strip() if org else None
+    repo_n = int(doc.get("repository_count") or 0)
+    tier2_n = int(totals.get("tier2") or 0)
+    repo_word = "repository" if repo_n == 1 else "repositories"
+    finding_rows: list[tuple[dict[str, Any], list[dict[str, Any]], str]] = []
+    for repo in repositories:
+        pins = _fleet_pin_items(repo)
+        label = _md_code(repo.get("repository"))
+        for item in _tier2_records(repo):
+            finding_rows.append((item, pins, label))
+    trunc_notes: list[str] = []
+    for note in honesty_notes:
+        if "truncat" in str(note).lower():
+            trunc_notes.append(str(note))
+    for row in skipped:
+        if row.get("truncated"):
+            trunc_notes.extend(
+                str(note) for note in _as_list(row.get("notes")) if str(note).strip()
+            )
     lines: list[str] = [
         "# Auctelis Fleet Agent Reach Report",
         "",
-        f"> {_DECLARED_ONLY_DISCLAIMER}",
+        f"> {_FIRST_SCREEN_LINE}",
         "",
-        f"- **Product:** auctelis {doc.get('product_version') or product_version()}",
-        f"- **Repositories:** {int(doc.get('repository_count') or 0)}",
-        f"- **Reach total:** {int(totals.get('reach_total') or 0)}",
+        "## Summary",
+        "",
         (
-            f"- **Tiers:** tier0={int(totals.get('tier0') or 0)} · "
-            f"tier1={int(totals.get('tier1') or 0)} · "
-            f"tier2={int(totals.get('tier2') or 0)}"
+            f"**{repo_n} {repo_word}, {tier2_n} at tier 2.** "
+            f"tier0={int(totals.get('tier0') or 0)} · "
+            f"tier1={int(totals.get('tier1') or 0)} · tier2={tier2_n}"
         ),
-        f"- **Unpinned MCP launchers:** {int(totals.get('unpinned') or 0)}",
         (
-            f"- **Watching:** {int(totals.get('watching') or 0)} of "
-            f"{int(doc.get('repository_count') or 0)} repos · "
+            f"- **Watching:** {int(totals.get('watching') or 0)} of {repo_n} repos · "
             f"unwatched tier-2: {int(totals.get('unwatched_tier2') or 0)}"
         ),
         "",
-        "## Repositories (ranked by tier-2 reach)",
-        "",
-        "| Repository | Reach | tier2 | tier1 | tier0 | Unpinned | Watch |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
+    lines.extend(_top_findings_md(finding_rows))
+    warning = _summary_warning_text(trunc_notes)
+    if warning:
+        lines.extend(["", f"**Warning:** {escape_markdown_inline(warning, max_len=300)}"])
+    if _unwatched_tier2_slugs(doc, limit=1):
+        lines.extend(
+            [
+                "",
+                "Open Watch PRs: `bash rollout-watch-prs.sh` (dry-run), "
+                "then `APPLY=1 bash rollout-watch-prs.sh`.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            f"- **Product:** auctelis {doc.get('product_version') or product_version()}",
+            f"- **Unpinned MCP launchers:** {int(totals.get('unpinned') or 0)}",
+            "",
+            "### Repositories (ranked by tier-2 reach)",
+            "",
+            "| Repository | Reach | tier2 | tier1 | tier0 | Unpinned | Watch |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
     for repo in repositories:
         reach = _as_dict(repo.get("reach"))
         tiers = _as_dict(reach.get("tier_counts"))
@@ -1147,15 +1345,12 @@ def render_fleet_reach_md(doc: dict[str, Any], *, org_reusable: str | None = Non
         lines.append(f"### {_md_code(repo.get('repository'))}")
         lines.append("")
         for item in items:
-            suggestion = escape_markdown_inline(_pin_suggestion_cell(item), max_len=240)
-            lines.append(
-                f"- {_md_code(item.get('name'))} ({_md_code(item.get('path'))}) — {suggestion}"
-            )
+            lines.append(_unpinned_md_line(item))
         lines.append("")
     if not any_pins:
         lines.extend(["_No unpinned MCP launchers across these repositories._", ""])
     lines.extend(_skipped_section_md(skipped, honesty_notes))
-    lines.extend(_manual_md_lines(doc))
+    lines.extend(_coverage_limits_md(doc))
     lines.extend(_workflow_snippet_md())
     fleet_has_watch = any(_doc_has_watch_cta(repo) for repo in repositories) or bool(
         _unwatched_tier2_slugs(doc, limit=1)
@@ -1229,7 +1424,7 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
                 "<tr>"
                 f"<td>{esc(str(item.get('name') or ''))}</td>"
                 f"<td><code>{esc(str(item.get('path') or ''))}</code></td>"
-                f"<td><code>{esc(_pin_suggestion_cell(item))}</code></td>"
+                f"<td>{_unpinned_html_cell(item)}</td>"
                 "</tr>"
                 for item in items
             )
@@ -1243,6 +1438,47 @@ def render_fleet_reach_html(doc: dict[str, Any], *, org_reusable: str | None = N
         "".join(pin_parts) or "<p><em>No unpinned MCP launchers across these repositories.</em></p>"
     )
     skipped_html = _skipped_section_html(skipped, honesty_notes)
+    repo_n = int(doc.get("repository_count") or 0)
+    tier2_n = int(totals.get("tier2") or 0)
+    repo_word = "repository" if repo_n == 1 else "repositories"
+    finding_rows: list[tuple[dict[str, Any], list[dict[str, Any]], str]] = []
+    for repo in repositories:
+        pins = _fleet_pin_items(repo)
+        label = str(repo.get("repository") or "")
+        for item in _tier2_records(repo):
+            finding_rows.append((item, pins, label))
+    trunc_notes = [str(note) for note in honesty_notes if "truncat" in str(note).lower()]
+    for row in skipped:
+        if row.get("truncated"):
+            trunc_notes.extend(
+                str(note) for note in _as_list(row.get("notes")) if str(note).strip()
+            )
+    warning = _summary_warning_text(trunc_notes)
+    warning_html = (
+        f'<p class="warning"><strong>Warning:</strong> {esc(warning)}</p>' if warning else ""
+    )
+    rollout_html = ""
+    if _unwatched_tier2_slugs(doc, limit=1):
+        rollout_html = (
+            "<p>Open Watch PRs: <code>bash rollout-watch-prs.sh</code> (dry-run), "
+            "then <code>APPLY=1 bash rollout-watch-prs.sh</code>.</p>"
+        )
+    summary_html = (
+        "<section><h2>Summary</h2>"
+        f"<p><strong>{repo_n} {repo_word}, {tier2_n} at tier 2.</strong> "
+        f"tier0={int(totals.get('tier0') or 0)} · "
+        f"tier1={int(totals.get('tier1') or 0)} · tier2={tier2_n}</p>"
+        "<ul>"
+        f"<li><strong>Watching:</strong> {int(totals.get('watching') or 0)} of {repo_n} "
+        f"repos · unwatched tier-2: {int(totals.get('unwatched_tier2') or 0)}</li>"
+        f"<li><strong>Unpinned MCP launchers:</strong> {int(totals.get('unpinned') or 0)}</li>"
+        "</ul>"
+        f"{_top_findings_html(finding_rows)}{warning_html}{rollout_html}"
+        "<h3>Repositories (ranked by tier-2 reach)</h3>"
+        "<table><thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th>"
+        f"<th>tier0</th><th>Unpinned</th><th>Watch</th></tr></thead><tbody>{summary_rows}</tbody></table>"
+        "</section>"
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1263,25 +1499,9 @@ pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 </head>
 <body>
 <h1>Auctelis Fleet Agent Reach Report</h1>
-<p class="banner">{esc(_DECLARED_ONLY_DISCLAIMER)}</p>
-<ul>
-<li><strong>Product:</strong> auctelis {esc(str(doc.get("product_version") or product_version()))}</li>
-<li><strong>Repositories:</strong> {int(doc.get("repository_count") or 0)}</li>
-<li><strong>Reach total:</strong> {int(totals.get("reach_total") or 0)}</li>
-<li><strong>Tiers:</strong> tier0={int(totals.get("tier0") or 0)} ·
- tier1={int(totals.get("tier1") or 0)} · tier2={int(totals.get("tier2") or 0)}</li>
-<li><strong>Unpinned MCP launchers:</strong> {int(totals.get("unpinned") or 0)}</li>
-<li><strong>Watching:</strong> {int(totals.get("watching") or 0)} of
- {int(doc.get("repository_count") or 0)} repos · unwatched tier-2:
- {int(totals.get("unwatched_tier2") or 0)}</li>
-</ul>
-<section>
-<h2>Repositories (ranked by tier-2 reach)</h2>
-<table>
-<thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th><th>tier0</th><th>Unpinned</th><th>Watch</th></tr></thead>
-<tbody>{summary_rows}</tbody>
-</table>
-</section>
+<p class="banner">{esc(_FIRST_SCREEN_LINE)}</p>
+{summary_html}
+<p><strong>Product:</strong> auctelis {esc(str(doc.get("product_version") or product_version()))}</p>
 {_org_rollout_html(doc, org_reusable=org)}
 <section>
 <h2>Tier-2 reach by repository</h2>
@@ -1292,7 +1512,7 @@ pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 {pins_html}
 </section>
 {skipped_html}
-{_manual_section_html(doc)}
+{_coverage_limits_html(doc)}
 {_workflow_snippet_html()}
 {_next_step_html(plural=True, has_watch=any(_doc_has_watch_cta(r) for r in repositories) or bool(_unwatched_tier2_slugs(doc, limit=1)))}
 </body>

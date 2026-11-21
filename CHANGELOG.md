@@ -7,6 +7,32 @@ and this project uses semantic versioning.
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-11-21
+
+### Added
+
+- **AUCT-039:** PyPI cutover order is claim → bump+flip PR → publish → live probe → tag.
+  `auctelis-dev build pypi-check` requires the packaged release manifest to match
+  canonical (and the built wheel, when one exists). `publish-pypi.yml` polls PyPI
+  for up to 10 minutes, then runs `pypi-check --live`. `release.yml` fails a
+  Release with fewer than 6 assets. `pypi_live` stays false until the package
+  name is claimed.
+
+### Fixed
+
+- **AUCT-040:** PR-comment `Pin fix` is a literal code span. Newlines and
+  over-budget snippets are omitted instead of truncated or backslash-escaped.
+  The Reach Report uses the same snippet helper.
+- **AUCT-041:** Reach reports (Markdown and HTML, single repo and fleet) lead
+  with a Summary: tier counts, the top tier-2 findings, and a Pin fix when one
+  exists. Honesty and Not-auto-inspected sit under Coverage and limits. The
+  JSON document is unchanged.
+
+### Changed
+
+- Removed unused `_is_unpinned_mcp` alias; document Reach Report Summary-first
+  layout in `docs/REACH.md` and `docs/CLI-REFERENCE.md`.
+
 ## [0.1.2] — 2026-11-21
 
 ### Added

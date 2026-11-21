@@ -392,9 +392,8 @@ def test_check_first_run_footer_points_at_report_not_lock_only(tmp_path: Path):
     assert "Next: auctelis lock --update" not in text
 
 
-def test_auct038_gate_pr_comment_includes_pin_fix():
-    """AUCT-038: unpinned MCP growth emits one Pin fix line within budget."""
-    report = {
+def _pin_growth_report(package_stem: str, *, name: str = "linear") -> dict:
+    return {
         "verdict": "NEEDS_REVIEW",
         "mode": "comment-only",
         "required_owners": ["@security"],
@@ -412,11 +411,11 @@ def test_auct038_gate_pr_comment_includes_pin_fix():
                 "added": [
                     {
                         "kind": "MCP Server Registration",
-                        "name": "linear",
+                        "name": name,
                         "path": ".cursor/mcp.json",
                         "launcher": "npx",
                         "pin_state": "floating",
-                        "package_stem": "@linear/mcp",
+                        "package_stem": package_stem,
                         "capabilities": ["invoke_tools"],
                         "env_keys": [],
                         "evidence_strength": "LITERAL_CONFIG",
@@ -425,11 +424,66 @@ def test_auct038_gate_pr_comment_includes_pin_fix():
                 "changed": [],
                 "removed": [],
             },
-            "lines": ['+ mcp "linear"'],
+            "lines": [f'+ mcp "{name}"'],
         },
     }
+
+
+def _pin_line(body: str) -> str:
+    return next(line for line in body.splitlines() if "**Pin fix:**" in line)
+
+
+def test_auct038_gate_pr_comment_includes_pin_fix():
+    """AUCT-040: Pin fix is the literal snippet, not a truncated escape."""
+    import json
+
+    from auctelis.authority_card import pin_config_snippet
+
+    report = _pin_growth_report("demo-evil-mcp")
     body = render_gate_pr_comment(report)
-    assert "**Pin fix:**" in body
-    assert "@linear/mcp@" in body
-    assert "exact-version" in body
+    snippet = '"args": ["-y", "demo-evil-mcp@<exact-version>"]'
+    assert pin_config_snippet(report["delta"]["changes"]["added"][0]) == snippet
+    assert snippet in body
+    pin = _pin_line(body)
+    assert "\\[" not in pin
+    assert "&lt;" not in pin
+    assert json.loads("{" + snippet + "}")["args"] == ["-y", "demo-evil-mcp@<exact-version>"]
     assert body.count("\n") <= 22
+
+
+def test_auct040_hostile_pin_stays_inside_the_code_span():
+    """Backticks, links, mentions, and HTML cannot break out of the span."""
+    from auctelis.authority_card import pin_config_snippet
+    from auctelis.textutil import markdown_code_span
+
+    payloads = (
+        "evil`name",
+        "x](http://evil.example)",
+        "@user",
+        "<img src=x onerror=alert(1)>",
+    )
+    for payload in payloads:
+        report = _pin_growth_report(payload, name="server")
+        record = report["delta"]["changes"]["added"][0]
+        span = markdown_code_span(pin_config_snippet(record))
+        assert span is not None
+        body = render_gate_pr_comment(report)
+        assert span in body
+        outside = body.replace(span, "", 1)
+        assert "](http://" not in outside
+        assert "@user" not in outside
+        assert "<img" not in outside
+        assert "**Pin fix:**" in body
+
+
+def test_auct040_newline_or_long_pin_is_omitted():
+    """Over-budget and multiline snippets are dropped, not truncated."""
+    newline = render_gate_pr_comment(_pin_growth_report("demo\nevil", name="server"))
+    assert "**Pin fix:**" not in newline
+    assert "demo" not in newline.split("**Pin fix:**", 1)[-1]
+
+    long_name = "p" * 120
+    body = render_gate_pr_comment(_pin_growth_report(long_name, name="server"))
+    assert "**Pin fix:**" not in body
+    assert long_name[:40] not in body
+    assert "…" not in body

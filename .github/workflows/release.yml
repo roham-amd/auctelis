@@ -245,6 +245,15 @@ jobs:
               --notes "$NOTES" \
               --latest
           fi
+          # AUCT-039: glob success is not an asset count. v0.1.0 shipped a
+          # release whose upload matched nothing. Six is wheel, sdist, sbom,
+          # and the three cosign bundles.
+          asset_count="$(gh release view "$TAG" --json assets --jq '.assets | length')"
+          if [[ "${asset_count}" -lt 6 ]]; then
+            echo "::error::Release ${TAG} has ${asset_count} assets; expected at least 6 (wheel, sdist, sbom, and cosign bundles)."
+            exit 1
+          fi
+          echo "Release ${TAG} has ${asset_count} assets."
 
       # Optional; public distribution is GitHub Release assets + PyPI (publish-pypi.yml).
       - name: Publish to GitHub Packages

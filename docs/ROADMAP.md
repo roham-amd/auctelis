@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.1.2** · lock schema 1 · tooling 0.1.2
+**Current:** **0.1.3** · lock schema 1 · tooling 0.1.3
 
 ## North star (Gate Zero)
 
@@ -25,7 +25,8 @@ are removed.
 | **0.1.0** | Initial release: reach check, lock, gate, Action, Reach Report, `check --github` | **done** |
 | **0.1.1** | Green Release assets + calm lock digests + executable org Watch rollout | **done** |
 | **0.1.2** | PyPI-ready CTAs, agent-only CI precision, inline Pin fix + org-reusable rollout | **done** |
-| Next | Five outside pilots (report-first); flip `pypi_live` after Trusted Publishing; research repo split if unused | open |
+| **0.1.3** | Pasteable Pin fix, headline-first Reach Report, PyPI cutover guards (still `pypi_live=false`) | **done** |
+| Next | Five outside pilots (report-first); claim PyPI, then flip `pypi_live` (cutover order is claim → bump+flip PR → publish → live probe → tag; the flag stays false until the name is claimed); research repo split if unused | open |
 
 ## 90-day decision gate
 

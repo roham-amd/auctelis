@@ -92,9 +92,18 @@ def test_once_published_copy_fails_when_not_live(monkeypatch, tmp_path: Path):
 
 
 def test_pypi_live_requires_bare_uvx(monkeypatch, tmp_path: Path):
+    """AUCT-039: bare `uvx auctelis check` is primary; git+ may follow it."""
     root = _fake_repo(tmp_path, pypi_live=True)
+    product = product_version()
+    primary = (
+        "uvx auctelis check\n"
+        f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{product}'
+        f'#subdirectory=tools" auctelis check\n'
+    )
+    for rel in build._FIRST_RUN_DOCS:
+        (root / rel).write_text(primary, encoding="utf-8")
     monkeypatch.setattr(build, "repo_root", lambda: root)
-    check_public_install_versions(product_version())
+    check_public_install_versions(product)
 
 
 def test_auct036_pypi_check_live_http_200(monkeypatch, tmp_path: Path):

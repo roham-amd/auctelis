@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.2** · product **0.1.2** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.3** · product **0.1.3** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -62,10 +62,13 @@ lists every tier-2 record (not just the top cards).
 - `--pins` → unpinned/floating MCP launchers with a concrete pin suggestion
   (names the real package/image from `args` when present)
 - `--report DIR` → single repo: write `reach-report.html` / `.md` / `.json` and
-  `authority-sbom.json` (shareable audit artifact)
+  `authority-sbom.json` (shareable audit artifact). HTML/MD open with a Summary
+  (tier counts + top tier-2 findings + Pin fix when present); Honesty and
+  Not-auto-inspected sit under Coverage and limits. JSON schema is unchanged.
 - More than one `PATH` (requires `--report DIR`) → one fleet report
   (`auctelis.fleet_reach_report.v1`) with every repo ranked by tier-2 reach.
-  Fleet writes `reach-report.html` / `.md` / `.json` only (no SBOM).
+  Fleet writes `reach-report.html` / `.md` / `.json` only (no SBOM) and uses
+  the same Summary-first layout, plus the ranked repo table.
   `--lock-file`, `--baseline`, and `--pins` apply to single-repo runs only
   (exit 2 if combined with multiple paths)
 - `--github TARGET ...` → zero-clone GitHub audit via Trees+Blobs API.

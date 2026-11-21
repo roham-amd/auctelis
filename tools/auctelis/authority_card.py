@@ -575,10 +575,6 @@ def is_unpinned_mcp(record: dict[str, Any]) -> bool:
     return bool(launch) and pin not in {"pinned", "digest"}
 
 
-# Back-compat alias for internal callers / tests.
-_is_unpinned_mcp = is_unpinned_mcp
-
-
 def _floating_package_token(record: dict[str, Any]) -> str:
     """Best-effort package/image name from sealed ``args`` (no network)."""
     raw_args = record.get("args")
@@ -646,7 +642,7 @@ def pin_report(records: list[dict[str, Any]] | None) -> dict[str, Any]:
     mcps = [r for r in (records or []) if kind_label(r.get("kind")) == "mcp"]
     items: list[dict[str, Any]] = []
     for record in mcps:
-        if not _is_unpinned_mcp(record):
+        if not is_unpinned_mcp(record):
             continue
         items.append(
             {

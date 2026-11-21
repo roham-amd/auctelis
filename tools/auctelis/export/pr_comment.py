@@ -21,7 +21,7 @@ from auctelis.security.authority import render_component_delta_lines
 from auctelis.security.gating import is_gate_finding
 from auctelis.textutil import (
     escape_markdown,
-    escape_markdown_inline,
+    markdown_code_span,
     sanitize_terminal_text,
 )
 
@@ -477,19 +477,21 @@ def render_authority_diff_comment(
     for card in cards:
         visible.append(f"- {_esc(card.lstrip('+-~ '), max_len=180)}")
 
-    # AUCT-038: one pasteable pin fix when growth includes an unpinned MCP.
-    # Escape only the untrusted snippet (keep @scope/pkg readable); markdown
-    # chrome stays outside escape_markdown so ** / ` survive.
+    # AUCT-040: one pasteable pin fix. Markdown renders a code span with no
+    # backslash or entity escaping. A newline or over-budget snippet is omitted
+    # rather than truncated. Plain text keeps the previous one-line sanitizer.
     pin_snippet = _first_unpinned_pin_snippet(lock_delta)
     if pin_snippet and len(visible) < max_lines:
         if plain_text:
             safe = sanitize_terminal_text(pin_snippet, max_len=100)
+            pin_line = f"**Pin fix:** `{safe}` (pinning turns this into PASS / REDUCTION)"
+            if len(pin_line) > 160:
+                pin_line = pin_line[:159] + "…"
+            visible.append(pin_line)
         else:
-            safe = escape_markdown_inline(pin_snippet, max_len=100)
-        pin_line = f"**Pin fix:** `{safe}` (pinning turns this into PASS / REDUCTION)"
-        if len(pin_line) > 160:
-            pin_line = pin_line[:159] + "…"
-        visible.append(pin_line)
+            span = markdown_code_span(pin_snippet)
+            if span is not None:
+                visible.append(f"**Pin fix:** {span} (pinning turns this into PASS / REDUCTION)")
 
     visible.append(_esc(_unknowns_line(coverage), max_len=200))
 

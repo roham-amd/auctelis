@@ -1049,3 +1049,45 @@ def test_auct038_org_reusable_rollout_script(tmp_path: Path):
     assert "roham-amd/auctelis@" not in decoded
     md = (out / "reach-report.md").read_text(encoding="utf-8")
     assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in md
+
+
+def test_auct041_headline_before_honesty():
+    """First screen states counts and the worst finding; caveats move down."""
+    doc = _parity_doc()
+    doc["schema"] = "auctelis.reach_report.v1"
+    doc["cards"] = ['+ mcp "demo-evil-mcp"']
+    doc["reach"]["top"][0]["name"] = "demo-evil-mcp"
+    doc["honesty"]["truncation"] = ["walk truncated=true — watched-path scan may be incomplete"]
+    doc["pins"]["items"][0]["name"] = "demo-evil-mcp"
+    doc["pins"]["items"][0]["config_snippet"] = '"args": ["-y", "demo-evil-mcp@<exact-version>"]'
+    frozen = json.dumps(doc, sort_keys=True)
+    md = render_reach_md(doc)
+    html = render_reach_html(doc)
+    assert json.dumps(doc, sort_keys=True) == frozen
+    assert doc["schema"] == "auctelis.reach_report.v1"
+
+    md_lines = md.splitlines()
+    head = "\n".join(md_lines[:25])
+    first_screen = "\n".join(md_lines[:15])
+    assert "at tier 2" in head
+    assert "demo-evil-mcp" in head
+    assert "not a certificate" in first_screen
+    honesty_at = next(i for i, line in enumerate(md_lines) if "Honesty" in line)
+    assert honesty_at >= 25
+    assert "demo-evil-mcp" in "\n".join(md_lines[:honesty_at])
+    summary, _, rest = md.partition("## Coverage and limits")
+    assert "truncated=true" in summary
+    assert "### Honesty" in rest
+    assert "Not auto-inspected" in rest
+    assert "DECLARED/CONFIGURED" in rest
+    assert '"args": ["-y", "demo-evil-mcp@<exact-version>"]' in summary
+    assert "\\[" not in summary.split("**Pin fix:**", 1)[-1].splitlines()[0]
+
+    assert html.index("<h2>Summary</h2>") < html.index("<h2>Tier-2 reach</h2>")
+    assert html.index("<h2>Tier-2 reach</h2>") < html.index("<h2>Cards</h2>")
+    assert html.index("<h2>Cards</h2>") < html.index("<h2>Coverage and limits</h2>")
+    assert html.index("<h2>Coverage and limits</h2>") < html.index("<h3>Honesty</h3>")
+    assert html.index("<h3>Honesty</h3>") < html.index("<h3>Not auto-inspected</h3>")
+    summary_html, _, _rest_html = html.partition("<h2>Coverage and limits</h2>")
+    assert "truncated=true" in summary_html
+    assert "not a certificate" in html[: html.index("<h2>Summary</h2>")]

@@ -1,4 +1,4 @@
-# Documentation index (auctelis 0.1.2)
+# Documentation index (auctelis 0.1.3)
 
 Two surfaces — `check` locally (including `--report`), the Action on PRs — and
 **six** public pages. Everything else is maintainer or reference depth; it is
@@ -11,7 +11,7 @@ not part of the first ten minutes.
 | [`../README.md`](../README.md) | Two-surface front door (`check` + Action) |
 | [`INSTALL.md`](INSTALL.md) | Git-tag install (PyPI planned) + `check --report` |
 | [`PRODUCT.md`](PRODUCT.md) | Frozen product contract |
-| [`REACH.md`](REACH.md) | Reach definition and evidence-honest tiers |
+| [`REACH.md`](REACH.md) | Reach definition, tiers, and Shareable Reach Report layout |
 | [`AUCTELIS-GATE.md`](AUCTELIS-GATE.md) | Enforce Action + CODEOWNERS |
 | [`AUTHORITY-LOCK.md`](AUTHORITY-LOCK.md) | Lock semantics, diff classes |
 

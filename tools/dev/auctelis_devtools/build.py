@@ -810,13 +810,73 @@ def check_action_parity() -> list[str]:
     ]
 
 
+def _release_manifest_parity() -> list[str]:
+    """Packaged manifest, and the built wheel when present, must match canonical.
+
+    ``pypi_live()`` reads the manifest baked into the wheel. A wheel built
+    before the flip keeps printing ``git+`` CTAs after publish.
+    """
+    import zipfile
+
+    from auctelis.versioning import product_version
+
+    root = repo_root()
+    canonical_path = root / "canonical" / "release-manifest.json"
+    if not canonical_path.is_file():
+        raise SystemExit("Missing canonical/release-manifest.json")
+    canonical = canonical_path.read_bytes()
+    notes: list[str] = []
+    packaged = root / "tools" / "auctelis" / "data" / "release-manifest.json"
+    if packaged.is_file():
+        if packaged.read_bytes() != canonical:
+            raise SystemExit(
+                "tools/auctelis/data/release-manifest.json != "
+                "canonical/release-manifest.json (the wheel would bake the drift)"
+            )
+        notes.append("ok packaged release-manifest.json matches canonical")
+    else:
+        notes.append("note: packaged release-manifest.json absent")
+
+    dist = root / "tools" / "dist"
+    if not dist.is_dir():
+        notes.append("note: wheel manifest assert skipped (no tools/dist)")
+        return notes
+    ver = product_version()
+    matching = sorted(dist.glob(f"auctelis-{ver}-*.whl"))
+    if not matching:
+        notes.append(f"note: wheel manifest assert skipped (no tools/dist/auctelis-{ver}-*.whl)")
+        return notes
+    wheel = matching[-1]
+    with zipfile.ZipFile(wheel) as zf:
+        name = next(
+            (
+                entry
+                for entry in zf.namelist()
+                if entry.endswith("auctelis/data/release-manifest.json")
+            ),
+            "",
+        )
+        if not name:
+            raise SystemExit(f"{wheel.name} missing auctelis/data/release-manifest.json")
+        baked = zf.read(name)
+    if baked != canonical:
+        raise SystemExit(
+            f"{wheel.name} auctelis/data/release-manifest.json != "
+            "canonical/release-manifest.json — rebuild the wheel after the manifest edit"
+        )
+    notes.append(f"ok {wheel.name} release-manifest.json matches canonical")
+    return notes
+
+
 def check_pypi_cutover_readiness(*, live: bool = False) -> list[str]:
     """AUCT-028/036: preflight before flipping ``pypi_live=true``.
 
     Verifies Trusted Publishing workflow OIDC wiring, wheel packaging
-    exclusions/inclusions, and prints the exact 3-step cutover checklist.
-    Does **not** flip ``pypi_live`` or publish. Optional ``live=True`` queries
-    the public PyPI JSON API (stdlib urllib only).
+    exclusions/inclusions, and prints the cutover order: claim, bump+flip PR,
+    publish, live probe, tag. Does **not** flip ``pypi_live`` or publish.
+    Optional ``live=True`` queries the public PyPI JSON API and raises unless
+    the probe is HTTP 200. The packaged manifest must match canonical, and so
+    must a built wheel for this version when ``tools/dist`` has one.
     """
     from auctelis.versioning import product_version
 
@@ -866,19 +926,28 @@ def check_pypi_cutover_readiness(*, live: bool = False) -> list[str]:
             raise SystemExit(f"PyPI live check failed for {url}: {exc}") from exc
         print(f"PyPI HTTP {status} for auctelis/{ver} ({url})")
         actions.append(f"ok live PyPI probe HTTP {status} for auctelis/{ver}")
-        if _pypi_live() and status != 200:
-            raise SystemExit(f"pypi_live=true but PyPI returned HTTP {status} for auctelis/{ver}")
+        if status != 200:
+            # Loud on any miss. A 404 while pypi_live is still false is expected
+            # before the claim; --live is the post-publish probe, so it fails.
+            prefix = "pypi_live=true but " if _pypi_live() else ""
+            raise SystemExit(
+                f"{prefix}PyPI live probe returned HTTP {status} for auctelis/{ver} (expected 200)"
+            )
+
+    actions.extend(_release_manifest_parity())
 
     checklist = [
         "",
-        "PyPI cutover checklist (manual; do not automate publish here):",
-        "  1. Claim/configure Trusted Publishing for project `auctelis` on PyPI",
+        "PyPI cutover order (manual; do not automate the upload here):",
+        "  1. Claim `auctelis` on PyPI and add a Trusted Publisher",
         "     (owner roham-amd / repo auctelis / workflow publish-pypi.yml / env pypi).",
-        "  2. Dispatch `.github/workflows/publish-pypi.yml` and confirm HTTP 200 at",
-        "     https://pypi.org/pypi/auctelis/json for this VERSION.",
-        "  3. Flip `pypi_live=true` in canonical/release-manifest.json,",
-        '     set AUCTELIS_PYPI_DEFAULT="true" in both action.yml copies, and lead',
-        "     install docs with `uvx auctelis check` (then `auctelis-dev build all`).",
+        "  2. Bump+flip PR: set pypi_live=true in canonical/release-manifest.json,",
+        '     AUCTELIS_PYPI_DEFAULT="true" in both action.yml copies (byte-identical),',
+        "     and lead install docs with `uvx auctelis check`.",
+        "  3. Publish that flipped commit with publish-pypi.yml (workflow_dispatch).",
+        "  4. Live probe: poll https://pypi.org/pypi/auctelis/<ver>/json until HTTP 200",
+        "     (≤10 min), then run `auctelis-dev build pypi-check --live`.",
+        "  5. Tag the release only after the live probe is HTTP 200.",
         "",
     ]
     for line in checklist:

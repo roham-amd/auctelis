@@ -78,6 +78,50 @@ def escape_markdown_inline(value: object, *, max_len: int = 160) -> str:
     return text
 
 
+# Pasteable pin snippets. Longer than this is omitted — never truncated —
+# because a cut JSON fragment is not a pin.
+PASTEABLE_SNIPPET_MAX = 100
+
+
+def pasteable_code_text(value: object, *, max_len: int = PASTEABLE_SNIPPET_MAX) -> str | None:
+    """Literal snippet text, or None when it must not be shown.
+
+    Newlines and over-budget values are omitted. Nothing is backslash-escaped,
+    entity-escaped, or truncated. Control and bidi characters are stripped so
+    a package name cannot spoof the line.
+    """
+    raw = str(value if value is not None else "")
+    if "\n" in raw or "\r" in raw:
+        return None
+    text = strip_control(raw)
+    if not text or len(text) > max_len:
+        return None
+    return text
+
+
+def markdown_code_span(value: object, *, max_len: int = PASTEABLE_SNIPPET_MAX) -> str | None:
+    """CommonMark code span around a pasteable snippet, or None to omit it.
+
+    The fence is longer than any backtick run inside the snippet. A single
+    space is padded on both sides so a leading or trailing backtick cannot
+    merge with the fence; CommonMark strips that pair when it renders.
+    """
+    text = pasteable_code_text(value, max_len=max_len)
+    if text is None:
+        return None
+    longest = 0
+    run = 0
+    for char in text:
+        if char == "`":
+            run += 1
+            if run > longest:
+                longest = run
+        else:
+            run = 0
+    fence = "`" * (longest + 1)
+    return f"{fence} {text} {fence}"
+
+
 def escape_markdown(value: str, *, max_len: int = 160) -> str:
     """Neutralize markdown/HTML injection from target-controlled strings."""
     # Strip terminal/OSC control sequences as well as markdown.

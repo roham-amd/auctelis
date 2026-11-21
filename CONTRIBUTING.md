@@ -50,7 +50,9 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
   `require_research()` so the product wheel never depends on them.
 - Security: validate external URLs before `urlopen`; resolve executables with
   `shutil.which`; pass subprocess argv lists (never `shell=True`); keep target
-  strings escaped before markdown/terminal output.
+  strings escaped before markdown/terminal output. Exception: pasteable
+  **Pin fix** snippets use `markdown_code_span` (literal code span, omit when
+  over budget or multiline) so reviewers can copy them into MCP config.
 - Trusted destinations are authority: in the gate they are honored only when
   `.auctelis/trusted-hosts` is CODEOWNERS-covered.
 

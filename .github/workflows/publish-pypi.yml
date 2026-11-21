@@ -52,14 +52,25 @@ jobs:
           set -euo pipefail
           ver="$(tr -d '[:space:]' < VERSION)"
           url="https://pypi.org/pypi/auctelis/${ver}/json"
-          code="$(curl -sS -o /tmp/auctelis-pypi.json -w '%{http_code}' "$url")"
-          if [[ "$code" != "200" ]]; then
-            echo "::error::PyPI returned HTTP $code for $url"
+          # PyPI can lag the upload. Poll for up to 10 minutes, then fail loud.
+          deadline=$((SECONDS + 600))
+          code="000"
+          while [[ "${SECONDS}" -lt "${deadline}" ]]; do
+            code="$(curl -sS -o /tmp/auctelis-pypi.json -w '%{http_code}' "$url" || printf '000')"
+            if [[ "${code}" == "200" ]]; then
+              break
+            fi
+            echo "PyPI HTTP ${code} for ${url}; retrying"
+            sleep 15
+          done
+          if [[ "${code}" != "200" ]]; then
+            echo "::error::PyPI returned HTTP ${code} for ${url} after 10 minutes"
             exit 1
           fi
           got="$(python -c "import json; print(json.load(open('/tmp/auctelis-pypi.json'))['info']['version'])")"
-          if [[ "$got" != "$ver" ]]; then
+          if [[ "${got}" != "$ver" ]]; then
             echo "::error::PyPI version '$got' != VERSION '$ver'"
             exit 1
           fi
           echo "PyPI live for auctelis==${ver}"
+          uv run --directory tools --locked auctelis-dev build pypi-check --live

@@ -68,6 +68,21 @@ pinning (identical `package_stem` / launcher / host, e.g.
 package, launcher, or host — even when paired with a pin — is never
 `REDUCTION` (AUCT-030).
 
+## Shareable Reach Report layout
+
+`auctelis check --report` writes HTML/MD/JSON. The JSON document is stable
+(`auctelis.reach_report.v1` / `auctelis.fleet_reach_report.v1`). HTML and
+Markdown are for forwarding:
+
+1. One-line passive-scan disclaimer
+2. **Summary** — tier counts, top tier-2 findings, Pin fix when present
+   (fleet also ranks repos and may include `rollout-watch-prs.sh`)
+3. Tier-2 detail, Cards, Unpinned MCP launchers
+4. **Coverage and limits** — full honesty text and Not-auto-inspected families
+
+Pin fix snippets are literal CommonMark code spans (paste into `.cursor/mcp.json`).
+Over-budget or multiline snippets are omitted rather than truncated.
+
 ## What reach is not
 
 - Not publisher verification (`publisher NOT VERIFIED` until separately attested)
