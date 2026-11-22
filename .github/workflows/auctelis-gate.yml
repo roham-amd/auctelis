@@ -1,5 +1,5 @@
 # Dogfood: run this repo's composite Action against itself.
-# Consumers should prefer the tagged recipe from `auctelis ci init` /
+# Consumers should prefer the tagged recipe from `auctelis init` /
 # docs/auctelis-consumer-gate.example.yml (immutable tag or commit SHA).
 name: auctelis
 on:

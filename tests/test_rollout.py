@@ -365,7 +365,7 @@ def test_fleet_summary_leads_with_rollout_command():
     html = render_fleet_reach_html(doc)
     for text in (md, html):
         assert "rollout reach-report.json" in text
-        assert text.index("rollout reach-report.json") < text.index("rollout-watch-prs.sh")
+        assert "rollout-watch-prs.sh" not in text
     summary = md.split("## Summary", 1)[1].split("##", 1)[0]
     assert "rollout reach-report.json --apply" in summary
 
@@ -539,7 +539,7 @@ def test_auct045_fleet_summary_includes_org_reusable_cta():
         assert "--org-reusable acme" in text
         assert "rollout reach-report.json --org-reusable acme --apply" in text
         assert "#!/usr/bin/env bash" not in text
-        assert "rollout-watch-prs.sh" in text
+        assert "rollout-watch-prs.sh" not in text
 
 
 def _open_watch_pr(method: str, url: str, data: bytes | None, check_workflow) -> tuple[int, object]:
@@ -671,3 +671,73 @@ def test_auct052_pin_sha_with_status_exits_2(monkeypatch, capsys, tmp_path: Path
     assert "--pin-sha" in err
     assert "--status" in err
     assert calls == []
+
+
+def test_auct054_action_sha_writes_pin_without_tag_lookup(monkeypatch, capsys, tmp_path: Path):
+    from auctelis.versioning import product_version
+
+    version = product_version()
+    sha = "ab" * 20
+    path = _write(tmp_path, _fleet([_repo()]))
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    assert main(["rollout", str(path), "--action-sha", sha.upper()]) == 0
+    assert calls == []
+    capsys.readouterr()
+
+    def handler(method, url, data, _calls):
+        assert "/git/ref/tags/" not in _path(url)
+        assert "/roham-amd/auctelis/" not in _path(url)
+
+        def check(decoded: str) -> None:
+            assert f"uses: roham-amd/auctelis@{sha} # v{version}" in decoded
+            assert f"uses: roham-amd/auctelis@v{version}" not in decoded
+
+        return _open_watch_pr(method, url, data, check)
+
+    calls = _install(monkeypatch, handler)
+    assert main(["rollout", str(path), "--apply", "--action-sha", sha.upper()]) == 0
+    assert calls
+    assert not any("/git/ref/tags/" in url for _method, url, _data in calls)
+
+
+def test_auct054_action_sha_invalid_exits_2(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--action-sha", "not-a-sha"]) == 2
+    err = capsys.readouterr().err
+    assert "40-character" in err
+    assert calls == []
+
+
+def test_auct054_action_sha_with_status_exits_2(monkeypatch, capsys, tmp_path: Path):
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--action-sha", "ab" * 20, "--status"]) == 2
+    err = capsys.readouterr().err
+    assert "--action-sha" in err
+    assert "--status" in err
+    assert calls == []
+
+
+def test_auct054_action_sha_org_reusable_is_noop(monkeypatch, capsys, tmp_path: Path):
+    sha = "cd" * 20
+    path = _write(tmp_path, _fleet([_repo()]))
+    calls = _install(monkeypatch, lambda *_args: (_ for _ in ()).throw(AssertionError("network")))
+    assert main(["rollout", str(path), "--action-sha", sha, "--org-reusable", "acme"]) == 0
+    assert calls == []
+    capsys.readouterr()
+
+    def handler(method, url, data, _calls):
+        assert "/roham-amd/auctelis/" not in _path(url)
+
+        def check(decoded: str) -> None:
+            assert sha not in decoded
+            assert "auctelis-org-reusable.yml@main" in decoded
+
+        return _open_watch_pr(method, url, data, check)
+
+    calls = _install(monkeypatch, handler)
+    assert (
+        main(["rollout", str(path), "--apply", "--action-sha", sha, "--org-reusable", "acme"]) == 0
+    )
+    assert not any("/git/ref/tags/" in url for _method, url, _data in calls)

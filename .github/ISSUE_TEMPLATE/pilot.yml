@@ -47,7 +47,7 @@ body:
     attributes:
       label: Pilot path
       options:
-        - Team repo (ci init --apply + CODEOWNERS)
+        - Team repo (init --owner + CODEOWNERS)
         - Team repo (locked gate + CODEOWNERS)
         - Advisory Action only
     validations:

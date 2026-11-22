@@ -22,4 +22,4 @@ RULE-016 (`pull_request_target` + agent), RULE-017 (permission bypass), and
 content-based RULE-010.
 
 The valuable output is the Authority Diff / `pr-comment.md` shape, not a long
-scanner report. Product path: check → lock --update → ci init --apply → gate.
+scanner report. Product path: check → lock --update → init --owner → gate.

@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+## [0.1.8] — 2026-11-22
+
+### Added
+
+- **AUCT-053:** Org-audit docs require `Pull requests: read` for
+  `rollout --status`. HTTP 403 on `GET /pulls` names that scope. The Job
+  Summary dry-run passes `--show-body --max-prs 3`. Fleet `--report --baseline`
+  writes `org-drift-issue.md` when reach changed. Opt-in `open_drift_issue`
+  (default false) opens or updates one sticky Issue from that artifact
+  (`<!-- auctelis-org-drift -->`). Default permissions stay `contents: read`
+  and `actions: read`; missing `issues: write` is a non-fatal notice.
+- **AUCT-054:** `rollout --action-sha <40-hex>` and
+  `init --lockless --action-sha <40-hex>` pin the Action offline (no tag
+  lookup, no `api.github.com` fallback). `init --lockless --pin-sha` resolves
+  the release tag. Both init flags exit 2 without `--lockless`.
+  `--action-sha` is mutually exclusive with `rollout --status` and a no-op
+  with `--org-reusable`.
+
+### Removed
+
+- Fleet reports no longer write `rollout-watch-prs.sh`. Org rollout copy
+  points at `auctelis rollout` only. `ci init` stays a working alias and is
+  omitted from public `--help`, the README front door, and the product
+  command table.
+
 ## [0.1.7] — 2026-11-22
 
 ### Added

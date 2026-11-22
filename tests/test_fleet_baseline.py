@@ -167,6 +167,71 @@ def test_github_baseline_fleet(tmp_path: Path):
     assert "Changed since last audit" in md
 
 
+def test_render_fleet_drift_issue_md_none_on_zero_and_marker_on_drift(tmp_path: Path):
+    from auctelis.export.reach_report import render_fleet_drift_issue_md
+
+    assert render_fleet_drift_issue_md({}) is None
+    assert (
+        render_fleet_drift_issue_md(
+            {
+                "baseline_diff": {
+                    "changed_count": 0,
+                    "added_repositories": [{"repository": "acme/ignored"}],
+                    "removed_repositories": [],
+                    "repositories": [],
+                }
+            }
+        )
+        is None
+    )
+    drifted = {
+        "baseline_diff": {
+            "changed_count": 2,
+            "added_repositories": [{"repository": "acme/new"}],
+            "removed_repositories": [{"repository": "acme/gone"}],
+            "repositories": [{"repository": "acme/a", "changed_count": 1}],
+        }
+    }
+    md = render_fleet_drift_issue_md(drifted)
+    assert md is not None
+    assert md.startswith("<!-- auctelis-org-drift -->")
+    assert "acme/new" in md
+    assert "acme/gone" in md
+    assert "acme/a" in md
+    assert len(md.splitlines()) <= 25
+
+    huge = {
+        "baseline_diff": {
+            "changed_count": 40,
+            "added_repositories": [{"repository": f"acme/r{i}"} for i in range(40)],
+            "removed_repositories": [],
+            "repositories": [],
+        }
+    }
+    bounded = render_fleet_drift_issue_md(huge)
+    assert bounded is not None
+    assert "<!-- auctelis-org-drift -->" in bounded
+    assert len(bounded.splitlines()) <= 25
+
+    # Fleet --report writes org-drift-issue.md only when reach changed.
+    before = [(_repo_doc("acme/a", name="keep", tier=1, reason="net"), None, [])]
+    after = [
+        (_repo_doc("acme/a", name="keep", tier=2, reason="secrets"), None, []),
+        (_repo_doc("acme/b", name="new", tier=2, reason="secrets"), None, []),
+    ]
+    base_dir = tmp_path / "base"
+    write_fleet_reach_report_artifacts(base_dir, before)
+    baseline = json.loads((base_dir / "reach-report.json").read_text(encoding="utf-8"))
+    plain = tmp_path / "plain"
+    write_fleet_reach_report_artifacts(plain, after)
+    assert not (plain / "org-drift-issue.md").exists()
+    diffed = tmp_path / "diffed"
+    write_fleet_reach_report_artifacts(diffed, after, baseline=baseline)
+    issue = (diffed / "org-drift-issue.md").read_text(encoding="utf-8")
+    assert issue.startswith("<!-- auctelis-org-drift -->")
+    assert "acme/b" in issue
+
+
 def test_baseline_schema_mismatch_exit_2(tmp_path: Path, capsys):
     single = tmp_path / "single.json"
     single.write_text(

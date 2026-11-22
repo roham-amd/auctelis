@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.1.7** |
-| Tooling package | **0.1.7** (`auctelis`) |
+| Product release | **0.1.8** |
+| Tooling package | **0.1.8** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -46,19 +46,19 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 
 ```bash
 # One-line run without permanent install (see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" auctelis check                              # aha: ranked reach cards
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" auctelis check                              # aha: ranked reach cards
 
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" auctelis init --lockless                     # one-file lockless PR Watch (no owner / lock)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" auctelis init --owner security-owner        # full comment-only setup
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" auctelis init --lockless                     # one-file lockless PR Watch (no owner / lock)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" auctelis init --owner security-owner        # full comment-only setup
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
 ```
 
 Persistent install:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
@@ -89,7 +89,7 @@ uses: roham-amd/auctelis@<commit-sha>
 # uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.1.7`. The Action fetches the base ref at `--depth=1`
+Or pin the release tag: `@v0.1.8`. The Action fetches the base ref at `--depth=1`
 automatically (no `fetch-depth: 0` required) and short-circuits setup in
 lockless mode when no watched agent-config or workflow paths changed. Prefer the
 root `uses: roham-amd/auctelis@vX` form. Automatic PyPI install on tagged refs runs only when

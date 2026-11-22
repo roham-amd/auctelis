@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.7** · product **0.1.7** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.8** · product **0.1.8** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -22,8 +22,8 @@ Install: [`INSTALL.md`](INSTALL.md).
 | --- | --- | --- |
 | Core | `init --lockless` | One-file comment-only PR Watch (no owner, lock, policy, or CODEOWNERS) |
 | Core | `init --owner team` | Full setup (policy + workflow + CODEOWNERS + lock) |
-| Core | `check [PATH ...] [--top N] [--pins] [--resolve-pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests] [--org-reusable ORG]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report; `--baseline` diffs prior report (fleet/`--github` too); `--resolve-pins` opt-in npm/PyPI lookup; `--org-reusable` with `--report` emits an org-reusable rollout script |
-| Core | `rollout REPORT_JSON [--apply \| --status] [--max-prs N] [--org-reusable ORG] [--show-body] [--pin-sha] [--json] [--csv]` | Open lockless Watch PRs for unwatched tier-2 repos (dry-run unless `--apply`); `--status` read-only funnel ledger; `--show-body` previews the PR; `--pin-sha` pins the Action to a commit SHA |
+| Core | `check [PATH ...] [--top N] [--pins] [--resolve-pins] [--report DIR] [--baseline PATH] [--max-files N] [--github TARGET …] [--max-repos N] [--include-forks] [--strict-digests] [--org-reusable ORG]` | Ranked reach report vs `AUTHORITY.lock` (front door); `--github` zero-clone org/repo audit; multi-path / multi-repo = fleet report; `--baseline` diffs prior report (fleet/`--github` too); `--resolve-pins` opt-in npm/PyPI lookup; `--org-reusable` with `--report` records the org caller for `rollout` |
+| Core | `rollout REPORT_JSON [--apply \| --status] [--max-prs N] [--org-reusable ORG] [--show-body] [--pin-sha] [--action-sha SHA] [--json] [--csv]` | Open lockless Watch PRs for unwatched tier-2 repos (dry-run unless `--apply`); `--status` read-only funnel ledger; `--show-body` previews the PR; `--pin-sha` / `--action-sha` pin the Action to a commit SHA |
 | Core | `trust <host>` | Trusted destinations for network-only reach |
 | Core | `status [--check]` | Lock / workflow / CODEOWNERS / protection summary |
 | Core | `lock` | Write / check / update repo `AUTHORITY.lock` |
@@ -32,7 +32,6 @@ Install: [`INSTALL.md`](INSTALL.md).
 | Core | `why <name>` | Exact config path / reach fields for one authority record |
 | Core | `demo` | Packaged fixture walkthrough |
 | Core | `diff lock` | Record-level diff of two `AUTHORITY.lock` files |
-| Legacy | `ci init` | Alias of `init` |
 
 Maintainer-only (`auctelis-dev`): `scan`, `annotate`, `build`, `lint`, `deps`,
 `corpus`, `hosts`, `validate`, `inventory`, `verify`, `export`, `run`,
@@ -85,11 +84,9 @@ lists every tier-2 record (not just the top cards).
   skipped/truncated repos; GitHub-sourced reports include 1-click **Watch PRs**
   links (or **Watching** when `.github/workflows/auctelis*.yml` already exists).
   Labels reports as `owner/repo`, never temp paths. Fleet summaries lead with
-  `auctelis rollout reach-report.json` (dry-run, then `--apply`). Reports with
-  unwatched tier-2 repos also write optional `rollout-watch-prs.sh` (Bash;
-  dry-run unless `APPLY=1`).
-- `--org-reusable ORG` → with `--report`, emit org-reusable `rollout-watch-prs.sh`
-  that installs the 6-line caller of
+  `auctelis rollout reach-report.json` (dry-run, then `--apply`).
+- `--org-reusable ORG` → with `--report`, record ORG so `rollout` installs the
+  6-line caller of
   `ORG/.github/.github/workflows/auctelis-org-reusable.yml@main`. Prefer
   `auctelis rollout REPORT_JSON --org-reusable ORG`. Exit 2 without `--report`
   or on an invalid org slug.
@@ -117,7 +114,8 @@ Exit codes: `0` quiet / first-run; `1` meaningful delta (any repo for fleet);
 ```bash
 auctelis rollout REPORT_JSON [--apply | --status] [--max-prs N] [--repo SLUG]
                              [--min-tier {1,2}] [--org-reusable ORG]
-                             [--show-body] [--pin-sha] [--json] [--csv]
+                             [--show-body] [--pin-sha | --action-sha SHA]
+                             [--json] [--csv]
 ```
 
 Reads `auctelis.fleet_reach_report.v1` or `auctelis.reach_report.v1` and
@@ -138,8 +136,11 @@ workflow; when omitted, `org_reusable` from the Reach Report is used if set.
 field. `--pin-sha` looks up `roham-amd/auctelis` tag `v<this release>`
 (`GET /git/ref/tags/vX`, then `GET /git/tags/<sha>` when the object is an
 annotated tag) and writes `uses: roham-amd/auctelis@<40-hex> # vX` on lockless
-Watch PRs. Lookup failure exits 2 — omit `--pin-sha` or use `--org-reusable`.
-`--pin-sha` is a no-op with `--org-reusable` and is mutually exclusive with
+Watch PRs. Lookup failure exits 2. `--action-sha <40-hex>` writes that same
+pin with zero tag-lookup HTTP calls (uppercase hex is normalized to lowercase;
+an invalid SHA exits 2). On GHES pass `--action-sha`; lookup stays on
+`GITHUB_API_URL` and does not fall back to `https://api.github.com`. Both pin
+flags are a no-op with `--org-reusable` and are mutually exclusive with
 `--status` (exit 2). `--apply` is refused when `AUCTELIS_AGENT=1` (exit 2).
 There is no auto-merge.
 
@@ -147,7 +148,8 @@ There is no auto-merge.
 `AUCTELIS_AGENT=1`). It reuses the same filters but **includes** already-watching
 repos, then classifies each as `open` / `merged` / `closed_unmerged` /
 `never_opened` / `watching_on_default` / `unknown`. Private-repo 404 →
-`unknown`. Mutually exclusive with `--apply` (exit 2). `--csv` (requires
+`unknown`. HTTP 403 on `GET /pulls` names `Pull requests: read` in the detail.
+Mutually exclusive with `--apply` (exit 2). `--csv` (requires
 `--status`) emits a subset of `eval/pilot-metrics.csv` columns.
 
 Exit codes: `0` dry-run / status, or every target opened or skipped; `1` a
@@ -173,28 +175,29 @@ representation digest drift is advisory unless `--strict-digests` (AUCT-034).
 
 ---
 
-## `auctelis init` (preferred) / `ci init` (legacy alias)
+## `auctelis init`
 
 ```bash
-auctelis init [PATH] --lockless [--force]
+auctelis init [PATH] --lockless [--force] [--pin-sha | --action-sha SHA]
 auctelis init [PATH] --owner @TEAM [--force] [--enforce] [--advisory]
-# legacy alias: auctelis ci init … [--apply] (also accepts --lockless)
 ```
 
 `--lockless` writes only `.github/workflows/auctelis.yml` (the comment-only
 Authority Diff workflow, pinned to this release) and exits. It needs no
 `--owner` and writes no `.auctelis.yml`, CODEOWNERS, or `AUTHORITY.lock`; it
 cannot be combined with `--enforce` (exit 2). This is the lowest-friction first
-contact.
+contact. `--pin-sha` rewrites that file to `uses: roham-amd/auctelis@<sha> # vX`
+after resolving the release tag. `--action-sha <40-hex>` does the same offline
+(no tag lookup; required on GHES). Either flag without `--lockless` exits 2.
+An invalid `--action-sha` exits 2.
 
 Without `--lockless`, `init` writes `.auctelis.yml`,
 `.github/workflows/auctelis-gate.yml`, CODEOWNERS (including discovered
 authority paths), and seals `AUTHORITY.lock`; `--owner` is required. Default
 mode is **comment-only** (`locked: false`); pass `--enforce` for the locked
-gate. `init` always merges CODEOWNERS and pins the Action to the release tag
-(the `--apply` flag exists only on the `ci init` alias and is accepted there for
-backwards compatibility). Comment-only setup does not probe rulesets; enforce
-setup probes them as a warning (files are still written).
+gate. `init` always merges CODEOWNERS and pins the Action to the release tag.
+Comment-only setup does not probe rulesets; enforce setup probes them as a
+warning (files are still written).
 
 ---
 
@@ -311,11 +314,11 @@ Authority Diff.
 | `lock --check` | matches | drift | — |
 | `gate` | PASS (comment-only: also NEEDS_REVIEW) | NEEDS_REVIEW (enforce) | FAIL_CLOSED / usage |
 | `diff --base` | PASS (or BASELINE_NEEDED only if tree extract failed) | NEEDS_REVIEW | FAIL_CLOSED / invalid ref |
-| `rollout` | dry-run / status, or every target opened or skipped | a target failed | bad report / missing token / agent refusal / `--status --apply` / `--pin-sha --status` / `--pin-sha` lookup failure |
+| `rollout` | dry-run / status, or every target opened or skipped | a target failed | bad report / missing token / agent refusal / `--status --apply` / `--pin-sha --status` / `--action-sha --status` / invalid `--action-sha` / `--pin-sha` lookup failure |
 
 `BASELINE_ADOPTED` is emitted by the Action wrapper when a head lock arrives with
 no trusted base lock; the `gate` CLI itself returns `PASS` / `NEEDS_REVIEW` /
 `FAIL_CLOSED`.
 
-Agents must set `AUCTELIS_AGENT=1`; mutation commands (`lock`, `init`, `ci init`,
+Agents must set `AUCTELIS_AGENT=1`; mutation commands (`lock`, `init`,
 `rollout --apply`) are refused. That env var is a speed bump, not a security control.

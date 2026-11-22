@@ -16,6 +16,9 @@ measurable without telemetry.
 
 AUCT-052: ``--show-body`` previews the Watch PR markdown on a dry-run.
 ``--pin-sha`` rewrites the lockless Action pin to an immutable commit SHA.
+
+AUCT-054: ``--action-sha`` pins that same ref offline (no tag lookup, no
+public-internet fallback when ``GITHUB_API_URL`` is a GHES host).
 """
 
 from __future__ import annotations
@@ -112,6 +115,14 @@ def resolve_release_commit_sha(version: str) -> tuple[str | None, str]:
     return sha, ""
 
 
+def normalize_action_sha(raw: str) -> tuple[str | None, str]:
+    """Accept a 40-hex commit SHA (any case) and return it lowercase."""
+    sha = raw.strip().lower()
+    if _SHA40.fullmatch(sha) is None:
+        return None, "must be a 40-character hex commit SHA"
+    return sha, ""
+
+
 def _dry_run_row(repo: dict[str, Any], *, mode: str, show_body: bool) -> dict[str, Any]:
     row: dict[str, Any] = {
         "repository": str(repo.get("repository") or ""),
@@ -144,8 +155,10 @@ def execute_rollout(
     as_csv: bool = False,
     show_body: bool = False,
     pin_sha: bool = False,
+    action_sha: str | None = None,
 ) -> int:
     """Plan or open Watch PRs. Exit 0 when every target is opened or skipped."""
+    raw_action = str(action_sha).strip() if action_sha else ""
     if status and apply:
         _say(
             "auctelis rollout: --status and --apply are mutually exclusive.",
@@ -156,6 +169,13 @@ def execute_rollout(
     if pin_sha and status:
         _say(
             "auctelis rollout: --pin-sha and --status are mutually exclusive.",
+            as_json=as_json,
+            error=True,
+        )
+        return 2
+    if raw_action and status:
+        _say(
+            "auctelis rollout: --action-sha and --status are mutually exclusive.",
             as_json=as_json,
             error=True,
         )
@@ -183,6 +203,16 @@ def execute_rollout(
             as_json=as_json,
             as_csv=as_csv,
         )
+    explicit_sha: str | None = None
+    if raw_action:
+        explicit_sha, sha_err = normalize_action_sha(raw_action)
+        if explicit_sha is None:
+            _say(
+                f"auctelis rollout: --action-sha {sha_err}.",
+                as_json=as_json,
+                error=True,
+            )
+            return 2
     if max_prs < 1:
         _say("auctelis rollout: --max-prs must be at least 1.", as_json=as_json, error=True)
         return 2
@@ -216,16 +246,23 @@ def execute_rollout(
     )
     mode = f"org-reusable:{org}" if org else "lockless"
     workflow = org_reusable_caller_yaml(org) if org else lockless_workflow_yaml()
-    # --pin-sha rewrites the lockless Action pin. Org-reusable callers have no
-    # roham-amd/auctelis ref, so the flag is a no-op in that mode.
-    if pin_sha and org is None:
+    # --pin-sha / --action-sha rewrite the lockless Action pin. Org-reusable
+    # callers have no roham-amd/auctelis ref, so both flags are a no-op there.
+    # --action-sha never calls the tag API (GHES must pass the SHA; there is
+    # no fallback to https://api.github.com).
+    if (pin_sha or explicit_sha) and org is None:
         version = product_version()
-        sha, detail = resolve_release_commit_sha(version)
+        if explicit_sha:
+            sha: str | None = explicit_sha
+            detail = ""
+        else:
+            sha, detail = resolve_release_commit_sha(version)
         if sha is None:
             _say(
                 "auctelis rollout: --pin-sha could not resolve "
                 f"roham-amd/auctelis@v{version} to a commit SHA ({detail}). "
-                "Omit --pin-sha or use --org-reusable.",
+                "Pass --action-sha <40-hex> (required on GHES; no public-internet "
+                "fallback) or use --org-reusable.",
                 as_json=as_json,
                 error=True,
             )
@@ -527,8 +564,11 @@ def _status_one(slug: str, *, token: str) -> dict[str, Any]:
     )
     pr_status, pulls = _request("GET", pulls_path, token=token)
     if pr_status in {401, 403}:
+        scope = " Grant the token Pull requests: read." if pr_status == 403 else ""
         if row["state"] == "unknown":
-            row["detail"] = f"pull request lookup failed (HTTP {pr_status})"
+            row["detail"] = f"pull request lookup failed (HTTP {pr_status}).{scope}"
+        elif scope and "Pull requests: read" not in str(row["detail"]):
+            row["detail"] = f"{row['detail']}.{scope}"
         return row
     if pr_status == 404:
         row["state"] = "unknown"

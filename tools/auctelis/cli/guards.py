@@ -12,7 +12,7 @@ def refuse_agent_mutation(command: str) -> int | None:
     if os.environ.get("AUCTELIS_AGENT", "").strip() in {"1", "true", "yes"}:
         print(
             f"refused: `{command}` mutates authority state. "
-            "Unset AUCTELIS_AGENT and have a human run lock / init / ci init."
+            "Unset AUCTELIS_AGENT and have a human run lock / init."
         )
         return 2
     return None

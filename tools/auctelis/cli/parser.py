@@ -18,7 +18,7 @@ maintainer:   auctelis-dev (source checkout; research not in the wheel)
 Bare `auctelis` → check (tree-truth reach; AUTHORITY.lock optional).
 Labels: GROWTH | REDUCTION | NONE.
 Verdicts: LOCKED | BASELINE_NEEDED | NEEDS_REVIEW | BASELINE_ADOPTED | FAIL_CLOSED | PASS.
-Agents must set AUCTELIS_AGENT=1 and must not run lock / init / ci init / rollout --apply
+Agents must set AUCTELIS_AGENT=1 and must not run lock / init / rollout --apply
 (AUCTELIS_AGENT is a speed bump, not a security control).
 """
 
@@ -213,8 +213,8 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--org-reusable",
         metavar="ORG",
         help=(
-            "With --report, emit org-reusable rollout-watch-prs.sh for ORG "
-            "(caller uses ORG/.github/.../auctelis-org-reusable.yml@main)"
+            "With --report, record ORG so rollout installs the org-reusable caller "
+            "(ORG/.github/.../auctelis-org-reusable.yml@main)"
         ),
     )
 
@@ -256,6 +256,22 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         action="store_true",
         help="Allow sealing when a findings-bearing scan is passed (usually unused)",
     )
+    init_cmd.add_argument(
+        "--pin-sha",
+        action="store_true",
+        help=(
+            "With --lockless, pin uses: roham-amd/auctelis@<commit-sha> # vX "
+            "(resolves the release tag; exit 2 without --lockless)"
+        ),
+    )
+    init_cmd.add_argument(
+        "--action-sha",
+        metavar="SHA",
+        help=(
+            "With --lockless, pin the Action to this 40-hex commit offline "
+            "(no tag lookup; exit 2 without --lockless)"
+        ),
+    )
 
     status_cmd = sub.add_parser(
         "status",
@@ -278,7 +294,9 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         ),
     )
 
-    ci = sub.add_parser("ci", help="Write workflow + CODEOWNERS + lock (alias of init)")
+    # Keep the alias runnable, but omit it from public --help.
+    ci = sub.add_parser("ci")
+    sub._choices_actions = [item for item in sub._choices_actions if item.dest != "ci"]
     ci_sub = ci.add_subparsers(dest="ci_command", required=True)
     ci_init = ci_sub.add_parser(
         "init",
@@ -442,7 +460,16 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         help=(
             "Pin lockless uses: roham-amd/auctelis@<commit-sha> # vX "
             "(resolves the release tag; no-op with --org-reusable; "
-            "not valid with --status)"
+            "not valid with --status). On GHES pass --action-sha instead"
+        ),
+    )
+    rollout.add_argument(
+        "--action-sha",
+        metavar="SHA",
+        help=(
+            "Pin lockless uses: to this 40-hex commit with no tag lookup "
+            "(no-op with --org-reusable; not valid with --status). "
+            "Required on GHES; does not fall back to api.github.com"
         ),
     )
     rollout.add_argument(

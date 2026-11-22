@@ -1,6 +1,6 @@
 [project]
 name = "auctelis-devtools"
-version = "0.1.7"
+version = "0.1.8"
 description = "Maintainer / research CLI for Auctelis (source checkout only)"
 requires-python = ">=3.12"
 dependencies = [

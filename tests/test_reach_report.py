@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import base64
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -14,7 +12,6 @@ from auctelis.cli import main
 from auctelis.export.reach_report import (
     build_fleet_reach_report,
     build_reach_report,
-    build_rollout_watch_prs_script,
     diff_reach_reports,
     load_reach_baseline,
     lockless_workflow_yaml,
@@ -965,21 +962,16 @@ def test_auct032_fleet_watching_and_org_rollout():
         assert "auctelis-org-reusable.yml" in text
         assert "acme/hot" in text
         assert "auctelis rollout" in text
-        assert "rollout-watch-prs.sh" in text
-        assert "bash rollout-watch-prs.sh" in text
-        # AUCT-052: keep the filename and one-line fallback; do not dump the script.
+        assert "rollout-watch-prs.sh" not in text
         assert "#!/usr/bin/env bash" not in text
         assert "TARGETS=" not in text
         assert "WORKFLOW_B64" not in text
         assert "fill after reviewing" not in text
     assert "<details>" in html
-    script = build_rollout_watch_prs_script(["acme/hot", 'acme/evil`"; rm -rf /'])
-    assert "acme/hot" in script
-    assert "rm -rf" not in script
 
 
-def test_auct035_rollout_watch_prs_script_artifact(tmp_path: Path):
-    """AUCT-035: fleet reports write executable dry-run rollout-watch-prs.sh."""
+def test_auct035_fleet_report_omits_watch_script(tmp_path: Path):
+    """Fleet reports point at `auctelis rollout` and do not write a Bash script."""
     entries = [
         (
             {
@@ -1012,29 +1004,16 @@ def test_auct035_rollout_watch_prs_script_artifact(tmp_path: Path):
     ]
     out = tmp_path / "fleet"
     write_fleet_reach_report_artifacts(out, entries)
-    script_path = out / "rollout-watch-prs.sh"
-    assert script_path.is_file()
-    text = script_path.read_text(encoding="utf-8")
-    assert 'APPLY="${APPLY:-0}"' in text
+    assert not (out / "rollout-watch-prs.sh").exists()
+    text = (out / "reach-report.md").read_text(encoding="utf-8")
     assert "acme/hot" in text
-    assert "fill after reviewing" not in text
+    assert "rollout reach-report.json" in text
+    assert "rollout-watch-prs.sh" not in text
     assert f"roham-amd/auctelis@v{product_version()}" in lockless_workflow_yaml()
-    # Embedded workflow matches release pin (via base64 payload round-trip).
-    m = re.search(r'WORKFLOW_B64="([A-Za-z0-9+/=]+)"', text)
-    assert m
-    decoded = base64.b64decode(m.group(1)).decode("utf-8")
-    assert decoded == lockless_workflow_yaml()
-    # shlex.quote on slugs
-    script = build_rollout_watch_prs_script(
-        ["acme/hot"],
-        github_web_base="https://ghes.example.com",
-    )
-    assert 'export GH_HOST="ghes.example.com"' in script
-    assert "acme/hot" in script
 
 
-def test_auct038_org_reusable_rollout_script(tmp_path: Path):
-    """AUCT-038: --org-reusable encodes caller workflow + dual workflow guard."""
+def test_auct038_org_reusable_rollout_copy(tmp_path: Path):
+    """AUCT-038: --org-reusable records the caller in the report, not a Bash script."""
     entries = [
         (
             {
@@ -1067,16 +1046,10 @@ def test_auct038_org_reusable_rollout_script(tmp_path: Path):
     ]
     out = tmp_path / "fleet"
     write_fleet_reach_report_artifacts(out, entries, org_reusable="acme")
-    text = (out / "rollout-watch-prs.sh").read_text(encoding="utf-8")
-    assert "auctelis-gate.yml" in text
-    assert "auctelis.yml" in text
-    m = re.search(r'WORKFLOW_B64="([A-Za-z0-9+/=]+)"', text)
-    assert m
-    decoded = base64.b64decode(m.group(1)).decode("utf-8")
-    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in decoded
-    assert "roham-amd/auctelis@" not in decoded
+    assert not (out / "rollout-watch-prs.sh").exists()
     md = (out / "reach-report.md").read_text(encoding="utf-8")
     assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in md
+    assert "rollout-watch-prs.sh" not in md
 
 
 def test_auct041_headline_before_honesty():

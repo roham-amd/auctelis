@@ -236,15 +236,10 @@ def test_auct038_github_org_reusable_writes_rollout(tmp_path: Path, capsys):
             ]
         )
     assert code == 0
-    script = (out / "rollout-watch-prs.sh").read_text(encoding="utf-8")
-    assert "auctelis-gate.yml" in script
-    import base64
-    import re
-
-    m = re.search(r'WORKFLOW_B64="([A-Za-z0-9+/=]+)"', script)
-    assert m
-    decoded = base64.b64decode(m.group(1)).decode("utf-8")
-    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in decoded
+    assert not (out / "rollout-watch-prs.sh").exists()
+    md = (out / "reach-report.md").read_text(encoding="utf-8")
+    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in md
+    assert "rollout-watch-prs.sh" not in md
 
 
 def test_github_include_forks_flag_forwarded(tmp_path: Path):

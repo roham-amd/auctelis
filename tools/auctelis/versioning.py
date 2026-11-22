@@ -15,15 +15,15 @@ from pathlib import Path
 from auctelis.paths import repo_root, version_file_path, versions_path
 
 # Embedded fallbacks — kept in sync by ``auctelis build`` / release checklist.
-_EMBEDDED_PRODUCT_VERSION = "0.1.7"
+_EMBEDDED_PRODUCT_VERSION = "0.1.8"
 _EMBEDDED_VERSIONS: dict[str, str] = {
-    "auctelis_product": "0.1.7",
+    "auctelis_product": "0.1.8",
     "audit_procedure": "1.0",
     "audit_report_schema": "1.0",
     "ecosystem_graph_schema": "1.0",
-    "test_corpus": "0.1.7",
+    "test_corpus": "0.1.8",
     "rule_quality_pack": "1.2.0",
-    "build_tool": "auctelis-0.1.7",
+    "build_tool": "auctelis-0.1.8",
     "findings_contract": "1.2",
     "baseline_contract": "1.3",
     "rule_pack": "1.6",

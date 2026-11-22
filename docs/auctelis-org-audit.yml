@@ -9,7 +9,10 @@
 #
 # Token: default GITHUB_TOKEN only sees the current repository.
 # For private org repos, add a fine-grained PAT as secret AUCTELIS_AUDIT_TOKEN
-# with Contents: read and Metadata: read on the target org.
+# with Contents: read, Metadata: read, and Pull requests: read on the target org.
+# Pull requests: read is required for `rollout --status` (GET /pulls).
+# issues: write is not a default permission. Uncomment it below only when
+# open_drift_issue is true.
 
 name: auctelis org audit
 
@@ -40,6 +43,11 @@ on:
         required: false
         type: boolean
         default: false
+      open_drift_issue:
+        description: Open or update one sticky drift Issue when reach changed (needs issues:write)
+        required: false
+        type: boolean
+        default: false
   # Optional weekly scan — uncomment and set the cron.
   # schedule: leaves workflow_dispatch inputs empty; ORG falls back to
   # github.repository_owner and MAX_REPOS falls back to 50. resolve_pins stays off.
@@ -49,6 +57,7 @@ on:
 permissions:
   contents: read
   actions: read
+  # issues: write  # required only when open_drift_issue is true
 
 jobs:
   audit:
@@ -69,7 +78,7 @@ jobs:
           if [[ -z "${AUCTELIS_AUDIT_TOKEN:-}" ]]; then
             echo "::notice::AUCTELIS_AUDIT_TOKEN is unset — falling back to github.token."
             echo "That token only reads the current repository. For a private org audit,"
-            echo "add a fine-grained PAT (Contents: read, Metadata: read) as AUCTELIS_AUDIT_TOKEN."
+            echo "add a fine-grained PAT (Contents: read, Metadata: read, Pull requests: read) as AUCTELIS_AUDIT_TOKEN."
           fi
 
       - name: Fetch prior audit baseline (optional)
@@ -135,7 +144,7 @@ jobs:
           if [[ "${HAS_BASELINE}" == "true" ]]; then
             EXTRA+=(--baseline auctelis-org-baseline/reach-report.json)
           fi
-          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" \
+          uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" \
             auctelis check --github "${ORG}" \
             --max-repos "${MAX_REPOS}" \
             --report auctelis-org-report/ \
@@ -166,8 +175,8 @@ jobs:
             echo ""
             echo '```text'
             if [[ -f auctelis-org-report/reach-report.json ]]; then
-              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" \
-                auctelis rollout auctelis-org-report/reach-report.json || true
+              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" \
+                auctelis rollout auctelis-org-report/reach-report.json --show-body --max-prs 3 || true
             else
               echo "No reach-report.json — skipped."
             fi
@@ -177,13 +186,49 @@ jobs:
             echo ""
             echo '```text'
             if [[ -f auctelis-org-report/reach-report.json ]]; then
-              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" \
+              uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" \
                 auctelis rollout auctelis-org-report/reach-report.json --status || true
             else
               echo "No reach-report.json — skipped."
             fi
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update sticky drift issue
+        if: inputs.open_drift_issue == true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Body is written by `check --report --baseline` as org-drift-issue.md
+          # (render_fleet_drift_issue_md); absent when changed_count is 0.
+          if [[ ! -s auctelis-org-report/org-drift-issue.md ]]; then
+            echo "::notice::No org drift (no org-drift-issue.md) — left the sticky issue unchanged."
+            exit 0
+          fi
+          if ! EXISTING="$(gh api "repos/${GITHUB_REPOSITORY}/issues?state=open&per_page=100" \
+            --jq '[.[] | select(.pull_request == null) | select((.body // "") | contains("<!-- auctelis-org-drift -->")) | .number][0] // empty')"; then
+            echo "::notice::Could not list issues. Grant issues: write on this workflow token and re-run with open_drift_issue."
+            exit 0
+          fi
+          jq -n --rawfile body auctelis-org-report/org-drift-issue.md --arg title "Auctelis org drift" \
+            '{title:$title, body:$body}' > auctelis-org-drift-payload.json
+          if [[ -n "${EXISTING}" ]]; then
+            if ! gh api --method PATCH "repos/${GITHUB_REPOSITORY}/issues/${EXISTING}" \
+              --input auctelis-org-drift-payload.json >/dev/null; then
+              echo "::notice::Could not update drift issue #${EXISTING}. Grant issues: write on this workflow token and re-run with open_drift_issue."
+              exit 0
+            fi
+            echo "Updated drift issue #${EXISTING}"
+          else
+            if ! gh api --method POST "repos/${GITHUB_REPOSITORY}/issues" \
+              --input auctelis-org-drift-payload.json >/dev/null; then
+              echo "::notice::Could not open a drift issue. Grant issues: write on this workflow token and re-run with open_drift_issue."
+              exit 0
+            fi
+            echo "Opened a drift issue"
+          fi
 
       - name: Upload reach report artifacts
         if: always()

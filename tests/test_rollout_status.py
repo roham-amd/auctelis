@@ -273,3 +273,25 @@ def test_rollout_prefers_resolved_pin_snippet(monkeypatch, capsys, tmp_path: Pat
     body = seen["body"]
     assert "@linear/mcp@1.2.3" in body
     assert "trust-on-first-use: latest on 2026-11-22" in body
+
+
+def test_status_403_mentions_pull_requests_read(monkeypatch, capsys, tmp_path: Path):
+    def handler(method, url, data, _calls):
+        assert method == "GET"
+        path = _path(url)
+        if path == "/repos/acme/hot":
+            return 200, {"default_branch": "main"}
+        if path.endswith("/contents/.github/workflows"):
+            return 404, {"message": "Not Found"}
+        if path.endswith("/pulls"):
+            return 403, {"message": "Resource not accessible by integration"}
+        raise AssertionError(url)
+
+    _install(monkeypatch, handler)
+    path = _write(tmp_path, _fleet([_repo()]))
+    assert main(["rollout", str(path), "--status", "--json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    row = payload["results"][0]
+    assert row["state"] == "unknown"
+    assert "Pull requests: read" in row["detail"]
+    assert "403" in row["detail"]

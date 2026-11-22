@@ -1,4 +1,4 @@
-# Documentation index (auctelis 0.1.7)
+# Documentation index (auctelis 0.1.8)
 
 Three surfaces — `check` locally (including `--report` / `--github`), `rollout`
 (Watch PRs + `--status` funnel ledger + `--show-body` / `--pin-sha`), and the

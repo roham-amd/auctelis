@@ -37,7 +37,6 @@ def test_core_public_commands_are_the_first_screen():
     for name in (
         "check",
         "lock",
-        "ci",
         "gate",
         "diff",
         "why",
@@ -53,6 +52,7 @@ def test_core_public_commands_are_the_first_screen():
         for line in help_text.splitlines()
         if line.startswith("    ") and not line.strip().startswith("(")
     ]
+    assert not any(line.startswith("ci") for line in listed)
     assert not any(line.startswith("scan") for line in listed)
     assert not any(line.startswith("vet") for line in listed)
     assert not any(line.startswith("watch") for line in listed)

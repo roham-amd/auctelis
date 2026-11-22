@@ -81,7 +81,7 @@ Markdown are for forwarding:
 
 1. One-line passive-scan disclaimer
 2. **Summary** — tier counts, top tier-2 findings, Pin fix when present
-   (fleet also ranks repos and leads with `auctelis rollout`; `rollout-watch-prs.sh` is optional)
+   (fleet also ranks repos and leads with `auctelis rollout`)
 3. **Changed since last audit** (fleet / `--github` with `--baseline` only)
 4. Tier-2 detail, Cards, Unpinned MCP launchers
 5. **Coverage and limits** — full honesty text and Not-auto-inspected families

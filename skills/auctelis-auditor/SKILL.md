@@ -12,7 +12,7 @@ description: >-
 `AUTHORITY.lock` and `auctelis check` are the source of truth. Your job is to
 read the delta and answer one question: **what should the human do next?**
 
-You may explain; you may not approve. Never run `lock`, `init`, `ci init`, or any
+You may explain; you may not approve. Never run `lock`, `init`, or any
 mutation. Never edit `.auctelis.yml`, `AUTHORITY.lock`, or CODEOWNERS.
 Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 `hook`) or `auctelis-dev` annotation tools as a substitute for the lock delta.
@@ -21,7 +21,7 @@ Never run deleted public commands (`scan`, `vet`, `explain`, `watch`, `allow`,
 
 ```bash
 # Run once (uvx git-tag one-liner; `uvx auctelis check` see docs/INSTALL.md; fallback in docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.7#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.8#subdirectory=tools" auctelis check
 ```
 
 ```bash
@@ -34,7 +34,7 @@ auctelis why <name>
 auctelis gate --base-lock <base.lock>   # read-only growth labels
 ```
 
-Do **not** run `lock`, `init`, `ci init`, `run`, `snapshot --execute`, or
+Do **not** run `lock`, `init`, `rollout --apply`, `run`, `snapshot --execute`, or
 `auctelis-dev` commands. Do not add `--trust-target-policy`. Never mutate
 `AUTHORITY.lock`.
 

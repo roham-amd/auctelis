@@ -490,7 +490,44 @@ def _cmd_rollout(args: argparse.Namespace) -> int:
         as_csv=bool(getattr(args, "csv", False)),
         show_body=bool(getattr(args, "show_body", False)),
         pin_sha=bool(getattr(args, "pin_sha", False)),
+        action_sha=getattr(args, "action_sha", None),
     )
+
+
+def _init_pin_without_lockless(args: argparse.Namespace) -> bool:
+    raw = str(getattr(args, "action_sha", None) or "").strip()
+    pin = bool(getattr(args, "pin_sha", False))
+    return bool(raw or pin) and not bool(getattr(args, "lockless", False))
+
+
+def _lockless_pin_sha(args: argparse.Namespace) -> tuple[str | None, int | None]:
+    """Return ``(sha, None)``, ``(None, None)`` if unpinned, or ``(None, 2)``.
+
+    ``--action-sha`` is offline. ``--pin-sha`` looks up this release tag and
+    does not fall back to ``https://api.github.com`` when that lookup fails.
+    """
+    from auctelis.rollout import normalize_action_sha, resolve_release_commit_sha
+    from auctelis.versioning import product_version
+
+    raw = str(getattr(args, "action_sha", None) or "").strip()
+    if raw:
+        sha, err = normalize_action_sha(raw)
+        if sha is None:
+            print(f"auctelis init: --action-sha {err}.")
+            return None, 2
+        return sha, None
+    if not bool(getattr(args, "pin_sha", False)):
+        return None, None
+    version = product_version()
+    sha, detail = resolve_release_commit_sha(version)
+    if sha is None:
+        print(
+            "auctelis init: --pin-sha could not resolve "
+            f"roham-amd/auctelis@v{version} to a commit SHA ({detail}). "
+            "Pass --action-sha <40-hex> on GHES (no public-internet fallback)."
+        )
+        return None, 2
+    return sha, None
 
 
 def _cmd_init(args: argparse.Namespace) -> int:
@@ -498,6 +535,9 @@ def _cmd_init(args: argparse.Namespace) -> int:
     refused = refuse_agent_mutation("init")
     if refused is not None:
         return refused
+    if _init_pin_without_lockless(args):
+        print("auctelis init: --pin-sha and --action-sha require --lockless.")
+        return 2
     if bool(getattr(args, "lockless", False)):
         return _cmd_init_lockless(args)
     # Prefer apply semantics (merge CODEOWNERS, pin release, probe ruleset).
@@ -517,6 +557,7 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
     tree-truth diff works from the PR base ref alone and stays quiet on NONE.
     """
     from auctelis.check import _cli_prefix
+    from auctelis.versioning import product_version
 
     prefix = _cli_prefix()
     if bool(getattr(args, "enforce", False)):
@@ -525,19 +566,34 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
             f"--enforce.\nFor enforce, run `{prefix} init --owner @team --enforce`."
         )
         return 2
+    sha, pin_err = _lockless_pin_sha(args)
+    if pin_err is not None:
+        return pin_err
     root = args.path.resolve()
     workflow_dir = root / ".github" / "workflows"
     workflow_path = workflow_dir / "auctelis.yml"
     template_path = Path(__file__).resolve().parents[1] / "templates" / "auctelis-diff.yml"
     workflow_body = _pin_workflow_to_release(template_path.read_text(encoding="utf-8"))
+    version = product_version()
+    if sha:
+        from auctelis.rollout import rewrite_lockless_action_pin
+
+        try:
+            workflow_body = rewrite_lockless_action_pin(workflow_body, sha=sha, version=version)
+        except ValueError as exc:
+            print(f"auctelis init: could not pin the lockless workflow ({exc}).")
+            return 2
     if workflow_path.exists() and not bool(getattr(args, "force", False)):
         print(f"Exists (use --force): {workflow_path}")
     else:
         workflow_dir.mkdir(parents=True, exist_ok=True)
         workflow_path.write_text(workflow_body, encoding="utf-8", newline="\n")
         print(f"Wrote: {workflow_path}")
-    pin = _resolve_action_pin_ref()
-    print(f"Action pin: roham-amd/auctelis@{pin}")
+    if sha:
+        print(f"Action pin: roham-amd/auctelis@{sha} # v{version}")
+    else:
+        pin = _resolve_action_pin_ref()
+        print(f"Action pin: roham-amd/auctelis@{pin}")
     print("Next: git add .github/workflows/auctelis.yml")
     print(
         'Commit and open the install PR: it gets one PASS "Watching" comment; '

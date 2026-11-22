@@ -254,6 +254,14 @@ def test_auct047_org_audit_workflow_template():
     assert "resolve_pins:" in text
     assert "--resolve-pins" in text
     assert "rollout auctelis-org-report/reach-report.json --status" in text
+    assert "Pull requests: read" in text
+    assert "--show-body --max-prs 3" in text
+    assert "open_drift_issue" in text
+    assert "<!-- auctelis-org-drift -->" in text
+    assert "org-drift-issue.md" in text
+    assert "python3 -" not in text
+    install = (root / "docs" / "INSTALL.md").read_text(encoding="utf-8")
+    assert "Pull requests: read" in install
 
 
 def test_trust_copy_does_not_lower_new_mcp_authority():

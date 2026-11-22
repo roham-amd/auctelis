@@ -10,7 +10,6 @@ from __future__ import annotations
 import html
 import json
 import re
-import shlex
 import urllib.parse
 from collections.abc import Sequence
 from functools import lru_cache
@@ -150,13 +149,6 @@ def watch_pr_url(
     return f"{base}/{slug}/new/{branch_q}?{query}"
 
 
-def _github_api_host(github_web_base: object = "https://github.com") -> str:
-    """Derive ``GH_HOST`` for ``gh`` from a web base (github.com or GHES)."""
-    base = str(github_web_base or "https://github.com").rstrip("/")
-    host = urllib.parse.urlparse(base).hostname or "github.com"
-    return host
-
-
 def org_reusable_caller_yaml(org: str) -> str:
     """Six-line caller workflow for an org-reusable Watch install (AUCT-038)."""
     slug = str(org or "").strip().strip("/")
@@ -168,101 +160,6 @@ def org_reusable_caller_yaml(org: str) -> str:
         "  auctelis:\n"
         f"    uses: {slug}/.github/.github/workflows/auctelis-org-reusable.yml@main\n"
     )
-
-
-def build_rollout_watch_prs_script(
-    targets: Sequence[str],
-    *,
-    workflow: str | None = None,
-    github_web_base: object = "https://github.com",
-    org_reusable: str | None = None,
-) -> str:
-    """Generate a dry-run-by-default ``gh`` batch Watch-PR shell script (AUCT-035/038)."""
-    import base64
-
-    safe_targets = [slug for slug in targets if is_owner_repo_slug(slug)]
-    if workflow is not None:
-        yaml_text = workflow
-    elif org_reusable:
-        yaml_text = org_reusable_caller_yaml(org_reusable)
-    else:
-        yaml_text = lockless_workflow_yaml()
-    encoded = base64.b64encode(yaml_text.encode("utf-8")).decode("ascii")
-    host = _github_api_host(github_web_base)
-    quoted = " ".join(shlex.quote(slug) for slug in safe_targets)
-    mode_note = (
-        f"# Org-reusable caller → {org_reusable}/.github/.../auctelis-org-reusable.yml@main"
-        if org_reusable
-        else "# Inline roham-amd/auctelis@vX lockless workflow"
-    )
-    # APPLY=0 prints planned actions; APPLY=1 opens real PRs via Contents/Pulls API.
-    lines = [
-        "#!/usr/bin/env bash",
-        "# auctelis fleet rollout — lockless Watch PRs (AUCT-035/038)",
-        mode_note,
-        "# Default: dry-run. Set APPLY=1 to create branches + open PRs.",
-        "set -euo pipefail",
-        'APPLY="${APPLY:-0}"',
-        f'export GH_HOST="{host}"',
-        f"TARGETS=({quoted})",
-        f'WORKFLOW_B64="{encoded}"',
-        'WORKFLOW_PATH=".github/workflows/auctelis.yml"',
-        'ALT_WORKFLOW_PATH=".github/workflows/auctelis-gate.yml"',
-        'BRANCH="auctelis/watch-prs"',
-        'PR_TITLE="Add auctelis lockless PR Watch"',
-        'PR_BODY="Install Auctelis lockless PR Watch so future agent-authority changes surface in one quiet PR comment. No AUTHORITY.lock required."',
-        "",
-        "if ! command -v gh >/dev/null 2>&1; then",
-        '  echo "gh CLI required (https://cli.github.com/)" >&2',
-        "  exit 2",
-        "fi",
-        "if ! command -v base64 >/dev/null 2>&1; then",
-        '  echo "base64 required" >&2',
-        "  exit 2",
-        "fi",
-        "",
-        'if [[ "${#TARGETS[@]}" -eq 0 ]]; then',
-        '  echo "No safe unwatched tier-2 targets."',
-        "  exit 0",
-        "fi",
-        "",
-        'echo "auctelis rollout-watch-prs · APPLY=${APPLY} · ${#TARGETS[@]} repo(s) · GH_HOST=${GH_HOST}"',
-        'for repo in "${TARGETS[@]}"; do',
-        '  echo "--- $repo"',
-        '  if [[ "$APPLY" != "1" ]]; then',
-        '    echo "Would open Watch PR for $repo (set APPLY=1 to create)"',
-        "    continue",
-        "  fi",
-        '  default_branch="$(gh api "repos/$repo" --jq .default_branch)"',
-        '  sha="$(gh api "repos/$repo/git/ref/heads/${default_branch}" --jq .object.sha)"',
-        '  if gh api "repos/$repo/contents/${WORKFLOW_PATH}" --jq .sha >/dev/null 2>&1 \\',
-        '    || gh api "repos/$repo/contents/${ALT_WORKFLOW_PATH}" --jq .sha >/dev/null 2>&1; then',
-        '    echo "Skip $repo — auctelis.yml or auctelis-gate.yml already present"',
-        "    continue",
-        "  fi",
-        '  if ! gh api "repos/$repo/git/ref/heads/${BRANCH}" >/dev/null 2>&1; then',
-        '    gh api -X POST "repos/$repo/git/refs" \\',
-        '      -f ref="refs/heads/${BRANCH}" -f sha="$sha" >/dev/null',
-        "  fi",
-        '  if ! gh api -X PUT "repos/$repo/contents/${WORKFLOW_PATH}" \\',
-        '      -f message="Add auctelis lockless PR Watch workflow" \\',
-        '      -f content="$WORKFLOW_B64" \\',
-        '      -f branch="$BRANCH" >/dev/null; then',
-        '    echo "Failed to write workflow for $repo — if HTTP 403/422, run: gh auth refresh -s workflow" >&2',
-        "    continue",
-        "  fi",
-        '  if ! gh api -X POST "repos/$repo/pulls" \\',
-        '      -f title="$PR_TITLE" \\',
-        '      -f head="$BRANCH" \\',
-        '      -f base="$default_branch" \\',
-        '      -f body="$PR_BODY" --jq .html_url; then',
-        '    echo "Failed to open PR for $repo — if HTTP 403/422, run: gh auth refresh -s workflow" >&2',
-        "    continue",
-        "  fi",
-        "done",
-        "",
-    ]
-    return "\n".join(lines)
 
 
 def _workflow_snippet_md() -> list[str]:
@@ -1121,6 +1018,68 @@ def diff_fleet_reports(
     }
 
 
+_DRIFT_ISSUE_MARKER = "<!-- auctelis-org-drift -->"
+_DRIFT_ISSUE_MAX_LINES = 25
+
+
+def render_fleet_drift_issue_md(doc: dict[str, Any]) -> str | None:
+    """Sticky org-drift Issue body. ``None`` when ``changed_count`` is 0 or absent.
+
+    The body is at most 25 lines and always starts with ``<!-- auctelis-org-drift -->``
+    so a later audit can update the same open issue.
+    """
+    diff = doc.get("baseline_diff")
+    if not isinstance(diff, dict):
+        return None
+    try:
+        changed = int(diff.get("changed_count") or 0)
+    except (TypeError, ValueError):
+        return None
+    if changed <= 0:
+        return None
+
+    def _slugs(key: str) -> list[str]:
+        found: list[str] = []
+        for item in _as_list(diff.get(key)):
+            if isinstance(item, dict):
+                slug = str(item.get("repository") or "").strip()
+            else:
+                slug = str(item or "").strip()
+            if slug:
+                found.append(slug)
+        return found
+
+    lines = [
+        _DRIFT_ISSUE_MARKER,
+        "",
+        "# Auctelis org drift",
+        "",
+        f"Reach changed since the last audit ({changed} change(s)).",
+        "",
+    ]
+    for label, key in (
+        ("Added", "added_repositories"),
+        ("Removed", "removed_repositories"),
+        ("Changed", "repositories"),
+    ):
+        slugs = _slugs(key)
+        if not slugs:
+            continue
+        lines.append(f"**{label}**")
+        for slug in slugs:
+            lines.append(f"- `{slug}`")
+    lines.extend(
+        [
+            "",
+            "Full report: download the `auctelis-org-report` artifact from this workflow run.",
+        ]
+    )
+    if len(lines) > _DRIFT_ISSUE_MAX_LINES:
+        lines = lines[: _DRIFT_ISSUE_MAX_LINES - 1]
+        lines.append("_Truncated._")
+    return "\n".join(lines) + "\n"
+
+
 def _coerce_baseline_diff(
     doc: dict[str, Any],
     baseline_diff: dict[str, Any] | None,
@@ -1364,14 +1323,6 @@ def _unwatched_tier2_slugs(doc: dict[str, Any], *, limit: int = 10) -> list[str]
     return out
 
 
-def _fleet_github_web_base(doc: dict[str, Any]) -> str:
-    for repo in _fleet_repo_table_rows(doc):
-        base = str(repo.get("github_web_base") or "").strip()
-        if base:
-            return base
-    return "https://github.com"
-
-
 def _rollout_commands(*, org_reusable: str | None = None) -> tuple[str, str]:
     """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044/045)."""
     from auctelis.check import _cli_prefix
@@ -1384,7 +1335,7 @@ def _rollout_commands(*, org_reusable: str | None = None) -> tuple[str, str]:
 
 
 def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> list[str]:
-    """Org-reusable caller + rollout CTAs. The Bash script stays a file (AUCT-052)."""
+    """Org-reusable caller + ``auctelis rollout`` CTAs."""
     targets = _unwatched_tier2_slugs(doc, limit=10)
     org_label = str(org_reusable or "YOUR_ORG").strip() or "YOUR_ORG"
     lines = [
@@ -1418,13 +1369,6 @@ def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> 
             f"{apply_cmd}  # create branches and open PRs",
             "```",
             "",
-            "Optional Bash fallback (`rollout-watch-prs.sh`, dry-run unless `APPLY=1`):",
-            "",
-            "```bash",
-            "bash rollout-watch-prs.sh          # dry-run (APPLY=0)",
-            "APPLY=1 bash rollout-watch-prs.sh  # open Watch PRs",
-            "```",
-            "",
         ]
     )
     return lines
@@ -1450,17 +1394,10 @@ def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -
         )
     else:
         dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
-        fallback = (
-            "bash rollout-watch-prs.sh          # dry-run (APPLY=0)\n"
-            "APPLY=1 bash rollout-watch-prs.sh  # open Watch PRs"
-        )
         body_parts.extend(
             [
                 "<p>Open lockless Watch PRs for the top unwatched tier-2 repos:</p>",
                 f"<pre><code>{esc(dry)}\n{esc(apply_cmd)}</code></pre>",
-                "<p>Optional Bash fallback (<code>rollout-watch-prs.sh</code>, "
-                "dry-run unless <code>APPLY=1</code>):</p>",
-                f"<pre><code>{esc(fallback)}</code></pre>",
             ]
         )
     inner = "".join(body_parts)
@@ -1574,8 +1511,6 @@ def render_fleet_reach_md(
             [
                 "",
                 f"Open Watch PRs: `{dry}` (dry-run), then `{apply_cmd}`.",
-                "Optional: `bash rollout-watch-prs.sh` (dry-run), "
-                "then `APPLY=1 bash rollout-watch-prs.sh`.",
             ]
         )
     # After Summary, before Coverage / repo table details (AUCT-049).
@@ -1762,8 +1697,6 @@ def render_fleet_reach_html(
         rollout_html = (
             "<p>Open Watch PRs: <code>"
             f"{esc(dry)}</code> (dry-run), then <code>{esc(apply_cmd)}</code>.</p>"
-            "<p>Optional: <code>bash rollout-watch-prs.sh</code> (dry-run), "
-            "then <code>APPLY=1 bash rollout-watch-prs.sh</code>.</p>"
         )
     baseline_html = _fleet_baseline_section_html(diff)
     summary_html = (
@@ -1856,12 +1789,11 @@ def write_fleet_reach_report_artifacts(
         out_dir / "reach-report.html",
         render_fleet_reach_html(doc, org_reusable=org, baseline_diff=baseline_diff),
     )
-    targets = _unwatched_tier2_slugs(doc, limit=10)
-    if targets:
-        script = build_rollout_watch_prs_script(
-            targets,
-            github_web_base=_fleet_github_web_base(doc),
-            org_reusable=org,
-        )
-        write_text(out_dir / "rollout-watch-prs.sh", script)
+    # Sticky Issue body for org audits (AUCT-053). Absent when there is no drift.
+    drift_md = render_fleet_drift_issue_md(doc)
+    drift_path = out_dir / "org-drift-issue.md"
+    if drift_md is not None:
+        write_text(drift_path, drift_md)
+    elif drift_path.exists():
+        drift_path.unlink()
     return doc
