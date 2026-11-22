@@ -1,9 +1,9 @@
 {
   "manifest_version": "1.0",
   "product": "auctelis",
-  "product_version": "0.1.9",
+  "product_version": "0.1.10",
   "package_name": "auctelis",
-  "package_version": "0.1.9",
+  "package_version": "0.1.10",
   "primary_command": "auctelis check",
   "north_star": "Nothing in a repo gains reach until a human has seen the Authority Diff and said OK.",
   "positioning": "See what your AI agents can reach. Approve every change - in one PR comment.",

@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.1.9** · lock schema 1 · tooling 0.1.9
+**Current:** **0.1.10** · lock schema 1 · tooling 0.1.10
 
 ## North star (Gate Zero)
 
@@ -32,13 +32,15 @@ are removed.
 | **0.1.7** | Zero-laptop org-audit cron/status/resolved-pin parity + SHA-pinned Watch rollout (still `pypi_live=false`) | **done** |
 | **0.1.8** | Org-audit PR-read + Drift Issue + offline `--action-sha` / surface diet (still `pypi_live=false`) | **done** |
 | **0.1.9** | Tier-1+ Drift Issue + enforce SHA-pin parity + single-install org-audit (still `pypi_live=false`) | **done** |
+| **0.1.10** | Org-audit exit-1 tolerance + SHA-pin fleet CTAs + realistic sample report (still `pypi_live=false`) | **done** |
+
 | Next | Feature freeze. Concierge: 10 external org audits → `rollout --apply --pin-sha` → day-14 `--status`. Hold `rollout --fix-pins` (**AUCT-056**) until day-14 Watch merge rate <30%. PyPI cutover only if ≥3 pilots ask. Research repo split if unused | open |
 
 ## 30-day concierge sprint (now)
 
 | Window | Work | Done when |
 | --- | --- | --- |
-| Days 1–3 | Ship **AUCT-055** + **AUCT-057**; feature-freeze CLI | Tests green; Drift Issue silent on Watch merges; `init --owner --enforce --action-sha` works |
+| Days 1–3 | Ship **AUCT-058** + **AUCT-059**; feature-freeze CLI (AUCT-055/057 done in 0.1.9) | Org-audit tolerates exit 1; sample report shows Pin fix/`--pin-sha`; tests green |
 | Days 1–30 | 10 external org audits (CLI or `auctelis-org-audit.yml`); log `TRACKER.md` + `pilot-metrics.csv` | ≥10 outside reach reports |
 | Days 7–14 | Open Watch PRs with `rollout --apply --pin-sha`; measure with `--status` | Day-14 merge rate known |
 | Day 14 gate | Build **AUCT-056** (`rollout --fix-pins`) **only if** Watch merge rate <30% | Flag shipped or explicitly skipped |

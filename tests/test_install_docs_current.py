@@ -274,7 +274,7 @@ def test_auct047_org_audit_workflow_template():
 
 
 def test_auct057_checkout_sha_aligned_across_templates():
-    """AUCT-057: lockless/gate templates share org-reusable checkout SHA."""
+    """AUCT-057/058: lockless/gate/consumer-gate share org-reusable checkout SHA."""
     root = Path(__file__).resolve().parents[1]
     reusable = (root / "docs" / "auctelis-org-reusable.yml").read_text(encoding="utf-8")
     diff = (root / "tools" / "auctelis" / "templates" / "auctelis-diff.yml").read_text(
@@ -283,12 +283,16 @@ def test_auct057_checkout_sha_aligned_across_templates():
     gate = (root / "tools" / "auctelis" / "templates" / "auctelis-gate.yml").read_text(
         encoding="utf-8"
     )
+    consumer = (root / "docs" / "auctelis-consumer-gate.example.yml").read_text(encoding="utf-8")
     pin = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
     assert pin in reusable
     assert pin in diff
     assert pin in gate
+    assert pin in consumer
+    assert "# v7.0.1" in consumer
     assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in diff
     assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in gate
+    assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in consumer
 
 
 def test_trust_copy_does_not_lower_new_mcp_authority():

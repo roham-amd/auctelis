@@ -80,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           uv tool install --python 3.12 \
-            "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools"
+            "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Notice when AUCTELIS_AUDIT_TOKEN is unset
@@ -158,10 +158,27 @@ jobs:
           if [[ "${HAS_BASELINE}" == "true" ]]; then
             EXTRA+=(--baseline auctelis-org-baseline/reach-report.json)
           fi
+          # AUCT-058: exit 1 means report-ready findings (unparsed/lock drift).
+          # Tolerate it so Drift Issues + next-run --status success baselines work.
+          set +e
           auctelis check --github "${ORG}" \
             --max-repos "${MAX_REPOS}" \
             --report auctelis-org-report/ \
             "${EXTRA[@]}"
+          rc=$?
+          set -e
+          echo "audit_rc=${rc}" >> "$GITHUB_OUTPUT"
+          if [[ "${rc}" -eq 1 ]]; then
+            echo "::notice::Org audit exit 1 — reach report generated with unparsed configs or lock drift. Continuing so baselines and Drift Issues still run."
+          fi
+          if [[ "${rc}" -ge 2 ]]; then
+            echo "::error::Org audit failed (exit ${rc})."
+            exit "${rc}"
+          fi
+          if [[ ! -f auctelis-org-report/reach-report.json ]]; then
+            echo "::error::reach-report.json missing after org audit (exit ${rc})."
+            exit 2
+          fi
 
       - name: Job Summary (Reach Report)
         if: always()

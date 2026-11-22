@@ -344,6 +344,32 @@ def test_render_fleet_drift_issue_md_none_on_zero_and_marker_on_drift(tmp_path: 
     assert len(issue.splitlines()) <= 25
 
 
+def test_auct058_org_audit_tolerates_exit_1():
+    """AUCT-058: org-audit keeps Drift Issue reachable after check rc==1."""
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "docs" / "auctelis-org-audit.yml").read_text(encoding="utf-8")
+    audit_step = text.split("- name: Org reach audit", 1)[1].split("- name: Job Summary", 1)[0]
+    assert "set +e" in audit_step
+    assert "rc=$?" in audit_step or 'rc="$?"' in audit_step or "rc=${?}" in audit_step
+    assert "audit_rc=${rc}" in audit_step
+    assert 'rc}" -eq 1' in audit_step or 'rc" -eq 1' in audit_step or "rc -eq 1" in audit_step
+    assert 'rc}" -ge 2' in audit_step or 'rc" -ge 2' in audit_step or "rc -ge 2" in audit_step
+    assert "reach-report.json" in audit_step
+    # Sticky Drift Issue must not be gated on audit step success.
+    drift = text.split("- name: Open or update sticky drift issue", 1)[1].split(
+        "- name: Upload reach report", 1
+    )[0]
+    assert "if: success()" not in drift.split("\n", 1)[0]
+    drift_if = [ln for ln in text.splitlines() if "open_drift_issue" in ln and "if:" in ln]
+    assert drift_if
+    assert all("success()" not in ln for ln in drift_if)
+    # Job Summary + upload keep running after a tolerated rc==1.
+    assert "if: always()" in text
+    assert text.index("- name: Org reach audit") < text.index(
+        "- name: Open or update sticky drift issue"
+    )
+
+
 def test_baseline_schema_mismatch_exit_2(tmp_path: Path, capsys):
     single = tmp_path / "single.json"
     single.write_text(

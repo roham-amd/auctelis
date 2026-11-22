@@ -80,7 +80,7 @@ inputs:
   auctelis-version:
     description: >-
       Exact PyPI / uv version to install when using the PyPI fast path
-      (e.g. 0.1.9). Empty (default) derives from the Action ref tag when it
+      (e.g. 0.1.10). Empty (default) derives from the Action ref tag when it
       looks like vX.Y.Z; otherwise falls back to Action-bundled tools/.
     required: false
     default: ""

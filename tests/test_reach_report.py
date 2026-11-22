@@ -10,11 +10,13 @@ import pytest
 from auctelis.check import build_check_report, render_check
 from auctelis.cli import main
 from auctelis.export.reach_report import (
+    _rollout_commands,
     build_fleet_reach_report,
     build_reach_report,
     diff_reach_reports,
     load_reach_baseline,
     lockless_workflow_yaml,
+    render_fleet_drift_issue_md,
     render_fleet_reach_html,
     render_fleet_reach_md,
     render_reach_html,
@@ -1010,6 +1012,115 @@ def test_auct035_fleet_report_omits_watch_script(tmp_path: Path):
     assert "rollout reach-report.json" in text
     assert "rollout-watch-prs.sh" not in text
     assert f"roham-amd/auctelis@v{product_version()}" in lockless_workflow_yaml()
+
+
+def test_auct058_rollout_commands_default_pin_sha():
+    """AUCT-058: lockless fleet CTAs append --pin-sha; org-reusable omits it."""
+    dry, apply_cmd = _rollout_commands()
+    assert dry.endswith("rollout reach-report.json")
+    assert apply_cmd == f"{dry} --apply --pin-sha"
+    assert "--org-reusable" not in apply_cmd
+
+    dry_org, apply_org = _rollout_commands(org_reusable="acme")
+    assert "--org-reusable acme" in dry_org
+    assert apply_org == f"{dry_org} --apply"
+    assert "--pin-sha" not in apply_org
+
+    entries = [
+        (
+            {
+                "repository": "acme/hot",
+                "default_branch": "main",
+                "github_web_base": "https://github.com",
+                "already_watching": False,
+                "coverage_line": "",
+                "unparsed": 0,
+                "reach": {
+                    "total": 1,
+                    "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
+                    "records": [
+                        {
+                            "kind": "mcp",
+                            "name": "hot",
+                            "path": ".cursor/mcp.json",
+                            "tier": 2,
+                            "reason": "secrets",
+                            "identity_key": "|mcp|hot",
+                        }
+                    ],
+                    "top": [],
+                    "top_cards": [],
+                },
+                "pins": {"total": 0, "unpinned": 0, "items": []},
+                "counts": {},
+                "delta": {},
+                "label": "NONE",
+                "verdict": "BASELINE_NEEDED",
+                "schema_version": "authority-diff/1",
+                "lock_present": False,
+                "first_run": True,
+                "meaningful": False,
+            },
+            None,
+            [],
+        )
+    ]
+    doc = build_fleet_reach_report(entries)
+    md = render_fleet_reach_md(doc)
+    html = render_fleet_reach_html(doc)
+    assert "--apply --pin-sha" in md
+    assert "--apply --pin-sha" in html
+    md_org = render_fleet_reach_md(doc, org_reusable="acme")
+    assert "--org-reusable acme --apply" in md_org
+    assert "--pin-sha" not in md_org
+
+    drifted = {
+        "repositories": doc["repositories"],
+        "org_reusable": "",
+        "baseline_diff": {
+            "changed_count": 1,
+            "added_repositories": [{"repository": "acme/hot"}],
+            "removed_repositories": [],
+            "repositories": [],
+        },
+    }
+    issue = render_fleet_drift_issue_md(drifted)
+    assert issue is not None
+    assert "--apply --pin-sha" in issue
+    drifted_org = {**drifted, "org_reusable": "acme"}
+    issue_org = render_fleet_drift_issue_md(drifted_org)
+    assert issue_org is not None
+    assert "--org-reusable acme --apply" in issue_org
+    assert "--pin-sha" not in issue_org
+
+
+def test_auct059_sample_reach_report_realism():
+    """AUCT-059: checked-in sample shows Pin fix, coverage families, and --pin-sha."""
+    root = Path(__file__).resolve().parents[1]
+    examples = root / "docs" / "examples"
+    md = (examples / "sample-reach-report.md").read_text(encoding="utf-8")
+    html = (examples / "sample-reach-report.html").read_text(encoding="utf-8")
+    readme = (examples / "README.md").read_text(encoding="utf-8")
+    for text in (md, html):
+        assert "Pin fix:" in text
+        assert "--pin-sha" in text
+        assert "Coverage metadata unavailable" not in text
+        assert "Browser agents" in text
+        assert "Not auto-inspected" in text
+    assert "example-org" in readme
+    assert " xample-org" not in readme and "synthetic xample" not in readme
+    recruitment = (root / "docs" / "pilots" / "RECRUITMENT.md").read_text(encoding="utf-8")
+    bare = [
+        ln.strip()
+        for ln in recruitment.splitlines()
+        if ln.strip().startswith("auctelis init") and "uvx" not in ln
+    ]
+    assert not bare
+    ver = product_version()
+    assert (
+        f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{ver}'
+        '#subdirectory=tools" auctelis init --owner security --enforce'
+    ) in recruitment
 
 
 def test_auct038_org_reusable_rollout_copy(tmp_path: Path):

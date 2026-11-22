@@ -15,24 +15,24 @@ Contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Reach: [`docs/REACH.md`](docs/
 
 There are three surfaces: `check` locally, `rollout` to open Watch PRs, and the Action on later PRs.
 
-Preview first (30 sec, no install): [`docs/examples/sample-reach-report.html`](docs/examples/sample-reach-report.html).
+Preview first (30 sec, no install): [`docs/examples/sample-reach-report.md`](docs/examples/sample-reach-report.md) (GitHub-rendered) or [`sample-reach-report.html`](docs/examples/sample-reach-report.html) (local browser).
 
 ```bash
 # 1. See the aha — no install step, no lock needed (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis check
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check
 #    Or paste docs/auctelis-org-audit.yml into your org `.github` repo and click Run workflow (zero laptop install).
 
 # 2. Shareable audit artifact for your ticket / security lead (2 min):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis check --report out/
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis check --github your-org --report out/
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis rollout out/reach-report.json
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis rollout out/reach-report.json --apply
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --report out/
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --github your-org --report out/
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json --apply
 #    Evidence-backed PR bodies + optional --repo / --min-tier for pilots.
 
 # 3. In one repo, pick one (2 min):
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis init --lockless          # one file: lockless PR Watch (no owner, no lock)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools" auctelis init --owner security    # full setup: policy + workflow + CODEOWNERS + lock; add --enforce for a locked gate
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --lockless          # one file: lockless PR Watch (no owner, no lock)
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security    # full setup: policy + workflow + CODEOWNERS + lock; add --enforce for a locked gate
 
 # 4. Commit, open the install PR, and read the first-run "Watching …" comment (2 min).
 #    Later no-change PRs stay silent; PRs that change agent authority get the Authority Diff.
@@ -98,7 +98,7 @@ Persistent CLI install (git tag; see docs/INSTALL.md):
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools"
 ```
 
 Host tripwires were removed. The product gate is **tree-truth** —

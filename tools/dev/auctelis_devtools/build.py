@@ -867,6 +867,7 @@ def check_action_parity() -> list[str]:
     uses_re = re.compile(
         r"uses:\s*roham-amd/auctelis(?:/\.github/actions/auctelis-gate)?@(v[^\s#]+)"
     )
+    checkout_pin = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
     for rel in (
         "tools/auctelis/templates/auctelis-diff.yml",
         "tools/auctelis/templates/auctelis-gate.yml",
@@ -879,11 +880,14 @@ def check_action_parity() -> list[str]:
             raise SystemExit(f"{rel} missing auctelis Action uses: pin")
         if pin not in uses_pins:
             raise SystemExit(f"{rel} Action pin {uses_pins} does not match VERSION {product}")
+        if checkout_pin not in text:
+            raise SystemExit(f"{rel} missing shared {checkout_pin} # v7.0.1 pin (AUCT-057/058)")
     return [
         "ok root action.yml Marketplace branding + inputs",
         "ok subpath action.yml input parity",
         f"ok AUCTELIS_PYPI_DEFAULT={expected_pypi} matches pypi_live",
         f"ok workflow templates recognize auctelis@{pin}",
+        f"ok workflow templates share {checkout_pin}",
     ]
 
 

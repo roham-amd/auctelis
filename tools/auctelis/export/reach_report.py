@@ -1481,14 +1481,20 @@ def _unwatched_tier2_slugs(doc: dict[str, Any], *, limit: int = 10) -> list[str]
 
 
 def _rollout_commands(*, org_reusable: str | None = None) -> tuple[str, str]:
-    """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044/045)."""
+    """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044/045/058).
+
+    Lockless fleet CTAs default to ``--pin-sha`` so Watch PRs pin an immutable
+    Action commit. ``--org-reusable`` leaves the apply line without ``--pin-sha``
+    (pin is a no-op on that path).
+    """
     from auctelis.check import _cli_prefix
 
     dry = f"{_cli_prefix()} rollout reach-report.json"
     org = str(org_reusable or "").strip().strip("/") or None
     if org:
         dry = f"{dry} --org-reusable {org}"
-    return dry, f"{dry} --apply"
+        return dry, f"{dry} --apply"
+    return dry, f"{dry} --apply --pin-sha"
 
 
 def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> list[str]:

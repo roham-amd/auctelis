@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+## [0.1.10] — 2026-11-23
+
+### Fixed
+
+- **AUCT-058:** `auctelis-org-audit.yml` tolerates `check --github` exit `1`
+  (unparsed/lock-drift findings) so Job Summary, Drift Issues, and next-run
+  `--status success` baselines still run; fails only on exit `≥2` or a missing
+  `reach-report.json`. Fleet/Drift `rollout` CTAs default to `--apply --pin-sha`
+  (omitted when `--org-reusable` is set). Consumer-gate example pins
+  `actions/checkout` to the same v7.0.1 SHA as lockless/gate templates.
+- **AUCT-059:** Sample Reach Report regenerated with Pin fix, coverage
+  families, and `--pin-sha` CTAs; README points at GitHub-rendered
+  `sample-reach-report.md`; examples README typo and bare `auctelis init` in
+  RECRUITMENT fixed (still `pypi_live=false`).
+
+### Changed
+
+- Release housekeeping: install/Action pins, packaged metadata, and dogfood
+  lock refreshed for `0.1.10`. Feature freeze and `pypi_live=false` unchanged.
+
 ## [0.1.9] — 2026-11-22
 
 ### Added
