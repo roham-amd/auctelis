@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [0.1.9] — 2026-11-22
+
+### Added
+
+- **AUCT-055:** Sticky org Drift Issue is tier-1+ only: Watch self-installs
+  (`.github/workflows/auctelis*.yml`) and tier-0 prose stay silent; issue body
+  shows up to 3 inline delta bullets per repo plus a copy-pasteable
+  `rollout --apply` when unwatched tier-2 repos remain. Scheduled
+  `auctelis-org-audit.yml` can opt in via top-level `OPEN_DRIFT_ISSUE: "true"`
+  (default `"false"`) alongside `schedule:` and `issues: write`.
+- **AUCT-057:** `init --owner … [--enforce] --pin-sha|--action-sha` SHA-pins
+  `auctelis-gate.yml` (same offline/online rules as lockless). Org-audit job
+  installs once via `uv tool install` and reuses `auctelis`. Lockless/gate
+  templates share the `actions/checkout` v7.0.1 SHA with org-reusable.
+- **Sample Reach Report:** [`docs/examples/sample-reach-report.html`](docs/examples/sample-reach-report.html)
+  for a 30-second evaluate-before-install path (still `pypi_live=false`).
+
+### Held
+
+- **AUCT-056** (`rollout --fix-pins`): gated until day-14 Watch merge rate
+  `<30%` per `docs/ROADMAP.md`.
+
 ## [0.1.8] — 2026-11-22
 
 ### Added

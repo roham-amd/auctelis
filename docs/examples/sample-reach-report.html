@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Auctelis Fleet Agent Reach Report</title>
+<style>
+body { font-family: Georgia, "Times New Roman", serif; margin: 2rem; max-width: 60rem;
+  background: linear-gradient(180deg, #f7f4ef 0%, #ebe6dc 100%); color: #1c1917; }
+h1 { font-size: 1.75rem; letter-spacing: -0.02em; }
+h3 { margin-top: 1.5rem; }
+.banner { border-left: 4px solid #b45309; padding: 0.75rem 1rem; background: #fff7ed; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 0.5rem; }
+td, th { border-bottom: 1px solid #d6d3d1; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
+code { font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; }
+pre { background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>Auctelis Fleet Agent Reach Report</h1>
+<p class="banner">Passive scan of declared agent config, not a certificate.</p>
+<section><h2>Summary</h2><p><strong>3 repositories, 2 at tier 2.</strong> tier0=0 · tier1=1 · tier2=2</p><ul><li><strong>Watching:</strong> 1 of 3 repos · unwatched tier-2: 2</li><li><strong>Unpinned MCP launchers:</strong> 2</li></ul><ol><li><strong>browser</strong> in <code>example-org/frontend</code> (<code>.cursor/mcp.json</code>) — secrets</li><li><strong>github</strong> in <code>example-org/payments</code> (<code>.cursor/mcp.json</code>) — secrets</li></ol><p>Open Watch PRs: <code>uvx --from &quot;git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools&quot; auctelis rollout reach-report.json</code> (dry-run), then <code>uvx --from &quot;git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools&quot; auctelis rollout reach-report.json --apply</code>.</p><h3>Repositories (ranked by tier-2 reach)</h3><table><thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th><th>tier0</th><th>Unpinned</th><th>Watch</th></tr></thead><tbody><tr><td><code>example-org/frontend</code></td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td><a href="https://github.com/example-org/frontend/new/main?filename=.github%2Fworkflows%2Fauctelis.yml&amp;value=%23+Lockless+Authority+Diff+%E2%80%94+write+with+%60auctelis+init+--lockless%60+%28no+lock+required%29.%0A%23+Comment-only%3A+PRs+with+authority+changes+get+the+reach+diff+%28quiet+on+NONE%29.%0A%23+Add+locked%3A+%22true%22+later+to+enforce%2C+or+comment-on-none%3A+%22true%22+for+every+PR.%0Aname%3A+auctelis%0Aon%3A+%5Bpull_request%5D%0Apermissions%3A+%7B+contents%3A+read%2C+pull-requests%3A+write+%7D%0Ajobs%3A%0A++diff%3A%0A++++runs-on%3A+ubuntu-latest%0A++++steps%3A%0A++++++-+uses%3A+actions%2Fcheckout%403d3c42e5aac5ba805825da76410c181273ba90b1+%23+v7.0.1%0A++++++-+uses%3A+roham-amd%2Fauctelis%40v0.1.9%0A++++++++with%3A+%7B+locked%3A+%22false%22+%7D%0A&amp;message=Add+auctelis+lockless+PR+Watch+workflow">Watch PRs</a></td></tr><tr><td><code>example-org/payments</code></td><td>1</td><td>1</td><td>0</td><td>0</td><td>1</td><td><a href="https://github.com/example-org/payments/new/main?filename=.github%2Fworkflows%2Fauctelis.yml&amp;value=%23+Lockless+Authority+Diff+%E2%80%94+write+with+%60auctelis+init+--lockless%60+%28no+lock+required%29.%0A%23+Comment-only%3A+PRs+with+authority+changes+get+the+reach+diff+%28quiet+on+NONE%29.%0A%23+Add+locked%3A+%22true%22+later+to+enforce%2C+or+comment-on-none%3A+%22true%22+for+every+PR.%0Aname%3A+auctelis%0Aon%3A+%5Bpull_request%5D%0Apermissions%3A+%7B+contents%3A+read%2C+pull-requests%3A+write+%7D%0Ajobs%3A%0A++diff%3A%0A++++runs-on%3A+ubuntu-latest%0A++++steps%3A%0A++++++-+uses%3A+actions%2Fcheckout%403d3c42e5aac5ba805825da76410c181273ba90b1+%23+v7.0.1%0A++++++-+uses%3A+roham-amd%2Fauctelis%40v0.1.9%0A++++++++with%3A+%7B+locked%3A+%22false%22+%7D%0A&amp;message=Add+auctelis+lockless+PR+Watch+workflow">Watch PRs</a></td></tr><tr><td><code>example-org/docs</code></td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td><td><strong>Watching</strong></td></tr></tbody></table></section>
+<p><strong>Product:</strong> auctelis 0.1.9</p>
+<section><details><summary><strong>Org rollout (5+ repos)</strong></summary><p>Place <code>docs/auctelis-org-reusable.yml</code> in your org <code>.github</code> repository, then each app repo calls:</p><pre><code>jobs:
+  auctelis:
+    uses: YOUR_ORG/.github/.github/workflows/auctelis-org-reusable.yml@main</code></pre><p>Open lockless Watch PRs for the top unwatched tier-2 repos:</p><pre><code>uvx --from &quot;git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools&quot; auctelis rollout reach-report.json
+uvx --from &quot;git+https://github.com/roham-amd/auctelis.git@v0.1.9#subdirectory=tools&quot; auctelis rollout reach-report.json --apply</code></pre></details></section>
+<section>
+<h2>Tier-2 reach by repository</h2>
+<section><h3><code>example-org/frontend</code></h3><p><a href="https://github.com/example-org/frontend/new/main?filename=.github%2Fworkflows%2Fauctelis.yml&amp;value=%23+Lockless+Authority+Diff+%E2%80%94+write+with+%60auctelis+init+--lockless%60+%28no+lock+required%29.%0A%23+Comment-only%3A+PRs+with+authority+changes+get+the+reach+diff+%28quiet+on+NONE%29.%0A%23+Add+locked%3A+%22true%22+later+to+enforce%2C+or+comment-on-none%3A+%22true%22+for+every+PR.%0Aname%3A+auctelis%0Aon%3A+%5Bpull_request%5D%0Apermissions%3A+%7B+contents%3A+read%2C+pull-requests%3A+write+%7D%0Ajobs%3A%0A++diff%3A%0A++++runs-on%3A+ubuntu-latest%0A++++steps%3A%0A++++++-+uses%3A+actions%2Fcheckout%403d3c42e5aac5ba805825da76410c181273ba90b1+%23+v7.0.1%0A++++++-+uses%3A+roham-amd%2Fauctelis%40v0.1.9%0A++++++++with%3A+%7B+locked%3A+%22false%22+%7D%0A&amp;message=Add+auctelis+lockless+PR+Watch+workflow"><strong>Watch PRs in example-org/frontend</strong></a></p><table><thead><tr><th>Name</th><th>Path</th><th>Reason</th></tr></thead><tbody><tr><td>browser</td><td><code>.cursor/mcp.json</code></td><td>secrets</td></tr></tbody></table></section><section><h3><code>example-org/payments</code></h3><p><a href="https://github.com/example-org/payments/new/main?filename=.github%2Fworkflows%2Fauctelis.yml&amp;value=%23+Lockless+Authority+Diff+%E2%80%94+write+with+%60auctelis+init+--lockless%60+%28no+lock+required%29.%0A%23+Comment-only%3A+PRs+with+authority+changes+get+the+reach+diff+%28quiet+on+NONE%29.%0A%23+Add+locked%3A+%22true%22+later+to+enforce%2C+or+comment-on-none%3A+%22true%22+for+every+PR.%0Aname%3A+auctelis%0Aon%3A+%5Bpull_request%5D%0Apermissions%3A+%7B+contents%3A+read%2C+pull-requests%3A+write+%7D%0Ajobs%3A%0A++diff%3A%0A++++runs-on%3A+ubuntu-latest%0A++++steps%3A%0A++++++-+uses%3A+actions%2Fcheckout%403d3c42e5aac5ba805825da76410c181273ba90b1+%23+v7.0.1%0A++++++-+uses%3A+roham-amd%2Fauctelis%40v0.1.9%0A++++++++with%3A+%7B+locked%3A+%22false%22+%7D%0A&amp;message=Add+auctelis+lockless+PR+Watch+workflow"><strong>Watch PRs in example-org/payments</strong></a></p><table><thead><tr><th>Name</th><th>Path</th><th>Reason</th></tr></thead><tbody><tr><td>github</td><td><code>.cursor/mcp.json</code></td><td>secrets</td></tr></tbody></table></section><section><h3><code>example-org/docs</code></h3><p><strong>Watching</strong> <code>example-org/docs</code></p><table><thead><tr><th>Name</th><th>Path</th><th>Reason</th></tr></thead><tbody><tr><td colspan='3'><em>No tier-2 records.</em></td></tr></tbody></table></section>
+</section>
+<section>
+<h2>Unpinned MCP launchers</h2>
+<section><h3><code>example-org/frontend</code></h3><table><thead><tr><th>Name</th><th>Path</th><th>Pin suggestion</th></tr></thead><tbody><tr><td>browser</td><td><code>.cursor/mcp.json</code></td><td>floating</td></tr></tbody></table></section><section><h3><code>example-org/payments</code></h3><table><thead><tr><th>Name</th><th>Path</th><th>Pin suggestion</th></tr></thead><tbody><tr><td>github</td><td><code>.cursor/mcp.json</code></td><td>floating</td></tr></tbody></table></section>
+</section>
+
+<section><h2>Coverage and limits</h2><h3>Honesty</h3><p>This report describes DECLARED/CONFIGURED agent authority observed by a passive scan. It is not a safety certificate, does not prove EFFECTIVE permissions, and does not establish VERIFIED runtime behavior.</p><ul><li>No walk truncation reported for this scan.</li><li>Inventory is DECLARED/CONFIGURED only.</li></ul><h3>Not auto-inspected</h3><p><em>Coverage metadata unavailable for this report.</em></p></section>
+<section><h2>Lockless PR Watch workflow</h2><p>Copy into <code>.github/workflows/auctelis.yml</code> (or use <strong>Watch PRs</strong> when linked):</p><pre><code># Lockless Authority Diff — write with `auctelis init --lockless` (no lock required).
+# Comment-only: PRs with authority changes get the reach diff (quiet on NONE).
+# Add locked: &quot;true&quot; later to enforce, or comment-on-none: &quot;true&quot; for every PR.
+name: auctelis
+on: [pull_request]
+permissions: { contents: read, pull-requests: write }
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: roham-amd/auctelis@v0.1.9
+        with: { locked: &quot;false&quot; }</code></pre></section>
+<footer><p><strong>Next step:</strong> paste the lockless workflow (or click <strong>Watch PRs</strong>) in each repository to watch future agent-authority changes in one quiet PR comment.</p></footer>
+</body>
+</html>

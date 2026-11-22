@@ -257,11 +257,38 @@ def test_auct047_org_audit_workflow_template():
     assert "Pull requests: read" in text
     assert "--show-body --max-prs 3" in text
     assert "open_drift_issue" in text
+    assert 'OPEN_DRIFT_ISSUE: "false"' in text
+    assert "github.event_name == 'schedule'" in text
+    assert "env.OPEN_DRIFT_ISSUE" in text
     assert "<!-- auctelis-org-drift -->" in text
     assert "org-drift-issue.md" in text
     assert "python3 -" not in text
+    # AUCT-057: install once, then invoke auctelis directly (no triple uvx).
+    assert "uv tool install --python 3.12" in text
+    assert text.count("uv tool install") == 1
+    assert "uvx --from" not in text
+    assert 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' in text
     install = (root / "docs" / "INSTALL.md").read_text(encoding="utf-8")
     assert "Pull requests: read" in install
+    assert "OPEN_DRIFT_ISSUE" in install
+
+
+def test_auct057_checkout_sha_aligned_across_templates():
+    """AUCT-057: lockless/gate templates share org-reusable checkout SHA."""
+    root = Path(__file__).resolve().parents[1]
+    reusable = (root / "docs" / "auctelis-org-reusable.yml").read_text(encoding="utf-8")
+    diff = (root / "tools" / "auctelis" / "templates" / "auctelis-diff.yml").read_text(
+        encoding="utf-8"
+    )
+    gate = (root / "tools" / "auctelis" / "templates" / "auctelis-gate.yml").read_text(
+        encoding="utf-8"
+    )
+    pin = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+    assert pin in reusable
+    assert pin in diff
+    assert pin in gate
+    assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in diff
+    assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in gate
 
 
 def test_trust_copy_does_not_lower_new_mcp_authority():

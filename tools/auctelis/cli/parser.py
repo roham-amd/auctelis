@@ -260,16 +260,16 @@ def build_parser(*, include_dev: bool = False) -> argparse.ArgumentParser:
         "--pin-sha",
         action="store_true",
         help=(
-            "With --lockless, pin uses: roham-amd/auctelis@<commit-sha> # vX "
-            "(resolves the release tag; exit 2 without --lockless)"
+            "Pin uses: roham-amd/auctelis@<commit-sha> # vX on lockless or "
+            "--owner workflows (resolves the release tag)"
         ),
     )
     init_cmd.add_argument(
         "--action-sha",
         metavar="SHA",
         help=(
-            "With --lockless, pin the Action to this 40-hex commit offline "
-            "(no tag lookup; exit 2 without --lockless)"
+            "Pin the Action to this 40-hex commit offline on lockless or "
+            "--owner workflows (no tag lookup; required on GHES)"
         ),
     )
 

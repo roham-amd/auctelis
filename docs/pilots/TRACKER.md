@@ -23,7 +23,7 @@ retention, and do not replace `_TBD_` with a dogfood repo.
 Metrics CSV: [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv) ·
 Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 
-## Recruitment checklist (0.1.8 report-first)
+## Recruitment checklist (0.1.9 report-first)
 
 - [ ] Confirm unrelated org/repo (not this product dogfood)
 - [ ] First: `auctelis check --github <org> --report out/` and forward the HTML/MD
@@ -32,6 +32,6 @@ Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 - [ ] Day 7 / day 30: `auctelis rollout reach-report.json --status` (table / `--csv`) and log conversion
 - [ ] Weekly: re-run org audit (baseline artifact diff) or `check --github … --baseline prior.json`
 - [ ] Optional later: `init --owner team` / `--enforce`
-- [ ] Pin Action to git tag `v0.1.8` (or commit SHA)
+- [ ] Pin Action to git tag `v0.1.9` (or commit SHA)
 - [ ] Log row in `eval/pilot-metrics.csv` (surface_mix + install_path)
 - [ ] Re-check day 30 and update this tracker

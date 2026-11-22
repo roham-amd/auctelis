@@ -184,36 +184,147 @@ def test_render_fleet_drift_issue_md_none_on_zero_and_marker_on_drift(tmp_path: 
         )
         is None
     )
+
+    # AUCT-055: Watch self-install / tier-0 alone must stay silent.
+    watch_only = {
+        "repositories": [
+            {
+                "repository": "acme/watch",
+                "already_watching": True,
+                "reach": {
+                    "total": 1,
+                    "tier_counts": {"tier0": 1, "tier1": 0, "tier2": 0},
+                    "records": [
+                        {
+                            "kind": "CI Workflow",
+                            "name": "auctelis",
+                            "path": ".github/workflows/auctelis.yml",
+                            "tier": 0,
+                            "reason": "ci",
+                            "identity_key": "|CI Workflow|auctelis",
+                        }
+                    ],
+                },
+            }
+        ],
+        "baseline_diff": {
+            "changed_count": 1,
+            "added_repositories": [],
+            "removed_repositories": [],
+            "repositories": [
+                {
+                    "repository": "acme/watch",
+                    "added": [
+                        {
+                            "kind": "CI Workflow",
+                            "name": "auctelis",
+                            "path": ".github/workflows/auctelis.yml",
+                            "tier": 0,
+                            "reason": "ci",
+                        }
+                    ],
+                    "removed": [],
+                    "changed": [],
+                    "changed_count": 1,
+                }
+            ],
+        },
+    }
+    assert render_fleet_drift_issue_md(watch_only) is None
+
+    prose_only = {
+        "repositories": [
+            _repo_doc("acme/prose", name="style", tier=0, reason="prose"),
+        ],
+        "baseline_diff": {
+            "changed_count": 1,
+            "added_repositories": [{"repository": "acme/prose"}],
+            "removed_repositories": [],
+            "repositories": [],
+        },
+    }
+    assert render_fleet_drift_issue_md(prose_only) is None
+
     drifted = {
+        "repositories": [
+            _repo_doc("acme/new", name="fresh", tier=2, reason="secrets"),
+            _repo_doc("acme/a", name="keep", tier=2, reason="secrets"),
+        ],
         "baseline_diff": {
             "changed_count": 2,
             "added_repositories": [{"repository": "acme/new"}],
             "removed_repositories": [{"repository": "acme/gone"}],
-            "repositories": [{"repository": "acme/a", "changed_count": 1}],
-        }
+            "repositories": [
+                {
+                    "repository": "acme/a",
+                    "added": [],
+                    "removed": [],
+                    "changed": [
+                        {
+                            "before": {
+                                "kind": "mcp",
+                                "name": "keep",
+                                "path": ".cursor/mcp.json",
+                                "tier": 1,
+                                "reason": "net",
+                            },
+                            "after": {
+                                "kind": "mcp",
+                                "name": "keep",
+                                "path": ".cursor/mcp.json",
+                                "tier": 2,
+                                "reason": "secrets",
+                            },
+                        }
+                    ],
+                    "changed_count": 1,
+                }
+            ],
+        },
     }
     md = render_fleet_drift_issue_md(drifted)
     assert md is not None
     assert md.startswith("<!-- auctelis-org-drift -->")
     assert "acme/new" in md
-    assert "acme/gone" in md
     assert "acme/a" in md
+    assert "tier 1→2" in md or "tier 2" in md
+    assert "keep" in md
     assert len(md.splitlines()) <= 25
+    # Whole-repo removals stay out of the sticky Issue (no after-side tiers).
+    assert "acme/gone" not in md
 
-    huge = {
+    # Removed tier≥1 records still page (good-news / shrink signal).
+    removed_tier2 = {
+        "repositories": [_repo_doc("acme/a", name="keep", tier=0, reason="gone")],
         "baseline_diff": {
-            "changed_count": 40,
-            "added_repositories": [{"repository": f"acme/r{i}"} for i in range(40)],
+            "changed_count": 1,
+            "added_repositories": [],
             "removed_repositories": [],
-            "repositories": [],
-        }
+            "repositories": [
+                {
+                    "repository": "acme/a",
+                    "added": [],
+                    "removed": [
+                        {
+                            "kind": "mcp",
+                            "name": "gone-server",
+                            "path": ".cursor/mcp.json",
+                            "tier": 2,
+                            "reason": "secrets",
+                        }
+                    ],
+                    "changed": [],
+                    "changed_count": 1,
+                }
+            ],
+        },
     }
-    bounded = render_fleet_drift_issue_md(huge)
-    assert bounded is not None
-    assert "<!-- auctelis-org-drift -->" in bounded
-    assert len(bounded.splitlines()) <= 25
+    removed_md = render_fleet_drift_issue_md(removed_tier2)
+    assert removed_md is not None
+    assert "gone-server" in removed_md
+    assert "tier 2" in removed_md
 
-    # Fleet --report writes org-drift-issue.md only when reach changed.
+    # Fleet --report writes org-drift-issue.md only when material reach changed.
     before = [(_repo_doc("acme/a", name="keep", tier=1, reason="net"), None, [])]
     after = [
         (_repo_doc("acme/a", name="keep", tier=2, reason="secrets"), None, []),
@@ -230,6 +341,7 @@ def test_render_fleet_drift_issue_md_none_on_zero_and_marker_on_drift(tmp_path: 
     issue = (diffed / "org-drift-issue.md").read_text(encoding="utf-8")
     assert issue.startswith("<!-- auctelis-org-drift -->")
     assert "acme/b" in issue
+    assert len(issue.splitlines()) <= 25
 
 
 def test_baseline_schema_mismatch_exit_2(tmp_path: Path, capsys):

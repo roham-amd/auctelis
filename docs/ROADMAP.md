@@ -6,7 +6,7 @@
 `auctelis check` is the repo preflight. Host hooks / allow store / tripwires
 are removed.
 
-**Current:** **0.1.8** · lock schema 1 · tooling 0.1.8
+**Current:** **0.1.9** · lock schema 1 · tooling 0.1.9
 
 ## North star (Gate Zero)
 
@@ -31,7 +31,20 @@ are removed.
 | **0.1.6** | Funnel ledger (`rollout --status`), fleet audit memory (`--baseline`), opt-in resolved pins (still `pypi_live=false`) | **done** |
 | **0.1.7** | Zero-laptop org-audit cron/status/resolved-pin parity + SHA-pinned Watch rollout (still `pypi_live=false`) | **done** |
 | **0.1.8** | Org-audit PR-read + Drift Issue + offline `--action-sha` / surface diet (still `pypi_live=false`) | **done** |
-| Next | Five outside pilots (report-first); measure conversion with `--status` / `--show-body` / `--pin-sha` / `--action-sha`. Hold `rollout --fix-pins` until day-14 Watch merge rate <30%. PyPI cutover only if ≥3 pilots ask (claim → bump+flip PR → publish → live probe → tag; `pypi_live` stays false until then). Research repo split if unused | open |
+| **0.1.9** | Tier-1+ Drift Issue + enforce SHA-pin parity + single-install org-audit (still `pypi_live=false`) | **done** |
+| Next | Feature freeze. Concierge: 10 external org audits → `rollout --apply --pin-sha` → day-14 `--status`. Hold `rollout --fix-pins` (**AUCT-056**) until day-14 Watch merge rate <30%. PyPI cutover only if ≥3 pilots ask. Research repo split if unused | open |
+
+## 30-day concierge sprint (now)
+
+| Window | Work | Done when |
+| --- | --- | --- |
+| Days 1–3 | Ship **AUCT-055** + **AUCT-057**; feature-freeze CLI | Tests green; Drift Issue silent on Watch merges; `init --owner --enforce --action-sha` works |
+| Days 1–30 | 10 external org audits (CLI or `auctelis-org-audit.yml`); log `TRACKER.md` + `pilot-metrics.csv` | ≥10 outside reach reports |
+| Days 7–14 | Open Watch PRs with `rollout --apply --pin-sha`; measure with `--status` | Day-14 merge rate known |
+| Day 14 gate | Build **AUCT-056** (`rollout --fix-pins`) **only if** Watch merge rate <30% | Flag shipped or explicitly skipped |
+| Day 30 | ≥5 outside repos `watching_on_default` | Day-60 gate still open |
+
+Kill speculative CLI expansion (`why` / `trust` / `diff --base` / lock ceremony / research rules) until five outside repos retain the Action.
 
 ## 90-day decision gate
 

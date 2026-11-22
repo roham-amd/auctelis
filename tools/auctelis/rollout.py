@@ -134,12 +134,21 @@ def _dry_run_row(repo: dict[str, Any], *, mode: str, show_body: bool) -> dict[st
     return row
 
 
-def rewrite_lockless_action_pin(workflow: str, *, sha: str, version: str) -> str:
-    """Replace the mutable ``@vX`` Action pin with ``@<sha> # vX``."""
+def rewrite_action_pin(workflow: str, *, sha: str, version: str) -> str:
+    """Replace the mutable ``@vX`` Action pin with ``@<sha> # vX``.
+
+    Shared by lockless Watch templates and enforce ``auctelis-gate.yml``
+    (AUCT-057).
+    """
     updated, count = _LOCKLESS_TAG_RE.subn(rf"\g<1>{sha} # v{version}", workflow, count=1)
     if count != 1:
-        raise ValueError("lockless workflow has no roham-amd/auctelis@v pin")
+        raise ValueError("workflow has no roham-amd/auctelis@v pin")
     return updated
+
+
+def rewrite_lockless_action_pin(workflow: str, *, sha: str, version: str) -> str:
+    """Alias for :func:`rewrite_action_pin` (lockless Watch call sites)."""
+    return rewrite_action_pin(workflow, sha=sha, version=version)
 
 
 def execute_rollout(

@@ -1020,13 +1020,150 @@ def diff_fleet_reports(
 
 _DRIFT_ISSUE_MARKER = "<!-- auctelis-org-drift -->"
 _DRIFT_ISSUE_MAX_LINES = 25
+_DRIFT_DELTA_CAP = 3
+# Watch / gate self-installs are tier-0 CI; never page the sticky Drift Issue.
+_AUCTELIS_WORKFLOW_PATH = re.compile(
+    r"(?:^|/)\.github/workflows/auctelis[^/]*\.ya?ml$",
+    re.IGNORECASE,
+)
+
+
+def _drift_record_path(record: dict[str, Any]) -> str:
+    return str(record.get("path") or "").replace("\\", "/").strip()
+
+
+def _is_auctelis_workflow_record(record: dict[str, Any]) -> bool:
+    return bool(_AUCTELIS_WORKFLOW_PATH.search(_drift_record_path(record)))
+
+
+def _record_tier(record: dict[str, Any]) -> int:
+    try:
+        return int(record.get("tier") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _material_drift_record(record: dict[str, Any] | None) -> bool:
+    """True for tier≥1 reach that is not an Auctelis Watch/gate workflow file."""
+    if not isinstance(record, dict):
+        return False
+    if _is_auctelis_workflow_record(record):
+        return False
+    return _record_tier(record) >= 1
+
+
+def _material_changed_pair(item: dict[str, Any]) -> bool:
+    before_raw = item.get("before")
+    after_raw = item.get("after")
+    before: dict[str, Any] = before_raw if isinstance(before_raw, dict) else {}
+    after: dict[str, Any] = after_raw if isinstance(after_raw, dict) else {}
+    if _is_auctelis_workflow_record(before) or _is_auctelis_workflow_record(after):
+        return False
+    return max(_record_tier(before), _record_tier(after)) >= 1
+
+
+def _repo_tier_counts(repo: dict[str, Any] | None) -> tuple[int, int]:
+    if not isinstance(repo, dict):
+        return 0, 0
+    tiers = _as_dict(_as_dict(repo.get("reach")).get("tier_counts"))
+    return int(tiers.get("tier1") or 0), int(tiers.get("tier2") or 0)
+
+
+def _fleet_repo_by_slug(doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for repo in _as_list(doc.get("repositories")):
+        if not isinstance(repo, dict):
+            continue
+        slug = str(repo.get("repository") or "").strip()
+        if slug:
+            out[slug.lower()] = repo
+    return out
+
+
+def _diff_item_slug(item: Any) -> str:
+    if isinstance(item, dict):
+        return str(item.get("repository") or "").strip()
+    return str(item or "").strip()
+
+
+def _format_drift_delta_bullet(item: Any, *, op: str) -> str | None:
+    """One concise delta line for the sticky Issue (≤3 per repo)."""
+    if op == "~":
+        if not isinstance(item, dict) or not _material_changed_pair(item):
+            return None
+        before_raw = item.get("before")
+        after_raw = item.get("after")
+        before: dict[str, Any] = before_raw if isinstance(before_raw, dict) else {}
+        after: dict[str, Any] = after_raw if isinstance(after_raw, dict) else {}
+        name = str(after.get("name") or before.get("name") or "?").strip() or "?"
+        path = _drift_record_path(after) or _drift_record_path(before) or "?"
+        return (
+            f"~ {markdown_code_span(name)} ({markdown_code_span(path)}) "
+            f"tier {_record_tier(before)}→{_record_tier(after)}"
+        )
+    if not isinstance(item, dict) or not _material_drift_record(item):
+        return None
+    name = str(item.get("name") or "?").strip() or "?"
+    path = _drift_record_path(item) or "?"
+    kind = str(item.get("kind") or "record").strip() or "record"
+    sign = "+" if op == "+" else "-"
+    return (
+        f"{sign} {escape_markdown_inline(kind)} "
+        f"{markdown_code_span(name)} ({markdown_code_span(path)}) "
+        f"tier {_record_tier(item)}"
+    )
+
+
+def _material_repo_diff(repo_diff: dict[str, Any]) -> dict[str, Any] | None:
+    """Keep only tier≥1 / non-Watch deltas for one changed repository."""
+    added = [r for r in _as_list(repo_diff.get("added")) if _material_drift_record(r)]
+    removed = [r for r in _as_list(repo_diff.get("removed")) if _material_drift_record(r)]
+    changed = [r for r in _as_list(repo_diff.get("changed")) if _material_changed_pair(r)]
+    if not (added or removed or changed):
+        return None
+    return {
+        "repository": str(repo_diff.get("repository") or "").strip(),
+        "added": added,
+        "removed": removed,
+        "changed": changed,
+    }
+
+
+def _repo_material_added_records(repo: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(repo, dict):
+        return []
+    records = _as_list(_as_dict(repo.get("reach")).get("records"))
+    return [r for r in records if _material_drift_record(r)][:_DRIFT_DELTA_CAP]
+
+
+def _append_drift_repo_block(
+    lines: list[str],
+    slug: str,
+    repo_diff: dict[str, Any] | None,
+) -> None:
+    if len(lines) >= _DRIFT_ISSUE_MAX_LINES - 2:
+        return
+    lines.append(f"- `{slug}`")
+    if not repo_diff:
+        return
+    bullets: list[str] = []
+    for op, key in (("+", "added"), ("-", "removed"), ("~", "changed")):
+        for item in _as_list(repo_diff.get(key)):
+            bullet = _format_drift_delta_bullet(item, op=op)
+            if bullet:
+                bullets.append(bullet)
+    for bullet in bullets[:_DRIFT_DELTA_CAP]:
+        if len(lines) >= _DRIFT_ISSUE_MAX_LINES - 2:
+            break
+        lines.append(f"  {bullet}")
 
 
 def render_fleet_drift_issue_md(doc: dict[str, Any]) -> str | None:
-    """Sticky org-drift Issue body. ``None`` when ``changed_count`` is 0 or absent.
+    """Sticky org-drift Issue body for tier-1+ material reach only (AUCT-055).
 
-    The body is at most 25 lines and always starts with ``<!-- auctelis-org-drift -->``
-    so a later audit can update the same open issue.
+    Returns ``None`` when there is no material drift (Watch-PR self-installs,
+    tier-0 prose, and empty diffs stay silent). Body is ≤25 lines and always
+    starts with ``<!-- auctelis-org-drift -->``.
     """
     diff = doc.get("baseline_diff")
     if not isinstance(diff, dict):
@@ -1038,36 +1175,56 @@ def render_fleet_drift_issue_md(doc: dict[str, Any]) -> str | None:
     if changed <= 0:
         return None
 
-    def _slugs(key: str) -> list[str]:
-        found: list[str] = []
-        for item in _as_list(diff.get(key)):
-            if isinstance(item, dict):
-                slug = str(item.get("repository") or "").strip()
-            else:
-                slug = str(item or "").strip()
-            if slug:
-                found.append(slug)
-        return found
+    by_slug = _fleet_repo_by_slug(doc)
+    material_added = [
+        slug
+        for item in _as_list(diff.get("added_repositories"))
+        for slug in [_diff_item_slug(item)]
+        if slug and any(_repo_tier_counts(by_slug.get(slug.lower())))
+    ]
+    # Whole-repo removals lack after-side tier counts; keep them out of the
+    # sticky Issue (full baseline_diff still lists them in the report artifact).
+    material_changed = [
+        filtered
+        for repo_diff in _as_list(diff.get("repositories"))
+        if isinstance(repo_diff, dict)
+        for filtered in [_material_repo_diff(repo_diff)]
+        if filtered is not None
+    ]
+    if not material_added and not material_changed:
+        return None
 
+    material_n = len(material_added) + len(material_changed)
     lines = [
         _DRIFT_ISSUE_MARKER,
         "",
         "# Auctelis org drift",
         "",
-        f"Reach changed since the last audit ({changed} change(s)).",
+        f"Material reach changed since the last audit ({material_n} repo(s)).",
         "",
     ]
-    for label, key in (
-        ("Added", "added_repositories"),
-        ("Removed", "removed_repositories"),
-        ("Changed", "repositories"),
-    ):
-        slugs = _slugs(key)
-        if not slugs:
-            continue
-        lines.append(f"**{label}**")
-        for slug in slugs:
-            lines.append(f"- `{slug}`")
+    if material_added and len(lines) < _DRIFT_ISSUE_MAX_LINES - 2:
+        lines.append("**Added**")
+        for slug in material_added:
+            faux = {
+                "repository": slug,
+                "added": _repo_material_added_records(by_slug.get(slug.lower())),
+                "removed": [],
+                "changed": [],
+            }
+            _append_drift_repo_block(lines, slug, faux)
+    if material_changed and len(lines) < _DRIFT_ISSUE_MAX_LINES - 2:
+        lines.append("**Changed**")
+        for repo_diff in material_changed:
+            slug = str(repo_diff.get("repository") or "").strip() or "?"
+            _append_drift_repo_block(lines, slug, repo_diff)
+
+    if _unwatched_tier2_slugs(doc, limit=1) and len(lines) < _DRIFT_ISSUE_MAX_LINES - 3:
+        apply_cmd = _rollout_commands(
+            org_reusable=str(doc.get("org_reusable") or "").strip() or None
+        )[1]
+        lines.extend(["", "```bash", apply_cmd, "```"])
+
     lines.extend(
         [
             "",

@@ -150,15 +150,56 @@ def test_init_lockless_action_sha_offline(tmp_path: Path, monkeypatch):
     assert f"uses: roham-amd/auctelis@v{product_version()}" not in body
 
 
-def test_init_pin_flags_require_lockless(tmp_path: Path, capsys):
+def test_init_owner_action_sha_pins_gate(tmp_path: Path, monkeypatch):
+    """AUCT-057: --action-sha / --pin-sha work on init --owner [--enforce]."""
+    sha = "cd" * 20
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("network")
+
+    monkeypatch.setattr("auctelis.rollout.resolve_release_commit_sha", boom)
+    monkeypatch.setattr("auctelis.rollout.urllib.request.urlopen", boom)
     root = tmp_path / "repo"
     root.mkdir()
-    assert main(["init", str(root), "--pin-sha"]) == 2
-    assert "--lockless" in capsys.readouterr().out
-    assert not (root / ".github").exists()
-    assert main(["init", str(root), "--action-sha", "ab" * 20]) == 2
-    assert "--lockless" in capsys.readouterr().out
-    assert not (root / ".github").exists()
+    assert (
+        main(
+            [
+                "init",
+                str(root),
+                "--owner",
+                "@sec",
+                "--enforce",
+                "--action-sha",
+                sha.upper(),
+            ]
+        )
+        == 0
+    )
+    body = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
+    assert f"uses: roham-amd/auctelis@{sha} # v{product_version()}" in body
+    assert f"uses: roham-amd/auctelis@v{product_version()}" not in body
+    assert 'locked: "true"' in body
+
+
+def test_init_owner_pin_sha_resolves_tag(tmp_path: Path, monkeypatch):
+    sha = "ef" * 20
+    monkeypatch.setattr(
+        "auctelis.rollout.resolve_release_commit_sha",
+        lambda _version: (sha, "ok"),
+    )
+    root = tmp_path / "repo"
+    root.mkdir()
+    assert main(["init", str(root), "--owner", "sec", "--pin-sha"]) == 0
+    body = (root / ".github" / "workflows" / "auctelis-gate.yml").read_text(encoding="utf-8")
+    assert f"uses: roham-amd/auctelis@{sha} # v{product_version()}" in body
+
+
+def test_init_owner_action_sha_invalid_exits_2(tmp_path: Path, capsys):
+    root = tmp_path / "repo"
+    root.mkdir()
+    assert main(["init", str(root), "--owner", "@sec", "--action-sha", "zz"]) == 2
+    assert "40-character" in capsys.readouterr().out
+    assert not (root / ".github" / "workflows" / "auctelis-gate.yml").exists()
 
 
 def test_init_lockless_action_sha_invalid_exits_2(tmp_path: Path, capsys):

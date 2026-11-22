@@ -3,7 +3,7 @@
 Primary command: **`auctelis`**.
 Maintainer entry: **`auctelis-dev`** (build / lint / corpus / deps / validate / …).
 
-Package `auctelis` **0.1.8** · product **0.1.8** · rule pack **1.6** (001–022).
+Package `auctelis` **0.1.9** · product **0.1.9** · rule pack **1.6** (001–022).
 
 Product contract / command tiers: [`PRODUCT.md`](PRODUCT.md) ·
 reach: [`REACH.md`](REACH.md) ·
@@ -180,24 +180,25 @@ representation digest drift is advisory unless `--strict-digests` (AUCT-034).
 ```bash
 auctelis init [PATH] --lockless [--force] [--pin-sha | --action-sha SHA]
 auctelis init [PATH] --owner @TEAM [--force] [--enforce] [--advisory]
+               [--pin-sha | --action-sha SHA]
 ```
 
 `--lockless` writes only `.github/workflows/auctelis.yml` (the comment-only
 Authority Diff workflow, pinned to this release) and exits. It needs no
 `--owner` and writes no `.auctelis.yml`, CODEOWNERS, or `AUTHORITY.lock`; it
 cannot be combined with `--enforce` (exit 2). This is the lowest-friction first
-contact. `--pin-sha` rewrites that file to `uses: roham-amd/auctelis@<sha> # vX`
+contact. `--pin-sha` rewrites the workflow to `uses: roham-amd/auctelis@<sha> # vX`
 after resolving the release tag. `--action-sha <40-hex>` does the same offline
-(no tag lookup; required on GHES). Either flag without `--lockless` exits 2.
-An invalid `--action-sha` exits 2.
+(no tag lookup; required on GHES). Both flags work with `--lockless` and with
+`--owner` / `--enforce` (AUCT-057). An invalid `--action-sha` exits 2.
 
 Without `--lockless`, `init` writes `.auctelis.yml`,
 `.github/workflows/auctelis-gate.yml`, CODEOWNERS (including discovered
 authority paths), and seals `AUTHORITY.lock`; `--owner` is required. Default
 mode is **comment-only** (`locked: false`); pass `--enforce` for the locked
-gate. `init` always merges CODEOWNERS and pins the Action to the release tag.
-Comment-only setup does not probe rulesets; enforce setup probes them as a
-warning (files are still written).
+gate. `init` always merges CODEOWNERS and pins the Action to the release tag
+(or to `--pin-sha` / `--action-sha` when given). Comment-only setup does not
+probe rulesets; enforce setup probes them as a warning (files are still written).
 
 ---
 

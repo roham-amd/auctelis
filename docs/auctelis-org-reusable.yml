@@ -42,12 +42,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # GHES / strict AppSec: replace the tag with an immutable pin, for example
-      #   uses: roham-amd/auctelis@<40-hex> # v0.1.8
+      #   uses: roham-amd/auctelis@<40-hex> # v0.1.9
       # Write that form with `auctelis init --lockless --action-sha <40-hex>`
       # (offline) or `auctelis init --lockless --pin-sha` when github.com is reachable.
       # Do not fall back to api.github.com from a GHES host; pass --action-sha.
       - name: auctelis Authority Diff
-        uses: roham-amd/auctelis@v0.1.8
+        uses: roham-amd/auctelis@v0.1.9
         with:
           path: ${{ inputs.path }}
           mode: scan

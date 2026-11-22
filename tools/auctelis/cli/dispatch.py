@@ -494,15 +494,10 @@ def _cmd_rollout(args: argparse.Namespace) -> int:
     )
 
 
-def _init_pin_without_lockless(args: argparse.Namespace) -> bool:
-    raw = str(getattr(args, "action_sha", None) or "").strip()
-    pin = bool(getattr(args, "pin_sha", False))
-    return bool(raw or pin) and not bool(getattr(args, "lockless", False))
-
-
-def _lockless_pin_sha(args: argparse.Namespace) -> tuple[str | None, int | None]:
+def _resolve_init_action_sha(args: argparse.Namespace) -> tuple[str | None, int | None]:
     """Return ``(sha, None)``, ``(None, None)`` if unpinned, or ``(None, 2)``.
 
+    Shared by ``init --lockless`` and ``init --owner`` (AUCT-057).
     ``--action-sha`` is offline. ``--pin-sha`` looks up this release tag and
     does not fall back to ``https://api.github.com`` when that lookup fails.
     """
@@ -535,9 +530,6 @@ def _cmd_init(args: argparse.Namespace) -> int:
     refused = refuse_agent_mutation("init")
     if refused is not None:
         return refused
-    if _init_pin_without_lockless(args):
-        print("auctelis init: --pin-sha and --action-sha require --lockless.")
-        return 2
     if bool(getattr(args, "lockless", False)):
         return _cmd_init_lockless(args)
     # Prefer apply semantics (merge CODEOWNERS, pin release, probe ruleset).
@@ -566,7 +558,7 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
             f"--enforce.\nFor enforce, run `{prefix} init --owner @team --enforce`."
         )
         return 2
-    sha, pin_err = _lockless_pin_sha(args)
+    sha, pin_err = _resolve_init_action_sha(args)
     if pin_err is not None:
         return pin_err
     root = args.path.resolve()
@@ -576,10 +568,10 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
     workflow_body = _pin_workflow_to_release(template_path.read_text(encoding="utf-8"))
     version = product_version()
     if sha:
-        from auctelis.rollout import rewrite_lockless_action_pin
+        from auctelis.rollout import rewrite_action_pin
 
         try:
-            workflow_body = rewrite_lockless_action_pin(workflow_body, sha=sha, version=version)
+            workflow_body = rewrite_action_pin(workflow_body, sha=sha, version=version)
         except ValueError as exc:
             print(f"auctelis init: could not pin the lockless workflow ({exc}).")
             return 2
@@ -1055,6 +1047,20 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
     codeowners_body = codeowners_body.replace("@YOUR_TEAM", owner)
     # Always pin to the installed auctelis release tag — never consumer HEAD.
     workflow_body = _pin_workflow_to_release(workflow_body)
+    from auctelis.versioning import product_version
+
+    sha, pin_err = _resolve_init_action_sha(args)
+    if pin_err is not None:
+        return pin_err
+    version = product_version()
+    if sha:
+        from auctelis.rollout import rewrite_action_pin
+
+        try:
+            workflow_body = rewrite_action_pin(workflow_body, sha=sha, version=version)
+        except ValueError as exc:
+            print(f"auctelis init: could not pin auctelis-gate.yml ({exc}).")
+            return 2
     accept_gated = bool(getattr(args, "accept_gated", False))
     wrote: list[str] = []
     warnings: list[str] = []
@@ -1112,6 +1118,14 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
                 f"(pin={existing_pin}). Re-run with --force to rewrite."
             )
         refreshed = _pin_workflow_to_release(existing)
+        if sha:
+            from auctelis.rollout import rewrite_action_pin
+
+            try:
+                refreshed = rewrite_action_pin(refreshed, sha=sha, version=version)
+            except ValueError as exc:
+                print(f"auctelis init: could not pin auctelis-gate.yml ({exc}).")
+                return 2
         if refreshed != existing:
             _write_new(workflow_path, refreshed)
             wrote.append(f"{workflow_path} (pin refreshed)")
@@ -1191,8 +1205,11 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         print("Wrote:")
         for path in wrote:
             print(f"  {path}")
-    pin = _resolve_action_pin_ref()
-    print(f"Action pin: roham-amd/auctelis@{pin}")
+    if sha:
+        print(f"Action pin: roham-amd/auctelis@{sha} # v{version}")
+    else:
+        pin = _resolve_action_pin_ref()
+        print(f"Action pin: roham-amd/auctelis@{pin}")
     print("Next: git add AUTHORITY.lock .auctelis.yml .github/ && open a PR")
     print(
         f"CODEOWNERS owner: {owner}. "

@@ -1,4 +1,4 @@
-# Documentation index (auctelis 0.1.8)
+# Documentation index (auctelis 0.1.9)
 
 Three surfaces — `check` locally (including `--report` / `--github`), `rollout`
 (Watch PRs + `--status` funnel ledger + `--show-body` / `--pin-sha`), and the
@@ -32,8 +32,9 @@ or reference depth; it is not part of the first ten minutes.
 | [`TRUST-AND-SAFETY.md`](TRUST-AND-SAFETY.md) | Audit-process trust |
 | [`EVALUATION-PROTOCOL.md`](EVALUATION-PROTOCOL.md) | FP/FN labeling |
 | [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml) | CI recipe |
-| [`auctelis-org-audit.yml`](auctelis-org-audit.yml) | Zero-install org Reach Audit (`workflow_dispatch` / optional cron fallback; `--status` + opt-in `resolve_pins`) |
+| [`auctelis-org-audit.yml`](auctelis-org-audit.yml) | Zero-install org Reach Audit (`workflow_dispatch` / optional cron fallback; `--status` + opt-in `resolve_pins` / `OPEN_DRIFT_ISSUE`) |
 | [`auctelis-org-reusable.yml`](auctelis-org-reusable.yml) | Org `workflow_call` template |
+| [`examples/`](examples/) | Static sample Reach Report (evaluate before install) |
 | [`pilots/`](pilots/) | Five-pilot tracker (report-first) |
 | [`../CHANGELOG.md`](../CHANGELOG.md) | Release notes |
 | [`../SECURITY.md`](../SECURITY.md) | Vulnerability reporting |

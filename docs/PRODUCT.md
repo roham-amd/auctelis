@@ -1,7 +1,7 @@
 # Auctelis product contract
 
 **Product:** **Auctelis** (`auctelis`) — the authority lockfile and PR gate for what AI agents can reach  
-**Release:** 0.1.8 · **Package:** `auctelis` 0.1.8 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
+**Release:** 0.1.9 · **Package:** `auctelis` 0.1.9 · **Lock:** v1 · **Rules:** pack 1.6 (research / `auctelis_research` only)
 
 This page freezes what the product is, what it is not, and which commands are
 primary. Execution plan: [`ROADMAP.md`](ROADMAP.md).
