@@ -3,39 +3,15 @@
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from pathlib import Path
 
 from auctelis.jsonio import print_json
 
-_ORG_REUSABLE_SLUG = re.compile(r"^[A-Za-z0-9_.-]+$")
-
 
 def _note(message: str, *, as_json: bool) -> None:
     """Keep stdout machine-readable under ``--json``; human notes go to stderr."""
     print(message, file=sys.stderr if as_json else sys.stdout)
-
-
-def _org_reusable_arg(args: argparse.Namespace) -> tuple[str | None, int | None]:
-    """Validate ``--org-reusable`` (requires ``--report``; slug chars only).
-
-    Returns ``(org_or_none, error_exit_code_or_none)``.
-    """
-    raw = getattr(args, "org_reusable", None)
-    if raw is None:
-        return None, None
-    org = str(raw or "").strip().strip("/")
-    if not org:
-        print("auctelis check: --org-reusable requires a non-empty org slug.")
-        return None, 2
-    if not _ORG_REUSABLE_SLUG.fullmatch(org):
-        print(f"auctelis check: --org-reusable must match [A-Za-z0-9_.-]+ (got {org!r}).")
-        return None, 2
-    if getattr(args, "report", None) is None:
-        print("auctelis check: --org-reusable requires --report DIR.")
-        return None, 2
-    return org, None
 
 
 def _paths(args: argparse.Namespace) -> list[Path]:
@@ -94,11 +70,6 @@ def cmd_check(args: argparse.Namespace) -> int:
         render_check,
         render_pin_report,
     )
-
-    # Validate early so bad --org-reusable fails before any inventory work.
-    _, org_err = _org_reusable_arg(args)
-    if org_err is not None:
-        return org_err
 
     if getattr(args, "resolve_pins", False) and not (
         getattr(args, "pins", False) or getattr(args, "report", None) is not None
@@ -191,11 +162,9 @@ def _cmd_check_fleet(args: argparse.Namespace, paths: list[Path]) -> int:
         _maybe_resolve_pins(args, report)
         entries.append((report, scan, cards))
         codes.append(check_exit_code(report))
-    org, _ = _org_reusable_arg(args)
     doc = write_fleet_reach_report_artifacts(
         report_dir,
         entries,
-        org_reusable=org,
         baseline=baseline,
     )
     as_json = bool(getattr(args, "json", False))
@@ -336,13 +305,11 @@ def _cmd_check_github(args: argparse.Namespace, targets: list[str]) -> int:
         return baseline_err
 
     entries = [(r.report, r.scan, r.cards) for r in usable if r.report is not None]
-    org, _ = _org_reusable_arg(args)
     doc = write_fleet_reach_report_artifacts(
         report_dir,
         entries,
         skipped=skipped_rows,
         honesty_notes=honesty,
-        org_reusable=org,
         baseline=baseline,
     )
     if as_json:

@@ -7,7 +7,6 @@ from typing import Any
 
 from auctelis.export.authority_sbom import build_authority_sbom
 from auctelis.export.pr_comment import render_authority_diff_comment
-from auctelis_devtools.export.sarif import findings_doc_to_sarif
 from auctelis.jsonio import write_json, write_text
 from auctelis.paths import resolve_default_output_dir
 from auctelis.policy import AuctelisPolicy
@@ -18,6 +17,7 @@ from auctelis.security.authority import (
 )
 from auctelis.security.engine import ScanResult, run_security_scan
 from auctelis.security.gating import compute_exit_code
+from auctelis_devtools.export.sarif import findings_doc_to_sarif
 from auctelis_research.baseline import diff_against_baseline, load_baseline, save_baseline
 from auctelis_research.report import render_markdown_summary, render_terminal_report
 

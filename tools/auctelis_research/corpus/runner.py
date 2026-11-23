@@ -4,10 +4,14 @@ import json
 
 from auctelis.inventory.collector import collect_inventory
 from auctelis.paths import repo_root
-from auctelis_devtools.semantic import validate_semantics
 from auctelis.supply_chain.digest import verify_file_digest
-from auctelis_devtools.validate_report import analyze_graph_paths, validate_graph_file, validate_report_file
 from auctelis.versioning import load_versions
+from auctelis_devtools.semantic import validate_semantics
+from auctelis_devtools.validate_report import (
+    analyze_graph_paths,
+    validate_graph_file,
+    validate_report_file,
+)
 
 
 def run_corpus() -> dict:

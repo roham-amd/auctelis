@@ -1,7 +1,7 @@
 [project]
 name = "auctelis"
-version = "0.1.10"
-description = "Auctelis — the authority lockfile and one-line diff for AI agent reach"
+version = "0.1.11"
+description = "Auctelis — evidence-backed trust dossiers for MCP servers, skills, hooks, and plugins"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
@@ -153,4 +153,5 @@ auctelis = [
   "data/authority-lock.schema.json",
   "data/hosts/*",
   "data/demo-vulnerable/**/*",
+  "data/known-component-names.json",
 ]

@@ -5,46 +5,39 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from auctelis.authority_lock import build_authority_lock, write_authority_lock
 from auctelis.check import SCHEMA_VERSION, build_check_report, check_exit_code
-from auctelis.cli import main
 from auctelis.cli.parser import CORE_PUBLIC_COMMANDS, PUBLIC_PATH, build_parser, normalize_argv
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_public_front_door_is_check_not_watch():
-    assert {
-        "check",
-        "lock",
-        "ci",
-        "gate",
-        "diff",
-        "why",
-        "demo",
-        "init",
-        "status",
-        "trust",
-        "rollout",
-    } == CORE_PUBLIC_COMMANDS
-    assert "check" in PUBLIC_PATH
+    assert frozenset({"inspect", "diff"}) == CORE_PUBLIC_COMMANDS
+    assert PUBLIC_PATH == "inspect <target> | inspect --local | diff --base <ref>"
     assert "watch" not in PUBLIC_PATH
     help_text = build_parser().format_help()
-    assert "check" in help_text
-    assert "gate" in help_text
     listed = [
         line.strip()
         for line in help_text.splitlines()
-        if line.startswith("    ") and not line.strip().startswith("(")
+        if line.startswith("    ")
+        and not line.startswith("     ")
+        and not line.strip().startswith("(")
     ]
-    assert any(line.startswith("check") for line in listed)
+    command_names = {line.split()[0] for line in listed if line}
+    assert command_names == {"inspect", "diff"}
     assert not any(line.startswith("watch") for line in listed)
     assert not any(line.startswith("allow") for line in listed)
     assert not any(line.startswith("hook") for line in listed)
     assert not any(line.startswith("scan") for line in listed)
+    assert not any(line.startswith("check") for line in listed)
 
 
 def test_bare_auctelis_is_check(tmp_path: Path):
-    assert normalize_argv([], cwd=tmp_path) == ["check"]
-    assert normalize_argv(["."], cwd=tmp_path) == ["check", "."]
+    assert normalize_argv([]) == ["inspect"]
+    assert normalize_argv([], cwd=tmp_path) == ["inspect"]
+    assert normalize_argv(["."], cwd=tmp_path) == ["inspect", "."]
     assert normalize_argv(["--locked"], cwd=tmp_path) == ["--locked"]
 
 
@@ -174,3 +167,10 @@ def test_ci_init_defaults_advisory_comment_only(tmp_path: Path):
     policy2 = (root2 / ".auctelis.yml").read_text(encoding="utf-8")
     assert 'locked: "true"' in workflow2
     assert "mode: enforce" in policy2
+
+
+def test_rollout_removed_from_cli():
+    assert "rollout" not in CORE_PUBLIC_COMMANDS
+    with pytest.raises(SystemExit) as excinfo:
+        build_parser().parse_args(["rollout", "x.json"])
+    assert excinfo.value.code == 2

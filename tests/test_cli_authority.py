@@ -4,33 +4,38 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from auctelis.cli import main
 from auctelis.cli.parser import build_parser, normalize_argv
 from auctelis.versioning import product_version
 from auctelis_devtools.cli import main_dev
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_normalize_argv_defaults_check_or_scan(tmp_path: Path):
     empty = tmp_path / "empty"
     empty.mkdir()
-    assert normalize_argv([], cwd=empty) == ["check"]
+    assert normalize_argv([], cwd=empty) == ["inspect"]
     locked = tmp_path / "locked"
     locked.mkdir()
     (locked / "AUTHORITY.lock").write_text("{}\n", encoding="utf-8")
-    # Bare is always repo check, even inside a locked repo.
-    assert normalize_argv([], cwd=locked) == ["check"]
-    assert normalize_argv(["."]) == ["check", "."]
+    # Bare is always inspect on the product CLI.
+    assert normalize_argv([], cwd=locked) == ["inspect"]
+    assert normalize_argv(["."]) == ["inspect", "."]
     assert normalize_argv(["--locked"]) == ["--locked"]
     assert normalize_argv(["--help"]) == ["--help"]
     assert normalize_argv(["check", "."]) == ["check", "."]
-    assert normalize_argv(["scan", "--locked", "."]) == ["scan", "--locked", "."]
+    assert normalize_argv(["check", "."], include_dev=True) == ["check", "."]
+    assert normalize_argv(["scan", "--locked", "."], include_dev=True) == [
+        "scan",
+        "--locked",
+        ".",
+    ]
 
 
 def test_auctelis_path_runs_check(tmp_path: Path, capsys):
     root = tmp_path / "repo"
     root.mkdir()
     (root / "README.md").write_text("x\n", encoding="utf-8")
-    code = main([str(root)])
+    code = main(["check", str(root)])
     # First-run / no lock → exit 0 (BASELINE_NEEDED).
     assert code == 0
     captured = capsys.readouterr().out
@@ -40,17 +45,23 @@ def test_auctelis_path_runs_check(tmp_path: Path, capsys):
 
 def test_product_help_hides_advanced_shows_core():
     help_text = build_parser(include_dev=False).format_help()
-    assert "demo" in help_text
-    assert "check" in help_text
-    assert "lock" in help_text
-    assert "gate" in help_text
-    # Advanced names may appear in the epilog tier list, not as listed commands.
+    assert "inspect" in help_text
+    assert "diff" in help_text
     listed = [
         line
         for line in help_text.splitlines()
-        if line.startswith("    ") and not line.strip().startswith("(")
+        if line.startswith("    ")
+        and not line.startswith("     ")
+        and not line.strip().startswith("(")
     ]
     listed_text = "\n".join(listed)
+    assert "inspect" in listed_text
+    assert "diff" in listed_text
+    assert not any(line.strip().startswith("check") for line in listed)
+    assert not any(line.strip().startswith("demo") for line in listed)
+    assert not any(line.strip().startswith("lock") for line in listed)
+    assert not any(line.strip().startswith("gate") for line in listed)
+
     assert "artifact-vet" not in listed_text
     assert "lsp-validate" not in listed_text
     assert "watch" not in listed_text
@@ -140,8 +151,8 @@ def test_init_lockless_action_sha_offline(tmp_path: Path, monkeypatch):
     def boom(*_args, **_kwargs):
         raise AssertionError("network")
 
-    monkeypatch.setattr("auctelis.rollout.resolve_release_commit_sha", boom)
-    monkeypatch.setattr("auctelis.rollout.urllib.request.urlopen", boom)
+    monkeypatch.setattr("auctelis.action_pin.resolve_release_commit_sha", boom)
+    monkeypatch.setattr("auctelis.action_pin.urllib.request.urlopen", boom)
     root = tmp_path / "repo"
     root.mkdir()
     assert main(["init", str(root), "--lockless", "--action-sha", sha.upper()]) == 0
@@ -157,8 +168,8 @@ def test_init_owner_action_sha_pins_gate(tmp_path: Path, monkeypatch):
     def boom(*_args, **_kwargs):
         raise AssertionError("network")
 
-    monkeypatch.setattr("auctelis.rollout.resolve_release_commit_sha", boom)
-    monkeypatch.setattr("auctelis.rollout.urllib.request.urlopen", boom)
+    monkeypatch.setattr("auctelis.action_pin.resolve_release_commit_sha", boom)
+    monkeypatch.setattr("auctelis.action_pin.urllib.request.urlopen", boom)
     root = tmp_path / "repo"
     root.mkdir()
     assert (
@@ -184,7 +195,7 @@ def test_init_owner_action_sha_pins_gate(tmp_path: Path, monkeypatch):
 def test_init_owner_pin_sha_resolves_tag(tmp_path: Path, monkeypatch):
     sha = "ef" * 20
     monkeypatch.setattr(
-        "auctelis.rollout.resolve_release_commit_sha",
+        "auctelis.action_pin.resolve_release_commit_sha",
         lambda _version: (sha, "ok"),
     )
     root = tmp_path / "repo"

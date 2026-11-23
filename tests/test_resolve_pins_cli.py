@@ -6,8 +6,8 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from auctelis.cli import main
 from auctelis.pin_resolve import resolve_pins_in_report
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_resolve_pins_requires_pins_or_report(capsys):

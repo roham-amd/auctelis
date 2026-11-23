@@ -13,8 +13,8 @@ from auctelis.authority_lock import (
     identity_key,
     write_authority_lock,
 )
-from auctelis.cli import main
 from auctelis.lock_io import load_authority_lock
+from auctelis_devtools.cli import main_dev as main
 
 
 def _repo_with_mcp(root: Path, servers: dict) -> None:

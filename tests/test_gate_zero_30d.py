@@ -8,10 +8,10 @@ from pathlib import Path
 from auctelis.authority_card import changed_card, record_card, removed_card, why_record
 from auctelis.authority_lock import write_authority_lock
 from auctelis.check import build_check_report, render_check
-from auctelis.cli import main
 from auctelis.diff_base import run_diff_base
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.gate import adoption_bootstrap_verdict, run_gate
+from auctelis_devtools.cli import main_dev as main
 
 
 def _mcp(root: Path, servers: dict) -> None:
@@ -174,14 +174,3 @@ def test_ci_init_apply_merges_codeowners(tmp_path: Path):
     assert "README.md @other" in text
     assert "AUTHORITY.lock @sec-team" in text
     assert code in {0, 1}
-
-
-def test_action_tracks_base_lock_committed_for_baseline_adopted():
-    action = (
-        Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
-    ).read_text(encoding="utf-8")
-    assert "base_lock_committed=false" in action
-    assert "base_lock_committed=true" in action
-    assert 'AUCTELIS_BASE_LOCK_COMMITTED:-true}" == "false"' in action
-    assert 'auctelis lock "$AUCTELIS_PATH" --lock-file "$head_lock_path" --check' in action
-    assert "BASELINE_ADOPTED refused — CODEOWNERS does not cover AUTHORITY.lock." in action

@@ -1,44 +1,47 @@
-# Pilot recruitment (5 outside repos)
+# Pilot recruitment (5 outside repos + Trust Dossier concierge)
 
 Do **not** count `roham-amd/auctelis` dogfood. Leave `_TBD_` / empty CSV cells
-until a real outside repo is installed.
+until a real outside repo is installed. Days 3–30: collect outside Trust
+Dossiers (`inspect` / IssueOps), log each row in [`TRACKER.md`](TRACKER.md),
+then paste the lockless Action workflow on pilot repos.
 
 ## Pitch (copy/paste)
 
-> Auctelis posts one PR comment that shows what new reach an AI-agent config
-> change gives (MCP, skills, hooks, instructions). Paste a six-line workflow —
-> no lockfile required on day one. Optional enforce later.
+> Auctelis decides in 10 seconds whether you can trust an MCP server, skill,
+> hook, or plugin — then posts one PR comment when agent reach grows. Browse
+> [`dossiers/CATALOG.json`](../../dossiers/CATALOG.json) or paste a six-line
+> workflow — no lockfile required on day one. Optional enforce later.
 
 ## Install paths
 
-**A — Lockless (preferred first contact)**
+**A — Trust Dossier aha (preferred first contact)**
 
 ```bash
-# In the pilot repo — report first, then the one-file workflow:
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --report out/
-# Forward out/reach-report.html to the team, then:
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --lockless
-# The workflow-only install PR gets one PASS "Watching" comment. A PR that also
-# adds an MCP/hook stays NEEDS_REVIEW with its delta cards.
-# Auditing several pilot repos at once:
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check repo-a repo-b --report out/
-# Zero-clone org audit (no local clones; needs GITHUB_TOKEN / gh auth):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --github your-org --report out/
-# Or zero-laptop: paste docs/auctelis-org-audit.yml → Actions → Run workflow.
+# Package dossier (no install ceremony):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect npm:@modelcontextprotocol/server-filesystem
+
+# Read-only local host configs:
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect --local
+
+# Local Authority Diff vs a git base:
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis diff --base origin/main
 ```
 
-**B — Comment-only init**
+Zero-install: open an Issue with
+[Request a dossier](../../.github/ISSUE_TEMPLATE/inspect_request.yml).
+
+**B — Lockless Action (Watch PRs)**
+
+Paste the lockless workflow from
+[`docs/examples/sample-reach-report.md`](../examples/sample-reach-report.md)
+(or click **Watch PRs** when linked). Product CLI stays `inspect` + `diff`;
+legacy `check` / `init` / `gate` live on `auctelis-dev` from a source checkout.
+
+**C — Enforce (slot 3, from a source checkout)**
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis diff --base origin/main
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security   # advisory workflow + CODEOWNERS + lock
-```
-
-**C — Enforce (slot 3)**
-
-```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security --enforce
+cd tools && uv sync --all-packages --locked
+uv run auctelis-dev init --owner security --enforce
 ```
 
 ## Logging
@@ -65,17 +68,7 @@ Trusted Publishing is wired in
 Until that flip lands, install docs lead with the git-tag line and tagged
 Actions use bundled `tools/` with zero PyPI-404 warnings. Pilots should start
 from
-[`docs/auctelis-org-audit.yml`](../auctelis-org-audit.yml) (zero laptop install)
-or
-`uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --github <org> --report out/`
-(uses `gh auth`), forward the HTML report, then run
-`uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json --show-body`
-(dry-run; prints the evidence-backed PR body) and the same command with
-`--apply --pin-sha` (immutable `roham-amd/auctelis@<sha> # vX`). On GHES or any
-host that cannot reach github.com, pass `--action-sha <40-hex>` instead
-(offline; no tag lookup and no fallback to `https://api.github.com`). The same
-offline pin is `init --lockless --action-sha <40-hex>` or
-`init --owner @team --enforce --action-sha <40-hex>` (`--pin-sha` does the
-tag lookup on either path). `--org-reusable` skips the Action pin.
-Optional `--repo owner/repo` targets one pilot. Track merges with
-`rollout --status` (the token needs `Pull requests: read`).
+`uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect <target>`
+then paste the lockless Action. On GHES or any host that cannot reach
+github.com, maintainers can pass `--action-sha <40-hex>` on `auctelis-dev init`
+(offline; no tag lookup).

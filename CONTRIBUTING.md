@@ -6,7 +6,8 @@ Product contract: [`docs/PRODUCT.md`](docs/PRODUCT.md) · Roadmap:
 [`docs/ROADMAP.md`](docs/ROADMAP.md) · Docs index:
 [`docs/DOCUMENTATION-INDEX.md`](docs/DOCUMENTATION-INDEX.md).
 
-Prioritize Authority Lock + PR Gate work over advanced/experimental surfaces.
+Prioritize Trust Dossier (`inspect`) + Authority Diff (`diff --base`) work over
+advanced/experimental surfaces.
 
 ## Development setup
 
@@ -31,24 +32,26 @@ CI mirrors this in [`.github/workflows/auctelis-validate.yml`](.github/workflows
 - Product CLI name is **`auctelis`** (sole console script in the wheel). Maintainer
   commands live on **`auctelis-dev`** via the source-only workspace member
   `tools/dev/` (`auctelis-devtools`).
-- Keep the product path lean: `check` → `check --report` / `--github` →
-  `rollout` (dry-run, then `--apply`) or `init --lockless` → `diff --base` →
-  `gate`. Host tripwires and
-  public `scan` / `vet` / `explain` CLIs are removed; annotation helpers live on
-  `auctelis-dev`. The `docs/pilots/` tracker is intentional for the five-slot
-  kill criterion (report-first).
+- Keep the product path lean: `inspect` → `inspect --local` → `diff --base`.
+  Legacy lockfile / gate / fleet commands (`check`, `lock`, `gate`, `init`,
+  `status`, `trust`, `why`, `demo`) live on `auctelis-dev` only. Host tripwires
+  and public `scan` / `vet` / `explain` CLIs are removed; annotation helpers
+  live on `auctelis-dev`. The `docs/pilots/` tracker is intentional for the
+  dossier-first kill criterion.
 - Passive inventory must remain read-only. Maintainer opt-in execute paths
   (`auctelis-dev run`, `snapshot --execute`) scrub env only and must document
   sandbox limits.
-- Architecture: `lock_io` (schema/empty lock/seal hash) →
-  `authority_lock` (build/diff) → `reach_tiers` (tier + trust) →
-  `authority_card` (cards/pins) → `export/pr_comment` (review UI) → `gate` /
-  `diff_base` (verdicts). Do not pull the research scanner into the product
-  gate path. Renderers must never invent evidence, hosts, or approvals.
-- CLI: product handlers live in `tools/auctelis/cli/dispatch.py`; maintainer /
-  research handlers live in `tools/dev/auctelis_devtools/` and are reached only
-  via `auctelis-dev`. Keep `auctelis_research` imports lazy and behind
-  `require_research()` so the product wheel never depends on them.
+- Architecture: `inspect_target` / `local_hosts` / `export/dossier` (Trust
+  Dossier) and `lock_io` → `authority_lock` → `reach_tiers` → `authority_card`
+  → `export/pr_comment` → `gate` / `diff_base` (Authority Diff). Core rules,
+  `artifact_vet`, and `typosquat` live in `auctelis.security` (shipped in the
+  wheel). Do not pull the research scanner (`auctelis_research`) into the
+  product gate path. Renderers must never invent evidence, hosts, or approvals.
+- CLI: product handlers live in `tools/auctelis/cli/dispatch.py` /
+  `inspect_cmd.py`; maintainer / research handlers live in
+  `tools/dev/auctelis_devtools/` and are reached only via `auctelis-dev`. Keep
+  `auctelis_research` imports lazy and behind `require_research()` so the
+  product wheel never depends on them.
 - Security: validate external URLs before `urlopen`; resolve executables with
   `shutil.which`; pass subprocess argv lists (never `shell=True`); keep target
   strings escaped before markdown/terminal output. Exception: pasteable

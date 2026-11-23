@@ -4,8 +4,8 @@ Product primer for the PR gate. Full product contract: [`PRODUCT.md`](PRODUCT.md
 
 | Item | Value |
 | --- | --- |
-| Product release | **0.1.10** |
-| Tooling package | **0.1.10** (`auctelis`) |
+| Product release | **0.1.11** |
+| Tooling package | **0.1.11** (`auctelis`) |
 | Rule pack | **1.6** (research / `auctelis_research` / `auctelis-dev` only) |
 | Primary path | `check` → `diff --base` → lockless workflow **or** `init --owner --enforce` → Action / `gate` |
 | Policy file | optional `.auctelis.yml` + optional `AUTHORITY.lock` (CODEOWNERS when enforcing) |
@@ -45,28 +45,29 @@ Finding IDs and rule IDs stay out of the review UI; they live in the artifacts.
 ## First user journey
 
 ```bash
-# One-line run without permanent install (see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check                              # aha: ranked reach cards
+# Trust Dossier aha (see docs/INSTALL.md):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect npm:@modelcontextprotocol/server-filesystem
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis diff --base origin/main
 
 cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --lockless                     # one-file lockless PR Watch (no owner / lock)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security-owner        # full comment-only setup
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security-owner --enforce  # optional locked gate
+# Paste the lockless workflow from docs/examples/sample-reach-report.md
+# (or generate via auctelis-dev init --lockless from a source checkout).
 ```
 
 Persistent install:
 
 ```bash
 uv tool install --python 3.12 \
-  "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools"
+  "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools"
 ```
 
 Empty baseline is normal: first growth under enforce is CODEOWNERS review, not
 forever `FAIL_CLOSED`.
 
 Recipes:
-- Lockless (written by `auctelis init --lockless`): [`../tools/auctelis/templates/auctelis-diff.yml`](../tools/auctelis/templates/auctelis-diff.yml)
+- Lockless workflow template: [`../tools/auctelis/templates/auctelis-diff.yml`](../tools/auctelis/templates/auctelis-diff.yml)
 - Enforce example: [`auctelis-consumer-gate.example.yml`](auctelis-consumer-gate.example.yml)
+- Maintainer setup: `auctelis-dev init --lockless` / `init --owner … [--enforce]`
 
 ### Branch protection / rulesets (when enforcing)
 
@@ -89,7 +90,7 @@ uses: roham-amd/auctelis@<commit-sha>
 # uses: roham-amd/auctelis/.github/actions/auctelis-gate@<commit-sha>
 ```
 
-Or pin the release tag: `@v0.1.10`. The Action fetches the base ref at `--depth=1`
+Or pin the release tag: `@v0.1.11`. The Action fetches the base ref at `--depth=1`
 automatically (no `fetch-depth: 0` required) and short-circuits setup in
 lockless mode when no watched agent-config or workflow paths changed. Prefer the
 root `uses: roham-amd/auctelis@vX` form. Automatic PyPI install on tagged refs runs only when

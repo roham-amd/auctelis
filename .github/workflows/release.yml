@@ -63,8 +63,8 @@ jobs:
           # Always target the repository root (GITHUB_WORKSPACE), never tools/.
           # --strict-digests: dogfood must catch plain-CI/prose digest churn (AUCT-033/034).
           repo="${GITHUB_WORKSPACE:-$PWD}"
-          uv run --directory tools --locked auctelis check --strict-digests "$repo"
-          uv run --directory tools --locked auctelis lock --check --strict-digests "$repo"
+          uv run --directory tools --locked auctelis-dev check --strict-digests "$repo"
+          uv run --directory tools --locked auctelis-dev lock --check --strict-digests "$repo"
 
   # Mirror validate.yml OS matrix so a red Windows/macOS tree cannot be tagged.
   pytest-matrix:
@@ -94,26 +94,14 @@ jobs:
       - name: Pytest (product path)
         run: >
           uv run --locked pytest -q
-          ../tests/test_authority_diff_070.py
-          ../tests/test_authority_lock.py
-          ../tests/test_gate.py
-          ../tests/test_cli_authority.py
-          ../tests/test_recovery_081.py
-          ../tests/test_rollout.py
-          ../tests/test_rollout_status.py
-          ../tests/test_pin_resolve.py
-          ../tests/test_resolve_pins_cli.py
-          ../tests/test_fleet_baseline.py
-
-      - name: Pytest (gate zero / product path)
-        run: >
-          uv run --locked pytest -q
-          ../tests/test_gate_zero_30d.py
-          ../tests/test_days_6_30.py
-          ../tests/test_tree_truth_weeks.py
-          ../tests/test_strategic_review_apply.py
-          ../tests/test_trust_reset_30d.py
-          ../tests/test_agent_reach_review.py
+          ../tests/test_inspect_target.py
+          ../tests/test_inspect_cli.py
+          ../tests/test_package_source.py
+          ../tests/test_local_hosts.py
+          ../tests/test_diff_inspect.py
+          ../tests/test_issueops_dossiers.py
+          ../tests/test_attack_replay_corpus.py
+          ../tests/test_wheel_scripts.py
 
   wheel-smoke:
     runs-on: ubuntu-latest
@@ -138,23 +126,14 @@ jobs:
           # Fresh wheel must start without the repo or the dev dependency group.
           /tmp/auctelis-wheel-smoke/bin/auctelis --version
           /tmp/auctelis-wheel-smoke/bin/auctelis --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis gate --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis check --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis init --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis status --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis trust --help >/dev/null
-          /tmp/auctelis-wheel-smoke/bin/auctelis rollout --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis inspect --help >/dev/null
+          /tmp/auctelis-wheel-smoke/bin/auctelis diff --help >/dev/null
           set +e
-          /tmp/auctelis-wheel-smoke/bin/auctelis demo -o /tmp/auctelis-wheel-demo
-          demo_rc=$?
-          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable
-          check_rc=$?
+          /tmp/auctelis-wheel-smoke/bin/auctelis inspect ../examples/demo-vulnerable --offline
+          inspect_rc=$?
           set -e
-          test "$demo_rc" -eq 0
-          test "$check_rc" -eq 0
-          grep -E 'Authority delta|ADVISORY|BLOCK|PASS|GROWTH|NEEDS_REVIEW' /tmp/auctelis-wheel-demo/pr-comment.md
-          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable | grep -E 'BASELINE_NEEDED|Inventory'
-          /tmp/auctelis-wheel-smoke/bin/auctelis check ../examples/demo-vulnerable --pins | grep -E 'Unpinned MCP servers'
+          test "$inspect_rc" -eq 1
+          /tmp/auctelis-wheel-smoke/bin/auctelis inspect ../examples/demo-vulnerable --offline | grep -F '## Red Flags'
           # Research / maintainer modules must not ship in the product wheel.
           # -P: do not prepend the tools/ cwd (source checkout) onto sys.path.
           /tmp/auctelis-wheel-smoke/bin/python -P -c "import importlib.util,sys; mods=('auctelis_research','auctelis.build','auctelis.cli.dev_commands','auctelis.export.sarif'); sys.exit(0 if all(importlib.util.find_spec(m) is None for m in mods) else 1)"

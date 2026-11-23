@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from auctelis.inventory.adapters.mcp import _is_mcp_server_source
 from auctelis.inventory.watched_paths import (
     DEFAULT_MAX_FILE_BYTES,
     MAX_WATCHED_FILES_PER_REPO,
@@ -625,6 +626,121 @@ def stage_repo_watched_files(
                 dest.write_text(text, encoding="utf-8", newline="\n")
                 fetched += 1
     notes.insert(0, f"{slug}: fetched {fetched} watched file(s)")
+    return root, notes, truncated, meta
+
+
+def stage_repo_inspect_files(
+    slug: str,
+    *,
+    token: str | None = None,
+    max_files: int = 100,
+    staging_dir: Path | None = None,
+) -> tuple[Path, list[str], bool, dict[str, Any]]:
+    """Fetch inspect blobs (watched + manifest + MCP server source) into staging.
+
+    Mirrors ``stage_repo_watched_files`` with a broader path predicate.
+    """
+    max_file_bytes = DEFAULT_MAX_FILE_BYTES
+    tok = token if token is not None else _token()
+    base = _api_base()
+    web_base = _github_web_base()
+    if "/" not in slug:
+        raise GitHubAuditError(f"expected owner/repo, got {slug!r}")
+    owner, _, repo = slug.partition("/")
+    meta_doc, status, _ = _request_json(f"{base}/repos/{owner}/{repo}", token=tok)
+    if status == 404:
+        raise GitHubAuditError(f"repository not found: {slug}", status=404)
+    if status != 200 or not isinstance(meta_doc, dict):
+        raise GitHubAuditError(f"could not load repository metadata for {slug} (HTTP {status})")
+    branch = str(meta_doc.get("default_branch") or "") or "main"
+    meta: dict[str, Any] = {
+        "default_branch": branch,
+        "github_web_base": web_base,
+        "already_watching": False,
+    }
+    tree_url = (
+        f"{base}/repos/{owner}/{repo}/git/trees/{urllib.parse.quote(branch, safe='')}?recursive=1"
+    )
+    tree_doc, tstatus, _ = _request_json(tree_url, token=tok)
+    if tstatus == 404:
+        root = staging_dir or Path(tempfile.mkdtemp(prefix="auctelis-gh-"))
+        root.mkdir(parents=True, exist_ok=True)
+        return root, [f"{slug}: empty or missing default branch tree"], False, meta
+    if tstatus != 200 or not isinstance(tree_doc, dict):
+        raise GitHubAuditError(f"could not load git tree for {slug}@{branch} (HTTP {tstatus})")
+    truncated = bool(tree_doc.get("truncated"))
+    notes: list[str] = []
+    if truncated:
+        notes.append(f"{slug}: git tree truncated=true — inspect-path scan may be incomplete")
+    entries = tree_doc.get("tree") or []
+    selected: list[dict[str, Any]] = []
+    already_watching = False
+    _manifest_names = {"package.json", "pyproject.toml", "setup.py"}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("type") or "") != "blob":
+            continue
+        rel = _safe_rel_path(str(entry.get("path") or ""))
+        if not rel:
+            continue
+        if _AUCTELIS_WORKFLOW_RE.match(rel):
+            already_watching = True
+        name = Path(rel).name
+        if not (
+            is_watched_path(rel) or name in _manifest_names or _is_mcp_server_source(Path(rel))
+        ):
+            continue
+        size = int(entry.get("size") or 0)
+        if size > max_file_bytes:
+            notes.append(f"{slug}: skipped oversize {rel} ({size} bytes)")
+            continue
+        selected.append({"path": rel, "sha": str(entry.get("sha") or "")})
+        if len(selected) >= max_files:
+            notes.append(f"{slug}: inspect-file cap {max_files} reached — remaining paths skipped")
+            truncated = True
+            break
+
+    meta["already_watching"] = already_watching
+    root = staging_dir or Path(tempfile.mkdtemp(prefix="auctelis-gh-"))
+    root.mkdir(parents=True, exist_ok=True)
+    fetched = 0
+
+    def _one(item: dict[str, Any]) -> tuple[str, str | None, str | None]:
+        sha = item["sha"]
+        rel = item["path"]
+        if not sha:
+            return rel, None, "missing sha"
+        try:
+            text = _fetch_blob_text(
+                owner=owner, repo=repo, sha=sha, token=tok, max_bytes=max_file_bytes
+            )
+        except GitHubAuditError:
+            raise
+        if text is None:
+            return rel, None, f"failed to fetch blob for {rel}"
+        return rel, text, None
+
+    if selected:
+        with ThreadPoolExecutor(max_workers=_BLOB_WORKERS) as pool:
+            futures = [pool.submit(_one, item) for item in selected]
+            for fut in as_completed(futures):
+                try:
+                    rel, text, err = fut.result()
+                except GitHubAuditError:
+                    for pending in futures:
+                        pending.cancel()
+                    raise
+                if err:
+                    notes.append(f"{slug}: {err}")
+                    continue
+                if text is None:
+                    continue
+                dest = root / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_text(text, encoding="utf-8", newline="\n")
+                fetched += 1
+    notes.insert(0, f"{slug}: fetched {fetched} inspect file(s)")
     return root, notes, truncated, meta
 
 

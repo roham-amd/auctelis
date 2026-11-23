@@ -8,15 +8,12 @@ from pathlib import Path
 import pytest
 
 from auctelis.check import build_check_report, render_check
-from auctelis.cli import main
 from auctelis.export.reach_report import (
-    _rollout_commands,
     build_fleet_reach_report,
     build_reach_report,
     diff_reach_reports,
     load_reach_baseline,
     lockless_workflow_yaml,
-    render_fleet_drift_issue_md,
     render_fleet_reach_html,
     render_fleet_reach_md,
     render_reach_html,
@@ -31,6 +28,7 @@ from auctelis.inventory.coverage import (
     truncation_honesty_notes,
 )
 from auctelis.versioning import product_version
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_truncation_notes_from_synthetic_coverage():
@@ -855,7 +853,7 @@ def test_auct031_github_origin_meta_emits_watch_url(tmp_path: Path, monkeypatch)
 
 
 def test_auct032_fleet_watching_and_org_rollout():
-    """AUCT-032: watching KPI + org-reusable / gh rollout for unwatched tier-2."""
+    """AUCT-032: watching KPI for unwatched tier-2."""
     from auctelis.export.reach_report import render_fleet_summary
 
     entries = [
@@ -960,20 +958,16 @@ def test_auct032_fleet_watching_and_org_rollout():
     md = render_fleet_reach_md(doc)
     html = render_fleet_reach_html(doc)
     for text in (md, html):
-        assert "Org rollout" in text
-        assert "auctelis-org-reusable.yml" in text
         assert "acme/hot" in text
-        assert "auctelis rollout" in text
         assert "rollout-watch-prs.sh" not in text
         assert "#!/usr/bin/env bash" not in text
         assert "TARGETS=" not in text
         assert "WORKFLOW_B64" not in text
         assert "fill after reviewing" not in text
-    assert "<details>" in html
 
 
 def test_auct035_fleet_report_omits_watch_script(tmp_path: Path):
-    """Fleet reports point at `auctelis rollout` and do not write a Bash script."""
+    """Fleet reports do not write a Bash Watch script."""
     entries = [
         (
             {
@@ -1009,93 +1003,12 @@ def test_auct035_fleet_report_omits_watch_script(tmp_path: Path):
     assert not (out / "rollout-watch-prs.sh").exists()
     text = (out / "reach-report.md").read_text(encoding="utf-8")
     assert "acme/hot" in text
-    assert "rollout reach-report.json" in text
     assert "rollout-watch-prs.sh" not in text
     assert f"roham-amd/auctelis@v{product_version()}" in lockless_workflow_yaml()
 
 
-def test_auct058_rollout_commands_default_pin_sha():
-    """AUCT-058: lockless fleet CTAs append --pin-sha; org-reusable omits it."""
-    dry, apply_cmd = _rollout_commands()
-    assert dry.endswith("rollout reach-report.json")
-    assert apply_cmd == f"{dry} --apply --pin-sha"
-    assert "--org-reusable" not in apply_cmd
-
-    dry_org, apply_org = _rollout_commands(org_reusable="acme")
-    assert "--org-reusable acme" in dry_org
-    assert apply_org == f"{dry_org} --apply"
-    assert "--pin-sha" not in apply_org
-
-    entries = [
-        (
-            {
-                "repository": "acme/hot",
-                "default_branch": "main",
-                "github_web_base": "https://github.com",
-                "already_watching": False,
-                "coverage_line": "",
-                "unparsed": 0,
-                "reach": {
-                    "total": 1,
-                    "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
-                    "records": [
-                        {
-                            "kind": "mcp",
-                            "name": "hot",
-                            "path": ".cursor/mcp.json",
-                            "tier": 2,
-                            "reason": "secrets",
-                            "identity_key": "|mcp|hot",
-                        }
-                    ],
-                    "top": [],
-                    "top_cards": [],
-                },
-                "pins": {"total": 0, "unpinned": 0, "items": []},
-                "counts": {},
-                "delta": {},
-                "label": "NONE",
-                "verdict": "BASELINE_NEEDED",
-                "schema_version": "authority-diff/1",
-                "lock_present": False,
-                "first_run": True,
-                "meaningful": False,
-            },
-            None,
-            [],
-        )
-    ]
-    doc = build_fleet_reach_report(entries)
-    md = render_fleet_reach_md(doc)
-    html = render_fleet_reach_html(doc)
-    assert "--apply --pin-sha" in md
-    assert "--apply --pin-sha" in html
-    md_org = render_fleet_reach_md(doc, org_reusable="acme")
-    assert "--org-reusable acme --apply" in md_org
-    assert "--pin-sha" not in md_org
-
-    drifted = {
-        "repositories": doc["repositories"],
-        "org_reusable": "",
-        "baseline_diff": {
-            "changed_count": 1,
-            "added_repositories": [{"repository": "acme/hot"}],
-            "removed_repositories": [],
-            "repositories": [],
-        },
-    }
-    issue = render_fleet_drift_issue_md(drifted)
-    assert issue is not None
-    assert "--apply --pin-sha" in issue
-    drifted_org = {**drifted, "org_reusable": "acme"}
-    issue_org = render_fleet_drift_issue_md(drifted_org)
-    assert issue_org is not None
-    assert "--org-reusable acme --apply" in issue_org
-    assert "--pin-sha" not in issue_org
-
-
 def test_auct059_sample_reach_report_realism():
-    """AUCT-059: checked-in sample shows Pin fix, coverage families, and --pin-sha."""
+    """AUCT-059: checked-in sample shows Pin fix and coverage families."""
     root = Path(__file__).resolve().parents[1]
     examples = root / "docs" / "examples"
     md = (examples / "sample-reach-report.md").read_text(encoding="utf-8")
@@ -1103,7 +1016,6 @@ def test_auct059_sample_reach_report_realism():
     readme = (examples / "README.md").read_text(encoding="utf-8")
     for text in (md, html):
         assert "Pin fix:" in text
-        assert "--pin-sha" in text
         assert "Coverage metadata unavailable" not in text
         assert "Browser agents" in text
         assert "Not auto-inspected" in text
@@ -1119,48 +1031,10 @@ def test_auct059_sample_reach_report_realism():
     ver = product_version()
     assert (
         f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{ver}'
-        '#subdirectory=tools" auctelis init --owner security --enforce'
+        '#subdirectory=tools" auctelis inspect'
     ) in recruitment
-
-
-def test_auct038_org_reusable_rollout_copy(tmp_path: Path):
-    """AUCT-038: --org-reusable records the caller in the report, not a Bash script."""
-    entries = [
-        (
-            {
-                "repository": "acme/hot",
-                "default_branch": "main",
-                "github_web_base": "https://github.com",
-                "already_watching": False,
-                "coverage_line": "",
-                "unparsed": 0,
-                "reach": {
-                    "total": 1,
-                    "tier_counts": {"tier0": 0, "tier1": 0, "tier2": 1},
-                    "records": [],
-                    "top": [],
-                    "top_cards": [],
-                },
-                "pins": {"total": 0, "unpinned": 0, "items": []},
-                "counts": {},
-                "delta": {},
-                "label": "NONE",
-                "verdict": "BASELINE_NEEDED",
-                "schema_version": "authority-diff/1",
-                "lock_present": False,
-                "first_run": True,
-                "meaningful": False,
-            },
-            None,
-            [],
-        )
-    ]
-    out = tmp_path / "fleet"
-    write_fleet_reach_report_artifacts(out, entries, org_reusable="acme")
-    assert not (out / "rollout-watch-prs.sh").exists()
-    md = (out / "reach-report.md").read_text(encoding="utf-8")
-    assert "acme/.github/.github/workflows/auctelis-org-reusable.yml@main" in md
-    assert "rollout-watch-prs.sh" not in md
+    assert "auctelis-dev init --owner security --enforce" in recruitment
+    assert "auctelis rollout" not in html
 
 
 def test_auct041_headline_before_honesty():
@@ -1331,3 +1205,70 @@ def test_auct051_resolved_pins_in_single_and_fleet_reports():
             assert "trust-on-first-use" not in text
             assert "3.2.1" not in text
             assert "exact-version" in text
+
+
+def _fleet_repo_entry(
+    slug: str,
+    *,
+    tier2_records: int = 0,
+    already_watching: bool = False,
+) -> tuple[dict, None, list]:
+    records = [
+        {
+            "kind": "mcp",
+            "name": f"srv-{i}",
+            "path": ".cursor/mcp.json",
+            "tier": 2,
+            "reason": "secrets",
+        }
+        for i in range(tier2_records)
+    ]
+    return (
+        {
+            "repository": slug,
+            "default_branch": "main",
+            "github_web_base": "https://github.com",
+            "already_watching": already_watching,
+            "coverage_line": "",
+            "unparsed": 0,
+            "reach": {
+                "total": tier2_records,
+                "tier_counts": {
+                    "tier0": 0,
+                    "tier1": 0,
+                    "tier2": tier2_records,
+                },
+                "records": records,
+                "top": [],
+                "top_cards": [],
+            },
+            "pins": {"total": 0, "unpinned": 0, "items": []},
+            "counts": {},
+            "delta": {},
+            "label": "NONE",
+            "verdict": "BASELINE_NEEDED",
+            "schema_version": "authority-diff/1",
+            "lock_present": False,
+            "first_run": True,
+            "meaningful": False,
+        },
+        None,
+        [],
+    )
+
+
+def test_auct060_fleet_headline_counts_repos_not_records():
+    """AUCT-060: headline uses repos_with_tier2; breakdown keeps record tier2=N."""
+    entries = [
+        _fleet_repo_entry("acme/hot", tier2_records=4),
+        _fleet_repo_entry("acme/cold", tier2_records=0),
+    ]
+    doc = build_fleet_reach_report(entries)
+    assert doc["totals"]["repos_with_tier2"] == 1
+    assert doc["totals"]["tier2"] == 4
+    md = render_fleet_reach_md(doc)
+    html = render_fleet_reach_html(doc)
+    for text in (md, html):
+        assert "2 repositories, 1 at tier 2." in text
+        assert "tier2=4" in text
+        assert "2 repositories, 4 at tier 2." not in text

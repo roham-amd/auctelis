@@ -6,16 +6,16 @@
 | --- | --- |
 | 0.1.x | Yes |
 
-Tooling package version (`auctelis`, currently **0.1.10**) is tracked in
+Tooling package version (`auctelis`, currently **0.1.11**) is tracked in
 `canonical/versions.json` as `build_tool` and must stay aligned with
 `tools/pyproject.toml` and `VERSION`.
 
 ## What this project is
 
-`auctelis` is the **authority lockfile and PR review for what AI agents can
-reach**. Locally, `auctelis check` inventories a repository's agent configs
-against `AUTHORITY.lock`. On a PR, the Action posts one Authority Diff and
-`auctelis gate` labels growth vs reduction under CODEOWNERS / ruleset review.
+`auctelis` publishes **evidence-backed Trust Dossiers** for MCP servers,
+skills, hooks, and plugins (`auctelis inspect` / `inspect --local`) plus a
+local **Authority Diff** (`auctelis diff --base`). On a PR, the Action posts
+one Authority Diff. Legacy lockfile / gate commands live on `auctelis-dev`.
 
 It is **not** an automated vulnerability scanner that proves systems are safe,
 a penetration-testing tool, runtime sandbox, marketplace certification authority,

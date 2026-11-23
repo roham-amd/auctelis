@@ -15,6 +15,25 @@ check weekly, or fewer than three growth PRs actually reviewed → fall back to
 | 4 | Advisory → enforce | _TBD_ | advisory→enforce | — | — | — | — | open | upgrade path |
 | 5 | CODEOWNERS growth | _TBD_ | lockless→init | — | — | — | — | open | NEEDS_REVIEW → approve |
 
+## Concierge 10-org audit sprint (days 3–30)
+
+Log each outside org report here (do not invent orgs). After the report,
+open SHA-pinned Watch PRs (`rollout --apply --pin-sha`) and measure day-7/14
+with `rollout --status --csv`.
+
+| # | Org | Report date (UTC) | Path (`out/` or artifact) | Watch PRs opened | Day-14 merge rate | `watching_on_default` day-30 | Status | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | _TBD_ | — | — | — | — | — | open | |
+| 2 | _TBD_ | — | — | — | — | — | open | |
+| 3 | _TBD_ | — | — | — | — | — | open | |
+| 4 | _TBD_ | — | — | — | — | — | open | |
+| 5 | _TBD_ | — | — | — | — | — | open | |
+| 6 | _TBD_ | — | — | — | — | — | open | |
+| 7 | _TBD_ | — | — | — | — | — | open | |
+| 8 | _TBD_ | — | — | — | — | — | open | |
+| 9 | _TBD_ | — | — | — | — | — | open | |
+| 10 | _TBD_ | — | — | — | — | — | open | |
+
 **Status values:** `open` · `recruited` · `installed` · `retained_30d` · `dropped` · `declined`
 
 Leave a cell empty if the pilot declines or no evidence exists. Do not invent
@@ -23,7 +42,7 @@ retention, and do not replace `_TBD_` with a dogfood repo.
 Metrics CSV: [`../../eval/pilot-metrics.csv`](../../eval/pilot-metrics.csv) ·
 Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 
-## Recruitment checklist (0.1.10 report-first)
+## Recruitment checklist (0.1.11 report-first)
 
 - [ ] Confirm unrelated org/repo (not this product dogfood)
 - [ ] First: `auctelis check --github <org> --report out/` and forward the HTML/MD
@@ -32,6 +51,6 @@ Recruitment: [`RECRUITMENT.md`](RECRUITMENT.md)
 - [ ] Day 7 / day 30: `auctelis rollout reach-report.json --status` (table / `--csv`) and log conversion
 - [ ] Weekly: re-run org audit (baseline artifact diff) or `check --github … --baseline prior.json`
 - [ ] Optional later: `init --owner team` / `--enforce`
-- [ ] Pin Action to git tag `v0.1.10` (or commit SHA)
+- [ ] Pin Action to git tag `v0.1.11` (or commit SHA)
 - [ ] Log row in `eval/pilot-metrics.csv` (surface_mix + install_path)
 - [ ] Re-check day 30 and update this tracker

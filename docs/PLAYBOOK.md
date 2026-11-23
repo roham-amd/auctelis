@@ -1,7 +1,7 @@
 # Agent authority review playbook
 
 One page for humans reviewing agent-config diffs. The weekly habit is the
-PR Authority Diff comment. Locally, `auctelis check` / `diff --base` are the
+PR Authority Diff comment. Locally, `auctelis inspect` / `diff --base` are the
 pre-push preflight. This playbook is the fallback if pilot adoption fails the
 day-60 kill criterion.
 
@@ -68,16 +68,16 @@ AUTHORITY.lock  @security-owner
 ## Tooling path
 
 ```bash
-# Run directly with uvx (or `uv tool install` from the release tag; `uvx auctelis` see docs/INSTALL.md):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check                          # aha: ranked reach cards
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security          # comment-only default
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security --enforce  # optional locked gate
+# Run directly with uvx (or `uv tool install` from the release tag; see docs/INSTALL.md):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect npm:@modelcontextprotocol/server-filesystem
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect --local
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis diff --base origin/main
 
-# Advanced (after `uv tool install` or via `uvx --from ... auctelis`):
-auctelis diff --base origin/main        # tree-truth Authority Diff (no lock required)
-auctelis trust mcp.linear.app           # optional trusted destination
-auctelis status --check                 # comment-only OK; enforce says "verify in GitHub"
-auctelis demo                           # canned fixture + PR comment (exits 0)
+# Maintainer lockfile / gate (source checkout → auctelis-dev):
+auctelis-dev init --owner security          # comment-only default
+auctelis-dev init --owner security --enforce
+auctelis-dev check
+auctelis-dev status --check
 # gate needs the *base-ref* lock, never the head lock:
 git show origin/main:AUTHORITY.lock > /tmp/base.lock
 auctelis gate --base-lock /tmp/base.lock  # authority-growth verdict

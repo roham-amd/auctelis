@@ -17,11 +17,11 @@ def _fake_repo(tmp_path: Path, *, pypi_live: bool = False) -> Path:
     root = tmp_path / "repo"
     product = product_version()
     if pypi_live:
-        first = "uvx auctelis check\n"
+        first = "uvx auctelis inspect\n"
     else:
         first = (
             f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{product}'
-            f'#subdirectory=tools" auctelis check\n'
+            f'#subdirectory=tools" auctelis inspect\n'
         )
     for rel in build._INSTALL_DOCS:
         path = root / rel
@@ -40,6 +40,18 @@ def _fake_repo(tmp_path: Path, *, pypi_live: bool = False) -> Path:
         json.dumps(manifest), encoding="utf-8"
     )
     return root
+
+
+def test_readme_leads_with_inspect_and_has_uv_prereq():
+    """AUCT-071: README leads with inspect / --local and names the uv prerequisite."""
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "README.md").read_text(encoding="utf-8")
+    assert "uvx --from" in text
+    assert "auctelis inspect" in text
+    assert "inspect --local" in text
+    assert "docs.astral.sh/uv" in text
+    assert "sample-reach-report.html" not in text
+    assert "auctelis rollout" not in text
 
 
 def test_current_repo_install_docs_are_current():
@@ -92,11 +104,11 @@ def test_once_published_copy_fails_when_not_live(monkeypatch, tmp_path: Path):
 
 
 def test_pypi_live_requires_bare_uvx(monkeypatch, tmp_path: Path):
-    """AUCT-039: bare `uvx auctelis check` is primary; git+ may follow it."""
+    """AUCT-039: bare `uvx auctelis inspect` is primary; git+ may follow it."""
     root = _fake_repo(tmp_path, pypi_live=True)
     product = product_version()
     primary = (
-        "uvx auctelis check\n"
+        "uvx auctelis inspect\n"
         f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{product}'
         f'#subdirectory=tools" auctelis check\n'
     )
@@ -180,14 +192,14 @@ def test_auct036_pypi_check_live_fails_when_live_flag_and_pypi_true_404(
 
 
 def test_pypi_live_requires_bare_check_before_git_fallback(monkeypatch, tmp_path: Path):
-    """AUCT-011: pypi_live=true docs must lead with uvx auctelis check."""
+    """AUCT-011: pypi_live=true docs must lead with uvx auctelis inspect."""
     root = _fake_repo(tmp_path, pypi_live=True)
     product = product_version()
     # Put git-tag install before bare uvx — must fail ordering guard.
     bad = (
         f'uvx --from "git+https://github.com/roham-amd/auctelis.git@v{product}'
         f'#subdirectory=tools" auctelis check\n'
-        "uvx auctelis check\n"
+        "uvx auctelis inspect\n"
     )
     (root / "README.md").write_text(bad, encoding="utf-8")
     monkeypatch.setattr(build, "repo_root", lambda: root)
@@ -217,66 +229,9 @@ def test_lockless_template_and_action_shallow_skip():
     assert "--depth=1" in action
 
 
-def test_auct047_org_audit_workflow_template():
-    """AUCT-047: copy-paste org audit Action pins match action.yml; dry-run only."""
-    import re
-
-    root = Path(__file__).resolve().parents[1]
-    product = product_version()
-    workflow_path = root / "docs" / "auctelis-org-audit.yml"
-    text = workflow_path.read_text(encoding="utf-8")
-    assert "workflow_dispatch:" in text
-    assert re.search(r"^\s+org:\s*$", text, re.MULTILINE)
-    assert 'default: "50"' in text or "default: '50'" in text or "default: 50" in text
-    assert "include_forks:" in text
-    assert "org_reusable:" in text
-    assert "$GITHUB_STEP_SUMMARY" in text
-    assert "--apply" not in text
-    assert f"@v{product}" in text
-    assert "check --github" in text
-    assert "auctelis rollout auctelis-org-report/reach-report.json" in text
-    assert "docs/auctelis-org-audit.yml" in build._INSTALL_DOCS
-
-    action = (root / "action.yml").read_text(encoding="utf-8")
-    uv_pin = re.search(r"astral-sh/setup-uv@([0-9a-f]{40})", action)
-    art_pin = re.search(r"actions/upload-artifact@([0-9a-f]{40})", action)
-    assert uv_pin and art_pin
-    assert f"astral-sh/setup-uv@{uv_pin.group(1)}" in text
-    assert f"actions/upload-artifact@{art_pin.group(1)}" in text
-    assert "AUCTELIS_AUDIT_TOKEN" in text
-    assert "permissions:" in text
-    assert "contents: read" in text
-    assert "actions: read" in text
-    assert "--baseline" in text
-    assert "no baseline" in text
-    assert "inputs.org || github.repository_owner" in text
-    assert "inputs.max_repos || '50'" in text
-    assert "resolve_pins:" in text
-    assert "--resolve-pins" in text
-    assert "rollout auctelis-org-report/reach-report.json --status" in text
-    assert "Pull requests: read" in text
-    assert "--show-body --max-prs 3" in text
-    assert "open_drift_issue" in text
-    assert 'OPEN_DRIFT_ISSUE: "false"' in text
-    assert "github.event_name == 'schedule'" in text
-    assert "env.OPEN_DRIFT_ISSUE" in text
-    assert "<!-- auctelis-org-drift -->" in text
-    assert "org-drift-issue.md" in text
-    assert "python3 -" not in text
-    # AUCT-057: install once, then invoke auctelis directly (no triple uvx).
-    assert "uv tool install --python 3.12" in text
-    assert text.count("uv tool install") == 1
-    assert "uvx --from" not in text
-    assert 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"' in text
-    install = (root / "docs" / "INSTALL.md").read_text(encoding="utf-8")
-    assert "Pull requests: read" in install
-    assert "OPEN_DRIFT_ISSUE" in install
-
-
 def test_auct057_checkout_sha_aligned_across_templates():
-    """AUCT-057/058: lockless/gate/consumer-gate share org-reusable checkout SHA."""
+    """AUCT-057/058: lockless/gate/consumer-gate share checkout SHA."""
     root = Path(__file__).resolve().parents[1]
-    reusable = (root / "docs" / "auctelis-org-reusable.yml").read_text(encoding="utf-8")
     diff = (root / "tools" / "auctelis" / "templates" / "auctelis-diff.yml").read_text(
         encoding="utf-8"
     )
@@ -285,7 +240,6 @@ def test_auct057_checkout_sha_aligned_across_templates():
     )
     consumer = (root / "docs" / "auctelis-consumer-gate.example.yml").read_text(encoding="utf-8")
     pin = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
-    assert pin in reusable
     assert pin in diff
     assert pin in gate
     assert pin in consumer
@@ -293,16 +247,6 @@ def test_auct057_checkout_sha_aligned_across_templates():
     assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in diff
     assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in gate
     assert "11bd71901bbe5b1630ceea73d27597364c9af683" not in consumer
-
-
-def test_trust_copy_does_not_lower_new_mcp_authority():
-    """AUCT-015: docs match reach_tiers — trust never lowers new MCP/Hook authority."""
-    root = Path(__file__).resolve().parents[1]
-    text = (root / "docs" / "CLI-REFERENCE.md").read_text(encoding="utf-8")
-    assert "benign MCP" not in text
-    section = text.split("## `auctelis trust`", 1)[1].split("\n---", 1)[0]
-    assert "network-only" in section
-    assert "MCP / Hook / Host Settings" in section
 
 
 def test_product_md_release_line_matches_version():

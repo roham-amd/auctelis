@@ -17,8 +17,8 @@ from auctelis.security.models import Capability, Evidence, Finding, Relationship
 from auctelis.security.relationships import emit_relationships
 from auctelis.versioning import package_version, product_version
 
-# Research rules live in ``auctelis_research`` (omitted from the product wheel).
-# ``apply_rules=True`` lazy-loads them for auctelis-dev from a source checkout.
+# Core rules live in ``auctelis.security.rules`` (shipped in the product wheel).
+# ``apply_rules=True`` is used by ``inspect`` and ``auctelis-dev scan``.
 
 
 @dataclass(slots=True)
@@ -110,10 +110,10 @@ def run_security_scan(
     apply_rules: bool = True,
     limits: CollectorLimits | None = None,
 ) -> ScanResult:
-    """Inventory a tree and optionally apply the research rule pack.
+    """Inventory a tree and optionally apply the core rule pack.
 
-    Product path (``check`` / ``lock`` / ``gate``) uses ``apply_rules=False`` —
-    the gate is lock-only. ``auctelis-dev scan`` keeps ``apply_rules=True``.
+    Authority Diff / lock / gate paths use ``apply_rules=False`` (lock-only).
+    ``inspect`` and ``auctelis-dev scan`` keep ``apply_rules=True``.
     """
     target = target.resolve()
     result = collect_inventory(target, default_excludes=default_excludes, limits=limits)
@@ -142,13 +142,8 @@ def run_security_scan(
         observed_at=collected_at,
     )
     if apply_rules:
-        try:
-            from auctelis_research.rules import CROSS_COMPONENT_RULE_IDS, RULES, apply_all_rules
-        except ImportError as exc:
-            raise RuntimeError(
-                "Research rules are not in the product wheel; "
-                "run auctelis-dev from a source checkout."
-            ) from exc
+        from auctelis.security.rules import CROSS_COMPONENT_RULE_IDS, RULES, apply_all_rules
+
         evidences, findings = apply_all_rules(components, ctx=ctx)
         rules_applied = [r.rule_id for r in RULES] + list(CROSS_COMPONENT_RULE_IDS)
     else:

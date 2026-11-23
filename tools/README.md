@@ -1,11 +1,11 @@
 # auctelis tooling
 
-**Product CLI (`auctelis`):** `check` → `check --report` → `diff --base` →
-lockless workflow or `init --owner --enforce` → `gate`.
+**Product CLI (`auctelis`):** `inspect` → `inspect --local` → `diff --base`.
 
 **Maintainer CLI (`auctelis-dev`):** workspace member `tools/dev/auctelis_devtools`
-(not in the product wheel). `scan`, `annotate`, `build`, `lint`, `deps`,
-`corpus`, `validate`, `inventory`, … — not the product gate.
+(not in the product wheel). Legacy `check` / `lock` / `gate` / `init` plus
+`scan`, `annotate`, `build`, `lint`, `deps`, `corpus`, `validate`,
+`inventory`, … — not the product front door.
 
 Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs were **removed**.
 
@@ -13,7 +13,7 @@ Public `scan` / `vet` / `explain` / `watch` / `allow` / `hook` / `doctor` CLIs w
 **Reach definition:** [`../docs/REACH.md`](../docs/REACH.md)  
 **Docs index:** [`../docs/DOCUMENTATION-INDEX.md`](../docs/DOCUMENTATION-INDEX.md)
 
-Package: `auctelis` **0.1.10** · Product: auctelis **0.1.10** (tag `@v0.1.10`; see [`INSTALL.md`](../docs/INSTALL.md))
+Package: `auctelis` **0.1.11** · Product: auctelis **0.1.11** (tag `@v0.1.11`; see [`INSTALL.md`](../docs/INSTALL.md))
 
 ---
 
@@ -40,15 +40,12 @@ Do **not** add Poetry, pip-tools, Pipenv, or a separate venv manager.
 **User tool (recommended):**
 
 ```bash
-# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools"`):
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check
+# Direct run (or `uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools"`):
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect npm:@modelcontextprotocol/server-filesystem
 
-auctelis check                         # repo authority vs AUTHORITY.lock
-auctelis init --owner security         # policy + workflow + CODEOWNERS + lock
-auctelis lock --update                 # seal AUTHORITY.lock (empty baseline OK)
+auctelis inspect <target>              # Trust Dossier
+auctelis inspect --local               # local host-config audit
 auctelis diff --base origin/main       # local PR Authority Diff
-auctelis why <name>                    # exact config path
-auctelis demo                          # optional
 ```
 
 Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
@@ -57,9 +54,9 @@ Details: [`../docs/INSTALL.md`](../docs/INSTALL.md).
 
 ```bash
 cd tools
-uv sync --locked
+uv sync --all-packages --locked
 uv run auctelis --help
-uv run auctelis check .
+uv run auctelis inspect examples/demo-vulnerable --offline
 uv run auctelis-dev lint --check-format   # maintainer
 ```
 
@@ -114,28 +111,28 @@ uv run --locked auctelis-dev corpus run
 ### Product (`auctelis`)
 
 ```bash
-uv run auctelis check [PATH ...] [--json] [--pins] [--report DIR]
-uv run auctelis lock [PATH] [--check] [--update] [--accept-gated]
-uv run auctelis init [PATH] --lockless                    # one-file PR Watch
-uv run auctelis init --owner TEAM [PATH] [--force] [--enforce]
-uv run auctelis status [PATH] [--check]
-uv run auctelis trust HOST [--list | --remove | --init]
-uv run auctelis gate [PATH] --base-lock PATH
-uv run auctelis diff --base REF [--repo PATH]
-uv run auctelis why NAME [PATH]
-uv run auctelis demo [-o DIR]
+uv run auctelis inspect [TARGET] [--local] [--json] [--markdown] [--offline] [--out DIR]
+uv run auctelis diff --base REF [--repo PATH] [--markdown] [--out DIR]
 ```
 
 ### Maintainer (`auctelis-dev`)
 
 ```bash
+uv run auctelis-dev check [PATH ...] [--json] [--pins] [--report DIR]
+uv run auctelis-dev lock [PATH] [--check] [--update] [--accept-gated]
+uv run auctelis-dev init [PATH] --lockless
+uv run auctelis-dev init --owner TEAM [PATH] [--force] [--enforce]
+uv run auctelis-dev status [PATH] [--check]
+uv run auctelis-dev gate [PATH] --base-lock PATH
+uv run auctelis-dev why NAME [PATH]
+uv run auctelis-dev demo [-o DIR]
 uv run auctelis-dev scan PATH [-o DIR] [--fail-on never|high|any]
 uv run auctelis-dev annotate FINDINGS.json --format github|text|pr-comment
 uv run auctelis-dev validate report PATH
 uv run auctelis-dev inventory PATH
 uv run auctelis-dev export sarif REPORT.json
 uv run auctelis-dev verify digest PATH
-uv run auctelis-dev build all|schemas
+uv run auctelis-dev build all|schemas|dossiers
 uv run auctelis-dev corpus run
 uv run auctelis-dev deps outdated|upgrade
 uv run auctelis-dev lint [--fix] [--format] [--check-format]

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "tool": {
+      "command": "npx",
+      "args": ["-y", "@example/tool@1.0.0"],
+      "env": {
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

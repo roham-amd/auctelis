@@ -10,54 +10,36 @@ from auctelis.authority_lock import (
     diff_authority_locks,
     write_authority_lock,
 )
-from auctelis.cli import main
 from auctelis.cli.dispatch import _demo_target
 from auctelis.cli.parser import CORE_PUBLIC_COMMANDS, build_parser
 from auctelis.security.decision import authority_establishment, compute_decision
 from auctelis.security.relationships import emit_relationships
+from auctelis_devtools.cli import main_dev as main
 from auctelis_research.scan import run_scan
 
 
 def test_core_public_commands_are_the_first_screen():
-    # Front door is repo Authority Diff. watch/allow/hook are archived.
-    assert {
-        "check",
-        "lock",
-        "ci",
-        "gate",
-        "diff",
-        "why",
-        "demo",
-        "init",
-        "status",
-        "trust",
-        "rollout",
-    } == CORE_PUBLIC_COMMANDS
+    # Front door is inspect + diff. Legacy lockfile cmds are auctelis-dev only.
+    assert frozenset({"inspect", "diff"}) == CORE_PUBLIC_COMMANDS
     help_text = build_parser().format_help()
-    for name in (
-        "check",
-        "lock",
-        "gate",
-        "diff",
-        "why",
-        "demo",
-        "init",
-        "status",
-        "trust",
-        "rollout",
-    ):
+    for name in ("inspect", "diff"):
         assert name in help_text
     listed = [
         line.strip()
         for line in help_text.splitlines()
-        if line.startswith("    ") and not line.strip().startswith("(")
+        if line.startswith("    ")
+        and not line.startswith("     ")
+        and not line.strip().startswith("(")
     ]
+    command_names = {line.split()[0] for line in listed if line}
+    assert command_names == {"inspect", "diff"}
     assert not any(line.startswith("ci") for line in listed)
     assert not any(line.startswith("scan") for line in listed)
     assert not any(line.startswith("vet") for line in listed)
     assert not any(line.startswith("watch") for line in listed)
     assert not any(line.startswith("allow") for line in listed)
     assert not any(line.startswith("hook") for line in listed)
+    assert not any(line.startswith("check") for line in listed)
     # Review / advanced stay omitted from brief help.
     assert "Propose least-privilege" not in help_text
     assert "Explain a finding" not in help_text

@@ -1,0 +1,35 @@
+name: Dossier refresh
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Install dependencies
+        working-directory: tools
+        run: uv sync --all-packages --locked
+
+      - name: Build dossiers
+        run: uv run --directory tools --locked auctelis-dev build dossiers
+
+      - name: Upload dossiers artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dossiers
+          path: dossiers/

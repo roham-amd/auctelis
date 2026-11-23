@@ -17,7 +17,7 @@ def add_dev_commands(sub: Any) -> None:
         "target",
         nargs="?",
         default="all",
-        choices=["all", "schemas", "pypi-check"],
+        choices=["all", "schemas", "pypi-check", "dossiers"],
         help="Build target (default: all; pypi-check = cutover readiness)",
     )
     build.add_argument(

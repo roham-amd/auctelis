@@ -1,21 +1,21 @@
 # auctelis roadmap
 
-**Product:** The authority lockfile and PR review for what AI agents can reach.
+**Product:** Evidence-backed trust dossiers for MCP servers, skills, hooks, and plugins.
 
-**Positioning:** GitHub-native Authority Diff + enforcement gate. Locally,
-`auctelis check` is the repo preflight. Host hooks / allow store / tripwires
-are removed.
+**Positioning:** Trust Dossier (`inspect` / `inspect --local`) + local Authority
+Diff (`diff --base`). Legacy lockfile / gate / fleet CLIs are `auctelis-dev`
+only. Host hooks / allow store / tripwires are removed.
 
-**Current:** **0.1.10** · lock schema 1 · tooling 0.1.10
+**Current:** **0.1.11** · lock schema 1 · tooling 0.1.11 · public path `inspect` + `diff`
 
 ## North star (Gate Zero)
 
-1. One extractor, one diff, one PR comment, one Action (lock optional)
-2. Lockless six-line workflow first; `init --enforce` when ready to fail closed
+1. One Trust Dossier front door; one Authority Diff; one Action
+2. Zero-install dossiers (`dossiers/CATALOG.json` + IssueOps) before any lock ceremony
 3. Adoption ceremony is `BASELINE_ADOPTED`, never false `PASS`
 4. Empty baseline is fine: first growth under enforce is CODEOWNERS review
 5. Coverage and evidence strength are visible on every match and card
-6. Product path is **tree-truth**; research scanner is `auctelis_research` (not in wheel)
+6. Product path is **inspect + diff**; research scanner is `auctelis_research` (not in wheel)
 7. Comment posts when authority changed (opt into every-PR); required check fails on **tier≥fail** reach only when locked
 
 ## Release line
@@ -33,20 +33,21 @@ are removed.
 | **0.1.8** | Org-audit PR-read + Drift Issue + offline `--action-sha` / surface diet (still `pypi_live=false`) | **done** |
 | **0.1.9** | Tier-1+ Drift Issue + enforce SHA-pin parity + single-install org-audit (still `pypi_live=false`) | **done** |
 | **0.1.10** | Org-audit exit-1 tolerance + SHA-pin fleet CTAs + realistic sample report (still `pypi_live=false`) | **done** |
+| **0.1.11** | Trust Dossier front door (`inspect` / `--local` / IssueOps), core rules in wheel, public CLI shrink to `inspect`+`diff`, remove rollout/org-fleet (still `pypi_live=false`) | **done** |
 
-| Next | Feature freeze. Concierge: 10 external org audits → `rollout --apply --pin-sha` → day-14 `--status`. Hold `rollout --fix-pins` (**AUCT-056**) until day-14 Watch merge rate <30%. PyPI cutover only if ≥3 pilots ask. Research repo split if unused | open |
+| Next | Concierge: Trust Dossier aha via `inspect` / IssueOps; PyPI cutover only if ≥3 pilots ask. Research repo split if unused | open |
 
 ## 30-day concierge sprint (now)
 
 | Window | Work | Done when |
 | --- | --- | --- |
-| Days 1–3 | Ship **AUCT-058** + **AUCT-059**; feature-freeze CLI (AUCT-055/057 done in 0.1.9) | Org-audit tolerates exit 1; sample report shows Pin fix/`--pin-sha`; tests green |
-| Days 1–30 | 10 external org audits (CLI or `auctelis-org-audit.yml`); log `TRACKER.md` + `pilot-metrics.csv` | ≥10 outside reach reports |
-| Days 7–14 | Open Watch PRs with `rollout --apply --pin-sha`; measure with `--status` | Day-14 merge rate known |
-| Day 14 gate | Build **AUCT-056** (`rollout --fix-pins`) **only if** Watch merge rate <30% | Flag shipped or explicitly skipped |
-| Day 30 | ≥5 outside repos `watching_on_default` | Day-60 gate still open |
+| Days 1–2 | Ship **AUCT-060** + **AUCT-061** (defect-only; fleet headline / org-scoped baselines) | Tests green; no speculative CLI |
+| Days 1–3 | **AUCT-058** + **AUCT-059** shipped in 0.1.10; feature-freeze CLI (AUCT-055/057 done in 0.1.9) | Sample report shows Pin fix |
+| Days 3–30 | Trust-dossier pilots (`inspect` + IssueOps); log `TRACKER.md` + `pilot-metrics.csv` | ≥10 outside dossiers |
+| Days 7–14 | Action retained on pilot repos via Authority Diff | Day-14 installs known |
+| Day 30 | ≥5 outside repos retain the Action | Day-60 gate still open |
 
-Kill speculative CLI expansion (`why` / `trust` / `diff --base` / lock ceremony / research rules) until five outside repos retain the Action.
+Kill speculative CLI expansion until five outside repos retain the Action.
 
 ## 90-day decision gate
 
@@ -61,7 +62,7 @@ broker before five outside repos retain the gate.
 ## Kill list (product path)
 
 - Host `watch` / `allow` / `hook` / `doctor` / `ledger` / `host_scan` / plugins
-- Public 22-rule scanner in the product wheel (moved to `auctelis_research`)
+- Public full-tree `scan` / `annotate` CLIs in the product wheel (rules ship for `inspect`; research scanner stays `auctelis_research` / `auctelis-dev`)
 - `vet`, `harden`, `explain`, audit/ecosystem-graph as product gate inputs
 - Docker as the Authority Diff install story
 - Circular “PyPI waits for five pilots” rule (install must work for strangers; cutover is a later maturity bet, not a gate)
@@ -71,13 +72,14 @@ broker before five outside repos retain the gate.
 - Treating every CI workflow / Plugin / Subagent as fail-tier
 - Legacy Action inputs that neutralized the gate
 - `auctelis-dev` in the product wheel (lives in `tools/dev` workspace member)
+- Public `check` / `lock` / `gate` / `init` / `rollout` / `trust` / `why` / `demo` (moved to `auctelis-dev`)
 
-Keep: `diff --base`, lockless workflow, `rollout`, `init`, `status`, `check` (+ `--report` / `--github`), `lock`, `gate`, `why`, `demo`. Fleet reports lead with `auctelis rollout` (no Bash `rollout-watch-prs.sh`). `ci init` remains a hidden alias.
+Keep: `inspect`, `inspect --local`, `diff --base`.
 
 ## Success metrics
 
-- 10 non-dogfood reach reports in 30 days
+- 10 non-dogfood Trust Dossiers in 30 days
 - Five outside repos with the Action retained for 30 days
 - ≥3 growth PRs code-owner-reviewed outside this repository
-- Median time-to-first-report under 10 minutes; report→workflow conversion ≥30%
+- Median time-to-first-dossier under 10 minutes
 - Known open gate bypasses: 0

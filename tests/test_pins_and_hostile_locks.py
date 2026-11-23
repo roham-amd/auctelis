@@ -11,13 +11,13 @@ from auctelis.authority_lock import (
     diff_authority_locks,
     write_authority_lock,
 )
-from auctelis.cli import main
 from auctelis.gate import run_gate
 from auctelis.lock_io import (
     AuthorityLockError,
     load_authority_lock,
     validate_authority_lock,
 )
+from auctelis_devtools.cli import main_dev as main
 
 
 def _mcp(root: Path, servers: dict) -> None:

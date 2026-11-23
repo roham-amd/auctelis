@@ -8,7 +8,6 @@ from pathlib import Path
 
 from auctelis.authority_card import pin_report, reach_snapshot, record_card
 from auctelis.check import build_check_report, render_check, render_pin_report
-from auctelis.cli import main
 from auctelis.diff_base import run_diff_base
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.gate import render_gate_report, run_gate
@@ -19,6 +18,7 @@ from auctelis.reach_tiers import (
     load_trusted_hosts,
     record_reach_tier,
 )
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_validated_http_url_rejects_non_http_schemes():
@@ -440,17 +440,6 @@ def test_comment_policy_always_posts_none(tmp_path: Path, monkeypatch):
     assert _gate(tmp_path, monkeypatch, out, root, "--comment-policy", "always") == 0
     assert (out / "pr-comment.md").is_file()
     assert not (out / "comment-skip.txt").exists()
-
-
-def test_action_has_comment_on_none_escape_hatch():
-    action = (
-        Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
-    )
-    text = action.read_text(encoding="utf-8")
-    assert "comment-on-none:" in text
-    assert "--comment-policy always" in text
-    assert "--comment-policy auto" in text
-    assert "comment-skip.txt" in text
 
 
 # --- Reach report / show the why -------------------------------------------

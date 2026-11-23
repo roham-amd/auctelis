@@ -12,9 +12,9 @@ from auctelis.authority_lock import (
     diff_authority_locks,
     write_authority_lock,
 )
-from auctelis.cli import main
 from auctelis.gate import run_gate
 from auctelis.lock_io import AuthorityLockError, load_authority_lock
+from auctelis_devtools.cli import main_dev as main
 
 _EMPTY = {"version": 1, "records": [], "policy_hash": None, "mcp_tools": {}}
 

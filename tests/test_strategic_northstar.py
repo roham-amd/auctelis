@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import diff_authority_locks
-from auctelis.cli import main
 from auctelis.cli.dispatch import _merge_codeowners_authority, _rel_authority_path
 from auctelis.gate import render_gate_report, run_gate
 from auctelis.inventory.hints import download_and_execute_hint
 from auctelis.lock_io import compute_lock_hash
 from auctelis.reach_tiers import TIER_COMMENT, TIER_FAIL, delta_max_reach_tier, record_reach_tier
 from auctelis.security.authority import _capabilities
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_rel_authority_path_preserves_dotdirs():
@@ -208,7 +208,6 @@ def test_action_lean_install_and_no_locked_false_warning():
     )
     text = action.read_text(encoding="utf-8")
     assert "--no-editable" in text
-    assert "--comment-only" in text
     assert "authority growth is unchecked" not in text
     assert "auctelis-dev is not on PATH (needed for scan/annotate)" not in text
 

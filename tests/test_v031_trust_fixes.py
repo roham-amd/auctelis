@@ -5,21 +5,26 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main
 from auctelis.cli.parser import PUBLIC_PATH, build_parser, normalize_argv
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.gate import growth_label
 from auctelis.inventory.collector import collect_inventory
 from auctelis.security.gating import is_high_gate_finding
 from auctelis.security.models import Finding
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_public_path_constant_and_version_flag():
-    assert "check" in PUBLIC_PATH and "gate" in PUBLIC_PATH and "init" in PUBLIC_PATH
+    assert PUBLIC_PATH == "inspect <target> | inspect --local | diff --base <ref>"
+    assert "inspect" in PUBLIC_PATH and "diff" in PUBLIC_PATH
+    assert "check" not in PUBLIC_PATH and "gate" not in PUBLIC_PATH
+    assert normalize_argv([]) == ["inspect"]
     assert "--version" in normalize_argv(["--version"])
     assert normalize_argv(["--version"]) == ["--version"]
     # argparse version action exits; ensure the flag is registered.
     parser = build_parser()
+    help_text = parser.format_help()
+    assert "inspect" in help_text and "diff" in help_text
     actions = [a.option_strings for a in parser._actions]
     assert any("-V" in opts and "--version" in opts for opts in actions)
 

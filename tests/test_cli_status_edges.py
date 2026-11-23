@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from auctelis.cli import main
+from auctelis_devtools.cli import main_dev as main
 
 
 def _offline(monkeypatch) -> None:

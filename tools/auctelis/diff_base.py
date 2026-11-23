@@ -24,7 +24,7 @@ from auctelis.check import SCHEMA_VERSION, attach_launcher_args, attach_launcher
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.lock_io import AuthorityLockError, empty_authority_lock, load_authority_lock
 from auctelis.reach_tiers import load_trusted_hosts
-from auctelis.security.engine import run_authority_inventory
+from auctelis.security.engine import run_security_scan
 
 _GIT = shutil.which("git")
 
@@ -67,7 +67,7 @@ def _git_has_file(repo: Path, ref: str, relpath: str) -> bool:
     return proc is not None and proc.returncode == 0
 
 
-def _extract_tree_authority(repo: Path, base_ref: str) -> dict[str, Any] | None:
+def _extract_tree_authority(repo: Path, base_ref: str) -> tuple[dict[str, Any], list[Any]] | None:
     """Build an AUTHORITY.lock-shaped dict from ``base_ref`` via detached worktree."""
     tmp = tempfile.mkdtemp(prefix="auctelis-diff-wt-")
     work = Path(tmp) / "wt"
@@ -76,8 +76,9 @@ def _extract_tree_authority(repo: Path, base_ref: str) -> dict[str, Any] | None:
         if proc is None or proc.returncode != 0:
             return None
         try:
-            scan = run_authority_inventory(work)
-            return build_authority_lock(work, scan=scan)
+            scan = run_security_scan(work, apply_rules=True)
+            lock = build_authority_lock(work, scan=scan)
+            return (lock, scan.findings)
         finally:
             _git(repo, "worktree", "remove", "--force", str(work))
     except (OSError, AuthorityLockError, ValueError):
@@ -104,6 +105,28 @@ def _load_committed_base_lock(
             return load_authority_lock(base_path)
         except (AuthorityLockError, OSError):
             return None
+
+
+def render_diff_markdown(report: dict[str, Any]) -> str:
+    """PR-comment Markdown for ``diff --base``, including added red flags."""
+    body = str(report.get("comment") or "")
+    flags = list(report.get("red_flags") or [])
+    if not flags:
+        return body
+    lines = [body.rstrip(), "", "### Red Flags"]
+    for rf in flags:
+        if isinstance(rf, dict):
+            severity = rf.get("severity") or ""
+            rule_id = rf.get("rule_id") or ""
+            path = rf.get("path") or rf.get("file_path") or ""
+            title = rf.get("title") or ""
+        else:
+            severity = getattr(rf, "severity", "") or ""
+            rule_id = getattr(rf, "rule_id", "") or ""
+            path = getattr(rf, "path", None) or getattr(rf, "entry_point", "") or ""
+            title = getattr(rf, "title", "") or ""
+        lines.append(f"- **{severity} {rule_id}** ({path}): {title}")
+    return "\n".join(lines) + "\n"
 
 
 def run_diff_base(
@@ -133,12 +156,13 @@ def run_diff_base(
     base_lock_drift = False
     baseline_state: str
     base: dict[str, Any]
+    base_findings: list[Any] = []
 
     if extracted is not None:
         baseline_state = "tree"
-        base = extracted
+        base, base_findings = extracted
         if committed is not None:
-            drift_delta = diff_authority_locks(committed, extracted)
+            drift_delta = diff_authority_locks(committed, base)
             drift_summary = drift_delta.get("summary") or {}
             if bool(drift_summary.get("authority_changed")):
                 base_lock_drift = True
@@ -150,7 +174,7 @@ def run_diff_base(
         base = empty_authority_lock()
 
     trusted_hosts = load_trusted_hosts(repo)
-    scan = run_authority_inventory(repo)
+    scan = run_security_scan(repo, apply_rules=True)
     head = build_authority_lock(repo, scan=scan)
     head_records = list(head.get("records") or [])
     attach_launcher_args(head_records, scan)
@@ -174,6 +198,30 @@ def run_diff_base(
         # ``tree`` (worktree extract) or ``present`` (committed-lock fallback).
         verdict = "NEEDS_REVIEW" if unparsed or growth or material else "PASS"
         code = 0 if verdict == "PASS" else 1
+
+    base_keys = {
+        (f.rule_id, f.entry_point)
+        for f in base_findings
+        if getattr(f, "finding_class", None) == "SECURITY_FINDING"
+    }
+    added_red_flags: list[dict[str, Any]] = []
+    for f in scan.findings:
+        if getattr(f, "finding_class", None) != "SECURITY_FINDING":
+            continue
+        if (f.rule_id, f.entry_point) in base_keys:
+            continue
+        added_red_flags.append(
+            {
+                "rule_id": f.rule_id,
+                "severity": f.severity,
+                "title": f.title,
+                "path": f.entry_point,
+                "file_path": f.entry_point,
+            }
+        )
+    if added_red_flags:
+        verdict = "NEEDS_REVIEW"
+        code = 1
 
     findings_doc = {
         "findings": [],
@@ -208,6 +256,7 @@ def run_diff_base(
         "base_lock_hash": base.get("lock_hash"),
         "head_lock_hash": head.get("lock_hash"),
         "base_lock_drift": base_lock_drift,
+        "red_flags": added_red_flags,
     }
     lines = [
         f"auctelis diff --base {base_ref}",

@@ -266,7 +266,7 @@ def test_check_needs_review_on_unparsed(tmp_path: Path):
 
 
 def test_status_check_exits_nonzero_when_unarmed(tmp_path: Path):
-    from auctelis.cli import main
+    from auctelis_devtools.cli import main_dev as main
 
     root = tmp_path / "empty"
     root.mkdir()
@@ -274,7 +274,7 @@ def test_status_check_exits_nonzero_when_unarmed(tmp_path: Path):
 
 
 def test_status_check_armed_after_init(tmp_path: Path, monkeypatch):
-    from auctelis.cli import main
+    from auctelis_devtools.cli import main_dev as main
 
     root = tmp_path / "repo"
     root.mkdir()
@@ -303,7 +303,7 @@ def test_status_check_armed_after_init(tmp_path: Path, monkeypatch):
 
 
 def test_init_merges_root_codeowners_without_shadow(tmp_path: Path):
-    from auctelis.cli import main
+    from auctelis_devtools.cli import main_dev as main
 
     root = tmp_path / "repo"
     root.mkdir()
@@ -323,7 +323,7 @@ def test_init_merges_root_codeowners_without_shadow(tmp_path: Path):
 
 
 def test_lock_cli_refuses_unparsed(tmp_path: Path):
-    from auctelis.cli import main
+    from auctelis_devtools.cli import main_dev as main
 
     root = tmp_path / "broken"
     root.mkdir()

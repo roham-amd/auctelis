@@ -475,6 +475,13 @@ def discover_mcp_configs(
             server_hints.append("filesystem_write_capability_reference")
         if "subprocess" in lowered or "os.system" in lowered:
             server_hints.append("possible_code_execution_reference")
+        if "os.environ" in lowered or "process.env" in lowered:
+            server_hints.append("env_access_in_server")
+        if any(
+            token in lowered
+            for token in ("child_process", "execsync", "spawn(", "subprocess", "os.system")
+        ):
+            server_hints.append("shell_exec_in_server")
         if "github.com" in lowered or "api.github.com" in lowered:
             server_hints.append("github_fetch_capability")
 

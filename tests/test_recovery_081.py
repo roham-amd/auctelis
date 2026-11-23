@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from auctelis.cli import main
 from auctelis.cli.dispatch import _pin_workflow_to_release, _resolve_action_pin_ref
 from auctelis.gate import run_gate
 from auctelis.lock_io import compute_lock_hash
 from auctelis.versioning import product_version
+from auctelis_devtools.cli import main_dev as main
 
 
 def _mcp(root: Path, servers: dict) -> None:
@@ -102,16 +102,6 @@ def test_empty_baseline_lifecycle(tmp_path: Path):
     assert report["label"] == "GROWTH"
     assert report.get("empty_baseline_growth") is True
     assert report["verdict"] != "FAIL_CLOSED"
-
-
-def test_action_yml_passes_no_strict_ruleset():
-    action = (
-        Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
-    )
-    text = action.read_text(encoding="utf-8")
-    # Comment-only still passes --no-strict-ruleset; locked=true defaults strict on.
-    assert "--no-strict-ruleset" in text
-    assert "locked=true default" in text
 
 
 def test_claude_slash_command_in_authority_kinds():

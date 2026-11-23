@@ -1,0 +1,17 @@
+name: Inspect request
+description: Request a Trust Dossier for an npm, PyPI, or GitHub target (zero local install)
+title: "[Inspect]: "
+labels: ["inspect-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open this issue to request a public Trust Dossier. Use an `npm:`, `pypi:`, or `https://github.com/...` target — local paths are not accepted.
+  - type: input
+    id: target
+    attributes:
+      label: Target
+      description: npm:@scope/pkg, pypi:pkg, or https://github.com/org/repo
+      placeholder: npm:@modelcontextprotocol/server-filesystem
+    validations:
+      required: true

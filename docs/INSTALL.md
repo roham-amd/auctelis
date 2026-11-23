@@ -4,6 +4,7 @@
 
 - Python **3.12+** (uv can fetch a managed interpreter)
 - Git (only for the checkout / git-tag install)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
 
 ## One-line install (canonical)
 
@@ -11,83 +12,41 @@ PyPI `auctelis` is not live yet (`pypi_live=false`). Use the release tag
 (release assets are cosign-signed; the git tag itself is not):
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check                     # aha: ranked reach cards (no lock needed)
-```
-
-**Zero-laptop org audit:** copy
-[`auctelis-org-audit.yml`](auctelis-org-audit.yml) into your org `.github`
-repo, click **Run workflow**, and read the Job Summary (no local `uv`/`git`
-required). For private orgs, set secret `AUCTELIS_AUDIT_TOKEN` (Contents: read,
-Metadata: read, and Pull requests: read). `Pull requests: read` is required for
-the Job Summary `rollout --status` ledger (`GET /pulls`); without it the funnel
-row is `unknown` and the detail names that scope. A second run diffs against
-the previous successful run's `auctelis-org-report` artifact when present
-(first run: no baseline). Optional workflow input `resolve_pins` (default off)
-passes `--resolve-pins` so the HTML/MD report shows exact versions labeled
-trust-on-first-use. The Job Summary dry-run passes `--show-body --max-prs 3`
-and then prints a read-only `rollout --status` funnel. Optional input
-`open_drift_issue` (default off) opens or updates one sticky Issue from the
-report artifact `org-drift-issue.md` (marker `<!-- auctelis-org-drift -->`),
-written only on material tier-1+ drift (Watch self-installs and tier-0 stay
-silent); that step needs `issues: write` (commented in the workflow — a missing
-permission is a non-fatal notice). Uncomment `schedule:` for a weekly run:
-empty inputs fall back to `github.repository_owner` and 50 repos. For scheduled
-Drift Issues, also set top-level `OPEN_DRIFT_ISSUE: "true"` (default `"false"`)
-and uncomment `issues: write`. The job installs `auctelis` once via
-`uv tool install` and reuses it for audit / dry-run / `--status`.
-
-Shareable audit artifact (step 2 of the first ten minutes):
-
-```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --report out/
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect npm:@modelcontextprotocol/server-filesystem
 ```
 
 For a persistent CLI:
 
 ```bash
-uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools"
+uv tool install --python 3.12 "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools"
 auctelis --version
 ```
 
 Cutover order (after the PyPI name is claimed and Trusted Publishing is set):
 claim → bump+flip PR (`pypi_live=true` + both `AUCTELIS_PYPI_DEFAULT="true"` +
-docs lead with `uvx auctelis check`) → publish → live probe → tag. Until then,
+docs lead with `uvx auctelis inspect`) → publish → live probe → tag. Until then,
 tagged Action runs use bundled `tools/` and do not warn on PyPI 404.
 
 ## First run
 
 ```bash
-cd your-repo
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check                          # tree-truth reach (lock optional)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --report out/             # HTML+MD+JSON+SBOM
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check repo-a repo-b --report out/  # one ranked fleet report across repos
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --github your-org --report out/  # zero-clone org audit (GITHUB_TOKEN / GH_TOKEN / gh auth)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json            # dry-run Watch PRs for unwatched tier-2 repos
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json --apply  # open those PRs (needs workflow scope)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json --apply --pin-sha  # immutable @<sha> # vX via tag lookup
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json --apply --action-sha <40-hex>  # GHES / offline; no tag lookup
-# Org-reusable caller instead of the inline workflow:
-#   uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis rollout out/reach-report.json --org-reusable your-org
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --lockless                 # one file: comment-only PR Watch (no owner/lock)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --lockless --pin-sha       # same file, Action pinned to the release commit
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --lockless --action-sha <40-hex>  # offline SHA pin (GHES)
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security          # full comment-only setup; @ optional; PowerShell-safe
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security --enforce  # optional locked + strict ruleset
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis init --owner security --enforce --action-sha <40-hex>  # enforce + offline SHA pin
-# commit → open install PR → first-run "Watching …" comment → later PRs get the diff
+# 1. Trust dossier for a package:
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect npm:@modelcontextprotocol/server-filesystem
+
+# 2. Read-only audit of local agent configs:
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect --local
+
+# 3. Authority Diff vs a git base:
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis diff --base origin/main
 ```
 
-Bare `auctelis` runs `check` (repo-only). Product path:
-**check → check --report → init (or the lockless workflow) → Action / gate** (tree-truth; lock
-optional pin).
+Bare `auctelis` runs `inspect`. Product path:
+**inspect → inspect --local → diff --base**.
 
-An empty baseline is normal: the first growth PR is a CODEOWNERS review of
-changed authority paths, not a forever `FAIL_CLOSED`. Product lock is
-inventory-only (no findings gate).
+Zero-install dossiers: [`dossiers/CATALOG.json`](../dossiers/CATALOG.json) ·
+[Request a dossier](../.github/ISSUE_TEMPLATE/inspect_request.yml).
 
-Advanced commands (`diff --base`, `check --pins`, `trust`, `status`, `lock`,
-`why`, `demo`) are documented in the [README](../README.md#advanced-not-part-of-the-first-ten-minutes)
-and the [`CLI-REFERENCE`](CLI-REFERENCE.md).
+Commands are documented in the [`CLI-REFERENCE`](CLI-REFERENCE.md).
 
 ## Fallback installs
 
@@ -96,7 +55,7 @@ the index is temporarily unreachable.
 
 ```bash
 # Downloaded wheel (signed release assets are on the GitHub Release):
-uv tool install --python 3.12 ./auctelis-0.1.10-py3-none-any.whl
+uv tool install --python 3.12 ./auctelis-0.1.11-py3-none-any.whl
 ```
 
 ### Signed wheel (release assets)
@@ -105,8 +64,8 @@ GitHub Releases ship the wheel + `.cosign.bundle`. After downloading:
 
 ```bash
 cosign verify-blob \
-  --bundle auctelis-0.1.10-py3-none-any.whl.cosign.bundle \
-  auctelis-0.1.10-py3-none-any.whl
+  --bundle auctelis-0.1.11-py3-none-any.whl.cosign.bundle \
+  auctelis-0.1.11-py3-none-any.whl
 ```
 
 Trusted Publishing workflow:
@@ -119,25 +78,19 @@ asserts the index returns 200 for the published version.
 ```bash
 cd tools
 uv sync --locked
-uv run auctelis check .
-uv run auctelis check --report /tmp/auctelis-report
-uv run auctelis demo -o /tmp/auctelis-demo
+uv run auctelis inspect npm:@modelcontextprotocol/server-filesystem --offline
+uv run auctelis inspect --local
+uv run auctelis diff --base origin/main
 # Maintainer surface (workspace member tools/dev):
 uv run auctelis-dev build all
 ```
 
-## Org reusable workflow
-
-Install once in your org `.github` repo using
-[`auctelis-org-reusable.yml`](auctelis-org-reusable.yml), then each application
-repo calls it with two lines (see that file).
-
 ## Verify
 
 ```bash
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis --version
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis check --help
-uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.10#subdirectory=tools" auctelis demo -o /tmp/auctelis-demo
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis --version
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis inspect --help
+uvx --from "git+https://github.com/roham-amd/auctelis.git@v0.1.11#subdirectory=tools" auctelis diff --help
 ```
 
 See [`PRODUCT.md`](PRODUCT.md) for the command contract and
@@ -147,5 +100,5 @@ See [`PRODUCT.md`](PRODUCT.md) for the command contract and
 
 | Surface | Version |
 | --- | --- |
-| Product (`VERSION`) | 0.1.10 |
-| Package `auctelis` | 0.1.10 |
+| Product (`VERSION`) | 0.1.11 |
+| Package `auctelis` | 0.1.11 |

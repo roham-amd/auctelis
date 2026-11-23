@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from auctelis.check import build_check_report, render_check, why_repo
-from auctelis.cli import main
+from auctelis_devtools.cli import main_dev as main
 
 
 def _repo(root: Path, servers: dict | None = None) -> Path:

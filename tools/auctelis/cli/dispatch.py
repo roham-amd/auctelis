@@ -1,8 +1,9 @@
-"""Product command handlers and the CLI dispatcher.
+"""Product and maintainer command handlers plus the CLI dispatcher.
 
-Product surface: ``check``, ``lock``, ``init``, ``status``, ``gate``, ``diff``,
-``trust``, ``why``, ``demo``, and the ``ci`` alias. Maintainer / research
-handlers live in :mod:`auctelis_devtools` (``auctelis-dev`` only).
+Public product surface: ``inspect``, ``diff``. Legacy lockfile / gate / fleet
+handlers (``check``, ``lock``, ``init``, ``status``, ``gate``, ``trust``,
+``why``, ``demo``, ``ci``) remain here for ``auctelis-dev`` only. Maintainer /
+research handlers live in :mod:`auctelis_devtools`.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from auctelis.cli.authority_commands import (
     cmd_why,
 )
 from auctelis.cli.guards import refuse_agent_mutation, require_research
+from auctelis.cli.inspect_cmd import cmd_inspect
 from auctelis.export.pr_comment import (
     render_authority_diff_comment,
     render_first_run_comment,
@@ -62,8 +64,8 @@ def dispatch(args: argparse.Namespace) -> int:
             return _cmd_gate(args)
         case "diff":
             return _cmd_diff(args)
-        case "rollout":
-            return _cmd_rollout(args)
+        case "inspect":
+            return cmd_inspect(args)
         case _:
             return 2
 
@@ -463,37 +465,6 @@ def _cmd_trust(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cmd_rollout(args: argparse.Namespace) -> int:
-    """Open lockless Watch PRs from a Reach Report. Dry-run unless ``--apply``."""
-    if bool(getattr(args, "apply", False)):
-        refused = refuse_agent_mutation("rollout")
-        if refused is not None:
-            return refused
-    from auctelis.rollout import execute_rollout
-
-    org = getattr(args, "org_reusable", None)
-    raw_max = getattr(args, "max_prs", 10)
-    max_prs = 10 if raw_max is None else int(raw_max)
-    raw_repos = getattr(args, "repos", None)
-    repos = [str(r) for r in raw_repos] if isinstance(raw_repos, list) else None
-    raw_tier = getattr(args, "min_tier", 2)
-    min_tier = 2 if raw_tier is None else int(raw_tier)
-    return execute_rollout(
-        Path(args.report),
-        apply=bool(getattr(args, "apply", False)),
-        max_prs=max_prs,
-        org_reusable=str(org) if org else None,
-        as_json=bool(getattr(args, "json", False)),
-        repos=repos,
-        min_tier=min_tier,
-        status=bool(getattr(args, "status", False)),
-        as_csv=bool(getattr(args, "csv", False)),
-        show_body=bool(getattr(args, "show_body", False)),
-        pin_sha=bool(getattr(args, "pin_sha", False)),
-        action_sha=getattr(args, "action_sha", None),
-    )
-
-
 def _resolve_init_action_sha(args: argparse.Namespace) -> tuple[str | None, int | None]:
     """Return ``(sha, None)``, ``(None, None)`` if unpinned, or ``(None, 2)``.
 
@@ -501,7 +472,7 @@ def _resolve_init_action_sha(args: argparse.Namespace) -> tuple[str | None, int 
     ``--action-sha`` is offline. ``--pin-sha`` looks up this release tag and
     does not fall back to ``https://api.github.com`` when that lookup fails.
     """
-    from auctelis.rollout import normalize_action_sha, resolve_release_commit_sha
+    from auctelis.action_pin import normalize_action_sha, resolve_release_commit_sha
     from auctelis.versioning import product_version
 
     raw = str(getattr(args, "action_sha", None) or "").strip()
@@ -568,7 +539,7 @@ def _cmd_init_lockless(args: argparse.Namespace) -> int:
     workflow_body = _pin_workflow_to_release(template_path.read_text(encoding="utf-8"))
     version = product_version()
     if sha:
-        from auctelis.rollout import rewrite_action_pin
+        from auctelis.action_pin import rewrite_action_pin
 
         try:
             workflow_body = rewrite_action_pin(workflow_body, sha=sha, version=version)
@@ -1054,7 +1025,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
         return pin_err
     version = product_version()
     if sha:
-        from auctelis.rollout import rewrite_action_pin
+        from auctelis.action_pin import rewrite_action_pin
 
         try:
             workflow_body = rewrite_action_pin(workflow_body, sha=sha, version=version)
@@ -1119,7 +1090,7 @@ def _cmd_init_gate(args: argparse.Namespace) -> int:
             )
         refreshed = _pin_workflow_to_release(existing)
         if sha:
-            from auctelis.rollout import rewrite_action_pin
+            from auctelis.action_pin import rewrite_action_pin
 
             try:
                 refreshed = rewrite_action_pin(refreshed, sha=sha, version=version)
@@ -1277,12 +1248,24 @@ def _cmd_diff(args: argparse.Namespace) -> int:
             "  auctelis diff lock <base.lock> <head.lock>"
         )
         return 2
-    from auctelis.diff_base import run_diff_base
+    from auctelis.diff_base import render_diff_markdown, run_diff_base
 
     text, payload, code = run_diff_base(
         getattr(args, "repo", Path(".")),
         base_ref=str(base_ref),
     )
+    out = getattr(args, "out", None)
+    if out is not None or getattr(args, "markdown", False):
+        md = render_diff_markdown(payload)
+        if out is not None:
+            write_text(Path(out), md)
+        if getattr(args, "markdown", False):
+            print(md)
+        elif getattr(args, "diff_json", False):
+            print_json(payload)
+        else:
+            print(text)
+        return code
     if getattr(args, "diff_json", False):
         print_json(payload)
     else:

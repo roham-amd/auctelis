@@ -273,6 +273,43 @@ def cmd_build(args: argparse.Namespace) -> int:
         case "pypi-check":
             for line in check_pypi_cutover_readiness(live=bool(getattr(args, "live", False))):
                 print(line)
+        case "dossiers":
+            from auctelis.dossiers import build_dossier_index
+            from auctelis.export.dossier import render_dossier_markdown
+            from auctelis.inspect_target import inspect_target
+            from auctelis.paths import repo_root
+
+            root = repo_root()
+            catalog_path = root / "dossiers" / "CATALOG.json"
+            catalog = read_json(catalog_path)
+            if not isinstance(catalog, list):
+                raise SystemExit(f"invalid catalog: {catalog_path}")
+            rows: list[dict[str, Any]] = []
+            for entry in catalog:
+                if not isinstance(entry, dict):
+                    raise SystemExit(f"invalid catalog entry: {entry!r}")
+                slug = str(entry.get("slug") or "")
+                target = str(entry.get("target") or "")
+                if not slug or not target:
+                    raise SystemExit(f"catalog entry missing slug/target: {entry!r}")
+                doc = inspect_target(target)
+                md_path = root / "dossiers" / f"{slug}.md"
+                write_text(md_path, render_dossier_markdown(doc))
+                print(f"Wrote {md_path}")
+                flags = doc.get("red_flags") or []
+                flag_count = len(flags) if isinstance(flags, list) else 0
+                rows.append(
+                    {
+                        "component": slug,
+                        "target": target,
+                        "verdict": doc.get("verdict") or "",
+                        "red_flags": flag_count,
+                        "dossier": f"[{slug}.md]({slug}.md)",
+                    }
+                )
+            readme_path = root / "dossiers" / "README.md"
+            write_text(readme_path, build_dossier_index(rows))
+            print(f"Wrote {readme_path}")
         case _:
             print_json(build_all())
     return 0

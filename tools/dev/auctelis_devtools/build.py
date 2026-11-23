@@ -384,7 +384,6 @@ _INSTALL_DOCS = (
     "docs/pilots/RECRUITMENT.md",
     "docs/pilots/TRACKER.md",
     "docs/auctelis-consumer-gate.example.yml",
-    "docs/auctelis-org-audit.yml",
     "docs/examples/sample-reach-report.html",
     "docs/examples/sample-reach-report.md",
     "tools/README.md",
@@ -442,7 +441,7 @@ def check_public_install_versions(product: str) -> None:
                     )
 
     bare_promise = re.compile(r"(?<![\w\-])uvx auctelis(?!\S)")
-    bare_check = re.compile(r"(?<![\w\-])uvx auctelis check\b")
+    bare_check = re.compile(r"(?<![\w\-])uvx auctelis inspect\b")
     git_from = re.compile(r"uvx\s+--from\s+[\"']?git\+")
     once_published = re.compile(r"once\s+(?:published|PyPI|pypi)", re.IGNORECASE)
     for rel in _FIRST_RUN_DOCS:
@@ -451,18 +450,18 @@ def check_public_install_versions(product: str) -> None:
             bare_m = bare_check.search(text)
             if bare_m is None:
                 raise SystemExit(
-                    f"{rel} must show `uvx auctelis check` as the first-run install "
+                    f"{rel} must show `uvx auctelis inspect` as the first-run install "
                     "(pypi_live=true in release-manifest)"
                 )
             git_m = git_from.search(text)
             if git_m is not None and git_m.start() < bare_m.start():
                 raise SystemExit(
-                    f"{rel} must lead with bare `uvx auctelis check` before any "
+                    f"{rel} must lead with bare `uvx auctelis inspect` before any "
                     "`uvx --from git+…` fallback (pypi_live=true)"
                 )
             # Awkward parenthetical workarounds next to the primary install.
             if rel == "docs/AUCTELIS-GATE.md" and re.search(
-                r"uvx auctelis check\s*\([^)]*INSTALL",
+                r"uvx auctelis inspect\s*\([^)]*INSTALL",
                 text,
             ):
                 raise SystemExit(
@@ -527,7 +526,7 @@ def check_install_doc_versions(product: str) -> None:
 
 
 def check_bare_command_docs() -> None:
-    """Public docs must describe bare CLI → check, not scan-only or watch-only."""
+    """Public docs must describe bare CLI → inspect, not scan/watch/check-first."""
     root = repo_root()
     stale_scan = re.compile(
         r"bare\s+`auctelis`[^.?\n]{0,80}defaults to\s+`?(?:auctelis\s+)?scan",
@@ -535,6 +534,10 @@ def check_bare_command_docs() -> None:
     )
     stale_watch = re.compile(
         r"bare\s+`auctelis`[^.?\n]{0,100}runs\s+`watch`",
+        re.IGNORECASE,
+    )
+    stale_check = re.compile(
+        r"bare\s+`auctelis`[^.?\n]{0,80}(?:defaults to|runs)\s+`?(?:auctelis\s+)?check",
         re.IGNORECASE,
     )
     # SECURITY.md / GUARD-SCAN must not sell Authority Watch as the product.
@@ -562,17 +565,22 @@ def check_bare_command_docs() -> None:
         if stale_scan.search(text):
             raise SystemExit(
                 f"{rel} still claims bare auctelis defaults only to scan; "
-                "document check (repo authority) as the front door"
+                "document inspect (Trust Dossier) as the front door"
             )
         if stale_watch.search(text):
             raise SystemExit(
                 f"{rel} still claims bare auctelis runs watch; "
-                "document check (repo authority) as the front door"
+                "document inspect (Trust Dossier) as the front door"
+            )
+        if stale_check.search(text):
+            raise SystemExit(
+                f"{rel} still claims bare auctelis defaults to check; "
+                "document inspect (Trust Dossier) as the front door"
             )
         if rel in {"SECURITY.md", "docs/GUARD-SCAN.md"} and stale_product.search(text):
             raise SystemExit(
                 f"{rel} still describes Authority Watch / watch-first as the product; "
-                "document check → diff --base → init / lockless workflow → gate"
+                "document inspect → inspect --local → diff --base"
             )
         if rel == "CONTRIBUTING.md" and stale_rebrand.search(text):
             raise SystemExit(f"{rel} still contains rebrand residue ('formerly branded')")
@@ -871,7 +879,6 @@ def check_action_parity() -> list[str]:
     for rel in (
         "tools/auctelis/templates/auctelis-diff.yml",
         "tools/auctelis/templates/auctelis-gate.yml",
-        "docs/auctelis-org-reusable.yml",
         "docs/auctelis-consumer-gate.example.yml",
     ):
         text = (root / rel).read_text(encoding="utf-8")
@@ -1024,7 +1031,7 @@ def check_pypi_cutover_readiness(*, live: bool = False) -> list[str]:
         "     (owner roham-amd / repo auctelis / workflow publish-pypi.yml / env pypi).",
         "  2. Bump+flip PR: set pypi_live=true in canonical/release-manifest.json,",
         '     AUCTELIS_PYPI_DEFAULT="true" in both action.yml copies (byte-identical),',
-        "     and lead install docs with `uvx auctelis check`.",
+        "     and lead install docs with `uvx auctelis inspect`.",
         "  3. Publish that flipped commit with publish-pypi.yml (workflow_dispatch).",
         "  4. Live probe: poll https://pypi.org/pypi/auctelis/<ver>/json until HTTP 200",
         "     (≤10 min), then run `auctelis-dev build pypi-check --live`.",
@@ -1077,7 +1084,6 @@ def build_all() -> dict[str, object]:
     validate_json_schema_document()
     links = check_internal_markdown_links()
     wheel_lean = check_wheel_omits_research()
-    dogfood_lock = check_dogfood_lock_freshness()
     return {
         "schemas": sync,
         "packaged_metadata": packaged,
@@ -1085,7 +1091,6 @@ def build_all() -> dict[str, object]:
         "action_parity": action_parity,
         "markdown_files_link_checked": links,
         "wheel_omits_research": wheel_lean,
-        "dogfood_lock_freshness": dogfood_lock,
         # Monolith generation removed from product build (archive/methodology only).
         "status": "ok",
     }

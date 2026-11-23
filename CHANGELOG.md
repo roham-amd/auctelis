@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+## [0.1.11] — 2026-11-23
+
+### Added
+
+- **AUCT-062:** Ship deterministic rules, artifact_vet, typosquat, and known-component-names.json in the core wheel.
+- **AUCT-063:** Add non-executing npm/PyPI archive inspection, GitHub server-source staging, and JS/TS/PY server capability hints.
+- **AUCT-064:** Add auctelis.inspect_target engine emitting auctelis.trust_dossier.v1 dossiers.
+- **AUCT-065:** Add auctelis inspect CLI, 4-part Trust Dossier renderers, and 10-attack / 20-benign benchmarks.
+- **AUCT-066:** Add read-only auctelis inspect --local host-config audit across 7 local agent config paths.
+- **AUCT-067:** Add zero-install GitHub IssueOps dossier workflow, dossiers/CATALOG.json, and auctelis-dev build dossiers.
+- **AUCT-069:** Add red-flag findings and --markdown/--out to diff --base and switch action.yml to auctelis diff.
+
+### Changed
+
+- **AUCT-071:** Rewrite README, INSTALL, PRODUCT, CLI-REFERENCE, ROADMAP, and docs index around inspect, --local, and IssueOps dossiers.
+- Release housekeeping: install/Action pins, packaged metadata, and dogfood lock refreshed for `0.1.11`. `pypi_live=false` unchanged.
+
+### Removed
+
+- **AUCT-070:** Shrink public auctelis CLI to inspect and diff; move legacy lockfile commands to auctelis-dev.
+- **AUCT-068:** Remove org-fleet rollout CLI, --org-reusable, and org-audit / org-reusable workflows.
+
 ## [0.1.10] — 2026-11-23
 
 ### Fixed
@@ -71,7 +93,7 @@
 
 ### Added
 
-- **AUCT-051:** [`docs/auctelis-org-audit.yml`](docs/auctelis-org-audit.yml)
+- **AUCT-051:** `docs/auctelis-org-audit.yml`
   falls back to `github.repository_owner` and 50 repos when a scheduled run
   leaves `workflow_dispatch` inputs empty, accepts opt-in `resolve_pins`, and
   appends a read-only `rollout --status` block to the Job Summary. HTML and
@@ -104,7 +126,7 @@
 - **AUCT-049:** Fleet / `--github` audits accept `--baseline` and print
   **Changed since last audit** (MD/HTML/summary) after Summary. JSON gains
   `baseline_diff` only when a baseline is given. Schema mismatches exit 2.
-  [`docs/auctelis-org-audit.yml`](docs/auctelis-org-audit.yml) fetches the prior
+  `docs/auctelis-org-audit.yml` fetches the prior
   run's `auctelis-org-report` artifact (`actions: read`) and passes `--baseline`
   when present; first runs say `no baseline`. Cron stays opt-in.
 - **AUCT-050:** `check --pins --resolve-pins` / `check --report --resolve-pins`
@@ -129,7 +151,7 @@
   literal `Pin fix`, support `--repo` / `--min-tier` pilot filters, and inherit
   `org_reusable` from `reach-report.json`. Fleet Summary CTAs include
   `--org-reusable` when set.
-- **AUCT-047:** Copy-paste [`docs/auctelis-org-audit.yml`](docs/auctelis-org-audit.yml)
+- **AUCT-047:** Copy-paste `docs/auctelis-org-audit.yml`
   runs `check --github` on GitHub Actions (`workflow_dispatch` / optional weekly),
   posts the Reach Report to Job Summary, dry-runs `rollout`, and uploads
   `reach-report.{html,md,json}` — zero local `uv`/`git` under `pypi_live=false`.

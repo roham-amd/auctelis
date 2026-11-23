@@ -314,7 +314,7 @@ def test_auct046_gate_pr_comment_preserves_launcher_args(tmp_path: Path, monkeyp
     assert "/workspace" in body or ("-i" in body and "--rm" in body)
     assert '"args": ["run", "...",' not in body
 
-    from auctelis.cli import main
+    from auctelis_devtools.cli import main_dev as main
 
     base2 = tmp_path / "b2"
     base2.mkdir()

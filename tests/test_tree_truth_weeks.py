@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import build_authority_lock, write_authority_lock
-from auctelis.cli import main
 from auctelis.gate import run_gate
 from auctelis.security.engine import run_authority_inventory
+from auctelis_devtools.cli import main_dev as main
 
 
 def _seal(root: Path) -> Path:

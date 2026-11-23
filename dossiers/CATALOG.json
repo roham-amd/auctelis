@@ -1,0 +1,42 @@
+[
+  {
+    "slug": "server-filesystem",
+    "target": "npm:@modelcontextprotocol/server-filesystem"
+  },
+  {
+    "slug": "server-github",
+    "target": "npm:@modelcontextprotocol/server-github"
+  },
+  {
+    "slug": "server-memory",
+    "target": "npm:@modelcontextprotocol/server-memory"
+  },
+  {
+    "slug": "server-puppeteer",
+    "target": "npm:@modelcontextprotocol/server-puppeteer"
+  },
+  {
+    "slug": "server-brave-search",
+    "target": "npm:@modelcontextprotocol/server-brave-search"
+  },
+  {
+    "slug": "server-sqlite",
+    "target": "npm:@modelcontextprotocol/server-sqlite"
+  },
+  {
+    "slug": "server-sequential-thinking",
+    "target": "npm:@modelcontextprotocol/server-sequential-thinking"
+  },
+  {
+    "slug": "server-everything",
+    "target": "npm:@modelcontextprotocol/server-everything"
+  },
+  {
+    "slug": "mcp-server-fetch",
+    "target": "pypi:mcp-server-fetch"
+  },
+  {
+    "slug": "auctelis",
+    "target": "https://github.com/roham-amd/auctelis"
+  }
+]

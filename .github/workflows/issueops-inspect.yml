@@ -1,0 +1,41 @@
+name: IssueOps inspect
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  inspect:
+    if: contains(github.event.issue.labels.*.name, 'inspect-request')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          version: "0.13.7"
+
+      - name: Set up Python
+        run: uv python install 3.12.16
+
+      - name: Install dependencies
+        working-directory: tools
+        run: uv sync --all-packages --locked
+
+      - name: Parse target and inspect
+        id: inspect
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TARGET="$(uv run --directory tools --locked python -c "import os; from auctelis.dossiers import parse_issue_target; print(parse_issue_target(os.environ['ISSUE_BODY']))")"
+          echo "target=${TARGET}" >> "$GITHUB_OUTPUT"
+          uv run --directory tools --locked auctelis inspect "$TARGET" --markdown > /tmp/dossier.md
+          gh issue comment "${{ github.event.issue.number }}" --body-file /tmp/dossier.md

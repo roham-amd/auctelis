@@ -12,7 +12,6 @@ from auctelis.authority_lock import (
     field_level_change_bits,
     render_lock_diff_lines,
 )
-from auctelis.cli import main
 from auctelis.export.pr_comment import render_authority_diff_comment
 from auctelis.gate import (
     adoption_bootstrap_verdict,
@@ -20,6 +19,7 @@ from auctelis.gate import (
     render_gate_report,
     run_gate,
 )
+from auctelis_devtools.cli import main_dev as main
 
 
 def _mcp(root: Path, servers: dict) -> None:

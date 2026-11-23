@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import write_authority_lock
-from auctelis.cli import main
 from auctelis.export.pr_comment import (
     AUCTELIS_COMMENT_MARKER,
     render_first_run_comment,
     render_gate_pr_comment,
 )
 from auctelis.gate import run_gate
+from auctelis_devtools.cli import main_dev as main
 
 
 def _mcp(root: Path, servers: dict) -> None:
@@ -257,21 +257,6 @@ def test_auct046_watching_includes_pin_fix_within_budget():
     assert "**Pin fix:**" in body
     assert "@linear/mcp@<exact-version>" in body
     assert len([line for line in body.splitlines() if line]) <= 12
-
-
-def test_action_posts_first_run_only_without_sticky():
-    action = (
-        Path(__file__).resolve().parents[1] / ".github" / "actions" / "auctelis-gate" / "action.yml"
-    )
-    text = action.read_text(encoding="utf-8")
-    assert "comment-first-run.md" in text
-    assert "FIRST_RUN" in text
-    assert "existing_id" in text
-    assert "workflow_added" in text
-    assert ".github/workflows/auctelis*.y*ml" in text
-    assert 'cp "$FIRST_RUN" "$COMMENT"' in text
-    assert "prepending Watching banner" in text
-    assert "auctelis-dev" not in text
 
 
 def test_install_shaped_growth_still_writes_first_run(tmp_path: Path, monkeypatch):

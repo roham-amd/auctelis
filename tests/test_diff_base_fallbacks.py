@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from auctelis.cli import main
 from auctelis.diff_base import run_diff_base
+from auctelis_devtools.cli import main_dev as main
 
 
 def _git(root: Path, *args: str) -> str:

@@ -67,6 +67,51 @@ def test_built_wheel_exposes_only_auctelis_script(tmp_path: Path):
         assert banned not in names
 
 
+def test_wheel_ships_core_rules_and_artifact_vet(tmp_path: Path):
+    """AUCT-062 — core wheel ships rules, artifact_vet, typosquat; not research."""
+    import subprocess
+    import sys
+
+    root = Path(__file__).resolve().parents[1]
+    tools = root / "tools"
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    env = {
+        **os.environ,
+        "UV_CACHE_DIR": str(tmp_path / "uv-cache"),
+        "UV_TOOL_DIR": str(tmp_path / "uv-tools"),
+        "UV_PYTHON_INSTALL_DIR": str(tmp_path / "uv-python"),
+    }
+    proc = subprocess.run(
+        [sys.executable, "-m", "build", "--wheel", "--outdir", str(dist)],
+        cwd=tools,
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    if proc.returncode != 0:
+        proc = subprocess.run(
+            ["uv", "build", "--wheel", "--out-dir", str(dist)],
+            cwd=tools,
+            capture_output=True,
+            text=True,
+            check=False,
+            env=env,
+        )
+    if proc.returncode != 0:
+        pytest.skip(f"wheel build unavailable: {proc.stderr or proc.stdout}")
+    wheels = list(dist.glob("auctelis-*.whl"))
+    assert len(wheels) == 1, wheels
+    with zipfile.ZipFile(wheels[0]) as zf:
+        names = zf.namelist()
+    assert "auctelis/security/rules.py" in names
+    assert "auctelis/security/artifact_vet.py" in names
+    assert "auctelis/security/typosquat.py" in names
+    assert "auctelis/data/known-component-names.json" in names
+    assert not any(n.startswith("auctelis_research/") for n in names)
+
+
 def test_product_pyproject_has_no_dev_script():
     text = (Path(__file__).resolve().parents[1] / "tools" / "pyproject.toml").read_text(
         encoding="utf-8"

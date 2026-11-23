@@ -6,11 +6,11 @@ import json
 from pathlib import Path
 
 from auctelis.authority_lock import build_authority_lock, write_authority_lock
-from auctelis.cli import main
 from auctelis.cli.dispatch import _init_gate_templates
 from auctelis.export.pr_comment import escape_markdown, render_authority_diff_comment
 from auctelis.policy import load_policy
 from auctelis_devtools.cli import main_dev
+from auctelis_devtools.cli import main_dev as main
 
 
 def test_policy_parser_empty_flow_list_and_comments(tmp_path: Path):

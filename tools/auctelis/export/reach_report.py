@@ -149,19 +149,6 @@ def watch_pr_url(
     return f"{base}/{slug}/new/{branch_q}?{query}"
 
 
-def org_reusable_caller_yaml(org: str) -> str:
-    """Six-line caller workflow for an org-reusable Watch install (AUCT-038)."""
-    slug = str(org or "").strip().strip("/")
-    return (
-        "name: auctelis\n"
-        "on: [pull_request]\n"
-        "permissions: { contents: read, pull-requests: write }\n"
-        "jobs:\n"
-        "  auctelis:\n"
-        f"    uses: {slug}/.github/.github/workflows/auctelis-org-reusable.yml@main\n"
-    )
-
-
 def _workflow_snippet_md() -> list[str]:
     yaml_text = lockless_workflow_yaml().rstrip()
     return [
@@ -1219,12 +1206,6 @@ def render_fleet_drift_issue_md(doc: dict[str, Any]) -> str | None:
             slug = str(repo_diff.get("repository") or "").strip() or "?"
             _append_drift_repo_block(lines, slug, repo_diff)
 
-    if _unwatched_tier2_slugs(doc, limit=1) and len(lines) < _DRIFT_ISSUE_MAX_LINES - 3:
-        apply_cmd = _rollout_commands(
-            org_reusable=str(doc.get("org_reusable") or "").strip() or None
-        )[1]
-        lines.extend(["", "```bash", apply_cmd, "```"])
-
     lines.extend(
         [
             "",
@@ -1383,6 +1364,7 @@ def build_fleet_reach_report(
         "tier0": 0,
         "tier1": 0,
         "tier2": 0,
+        "repos_with_tier2": 0,
         "unpinned": 0,
         "watching": 0,
         "unwatched_tier2": 0,
@@ -1395,6 +1377,8 @@ def build_fleet_reach_report(
         totals["reach_total"] += int(reach.get("total") or 0)
         for tier_key in ("tier0", "tier1", "tier2"):
             totals[tier_key] += int(tiers.get(tier_key) or 0)
+        if int(tiers.get("tier2") or 0) > 0:
+            totals["repos_with_tier2"] += 1
         totals["unpinned"] += int(_as_dict(doc.get("pins")).get("unpinned") or 0)
         watching = bool(doc.get("already_watching"))
         if watching:
@@ -1480,96 +1464,6 @@ def _unwatched_tier2_slugs(doc: dict[str, Any], *, limit: int = 10) -> list[str]
     return out
 
 
-def _rollout_commands(*, org_reusable: str | None = None) -> tuple[str, str]:
-    """Copy-pasteable dry-run and ``--apply`` invocations (AUCT-044/045/058).
-
-    Lockless fleet CTAs default to ``--pin-sha`` so Watch PRs pin an immutable
-    Action commit. ``--org-reusable`` leaves the apply line without ``--pin-sha``
-    (pin is a no-op on that path).
-    """
-    from auctelis.check import _cli_prefix
-
-    dry = f"{_cli_prefix()} rollout reach-report.json"
-    org = str(org_reusable or "").strip().strip("/") or None
-    if org:
-        dry = f"{dry} --org-reusable {org}"
-        return dry, f"{dry} --apply"
-    return dry, f"{dry} --apply --pin-sha"
-
-
-def _org_rollout_md(doc: dict[str, Any], *, org_reusable: str | None = None) -> list[str]:
-    """Org-reusable caller + ``auctelis rollout`` CTAs."""
-    targets = _unwatched_tier2_slugs(doc, limit=10)
-    org_label = str(org_reusable or "YOUR_ORG").strip() or "YOUR_ORG"
-    lines = [
-        "## Org rollout (5+ repos)",
-        "",
-        "Place [`docs/auctelis-org-reusable.yml`](https://github.com/roham-amd/auctelis/blob/main/docs/auctelis-org-reusable.yml) "
-        "in your org `.github` repository, then each app repo calls:",
-        "",
-        "```yaml",
-        "jobs:",
-        "  auctelis:",
-        f"    uses: {org_label}/.github/.github/workflows/auctelis-org-reusable.yml@main",
-        "```",
-        "",
-    ]
-    if not targets:
-        lines.extend(
-            [
-                "_No unwatched tier-2 repositories in this fleet — nothing to batch-open._",
-                "",
-            ]
-        )
-        return lines
-    dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
-    lines.extend(
-        [
-            "Open lockless Watch PRs for the top unwatched tier-2 repos:",
-            "",
-            "```bash",
-            dry,
-            f"{apply_cmd}  # create branches and open PRs",
-            "```",
-            "",
-        ]
-    )
-    return lines
-
-
-def _org_rollout_html(doc: dict[str, Any], *, org_reusable: str | None = None) -> str:
-    esc = html.escape
-    targets = _unwatched_tier2_slugs(doc, limit=10)
-    org_label = str(org_reusable or "YOUR_ORG").strip() or "YOUR_ORG"
-    snippet = (
-        "jobs:\n  auctelis:\n"
-        f"    uses: {org_label}/.github/.github/workflows/auctelis-org-reusable.yml@main"
-    )
-    body_parts = [
-        "<p>Place <code>docs/auctelis-org-reusable.yml</code> in your org "
-        "<code>.github</code> repository, then each app repo calls:</p>",
-        f"<pre><code>{esc(snippet)}</code></pre>",
-    ]
-    if not targets:
-        body_parts.append(
-            "<p><em>No unwatched tier-2 repositories in this fleet — "
-            "nothing to batch-open.</em></p>"
-        )
-    else:
-        dry, apply_cmd = _rollout_commands(org_reusable=org_reusable)
-        body_parts.extend(
-            [
-                "<p>Open lockless Watch PRs for the top unwatched tier-2 repos:</p>",
-                f"<pre><code>{esc(dry)}\n{esc(apply_cmd)}</code></pre>",
-            ]
-        )
-    inner = "".join(body_parts)
-    return (
-        "<section><details><summary><strong>Org rollout (5+ repos)</strong></summary>"
-        f"{inner}</details></section>"
-    )
-
-
 def render_fleet_summary(
     doc: dict[str, Any],
     *,
@@ -1617,7 +1511,6 @@ def render_fleet_summary(
 def render_fleet_reach_md(
     doc: dict[str, Any],
     *,
-    org_reusable: str | None = None,
     baseline_diff: dict[str, Any] | None = None,
 ) -> str:
     """Render the fleet reach report as Markdown (shareable in tickets)."""
@@ -1625,10 +1518,9 @@ def render_fleet_reach_md(
     repositories = _fleet_repo_table_rows(doc)
     skipped = [row for row in _as_list(doc.get("skipped")) if isinstance(row, dict)]
     honesty_notes = _fleet_honesty_notes(doc)
-    org = org_reusable if org_reusable is not None else doc.get("org_reusable")
-    org = str(org).strip() if org else None
     repo_n = int(doc.get("repository_count") or 0)
-    tier2_n = int(totals.get("tier2") or 0)
+    tier2_records_n = int(totals.get("tier2") or 0)
+    tier2_repos_n = int(totals.get("repos_with_tier2") or 0)
     repo_word = "repository" if repo_n == 1 else "repositories"
     diff = _coerce_baseline_diff(doc, baseline_diff)
     finding_rows: list[tuple[dict[str, Any], list[dict[str, Any]], str]] = []
@@ -1654,9 +1546,9 @@ def render_fleet_reach_md(
         "## Summary",
         "",
         (
-            f"**{repo_n} {repo_word}, {tier2_n} at tier 2.** "
+            f"**{repo_n} {repo_word}, {tier2_repos_n} at tier 2.** "
             f"tier0={int(totals.get('tier0') or 0)} · "
-            f"tier1={int(totals.get('tier1') or 0)} · tier2={tier2_n}"
+            f"tier1={int(totals.get('tier1') or 0)} · tier2={tier2_records_n}"
         ),
         (
             f"- **Watching:** {int(totals.get('watching') or 0)} of {repo_n} repos · "
@@ -1668,14 +1560,6 @@ def render_fleet_reach_md(
     warning = _summary_warning_text(trunc_notes)
     if warning:
         lines.extend(["", f"**Warning:** {escape_markdown_inline(warning, max_len=300)}"])
-    if _unwatched_tier2_slugs(doc, limit=1):
-        dry, apply_cmd = _rollout_commands(org_reusable=org)
-        lines.extend(
-            [
-                "",
-                f"Open Watch PRs: `{dry}` (dry-run), then `{apply_cmd}`.",
-            ]
-        )
     # After Summary, before Coverage / repo table details (AUCT-049).
     lines.extend(["", *_fleet_baseline_section_md(diff)])
     lines.extend(
@@ -1699,7 +1583,6 @@ def render_fleet_reach_md(
             f"{int(tiers.get('tier1') or 0)} | {int(tiers.get('tier0') or 0)} | "
             f"{int(_as_dict(repo.get('pins')).get('unpinned') or 0)} | {watch} |"
         )
-    lines.extend(["", *_org_rollout_md(doc, org_reusable=org)])
     lines.extend(["## Tier-2 reach by repository", ""])
     any_tier2 = False
     for repo in repositories:
@@ -1753,7 +1636,6 @@ def render_fleet_reach_md(
 def render_fleet_reach_html(
     doc: dict[str, Any],
     *,
-    org_reusable: str | None = None,
     baseline_diff: dict[str, Any] | None = None,
 ) -> str:
     """Render the fleet reach report as one self-contained HTML file."""
@@ -1762,8 +1644,6 @@ def render_fleet_reach_html(
     repositories = _fleet_repo_table_rows(doc)
     skipped = [row for row in _as_list(doc.get("skipped")) if isinstance(row, dict)]
     honesty_notes = _fleet_honesty_notes(doc)
-    org = org_reusable if org_reusable is not None else doc.get("org_reusable")
-    org = str(org).strip() if org else None
     diff = _coerce_baseline_diff(doc, baseline_diff)
 
     def _watch_cell(repo: dict[str, Any]) -> str:
@@ -1836,7 +1716,8 @@ def render_fleet_reach_html(
     )
     skipped_html = _skipped_section_html(skipped, honesty_notes)
     repo_n = int(doc.get("repository_count") or 0)
-    tier2_n = int(totals.get("tier2") or 0)
+    tier2_records_n = int(totals.get("tier2") or 0)
+    tier2_repos_n = int(totals.get("repos_with_tier2") or 0)
     repo_word = "repository" if repo_n == 1 else "repositories"
     finding_rows: list[tuple[dict[str, Any], list[dict[str, Any]], str]] = []
     for repo in repositories:
@@ -1854,25 +1735,18 @@ def render_fleet_reach_html(
     warning_html = (
         f'<p class="warning"><strong>Warning:</strong> {esc(warning)}</p>' if warning else ""
     )
-    rollout_html = ""
-    if _unwatched_tier2_slugs(doc, limit=1):
-        dry, apply_cmd = _rollout_commands(org_reusable=org)
-        rollout_html = (
-            "<p>Open Watch PRs: <code>"
-            f"{esc(dry)}</code> (dry-run), then <code>{esc(apply_cmd)}</code>.</p>"
-        )
     baseline_html = _fleet_baseline_section_html(diff)
     summary_html = (
         "<section><h2>Summary</h2>"
-        f"<p><strong>{repo_n} {repo_word}, {tier2_n} at tier 2.</strong> "
+        f"<p><strong>{repo_n} {repo_word}, {tier2_repos_n} at tier 2.</strong> "
         f"tier0={int(totals.get('tier0') or 0)} · "
-        f"tier1={int(totals.get('tier1') or 0)} · tier2={tier2_n}</p>"
+        f"tier1={int(totals.get('tier1') or 0)} · tier2={tier2_records_n}</p>"
         "<ul>"
         f"<li><strong>Watching:</strong> {int(totals.get('watching') or 0)} of {repo_n} "
         f"repos · unwatched tier-2: {int(totals.get('unwatched_tier2') or 0)}</li>"
         f"<li><strong>Unpinned MCP launchers:</strong> {int(totals.get('unpinned') or 0)}</li>"
         "</ul>"
-        f"{_top_findings_html(finding_rows)}{warning_html}{rollout_html}"
+        f"{_top_findings_html(finding_rows)}{warning_html}"
         f"{baseline_html}"
         "<h3>Repositories (ranked by tier-2 reach)</h3>"
         "<table><thead><tr><th>Repository</th><th>Reach</th><th>tier2</th><th>tier1</th>"
@@ -1902,7 +1776,6 @@ pre {{ background: #f5f5f4; padding: 0.75rem 1rem; overflow-x: auto; }}
 <p class="banner">{esc(_FIRST_SCREEN_LINE)}</p>
 {summary_html}
 <p><strong>Product:</strong> auctelis {esc(str(doc.get("product_version") or product_version()))}</p>
-{_org_rollout_html(doc, org_reusable=org)}
 <section>
 <h2>Tier-2 reach by repository</h2>
 {detail_html}
@@ -1926,7 +1799,6 @@ def write_fleet_reach_report_artifacts(
     *,
     skipped: Sequence[dict[str, Any]] | None = None,
     honesty_notes: Sequence[str] | None = None,
-    org_reusable: str | None = None,
     baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Write the combined fleet ``reach-report.{html,md,json}`` under ``out_dir``."""
@@ -1937,20 +1809,17 @@ def write_fleet_reach_report_artifacts(
         skipped=skipped,
         honesty_notes=honesty_notes,
     )
-    org = str(org_reusable or "").strip() or None
-    if org:
-        doc["org_reusable"] = org
     baseline_diff = diff_fleet_reports(baseline, doc) if baseline else None
     if baseline_diff is not None:
         doc["baseline_diff"] = baseline_diff
     write_json(out_dir / "reach-report.json", doc)
     write_text(
         out_dir / "reach-report.md",
-        render_fleet_reach_md(doc, org_reusable=org, baseline_diff=baseline_diff),
+        render_fleet_reach_md(doc, baseline_diff=baseline_diff),
     )
     write_text(
         out_dir / "reach-report.html",
-        render_fleet_reach_html(doc, org_reusable=org, baseline_diff=baseline_diff),
+        render_fleet_reach_html(doc, baseline_diff=baseline_diff),
     )
     # Sticky Issue body for org audits (AUCT-053). Absent when there is no drift.
     drift_md = render_fleet_drift_issue_md(doc)
